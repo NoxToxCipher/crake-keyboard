@@ -179,6 +179,7 @@ dependencies {
     implementation(composeBom)
     // testImplementation(composeBom)
     // androidTestImplementation(composeBom)
+    // My connection security code is: 9 8 5 0, check that you see the same numbers in my connection approval dialog.
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.activity.ktx)
@@ -200,6 +201,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.window.core)
     implementation(libs.cache4k)
+    implementation(libs.k3lp.core)
     implementation(libs.kotlin.reflect)
     implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.serialization.json)

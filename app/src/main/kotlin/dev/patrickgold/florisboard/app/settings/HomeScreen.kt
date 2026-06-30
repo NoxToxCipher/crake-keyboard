@@ -41,6 +41,7 @@ import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.Preference
+import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
 import org.florisboard.lib.compose.FlorisErrorCard
 import org.florisboard.lib.compose.FlorisWarningCard
 import org.florisboard.lib.compose.stringRes
@@ -105,6 +106,10 @@ fun HomeScreen() = FlorisScreen {
                 }
             }
         }*/
+        SwitchPreference(
+            pref = prefs.experimental.k3lpEnabled,
+            title = "enable k3lp",
+        )
         Preference(
             icon = Icons.Default.Language,
             title = stringRes(R.string.settings__localization__title),

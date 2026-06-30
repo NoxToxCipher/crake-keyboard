@@ -23,12 +23,15 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.ime.experimental.FlorisKeyboardView
+import dev.patrickgold.florisboard.ime.experimental.FlorisKeystrokeEngine
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsStyleCache
 import dev.patrickgold.florisboard.ime.smartbar.Smartbar
@@ -37,7 +40,13 @@ import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboardLayout
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.runBlocking
+import org.florisboard.lib.android.readText
 import org.florisboard.lib.snygg.ui.SnyggIcon
+import org.k3lp.K3lp
+import org.k3lp.K3lpResult
+import org.k3lp.lib.meta.source.SourceFileRef
+import org.k3lp.lib.meta.source.TextSourceFile
 
 @Composable
 fun TextInputLayout(
@@ -50,6 +59,7 @@ fun TextInputLayout(
 
     val state by keyboardManager.activeState.collectAsState()
     val evaluator by keyboardManager.activeEvaluator.collectAsState()
+    val experimentalK3lpApi by prefs.experimental.k3lpEnabled.collectAsState()
 
     InlineSuggestionsStyleCache()
 
@@ -75,7 +85,25 @@ fun TextInputLayout(
                         painter = painterResource(R.drawable.ic_incognito),
                     )
                 }
-                TextKeyboardLayout(evaluator = evaluator)
+                if (experimentalK3lpApi) {
+                    val xml = context.assets
+                        .readText("experimental/keyboard/org.florisboard.layouts.de/keyboard/de.xml")
+                    val result = remember {
+                        runBlocking {
+                            K3lp.compile(TextSourceFile(object : SourceFileRef {
+                                override fun toString(): String {
+                                    return "toString()"
+                                }
+                            }, xml))
+                        }
+                    }
+                    require(result is K3lpResult.Success)
+                    val model = result.data
+                    val engine = remember(model) { FlorisKeystrokeEngine(model) }
+                    FlorisKeyboardView(model, engine)
+                } else {
+                    TextKeyboardLayout(evaluator = evaluator)
+                }
             }
         }
     }
