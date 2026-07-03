@@ -16,10 +16,12 @@
 
 package dev.patrickgold.florisboard.app
 
+import android.app.LocaleManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
+import android.os.LocaleList
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -55,14 +57,15 @@ import dev.patrickgold.florisboard.lib.compose.rememberPreviewFieldController
 import dev.patrickgold.florisboard.lib.util.AppVersionUtils
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ProvideDefaultDialogPrefStrings
-import java.util.concurrent.atomic.AtomicBoolean
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.android.hideAppIcon
 import org.florisboard.lib.android.showAppIcon
+import org.florisboard.lib.android.systemServiceOrNull
 import org.florisboard.lib.compose.ProvideLocalizedResources
 import org.florisboard.lib.compose.conditional
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.kotlin.collectIn
+import java.util.concurrent.atomic.AtomicBoolean
 
 enum class AppTheme(val id: String) {
     AUTO("auto"),
@@ -96,11 +99,31 @@ class FlorisAppActivity : ComponentActivity() {
         prefs.other.settingsTheme.asFlow().collectIn(lifecycleScope) {
             appTheme = it
         }
-        prefs.other.settingsLanguage.asFlow().collectIn(lifecycleScope) {
-            val config = Configuration(resources.configuration)
-            val locale = if (it == "auto") FlorisLocale.default() else FlorisLocale.fromTag(it)
-            config.setLocale(locale.base)
-            resourcesContext = createConfigurationContext(config)
+        prefs.other.settingsLanguage.asFlow().collectIn(lifecycleScope) { languageTag ->
+            if (AndroidVersion.ATLEAST_API33_T) {
+                // Migrate to new locale configuration
+                val localeManager = systemServiceOrNull(LocaleManager::class) ?: return@collectIn
+                val systemTag = localeManager.applicationLocales.toLanguageTags().ifEmpty {
+                    "auto"
+                }
+                if (systemTag != languageTag) {
+                    prefs.other.settingsLanguage.set(systemTag)
+                    return@collectIn
+                }
+                val targetLocaleList = if (languageTag == "auto") {
+                    LocaleList.getEmptyLocaleList()
+                } else {
+                    LocaleList.forLanguageTags(languageTag)
+                }
+                if (localeManager.applicationLocales.toLanguageTags() != targetLocaleList.toLanguageTags()) {
+                    localeManager.applicationLocales = targetLocaleList
+                }
+            } else {
+                val config = Configuration(resources.configuration)
+                val locale = if (languageTag == "auto") FlorisLocale.default() else FlorisLocale.fromTag(languageTag)
+                config.setLocale(locale.base)
+                resourcesContext = createConfigurationContext(config)
+            }
         }
         if (AndroidVersion.ATMOST_API28_P) {
             prefs.other.showAppIcon.asFlow().collectIn(lifecycleScope) {

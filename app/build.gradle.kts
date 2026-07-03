@@ -15,6 +15,7 @@
  */
 
 import com.android.build.api.dsl.ApplicationExtension
+import com.android.build.api.variant.BuildConfigField
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
@@ -95,6 +96,10 @@ configure<ApplicationExtension> {
         }
     }
 
+    androidResources {
+        generateLocaleConfig = true
+    }
+
     buildFeatures {
         buildConfig = true
         compose = true
@@ -148,6 +153,27 @@ configure<ApplicationExtension> {
         unitTests.all {
             it.useJUnitPlatform()
         }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val localeConfigFile = file("${layout.buildDirectory.asFile.get()}/generated/res/localeConfig/${variant.name}/xml/_generated_res_locale_config.xml")
+        val tags = mutableListOf<String>()
+        if (localeConfigFile.exists()) {
+            val xmlText = localeConfigFile.readText()
+            val regex = """android:name="([^"]+)"""".toRegex()
+            regex.findAll(xmlText).forEach { match ->
+                tags.add(match.groupValues[1])
+            }
+        }
+        if (tags.isEmpty()) tags.add("en")
+
+        val localesArray = tags.distinct().joinToString(separator = ",") { "\"$it\"" }
+        variant.buildConfigFields?.put(
+            "LOCALES",
+            BuildConfigField("String[]", "new String[]{$localesArray}", "Auto-detected locales from AGP")
+        )
     }
 }
 
