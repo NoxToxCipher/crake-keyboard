@@ -18,33 +18,45 @@ package dev.patrickgold.florisboard.ime.experimental
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.width
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
+import dev.patrickgold.jetpref.datastore.model.collectAsState
+import org.florisboard.lib.compose.conditional
 import org.florisboard.lib.compose.toMm
+import org.florisboard.lib.snygg.SnyggSelector
+import org.florisboard.lib.snygg.ui.SnyggBox
+import org.florisboard.lib.snygg.ui.SnyggText
+import org.k3lp.lib.text.K3Descriptor
+import org.k3lp.lib.text.K3String
 import org.k3lp.model.K3Model
+import org.k3lp.runtime.K3ComputedKey
 import org.k3lp.runtime.doComputeLayout
 
 @Composable
@@ -60,14 +72,15 @@ fun FlorisKeyboardView(
             .fillMaxWidth()
             .height(FlorisImeSizing.keyboardUiHeight()),
     ) {
+        val prefs by FlorisPreferenceStore
+        val debugShowTouchBoundaries by prefs.devtools.showKeyTouchBoundaries.collectAsState()
+
         val keyboardWidth = constraints.maxWidth
         val keyboardHeight = constraints.maxHeight
         val keyboardRowBaseHeight = FlorisImeSizing.keyboardRowBaseHeight
 
         val windowController = LocalWindowController.current
         val windowSpec by windowController.activeWindowSpec.collectAsState()
-        val keyMarginH by remember { derivedStateOf { windowSpec.keyMarginH.toPx() } }
-        val keyMarginV by remember { derivedStateOf { windowSpec.keyMarginV.toPx() } }
 
         val computedLayout = remember(touchLayerId, model, keyboardWidth, keyboardHeight, maxWidth) {
             doComputeLayout(model, keyboardWidth, keyboardHeight, maxWidth.toMm().toInt(), touchLayerId)
@@ -78,17 +91,67 @@ fun FlorisKeyboardView(
             return@BoxWithConstraints
         }
         for (computedKey in computedLayout.keys) key(computedKey) {
-            Box(
+            FlorisKeyView(
+                computedKey,
+                engine,
                 modifier = Modifier
-                    .size(computedKey.width.toDp(), computedKey.height.toDp())
+                    .requiredSize(computedKey.width.toDp(), computedKey.height.toDp())
                     .absoluteOffset {
                         IntOffset(computedKey.x, computedKey.y)
                     }
-                    .clickable {
-                        engine.onKeyPress(computedKey.data)
-                    }
-                    .border(1.dp, Color.Red)
+                    .conditional(debugShowTouchBoundaries) { border(0.5.dp, Color.Red) }
+                    .padding(windowSpec.keyMarginH, windowSpec.keyMarginV)
             )
+        }
+    }
+}
+
+@Composable
+private fun FlorisKeyView(
+    computedKey: K3ComputedKey,
+    engine: FlorisKeystrokeEngine,
+    modifier: Modifier = Modifier,
+) {
+//    val attributes = mapOf(
+//        FlorisImeUi.Attr.Code to key.computedData.code,
+//        FlorisImeUi.Attr.Mode to evaluator.keyboard.mode.toString(),
+//        FlorisImeUi.Attr.ShiftState to evaluator.state.inputShiftState.toString(),
+//    )
+    var selector by remember { mutableStateOf(SnyggSelector.NONE) }
+
+    SnyggBox(
+        FlorisImeUi.Key.elementName,
+        attributes = emptyMap(),
+        selector = selector,
+        modifier = modifier
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown().also { it.consume() }
+                    selector = SnyggSelector.PRESSED
+                    waitForUpOrCancellation()?.also { it.consume() }
+                    selector = SnyggSelector.NONE
+                    engine.onKeyPress(computedKey.data)
+                }
+            }
+    ) {
+        when (val keytop = computedKey.keytop) {
+            is K3String -> {
+                SnyggText(
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .align(Alignment.Center),
+                    text = keytop.toText(),
+                )
+            }
+            is K3Descriptor -> {
+                // TODO this should be an icon
+                SnyggText(
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .align(Alignment.Center),
+                    text = keytop.toString(),
+                )
+            }
         }
     }
 }

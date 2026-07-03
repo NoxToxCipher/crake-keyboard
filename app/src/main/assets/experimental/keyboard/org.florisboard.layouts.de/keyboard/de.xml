@@ -11,6 +11,8 @@
         <display keyId="numeric" display="${numeric_display}" />
         <display keyId="base-numeric" display="${base_display}" />
         <display keyId="symbols-numeric" display="${symbol_1_display}" />
+        <display output="@k3lp:action/backspace" display="BKSP" />
+        <display output="@k3lp:action/enter" display="ENTER" />
     </displays>
 
 
@@ -24,11 +26,11 @@
         <key id="symbol-2" layerId="symbol-2" width="1.5" />
         <key id="base" layerId="base" width="1.5" />
 
-        <key id="bksp" output="\m{k3lp:backspace}" stretch="true" />
+        <key id="bksp" output="@k3lp:action/backspace" stretch="true" />
         <key id="extra" gap="true" />
-        <key id="enter" output="\m{k3lp:enter}" width="1.6" />
+        <key id="enter" output="@k3lp:action/enter" width="1.6" />
         <key id="space-no-stretch" output="\u{0020}" />
-        <key id="bksp-no-stretch" output="\m{k3lp:backspace}" />
+        <key id="bksp-no-stretch" output="@k3lp:action/backspace" />
 
         <!-- Numbers -->
         <key id="0" output="0" />

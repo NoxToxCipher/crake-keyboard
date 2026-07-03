@@ -18,26 +18,27 @@ package dev.patrickgold.florisboard.ime.experimental
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import org.k3lp.lib.text.K3String
 import org.k3lp.model.K3Model
 import org.k3lp.model.key.K3Key
 import org.k3lp.model.layer.K3LayerId
 import org.k3lp.runtime.K3KeystrokeEngine
 
 class FlorisKeystrokeEngine(model: K3Model) : K3KeystrokeEngine(model) {
-    private val actionUndo = getActionForMarker("floris:undo")
-    private val actionRedo = getActionForMarker("floris:redo")
+    init {
+        onProcessNamespacedDescriptor("floris") { descriptor ->
+            when (descriptor.type) {
+                "action" -> when (descriptor.name) {
+                    "undo" -> TODO()
+                    "redo" -> TODO()
+                    else -> false
+                }
+                else -> false
+            }
+        }
+    }
 
     val touchLayerId: StateFlow<K3LayerId>
         field = MutableStateFlow(K3LayerId.BASE)
-
-    override fun emit(value: K3String): Boolean {
-        return when (value) {
-            actionUndo -> false
-            actionRedo -> false
-            else -> super.emit(value)
-        }
-    }
 
     override fun onKeyPress(key: K3Key): Boolean {
         val layerId = key.layerId
