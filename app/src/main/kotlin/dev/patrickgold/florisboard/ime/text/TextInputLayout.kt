@@ -30,8 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
-import dev.patrickgold.florisboard.ime.experimental.FlorisKeyboardView
-import dev.patrickgold.florisboard.ime.experimental.FlorisKeystrokeEngine
+import dev.patrickgold.florisboard.ime.keyboard3.TouchKeyboardBox
+import dev.patrickgold.florisboard.ime.keyboard3.FlorisKeystrokeEngine
 import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsStyleCache
 import dev.patrickgold.florisboard.ime.smartbar.Smartbar
@@ -100,7 +100,7 @@ fun TextInputLayout(
                     require(result is K3lpResult.Success)
                     val model = result.data
                     val engine = remember(model) { FlorisKeystrokeEngine(model) }
-                    FlorisKeyboardView(model, engine)
+                    TouchKeyboardBox(model, engine)
                 } else {
                     TextKeyboardLayout(evaluator = evaluator)
                 }
