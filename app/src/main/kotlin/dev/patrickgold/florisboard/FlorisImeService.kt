@@ -48,6 +48,7 @@ import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
 import dev.patrickgold.florisboard.ime.input.InputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.isFullscreenInputRequired
+import dev.patrickgold.florisboard.ime.keyboard3.FlorisEditorConnection
 import dev.patrickgold.florisboard.ime.landscapeinput.ExtractedInputRootView
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.lifecycle.LifecycleInputMethodService
@@ -71,6 +72,7 @@ import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.android.systemServiceOrNull
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
+import org.k3lp.runtime.K3TextRange
 import java.lang.ref.WeakReference
 
 /**
@@ -377,6 +379,10 @@ class FlorisImeService : LifecycleInputMethodService() {
             activeState.isSelectionMode = editorInfo.initialSelection.isSelectionMode
             editorInstance.handleStartInputView(editorInfo, isRestart = restarting)
         }
+        val ic = currentInputConnection() ?: return
+        keyboardManager.inputMethod.startInputView(
+            FlorisEditorConnection(ic), editorInfo
+        )
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
@@ -404,12 +410,16 @@ class FlorisImeService : LifecycleInputMethodService() {
                 composing = EditorRange.normalized(candidatesStart, candidatesEnd),
             )
         }
+        keyboardManager.inputMethod.notifySelectionUpdated(
+            newSelection = K3TextRange(newSelStart, newSelEnd),
+        )
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         flogInfo { "finishing=$finishingInput" }
         super.onFinishInputView(finishingInput)
         editorInstance.handleFinishInputView()
+        keyboardManager.inputMethod.finishInputView()
     }
 
     override fun onFinishInput() {

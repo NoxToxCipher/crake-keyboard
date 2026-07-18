@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -33,13 +34,12 @@ import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.compose.toMm
-import org.k3lp.model.K3Model
+import org.k3lp.runtime.K3KeystrokeEngine
 import org.k3lp.runtime.doComputeLayout
 
 @Composable
 fun TouchKeyboardBox(
-    model: K3Model,
-    engine: FlorisKeystrokeEngine,
+    inputMethod: FlorisInputMethod,
     modifier: Modifier = Modifier,
 ) = with(LocalDensity.current) {
     BoxWithConstraints(
@@ -55,7 +55,11 @@ fun TouchKeyboardBox(
 
         val windowController = LocalWindowController.current
         val windowSpec by windowController.activeWindowSpec.collectAsState()
-        val touchLayerId by engine.touchLayerId.collectAsState()
+
+        val engine = remember { K3KeystrokeEngine(inputMethod) }
+        val inputMethodState by inputMethod.activeState.collectAsState()
+        val model by remember { derivedStateOf { inputMethodState.model } }
+        val touchLayerId by remember { derivedStateOf { inputMethodState.touchLayerId } }
 
         val computedLayout = remember(touchLayerId, model, keyboardWidth, keyboardHeight, maxWidth) {
             doComputeLayout(model, keyboardWidth, keyboardHeight, maxWidth.toMm().toInt(), touchLayerId)

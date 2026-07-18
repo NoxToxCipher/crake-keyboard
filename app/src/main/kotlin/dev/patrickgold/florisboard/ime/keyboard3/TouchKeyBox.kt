@@ -45,13 +45,14 @@ import org.florisboard.lib.snygg.ui.SnyggText
 import org.k3lp.lib.text.K3Descriptor
 import org.k3lp.lib.text.K3String
 import org.k3lp.runtime.K3ComputedKey
+import org.k3lp.runtime.K3KeystrokeEngine
 
 @Composable
 fun TouchKey(
     computedKey: K3ComputedKey,
     touchSize: DpSize,
     visibleSize: DpSize,
-    engine: FlorisKeystrokeEngine,
+    engine: K3KeystrokeEngine,
 ) {
     val prefs by FlorisPreferenceStore
     val longPressDelay by prefs.keyboard.longPressDelay.collectAsState()
