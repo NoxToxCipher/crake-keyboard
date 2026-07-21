@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,23 +40,24 @@ import androidx.compose.ui.unit.IntOffset
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.launch
 import org.florisboard.lib.snygg.SnyggSelector
 import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggText
 import org.k3lp.lib.text.K3Descriptor
 import org.k3lp.lib.text.K3String
 import org.k3lp.runtime.K3ComputedKey
-import org.k3lp.runtime.K3KeystrokeEngine
 
 @Composable
 fun TouchKey(
     computedKey: K3ComputedKey,
     touchSize: DpSize,
     visibleSize: DpSize,
-    engine: K3KeystrokeEngine,
+    inputMethod: FlorisInputMethod,
 ) {
     val prefs by FlorisPreferenceStore
     val longPressDelay by prefs.keyboard.longPressDelay.collectAsState()
+    val scope = rememberCoroutineScope()
 
 //    val attributes = mapOf(
 //        FlorisImeUi.Attr.Code to key.computedData.code,
@@ -78,7 +80,7 @@ fun TouchKey(
                     selector = SnyggSelector.PRESSED
                     val type = determineKeyEventType(longPressDelay)
                     if (type == KeyEventType.KEY_PRESS) {
-                        engine.onKeyPress(computedKey.data)
+                        scope.launch { inputMethod.onKeyPress(computedKey.data) }
                     } else if (type == KeyEventType.LONG_PRESS) {
                         // TODO
                         waitForUpOrCancellation()?.let { it.consume() }

@@ -44,11 +44,9 @@ import androidx.lifecycle.lifecycleScope
 import dev.patrickgold.florisboard.app.FlorisAppActivity
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.ImeUiMode
-import dev.patrickgold.florisboard.ime.editor.EditorRange
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
 import dev.patrickgold.florisboard.ime.input.InputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.isFullscreenInputRequired
-import dev.patrickgold.florisboard.ime.keyboard3.FlorisEditorConnection
 import dev.patrickgold.florisboard.ime.landscapeinput.ExtractedInputRootView
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.lifecycle.LifecycleInputMethodService
@@ -66,6 +64,7 @@ import dev.patrickgold.florisboard.lib.util.launchActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.runBlocking
 import org.florisboard.lib.android.AndroidInternalR
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.android.showShortToastSync
@@ -380,9 +379,9 @@ class FlorisImeService : LifecycleInputMethodService() {
             editorInstance.handleStartInputView(editorInfo, isRestart = restarting)
         }
         val ic = currentInputConnection() ?: return
-        keyboardManager.inputMethod.startInputView(
-            FlorisEditorConnection(ic), editorInfo
-        )
+        keyboardManager.inputMethod.updateStateBlocking {
+            handleStartInputView(ic, editorInfo)
+        }
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
@@ -402,24 +401,26 @@ class FlorisImeService : LifecycleInputMethodService() {
     ) {
         flogInfo { "old={start=$oldSelStart,end=$oldSelEnd} new={start=$newSelStart,end=$newSelEnd} composing={start=$candidatesStart,end=$candidatesEnd}" }
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
-        activeState.batchEdit {
-            activeState.isSelectionMode = (newSelEnd - newSelStart) != 0
-            editorInstance.handleSelectionUpdate(
-                oldSelection = EditorRange.normalized(oldSelStart, oldSelEnd),
-                newSelection = EditorRange.normalized(newSelStart, newSelEnd),
-                composing = EditorRange.normalized(candidatesStart, candidatesEnd),
-            )
+//        activeState.batchEdit {
+//            activeState.isSelectionMode = (newSelEnd - newSelStart) != 0
+//            editorInstance.handleSelectionUpdate(
+//                oldSelection = EditorRange.normalized(oldSelStart, oldSelEnd),
+//                newSelection = EditorRange.normalized(newSelStart, newSelEnd),
+//                composing = EditorRange.normalized(candidatesStart, candidatesEnd),
+//            )
+//        }
+        keyboardManager.inputMethod.updateStateBlocking {
+            notifySelectionUpdated(newSelection = K3TextRange(newSelStart, newSelEnd))
         }
-        keyboardManager.inputMethod.notifySelectionUpdated(
-            newSelection = K3TextRange(newSelStart, newSelEnd),
-        )
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         flogInfo { "finishing=$finishingInput" }
         super.onFinishInputView(finishingInput)
         editorInstance.handleFinishInputView()
-        keyboardManager.inputMethod.finishInputView()
+        keyboardManager.inputMethod.updateStateBlocking {
+            handleFinishInputView()
+        }
     }
 
     override fun onFinishInput() {

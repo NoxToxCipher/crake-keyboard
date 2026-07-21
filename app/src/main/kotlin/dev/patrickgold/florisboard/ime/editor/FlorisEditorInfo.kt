@@ -46,7 +46,7 @@ class FlorisEditorInfo private constructor(val base: EditorInfo) {
         get() = if (base.initialSelStart >= 0 && base.initialSelEnd >= 0) {
             K3TextRange(base.initialSelStart, base.initialSelEnd)
         } else {
-            K3TextRange.ZERO
+            K3TextRange.Zero
         }
 
     val initialCapsMode: InputAttributes.CapsMode

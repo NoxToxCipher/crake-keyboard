@@ -55,7 +55,7 @@ fun TextInputLayout(
 
     val prefs by FlorisPreferenceStore
 
-    val state by keyboardManager.activeState.collectAsState()
+    val state2 by keyboardManager.activeState.collectAsState()
     val evaluator by keyboardManager.activeEvaluator.collectAsState()
     val experimentalK3lpApi by prefs.experimental.k3lpEnabled.collectAsState()
 
@@ -67,7 +67,7 @@ fun TextInputLayout(
             .wrapContentHeight(),
     ) {
         Smartbar()
-        if (state.isActionsOverflowVisible) {
+        if (state2.isActionsOverflowVisible) {
             QuickActionsOverflowPanel()
         } else {
             Box {
@@ -94,7 +94,9 @@ fun TextInputLayout(
                             }
                         }, xml))
                         require(result is K3lpResult.Success)
-                        keyboardManager.inputMethod.switchModel(result.data)
+                        keyboardManager.inputMethod.updateState {
+                            switchModel(result.data)
+                        }
                     }
                     TouchKeyboardBox(keyboardManager.inputMethod)
                 } else {

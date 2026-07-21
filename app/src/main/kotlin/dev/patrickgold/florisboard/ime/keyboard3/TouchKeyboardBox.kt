@@ -34,7 +34,6 @@ import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.compose.toMm
-import org.k3lp.runtime.K3KeystrokeEngine
 import org.k3lp.runtime.doComputeLayout
 
 @Composable
@@ -56,7 +55,6 @@ fun TouchKeyboardBox(
         val windowController = LocalWindowController.current
         val windowSpec by windowController.activeWindowSpec.collectAsState()
 
-        val engine = remember { K3KeystrokeEngine(inputMethod) }
         val inputMethodState by inputMethod.activeState.collectAsState()
         val model by remember { derivedStateOf { inputMethodState.model } }
         val touchLayerId by remember { derivedStateOf { inputMethodState.touchLayerId } }
@@ -86,7 +84,7 @@ fun TouchKeyboardBox(
                     computedKey,
                     touchSize,
                     visibleSize,
-                    engine,
+                    inputMethod,
                 )
             }
         }

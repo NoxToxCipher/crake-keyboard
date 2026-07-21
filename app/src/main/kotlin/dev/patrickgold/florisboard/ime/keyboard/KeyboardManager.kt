@@ -43,7 +43,6 @@ import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
-import dev.patrickgold.florisboard.ime.keyboard3.FlorisEmptyK3Model
 import dev.patrickgold.florisboard.ime.keyboard3.FlorisInputMethod
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
@@ -125,7 +124,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         )
     ).also { it.keyEventReceiver = this }
 
-    val inputMethod = FlorisInputMethod(FlorisEmptyK3Model)
+    val inputMethod = FlorisInputMethod()
 
     init {
         scope.launch(Dispatchers.Main.immediate) {

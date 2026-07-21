@@ -16,31 +16,100 @@
 
 package dev.patrickgold.florisboard.ime.keyboard3
 
+import android.view.inputmethod.InputConnection
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
+import kotlinx.coroutines.runBlocking
 import org.k3lp.model.K3Model
+import org.k3lp.model.key.K3Key
+import org.k3lp.model.layer.K3LayerId
 import org.k3lp.runtime.K3InputMethod
 import org.k3lp.runtime.K3SurroundingText
 import org.k3lp.runtime.K3TextRange
+import java.lang.ref.WeakReference
 
-class FlorisInputMethod(initialModel: K3Model) : K3InputMethod(initialModel) {
-    fun startInputView(
-        editorConnection: FlorisEditorConnection,
-        editorInfo: FlorisEditorInfo,
-    ) {
-        val initialSelection = editorInfo.initialSelection2
-        val initialSurrounding = K3SurroundingText(
-            textBefore = editorInfo.getInitialTextBeforeCursor(20)?.toString() ?: "",
-            textSelected = editorInfo.getInitialSelectedText()?.toString() ?: "",
-            textAfter = editorInfo.getInitialTextAfterCursor(20)?.toString() ?: "",
-        )
-        connect(editorConnection, initialSelection, initialSurrounding)
+class FlorisInputMethod : K3InputMethod<FlorisInputMethodState, FlorisEditor, FlorisInputMethod.UpdateStateScope>(
+    initialState = FlorisInputMethodState(),
+) {
+    private val prefs by FlorisPreferenceStore
+
+    // TODO evaluate if we can move to a clean coroutine-based approach in FlorisBoard
+    //  for now this helper can be used to update the state from non-suspending contexts
+    inline fun updateStateBlocking(crossinline function: UpdateStateScope.() -> Unit) {
+        runBlocking {
+            updateState(function)
+        }
     }
 
-    override fun notifySelectionUpdated(newSelection: K3TextRange) {
-        super.notifySelectionUpdated(newSelection)
+    fun onTouchKeyDown(key: K3Key) {
+        //
     }
 
-    fun finishInputView() {
-        disconnect()
+    fun onTouchKeyUp(key: K3Key) {
+        //
+    }
+
+    fun onTouchKeyCancel(key: K3Key) {
+        //
+    }
+
+    fun onTouchKeyRepeat(key: K3Key) {
+        //
+    }
+
+    override fun updateStateScopeOf(state: FlorisInputMethodState): UpdateStateScope {
+        return UpdateStateScope(state)
+    }
+
+    class UpdateStateScope(
+        state: FlorisInputMethodState,
+    ) : K3InputMethod.UpdateStateScope<FlorisInputMethodState, FlorisEditor>(state) {
+        fun handleStartInputView(
+            ic: InputConnection,
+            info: FlorisEditorInfo,
+        ) {
+            val initialSelection = info.initialSelection2
+            val initialSurrounding = K3SurroundingText(
+                textBefore = info.getInitialTextBeforeCursor(20)?.toString() ?: "",
+                textSelected = info.getInitialSelectedText()?.toString() ?: "",
+                textAfter = info.getInitialTextAfterCursor(20)?.toString() ?: "",
+            )
+            reset(initialSelection, initialSurrounding)
+            state = state.copy(editor = FlorisEditor(WeakReference(ic), info))
+        }
+
+        fun handleFinishInputView() {
+            reset()
+            state = state.copy(editor = FlorisEditor.Disconnected)
+        }
+
+        override fun evaluateCompositionOf(
+            model: K3Model,
+            selection: K3TextRange,
+            surroundingText: K3SurroundingText
+        ): K3TextRange? {
+            // TODO needs to use proper word iterator based on language etc.
+            if (selection.isNotCollapsed()) {
+                return null
+            }
+            // redneck word splitter, just for testing :)
+            val len = surroundingText.textBefore.split(" ").last().length
+            return K3TextRange(selection.min - len, selection.min)
+        }
+
+        private fun K3Key.isShiftKey(): Boolean {
+            return when (state.touchLayerId) {
+                LAYER_BASE -> layerId == LAYER_SHIFT || layerId == LAYER_CAPS
+                LAYER_SHIFT -> layerId == LAYER_BASE || layerId == LAYER_CAPS
+                LAYER_CAPS -> layerId == LAYER_BASE || layerId == LAYER_SHIFT
+                else -> false
+            }
+        }
+    }
+
+    companion object {
+        private val LAYER_BASE = K3LayerId.BASE
+        private val LAYER_SHIFT = K3LayerId("shift")
+        private val LAYER_CAPS = K3LayerId("caps")
     }
 }
