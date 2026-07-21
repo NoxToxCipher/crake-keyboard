@@ -20,11 +20,10 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.editorInstance
-import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.KeyData
+import dev.patrickgold.florisboard.ime.keyboard3.ImeState
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
-import dev.patrickgold.florisboard.keyboardManager
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.florisboard.lib.compose.stringRes
@@ -41,22 +40,22 @@ sealed class QuickAction {
     @SerialName("insert_key")
     data class InsertKey(val data: KeyData) : QuickAction() {
         override fun onPointerDown(context: Context) {
-            val keyboardManager by context.keyboardManager()
-            keyboardManager.inputEventDispatcher.sendDown(data)
+//            val keyboardManager by context.keyboardManager()
+//            keyboardManager.inputEventDispatcher.sendDown(data)
         }
 
         override fun onPointerUp(context: Context) {
-            val keyboardManager by context.keyboardManager()
-            keyboardManager.inputEventDispatcher.sendUp(data)
-            if (!keyboardManager.inputEventDispatcher.isRepeatable(data) &&
-                data.code != KeyCode.TOGGLE_ACTIONS_OVERFLOW && data.code != KeyCode.CLIPBOARD_SELECT_ALL) {
-                keyboardManager.activeState.isActionsOverflowVisible = false
-            }
+//            val keyboardManager by context.keyboardManager()
+//            keyboardManager.inputEventDispatcher.sendUp(data)
+//            if (!keyboardManager.inputEventDispatcher.isRepeatable(data) &&
+//                data.code != KeyCode.TOGGLE_ACTIONS_OVERFLOW && data.code != KeyCode.CLIPBOARD_SELECT_ALL) {
+//                keyboardManager.activeState.isActionsOverflowVisible = false
+//            }
         }
 
         override fun onPointerCancel(context: Context) {
-            val keyboardManager by context.keyboardManager()
-            keyboardManager.inputEventDispatcher.sendCancel(data)
+//            val keyboardManager by context.keyboardManager()
+//            keyboardManager.inputEventDispatcher.sendCancel(data)
         }
     }
 
@@ -75,7 +74,7 @@ fun QuickAction.keyData(): KeyData {
 }
 
 @Composable
-fun QuickAction.computeDisplayName(evaluator: ComputingEvaluator): String {
+fun QuickAction.computeDisplayName(imeState: ImeState): String {
     return when (this) {
         is QuickAction.InsertKey -> stringRes(when (data.code) {
             KeyCode.ARROW_UP -> R.string.quick_action__arrow_up
@@ -103,7 +102,7 @@ fun QuickAction.computeDisplayName(evaluator: ComputingEvaluator): String {
             // TODO: In the future this will be merged into the resize keyboard panel, for now it is a separate action
             KeyCode.TOGGLE_COMPACT_LAYOUT -> R.string.quick_action__one_handed_mode
             KeyCode.TOGGLE_RESIZE_MODE -> R.string.quick_action__resize_mode
-            KeyCode.DRAG_MARKER -> if (evaluator.state.debugShowDragAndDropHelpers) {
+            KeyCode.DRAG_MARKER -> if (imeState.flags.debugShowDragAndDropHelpers) {
                 R.string.quick_action__drag_marker
             } else {
                 R.string.general__empty_string
@@ -116,7 +115,7 @@ fun QuickAction.computeDisplayName(evaluator: ComputingEvaluator): String {
 }
 
 @Composable
-fun QuickAction.computeTooltip(evaluator: ComputingEvaluator): String {
+fun QuickAction.computeTooltip(imeState: ImeState): String {
     return when (this) {
         is QuickAction.InsertKey -> stringRes(when (data.code) {
             KeyCode.ARROW_UP -> R.string.quick_action__arrow_up__tooltip
@@ -143,7 +142,7 @@ fun QuickAction.computeTooltip(evaluator: ComputingEvaluator): String {
             // TODO: In the future this will be merged into the resize keyboard panel, for now it is a separate action
             KeyCode.TOGGLE_COMPACT_LAYOUT -> R.string.quick_action__one_handed_mode__tooltip
             KeyCode.TOGGLE_RESIZE_MODE -> R.string.quick_action__resize_mode__tooltip
-            KeyCode.DRAG_MARKER -> if (evaluator.state.debugShowDragAndDropHelpers) {
+            KeyCode.DRAG_MARKER -> if (imeState.flags.debugShowDragAndDropHelpers) {
                 R.string.quick_action__drag_marker__tooltip
             } else {
                 R.string.general__empty_string

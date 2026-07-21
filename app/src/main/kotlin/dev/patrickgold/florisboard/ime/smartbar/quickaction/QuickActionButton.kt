@@ -36,9 +36,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
-import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
-import dev.patrickgold.florisboard.ime.keyboard.computeImageVector
-import dev.patrickgold.florisboard.ime.keyboard.computeLabel
+import dev.patrickgold.florisboard.ime.keyboard3.ImeState
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import org.florisboard.lib.snygg.SnyggSelector
@@ -55,15 +53,15 @@ enum class QuickActionBarType {
 @Composable
 fun QuickActionButton(
     action: QuickAction,
-    evaluator: ComputingEvaluator,
     modifier: Modifier = Modifier,
     type: QuickActionBarType = QuickActionBarType.INTERACTIVE_BUTTON,
+    imeState: ImeState,
 ) {
     val context = LocalContext.current
     val inputFeedbackController = LocalInputFeedbackController.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val isEnabled = type == QuickActionBarType.EDITOR_TILE || evaluator.evaluateEnabled(action.keyData())
+    val isEnabled = type == QuickActionBarType.EDITOR_TILE // TODO || evaluator.evaluateEnabled(action.keyData())
     val elementName = when (type) {
         QuickActionBarType.INTERACTIVE_BUTTON -> FlorisImeUi.SmartbarActionKey
         QuickActionBarType.INTERACTIVE_TILE -> FlorisImeUi.SmartbarActionTile
@@ -86,7 +84,7 @@ fun QuickActionButton(
         }
     }
 
-    PlainTooltip(action.computeTooltip(evaluator), enabled = type == QuickActionBarType.INTERACTIVE_BUTTON) {
+    PlainTooltip(action.computeTooltip(imeState), enabled = type == QuickActionBarType.INTERACTIVE_BUTTON) {
         SnyggBox(
             elementName = elementName,
             attributes = attributes,
@@ -122,9 +120,12 @@ fun QuickActionButton(
                 // Render foreground
                 when (action) {
                     is QuickAction.InsertKey -> {
-                        val (imageVector, label) = remember(action, evaluator) {
-                            evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
-                        }
+//                        val (imageVector, label) = remember(action, evaluator) {
+//                            evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
+//                        }
+                        // TODO
+                        val imageVector = null
+                        val label = null
                         if (imageVector != null) {
                             SnyggBox(
                                 elementName = "$elementName-icon",
@@ -159,7 +160,7 @@ fun QuickActionButton(
                         elementName = "$elementName-text",
                         attributes = attributes,
                         selector = selector,
-                        text = action.computeDisplayName(evaluator = evaluator),
+                        text = action.computeDisplayName(imeState),
                     )
                 }
             }

@@ -66,7 +66,7 @@ import dev.patrickgold.florisboard.ime.media.MediaInputLayout
 import dev.patrickgold.florisboard.ime.sheet.BottomSheetWindow
 import dev.patrickgold.florisboard.ime.text.TextInputLayout
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
-import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.imeController
 import kotlinx.coroutines.delay
 import org.florisboard.lib.compose.ProvideActualLayoutDirection
 import org.florisboard.lib.compose.conditional
@@ -190,15 +190,19 @@ private fun ImeInnerWindow() {
     val context = LocalContext.current
     val windowController = LocalWindowController.current
 
-    val keyboardManager by context.keyboardManager()
-
-    val state by keyboardManager.activeState.collectAsState()
+    val imeController by context.imeController()
+    val imeState by imeController.activeState.collectAsState()
     val windowSpec by windowController.activeWindowSpec.collectAsState()
 
     ProvideActualLayoutDirection {
         val layoutDirection = LocalLayoutDirection.current
         LaunchedEffect(layoutDirection) {
-            keyboardManager.activeState.layoutDirection = layoutDirection
+            imeController.updateState {
+                state = state.copy(
+                    flags = state.flags
+                        .withLayoutDirection(layoutDirection),
+                )
+            }
         }
     }
 
@@ -223,7 +227,7 @@ private fun ImeInnerWindow() {
         allowClip = false,
     ) {
         Column {
-            when (state.imeUiMode) {
+            when (imeState.flags.imeUiMode) {
                 ImeUiMode.TEXT -> TextInputLayout()
                 ImeUiMode.MEDIA -> ProvideActualLayoutDirection { MediaInputLayout() }
                 ImeUiMode.CLIPBOARD -> ProvideActualLayoutDirection { ClipboardInputLayout() }

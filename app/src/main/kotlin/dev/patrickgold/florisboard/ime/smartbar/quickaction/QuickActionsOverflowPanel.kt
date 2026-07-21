@@ -48,7 +48,6 @@ fun QuickActionsOverflowPanel() {
     val keyboardManager by context.keyboardManager()
 
     val actionArrangement by prefs.smartbar.actionArrangement.collectAsState()
-    val evaluator by keyboardManager.activeSmartbarEvaluator.collectAsState()
 
     val dynamicActions = actionArrangement.dynamicActions
     val dynamicActionsCountToShow = when {
@@ -73,16 +72,19 @@ fun QuickActionsOverflowPanel() {
             columns = GridCells.Adaptive(FlorisImeSizing.smartbarHeight.coerceAtLeast(1.dp) * 2.2f),
         ) {
             items(visibleActions) { action ->
-                QuickActionButton(
-                    action = action,
-                    evaluator = evaluator,
-                    type = QuickActionBarType.INTERACTIVE_TILE,
-                )
+//                QuickActionButton(
+//                    action = action,
+//                    evaluator = evaluator,
+//                    type = QuickActionBarType.INTERACTIVE_TILE,
+//                )
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SnyggButton(
                     elementName = FlorisImeUi.SmartbarActionsOverflowCustomizeButton.elementName,
-                    onClick = { keyboardManager.activeState.isActionsEditorVisible = true },
+                    onClick = {
+                        // TODO
+                        // keyboardManager.activeState.isActionsEditorVisible = true
+                    },
                     modifier = Modifier
                         .wrapContentWidth(),
                 ) {

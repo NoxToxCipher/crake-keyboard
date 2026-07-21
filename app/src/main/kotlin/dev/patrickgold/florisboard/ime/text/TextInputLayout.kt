@@ -35,9 +35,8 @@ import dev.patrickgold.florisboard.ime.smartbar.IncognitoDisplayMode
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsStyleCache
 import dev.patrickgold.florisboard.ime.smartbar.Smartbar
 import dev.patrickgold.florisboard.ime.smartbar.quickaction.QuickActionsOverflowPanel
-import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboardLayout
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
-import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.imeController
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.android.readText
 import org.florisboard.lib.snygg.ui.SnyggIcon
@@ -51,13 +50,10 @@ fun TextInputLayout(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val keyboardManager by context.keyboardManager()
 
     val prefs by FlorisPreferenceStore
-
-    val state2 by keyboardManager.activeState.collectAsState()
-    val evaluator by keyboardManager.activeEvaluator.collectAsState()
-    val experimentalK3lpApi by prefs.experimental.k3lpEnabled.collectAsState()
+    val imeController by context.imeController()
+    val imeState by imeController.activeState.collectAsState()
 
     InlineSuggestionsStyleCache()
 
@@ -67,12 +63,12 @@ fun TextInputLayout(
             .wrapContentHeight(),
     ) {
         Smartbar()
-        if (state2.isActionsOverflowVisible) {
+        if (imeState.flags.isActionsOverflowVisible) {
             QuickActionsOverflowPanel()
         } else {
             Box {
                 val incognitoDisplayMode by prefs.keyboard.incognitoDisplayMode.collectAsState()
-                val showIncognitoIcon = evaluator.state.isIncognitoMode &&
+                val showIncognitoIcon = imeState.flags.isIncognitoMode &&
                     incognitoDisplayMode == IncognitoDisplayMode.DISPLAY_BEHIND_KEYBOARD
                 if (showIncognitoIcon) {
                     SnyggIcon(
@@ -83,25 +79,21 @@ fun TextInputLayout(
                         painter = painterResource(R.drawable.ic_incognito),
                     )
                 }
-                if (experimentalK3lpApi) {
-                    // TODO wacky hacky
-                    LaunchedEffect(Unit) {
-                        val xml = context.assets
-                            .readText("experimental/keyboard/org.florisboard.layouts.de/keyboard/de.xml")
-                        val result = K3lp.compile(TextSourceFile(object : SourceFileRef {
-                            override fun toString(): String {
-                                return "toString()"
-                            }
-                        }, xml))
-                        require(result is K3lpResult.Success)
-                        keyboardManager.inputMethod.updateState {
-                            switchModel(result.data)
+                // TODO wacky hacky -> move to resource loading logic
+                LaunchedEffect(Unit) {
+                    val xml = context.assets
+                        .readText("experimental/keyboard/org.florisboard.layouts.de/keyboard/de.xml")
+                    val result = K3lp.compile(TextSourceFile(object : SourceFileRef {
+                        override fun toString(): String {
+                            return "toString()"
                         }
+                    }, xml))
+                    require(result is K3lpResult.Success)
+                    imeController.updateState {
+                        switchModel(result.data)
                     }
-                    TouchKeyboardBox(keyboardManager.inputMethod)
-                } else {
-                    TextKeyboardLayout(evaluator = evaluator)
                 }
+                TouchKeyboardBox(imeController)
             }
         }
     }

@@ -68,7 +68,7 @@ interface ComputingEvaluator {
 
     val editorInfo: FlorisEditorInfo
 
-    val state: KeyboardState
+    val state: ImeStateFlags
 
     val subtype: Subtype
 
@@ -92,7 +92,7 @@ object DefaultComputingEvaluator : ComputingEvaluator {
 
     override val editorInfo = FlorisEditorInfo.Unspecified
 
-    override val state = KeyboardState.new()
+    override val state = ImeStateFlags()
 
     override val subtype = Subtype.DEFAULT
 

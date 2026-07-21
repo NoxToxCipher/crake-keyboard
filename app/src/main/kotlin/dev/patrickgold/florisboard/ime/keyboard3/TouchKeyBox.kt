@@ -53,7 +53,7 @@ fun TouchKey(
     computedKey: K3ComputedKey,
     touchSize: DpSize,
     visibleSize: DpSize,
-    inputMethod: FlorisInputMethod,
+    imeController: ImeController,
 ) {
     val prefs by FlorisPreferenceStore
     val longPressDelay by prefs.keyboard.longPressDelay.collectAsState()
@@ -80,7 +80,7 @@ fun TouchKey(
                     selector = SnyggSelector.PRESSED
                     val type = determineKeyEventType(longPressDelay)
                     if (type == KeyEventType.KEY_PRESS) {
-                        scope.launch { inputMethod.onKeyPress(computedKey.data) }
+                        scope.launch { imeController.onKeyPress(computedKey.data) }
                     } else if (type == KeyEventType.LONG_PRESS) {
                         // TODO
                         waitForUpOrCancellation()?.let { it.consume() }

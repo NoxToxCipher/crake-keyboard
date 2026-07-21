@@ -43,7 +43,6 @@ import dev.patrickgold.florisboard.ime.input.CapitalizationBehavior
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputKeyEventReceiver
 import dev.patrickgold.florisboard.ime.input.InputShiftState
-import dev.patrickgold.florisboard.ime.keyboard3.FlorisInputMethod
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
@@ -98,7 +97,6 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private val keyboardCache = TextKeyboardCache()
 
     val resources = KeyboardManagerResources()
-    val activeState = ObservableKeyboardState.new()
     var smartbarVisibleDynamicActionsCount by mutableIntStateOf(0)
     private var lastToastReference = WeakReference<Toast>(null)
 
@@ -124,8 +122,6 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         )
     ).also { it.keyEventReceiver = this }
 
-    val inputMethod = FlorisInputMethod()
-
     init {
         scope.launch(Dispatchers.Main.immediate) {
             resources.anyChangedVersion.collectIn(scope) {
@@ -150,9 +146,6 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             prefs.keyboard.utilityKeyAction.asFlow().collectLatestIn(scope) {
                 updateActiveEvaluators()
             }
-            activeState.collectLatestIn(scope) {
-                updateActiveEvaluators()
-            }
             subtypeManager.subtypesFlow.collectLatestIn(scope) {
                 updateActiveEvaluators()
             }
@@ -168,16 +161,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             editorInstance.activeContentFlow.collectIn(scope) { content ->
                 resetSuggestions(content)
             }
-            prefs.devtools.enabled.asFlow().collectLatestIn(scope) {
-                reevaluateDebugFlags()
-            }
-            prefs.devtools.showDragAndDropHelpers.asFlow().collectLatestIn(scope) {
-                reevaluateDebugFlags()
-            }
         }
     }
 
     fun updateActiveEvaluators(action: () -> Unit = { }) = scope.launch {
+        /*
         activeEvaluatorGuard.withLock {
             action()
             val editorInfo = editorInstance.activeInfo
@@ -212,26 +200,27 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 lastCharactersEvaluator.value = computingEvaluator
             }
         }
+         */
     }
 
     fun reevaluateInputShiftState() {
-        if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
-            val shift = prefs.correction.autoCapitalization.get()
-                && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
-                && editorInstance.activeCursorCapsMode != InputAttributes.CapsMode.NONE
-            activeState.inputShiftState = when {
-                shift -> InputShiftState.SHIFTED_AUTOMATIC
-                else -> InputShiftState.UNSHIFTED
-            }
-        }
+//        if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
+//            val shift = prefs.correction.autoCapitalization.get()
+//                && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
+//                && editorInstance.activeCursorCapsMode != InputAttributes.CapsMode.NONE
+//            activeState.inputShiftState = when {
+//                shift -> InputShiftState.SHIFTED_AUTOMATIC
+//                else -> InputShiftState.UNSHIFTED
+//            }
+//        }
     }
 
     fun resetSuggestions(content: EditorContent) {
-        if (!(activeState.isComposingEnabled || nlpManager.isSuggestionOn())) {
-            nlpManager.clearSuggestions()
-            return
-        }
-        nlpManager.suggest(subtypeManager.activeSubtype, content)
+//        if (!(activeState.isComposingEnabled || nlpManager.isSuggestionOn())) {
+//            nlpManager.clearSuggestions()
+//            return
+//        }
+//        nlpManager.suggest(subtypeManager.activeSubtype, content)
     }
 
     /**
@@ -242,6 +231,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun executeSwipeAction(swipeAction: SwipeAction) {
+        /*
         val keyData = when (swipeAction) {
             SwipeAction.CYCLE_TO_PREVIOUS_KEYBOARD_MODE -> when (activeState.keyboardMode) {
                 KeyboardMode.CHARACTERS -> TextKeyData.VIEW_NUMERIC_ADVANCED
@@ -283,6 +273,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         if (keyData != null) {
             inputEventDispatcher.sendDownUp(keyData)
         }
+         */
     }
 
     fun commitCandidate(candidate: SuggestionCandidate) {
@@ -306,6 +297,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      *    otherwise            , abc -> abc
      */
     fun fixCase(word: String): String {
+        /*
         return when(activeState.inputShiftState) {
             InputShiftState.CAPS_LOCK -> {
                 word.uppercase(subtypeManager.activeSubtype.primaryLocale)
@@ -315,12 +307,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             else -> word
         }
+         */
+        return word
     }
 
     /**
      * Handles [KeyCode] arrow and move events, behaves differently depending on text selection.
      */
-    fun handleArrow(code: Int, count: Int = 1) = editorInstance.apply {
+    fun handleArrow(code: Int, count: Int = 1) {} /*= editorInstance.apply {
+
         val isShiftPressed = activeState.isManualSelectionMode || inputEventDispatcher.isPressed(KeyCode.SHIFT)
         val content = activeContent
         val selection = content.selection
@@ -382,12 +377,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_RIGHT, meta(alt = true, shift = isShiftPressed), count)
             }
         }
-    }
+    }*/
 
     /**
      * Handles a [KeyCode.CLIPBOARD_SELECT] event.
      */
     private fun handleClipboardSelect() {
+        /*
         val activeSelection = editorInstance.activeContent.selection
         activeState.isManualSelectionMode = if (activeSelection.isSelectionMode) {
             if (activeState.isManualSelectionMode && activeState.isManualSelectionModeStart) {
@@ -399,6 +395,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         } else {
             !activeState.isManualSelectionMode
         }
+         */
     }
 
     private fun revertPreviouslyAcceptedCandidate() {
@@ -418,6 +415,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles a [KeyCode.DELETE] event.
      */
     private fun handleBackwardDelete(unit: OperationUnit) {
+        /*
         if (inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
             return handleForwardDelete(unit)
         }
@@ -428,19 +426,20 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         revertPreviouslyAcceptedCandidate()
         editorInstance.deleteBackwards(unit)
+         */
     }
 
     /**
      * Handles a [KeyCode.FORWARD_DELETE] event.
      */
     private fun handleForwardDelete(unit: OperationUnit) {
-        activeState.batchEdit {
-            it.isManualSelectionMode = false
-            it.isManualSelectionModeStart = false
-            it.isManualSelectionModeEnd = false
-        }
-        revertPreviouslyAcceptedCandidate()
-        editorInstance.deleteForwards(unit)
+//        activeState.batchEdit {
+//            it.isManualSelectionMode = false
+//            it.isManualSelectionModeStart = false
+//            it.isManualSelectionModeEnd = false
+//        }
+//        revertPreviouslyAcceptedCandidate()
+//        editorInstance.deleteForwards(unit)
     }
 
     /**
@@ -485,6 +484,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles a [KeyCode.SHIFT] down event.
      */
     private fun handleShiftDown(data: KeyData) {
+        /*
         val prefs = prefs.keyboard.capitalizationBehavior
         when (prefs.get()) {
             CapitalizationBehavior.CAPSLOCK_BY_DOUBLE_TAP -> {
@@ -507,30 +507,31 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 }
             }
         }
+         */
     }
 
     /**
      * Handles a [KeyCode.SHIFT] up event.
      */
     private fun handleShiftUp(data: KeyData) {
-        if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isAnyPressed() &&
-            !inputEventDispatcher.isUninterruptedEventSequence(data)) {
-            activeState.inputShiftState = InputShiftState.UNSHIFTED
-        }
+//        if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isAnyPressed() &&
+//            !inputEventDispatcher.isUninterruptedEventSequence(data)) {
+//            activeState.inputShiftState = InputShiftState.UNSHIFTED
+//        }
     }
 
     /**
      * Handles a [KeyCode.CAPS_LOCK] event.
      */
     private fun handleCapsLock() {
-        activeState.inputShiftState = InputShiftState.CAPS_LOCK
+        //activeState.inputShiftState = InputShiftState.CAPS_LOCK
     }
 
     /**
      * Handles a [KeyCode.SHIFT] cancel event.
      */
     private fun handleShiftCancel() {
-        activeState.inputShiftState = InputShiftState.UNSHIFTED
+        //activeState.inputShiftState = InputShiftState.UNSHIFTED
     }
 
     /**
@@ -553,6 +554,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * enabled by the user.
      */
     private fun handleSpace(data: KeyData) {
+        /*
         val candidate = nlpManager.getAutoCommitCandidate()
         candidate?.let { commitCandidate(it) }
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
@@ -580,12 +582,14 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate != null) { /* Do nothing */ } else {
             editorInstance.commitText(KeyCode.SPACE.toChar().toString())
         }
+         */
     }
 
     /**
      * Handles a [KeyCode.TOGGLE_INCOGNITO_MODE] event.
      */
     private suspend fun handleToggleIncognitoMode() {
+        /*
         prefs.suggestion.forceIncognitoModeFromDynamic.set(!prefs.suggestion.forceIncognitoModeFromDynamic.get())
         val newState = !activeState.isIncognitoMode
         activeState.isIncognitoMode = newState
@@ -603,6 +607,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 )
             }
         )
+
+         */
     }
 
     /**
@@ -619,61 +625,61 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * Handles a [KeyCode.KANA_SWITCHER] event
      */
     private fun handleKanaSwitch() {
-        activeState.batchEdit {
-            it.isKanaKata = !it.isKanaKata
-            it.isCharHalfWidth = false
-        }
+//        activeState.batchEdit {
+//            it.isKanaKata = !it.isKanaKata
+//            it.isCharHalfWidth = false
+//        }
     }
 
     /**
      * Handles a [KeyCode.KANA_HIRA] event
      */
     private fun handleKanaHira() {
-        activeState.batchEdit {
-            it.isKanaKata = false
-            it.isCharHalfWidth = false
-        }
+//        activeState.batchEdit {
+//            it.isKanaKata = false
+//            it.isCharHalfWidth = false
+//        }
     }
 
     /**
      * Handles a [KeyCode.KANA_KATA] event
      */
     private fun handleKanaKata() {
-        activeState.batchEdit {
-            it.isKanaKata = true
-            it.isCharHalfWidth = false
-        }
+//        activeState.batchEdit {
+//            it.isKanaKata = true
+//            it.isCharHalfWidth = false
+//        }
     }
 
     /**
      * Handles a [KeyCode.KANA_HALF_KATA] event
      */
     private fun handleKanaHalfKata() {
-        activeState.batchEdit {
-            it.isKanaKata = true
-            it.isCharHalfWidth = true
-        }
+//        activeState.batchEdit {
+//            it.isKanaKata = true
+//            it.isCharHalfWidth = true
+//        }
     }
 
     /**
      * Handles a [KeyCode.CHAR_WIDTH_SWITCHER] event
      */
     private fun handleCharWidthSwitch() {
-        activeState.isCharHalfWidth = !activeState.isCharHalfWidth
+        //activeState.isCharHalfWidth = !activeState.isCharHalfWidth
     }
 
     /**
      * Handles a [KeyCode.CHAR_WIDTH_SWITCHER] event
      */
     private fun handleCharWidthFull() {
-        activeState.isCharHalfWidth = false
+        //activeState.isCharHalfWidth = false
     }
 
     /**
      * Handles a [KeyCode.CHAR_WIDTH_SWITCHER] event
      */
     private fun handleCharWidthHalf() {
-        activeState.isCharHalfWidth = true
+        //activeState.isCharHalfWidth = true
     }
 
     override fun onInputKeyDown(data: KeyData) {
@@ -694,7 +700,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    override fun onInputKeyUp(data: KeyData) = activeState.batchEdit {
+    override fun onInputKeyUp(data: KeyData) {} /*= activeState.batchEdit {
         val windowController = FlorisImeService.windowControllerOrNull() ?: return@batchEdit
         when (data.code) {
             KeyCode.ARROW_DOWN,
@@ -820,7 +826,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 }
             }
         }
-    }
+    }*/
 
     override fun onInputKeyCancel(data: KeyData) {
         when (data.code) {
@@ -850,13 +856,6 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.MOVE_START_OF_LINE,
             KeyCode.MOVE_END_OF_LINE -> handleArrow(data.code)
             else -> onInputKeyUp(data)
-        }
-    }
-
-    private fun reevaluateDebugFlags() {
-        val devtoolsEnabled = prefs.devtools.enabled.get()
-        activeState.batchEdit {
-            activeState.debugShowDragAndDropHelpers = devtoolsEnabled && prefs.devtools.showDragAndDropHelpers.get()
         }
     }
 
@@ -955,7 +954,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         override val version: Int,
         override val keyboard: Keyboard,
         override val editorInfo: FlorisEditorInfo,
-        override val state: KeyboardState,
+        override val state: ImeStateFlags,
         override val subtype: Subtype,
     ) : ComputingEvaluator {
 
@@ -971,7 +970,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             return when (data.code) {
                 KeyCode.CLIPBOARD_COPY,
                 KeyCode.CLIPBOARD_CUT -> {
-                    state.isSelectionMode && editorInfo.isRichInputEditor
+                    /*state.isSelectionMode &&*/ editorInfo.isRichInputEditor
                 }
                 KeyCode.CLIPBOARD_PASTE -> {
                     !androidKeyguardManager.let { it.isDeviceLocked || it.isKeyguardLocked }

@@ -35,9 +35,8 @@ import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
 import dev.patrickgold.florisboard.ime.smartbar.ExtendedActionsPlacement
 import dev.patrickgold.florisboard.ime.smartbar.InlineSuggestionsChipMargin
 import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
-import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboard
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
-import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.imeController
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 
 private val LocalKeyboardRowBaseHeight = compositionLocalOf { 65.dp }
@@ -57,25 +56,17 @@ object FlorisImeSizing {
     @Composable
     fun keyboardUiHeight(): Dp {
         val context = LocalContext.current
-        val keyboardManager by context.keyboardManager()
-        val evaluator by keyboardManager.activeEvaluator.collectAsState()
-        val lastCharactersEvaluator by keyboardManager.lastCharactersEvaluator.collectAsState()
-        val rowCount = when (evaluator.keyboard.mode) {
-            KeyboardMode.CHARACTERS,
-            KeyboardMode.NUMERIC_ADVANCED,
-            KeyboardMode.SYMBOLS,
-            KeyboardMode.SYMBOLS2 -> lastCharactersEvaluator.keyboard as TextKeyboard
-            else -> evaluator.keyboard as TextKeyboard
-        }.rowCount.coerceAtLeast(4)
-        return (keyboardRowBaseHeight * rowCount)
+        val imeController by context.imeController()
+        val imeState by imeController.activeState.collectAsState()
+        return (keyboardRowBaseHeight * imeState.effRowCount)
     }
 
     @Composable
     fun rowCountAsState(): State<Int> {
         val context = LocalContext.current
-        val keyboardManager by context.keyboardManager()
-        val lastCharactersEvaluator by keyboardManager.lastCharactersEvaluator.collectAsState()
-        return remember { derivedStateOf { (lastCharactersEvaluator.keyboard as TextKeyboard).rowCount } }
+        val imeController by context.imeController()
+        val imeState by imeController.activeState.collectAsState()
+        return remember { derivedStateOf { imeState.effRowCount } }
     }
 
     @Composable

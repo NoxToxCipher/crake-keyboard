@@ -18,40 +18,37 @@ package dev.patrickgold.florisboard.ime.nlp
 
 import android.icu.text.BreakIterator
 import dev.patrickgold.florisboard.lib.FlorisLocale
-import io.github.reactivecircus.cache4k.Cache
-import org.florisboard.lib.kotlin.GuardedByLock
-import org.florisboard.lib.kotlin.guardedByLock
 
-@Deprecated("should be replaced by non-suspending BreakIterators")
-open class BreakIteratorGroup {
-    private val charInstances = Cache.Builder<FlorisLocale, GuardedByLock<BreakIterator>>().build()
+@OptIn(ExperimentalStdlibApi::class)
+class BreakIterators {
+    private val charInstances = mutableMapOf<FlorisLocale, BreakIterator>()
 
-    private val wordInstances = Cache.Builder<FlorisLocale, GuardedByLock<BreakIterator>>().build()
+    private val wordInstances = mutableMapOf<FlorisLocale, BreakIterator>()
 
-    private val sentenceInstances = Cache.Builder<FlorisLocale, GuardedByLock<BreakIterator>>().build()
+    private val sentenceInstances = mutableMapOf<FlorisLocale, BreakIterator>()
 
-    suspend fun <R> character(locale: FlorisLocale, action: (BreakIterator) -> R): R {
-        val instance = charInstances.get(locale) {
-            guardedByLock { BreakIterator.getCharacterInstance(locale.base) }
+    fun <R> character(locale: FlorisLocale, action: (BreakIterator) -> R): R {
+        val instance = charInstances.getOrPutIfMissing(locale) {
+            BreakIterator.getCharacterInstance(locale.base)
         }
-        return instance.withLock(null, action)
+        return action(instance)
     }
 
-    suspend fun <R> word(locale: FlorisLocale, action: (BreakIterator) -> R): R {
-        val instance = wordInstances.get(locale) {
-            guardedByLock { BreakIterator.getWordInstance(locale.base) }
+    fun <R> word(locale: FlorisLocale, action: (BreakIterator) -> R): R {
+        val instance = wordInstances.getOrPutIfMissing(locale) {
+            BreakIterator.getWordInstance(locale.base)
         }
-        return instance.withLock(null, action)
+        return action(instance)
     }
 
-    suspend fun <R> sentence(locale: FlorisLocale, action: (BreakIterator) -> R): R {
-        val instance = sentenceInstances.get(locale) {
-            guardedByLock { BreakIterator.getSentenceInstance(locale.base) }
+    fun <R> sentence(locale: FlorisLocale, action: (BreakIterator) -> R): R {
+        val instance = sentenceInstances.getOrPutIfMissing(locale) {
+            BreakIterator.getSentenceInstance(locale.base)
         }
-        return instance.withLock(null, action)
+        return action(instance)
     }
 
-    suspend fun measureUChars(
+    fun measureUChars(
         text: String,
         numUnicodeChars: Int,
         locale: FlorisLocale = FlorisLocale.default(),
@@ -68,7 +65,7 @@ open class BreakIteratorGroup {
         }.coerceIn(0, text.length)
     }
 
-    suspend fun measureLastUChars(
+    fun measureLastUChars(
         text: String,
         numUnicodeChars: Int,
         locale: FlorisLocale = FlorisLocale.default(),
@@ -85,7 +82,7 @@ open class BreakIteratorGroup {
         }.coerceIn(0, text.length)
     }
 
-    suspend fun measureUWords(
+    fun measureUWords(
         text: String,
         numUnicodeWords: Int,
         locale: FlorisLocale = FlorisLocale.default(),
@@ -103,7 +100,7 @@ open class BreakIteratorGroup {
         }.coerceIn(0, text.length)
     }
 
-    suspend fun measureLastUWords(
+    fun measureLastUWords(
         text: String,
         numUnicodeWords: Int,
         locale: FlorisLocale = FlorisLocale.default(),

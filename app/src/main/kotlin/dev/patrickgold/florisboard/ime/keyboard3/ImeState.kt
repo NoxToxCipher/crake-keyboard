@@ -16,17 +16,20 @@
 
 package dev.patrickgold.florisboard.ime.keyboard3
 
+import dev.patrickgold.florisboard.ime.keyboard.ImeStateFlags
 import org.k3lp.model.K3Model
 import org.k3lp.model.layer.K3LayerId
 import org.k3lp.runtime.K3Content
 import org.k3lp.runtime.K3InputMethodState
 
-class FlorisInputMethodState(
+class ImeState(
     model: K3Model = FlorisEmptyK3Model,
     editor: FlorisEditor = FlorisEditor.Disconnected,
     content: K3Content = K3Content.Empty,
     touchLayerId: K3LayerId = K3LayerId.BASE,
-) : K3InputMethodState<FlorisInputMethodState, FlorisEditor>(
+    val effRowCount: Int = 4,
+    val flags: ImeStateFlags = ImeStateFlags(),
+) : K3InputMethodState<ImeState, FlorisEditor>(
     model, editor, content, touchLayerId,
 ) {
     override fun copy(
@@ -34,12 +37,14 @@ class FlorisInputMethodState(
         editor: FlorisEditor,
         content: K3Content,
         touchLayerId: K3LayerId,
-    ) = FlorisInputMethodState(model, editor, content, touchLayerId)
+    ) = ImeState(model, editor, content, touchLayerId, this.effRowCount, this.flags)
 
-//    fun copy(
-//        model: K3Model = this.model,
-//        editor: FlorisEditor = this.editor,
-//        content: K3Content = this.content,
-//        touchLayerId: K3LayerId = this.touchLayerId,
-//    ) = FlorisInputMethodState(model, editor, content, touchLayerId)
+    fun copy(
+        model: K3Model = this.model,
+        editor: FlorisEditor = this.editor,
+        content: K3Content = this.content,
+        touchLayerId: K3LayerId = this.touchLayerId,
+        effRowCount: Int = this.effRowCount,
+        flags: ImeStateFlags = this.flags,
+    ) = ImeState(model, editor, content, touchLayerId, effRowCount, flags)
 }

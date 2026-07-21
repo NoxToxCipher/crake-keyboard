@@ -49,7 +49,6 @@ fun QuickActionsRow(
     val keyboardManager by context.keyboardManager()
 
     val flipToggles by prefs.smartbar.flipToggles.collectAsState()
-    val evaluator by keyboardManager.activeSmartbarEvaluator.collectAsState()
     val smartbarLayout by prefs.smartbar.layout.collectAsState()
     val actionArrangement by prefs.smartbar.actionArrangement.collectAsState()
     val sharedActionsExpanded by prefs.smartbar.sharedActionsExpanded.collectAsState()
@@ -90,13 +89,13 @@ fun QuickActionsRow(
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             if (showOverflowAction && flipToggles) {
-                QuickActionButton(ToggleOverflowPanelAction, evaluator)
+                //QuickActionButton(ToggleOverflowPanelAction, evaluator)
             }
             for (action in visibleActions) {
-                QuickActionButton(action, evaluator)
+                //QuickActionButton(action, evaluator)
             }
             if (showOverflowAction && !flipToggles) {
-                QuickActionButton(ToggleOverflowPanelAction, evaluator)
+                //QuickActionButton(ToggleOverflowPanelAction, evaluator)
             }
         }
     }

@@ -56,6 +56,7 @@ import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
+import dev.patrickgold.florisboard.imeController
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.toIntOffset
 import org.florisboard.lib.compose.stringRes
@@ -75,7 +76,7 @@ private val DragMarkerAction = QuickAction.InsertKey(TextKeyData(code = KeyCode.
 fun QuickActionsEditorPanel() {
     val prefs by FlorisPreferenceStore
     val context = LocalContext.current
-    val keyboardManager by context.keyboardManager()
+    val imeController by context.imeController()
 
     // We get the current arrangement once and do not observe on purpose
     val actionArrangement = remember { prefs.smartbar.actionArrangement.get() }
@@ -89,7 +90,6 @@ fun QuickActionsEditorPanel() {
         actionArrangement.hiddenActions.ifEmpty { listOf(NoopAction) }.toMutableStateList()
     }
 
-    val evaluator by keyboardManager.activeSmartbarEvaluator.collectAsState()
     val gridState = rememberLazyGridState()
     var activeDragAction by remember { mutableStateOf<QuickAction?>(null) }
     var activeDragPosition by remember { mutableStateOf(IntOffset.Zero) }
@@ -236,9 +236,12 @@ fun QuickActionsEditorPanel() {
             )
             runBlocking {
                 prefs.smartbar.actionArrangement.set(newActionArrangement)
-            }
-            if (keyboardManager.activeState.isActionsEditorVisible) {
-                keyboardManager.activeState.isActionsEditorVisible = false
+                imeController.updateState {
+                    state = state.copy(
+                        flags = state.flags
+                            .withActionsEditorVisible(false),
+                    )
+                }
             }
         }
     }
@@ -255,7 +258,12 @@ fun QuickActionsEditorPanel() {
                     elementName = FlorisImeUi.SmartbarActionsEditorHeaderButton.elementName,
                     modifier = Modifier.fillMaxHeight().aspectRatio(1f),
                     onClick = {
-                        keyboardManager.activeState.isActionsEditorVisible = false
+                        imeController.updateStateBlocking {
+                            state = state.copy(
+                                flags = state.flags
+                                    .withActionsEditorVisible(false),
+                            )
+                        }
                     },
                 ) {
                     SnyggIcon(
@@ -291,12 +299,13 @@ fun QuickActionsEditorPanel() {
                     )
                 }
                 item(key = keyOf(stickyAction)) {
-                    QuickActionButton(
-                        modifier = Modifier.animateItem(),
-                        action = stickyAction,
-                        evaluator = evaluator,
-                        type = QuickActionBarType.EDITOR_TILE,
-                    )
+                    // TODO
+//                    QuickActionButton(
+//                        modifier = Modifier.animateItem(),
+//                        action = stickyAction,
+//                        evaluator = evaluator,
+//                        type = QuickActionBarType.EDITOR_TILE,
+//                    )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     val n = dynamicActions.count { it != NoopAction }
@@ -305,12 +314,13 @@ fun QuickActionsEditorPanel() {
                     )
                 }
                 itemsIndexed(dynamicActions, key = { i, a -> keyOf(a) ?: i }) { _, action ->
-                    QuickActionButton(
-                        modifier = Modifier.animateItem(),
-                        action = action,
-                        evaluator = evaluator,
-                        type = QuickActionBarType.EDITOR_TILE,
-                    )
+                    // TODO
+//                    QuickActionButton(
+//                        modifier = Modifier.animateItem(),
+//                        action = action,
+//                        evaluator = evaluator,
+//                        type = QuickActionBarType.EDITOR_TILE,
+//                    )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     val n = hiddenActions.count { it != NoopAction }
@@ -319,27 +329,29 @@ fun QuickActionsEditorPanel() {
                     )
                 }
                 itemsIndexed(hiddenActions, key = { i, a -> keyOf(a) ?: i }) { _, action ->
-                    QuickActionButton(
-                        modifier = Modifier.animateItem(),
-                        action = action,
-                        evaluator = evaluator,
-                        type = QuickActionBarType.EDITOR_TILE,
-                    )
+                    // TODO
+//                    QuickActionButton(
+//                        modifier = Modifier.animateItem(),
+//                        action = action,
+//                        evaluator = evaluator,
+//                        type = QuickActionBarType.EDITOR_TILE,
+//                    )
                 }
             }
             if (activeDragAction != null) {
                 val size = with(LocalDensity.current) {
                     remember(activeDragSize) { activeDragSize.toSize().toDpSize() }
                 }
-                QuickActionButton(
-                    modifier = Modifier
-                        .size(size)
-                        .offset { activeDragPosition }
-                        .offset(-size.width / 2, -size.height / 2),
-                    action = activeDragAction!!,
-                    evaluator = evaluator,
-                    type = QuickActionBarType.EDITOR_TILE,
-                )
+                // TODO
+//                QuickActionButton(
+//                    modifier = Modifier
+//                        .size(size)
+//                        .offset { activeDragPosition }
+//                        .offset(-size.width / 2, -size.height / 2),
+//                    action = activeDragAction!!,
+//                    evaluator = evaluator,
+//                    type = QuickActionBarType.EDITOR_TILE,
+//                )
             }
         }
     }

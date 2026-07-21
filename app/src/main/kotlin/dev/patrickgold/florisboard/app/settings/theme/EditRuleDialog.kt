@@ -375,7 +375,6 @@ private fun EditCodeValueDialog(
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val keyboardManager by context.keyboardManager()
 
     var inputCodeString by rememberSaveable(codeValue) {
         val str = if (codeValue == KeyCode.UNSPECIFIED.toString()) "" else codeValue
@@ -429,6 +428,8 @@ private fun EditCodeValueDialog(
 
     if (isRecordingKey) {
         DisposableEffect(Unit) {
+            // TODO
+            /*
             val receiver = object : InputKeyEventReceiver {
                 override fun onInputKeyDown(data: KeyData) = Unit
                 override fun onInputKeyUp(data: KeyData) {
@@ -449,6 +450,8 @@ private fun EditCodeValueDialog(
                 lastRecordingToast?.cancel()
                 lastRecordingToast = context.showShortToastSync(R.string.settings__theme_editor__code_recording_stopped)
             }
+             */
+            onDispose {  }
         }
     }
 

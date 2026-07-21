@@ -285,14 +285,6 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
     }
 
-    val experimental = Experimental()
-    inner class Experimental {
-        val k3lpEnabled = boolean(
-            key = "experimental__k3lp_enabled",
-            default = false,
-        )
-    }
-
     val gestures = Gestures()
     inner class Gestures {
         val swipeUp = enum(

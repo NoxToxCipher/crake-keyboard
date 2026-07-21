@@ -102,7 +102,7 @@ import dev.patrickgold.florisboard.ime.smartbar.VerticalEnterTransition
 import dev.patrickgold.florisboard.ime.smartbar.VerticalExitTransition
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
-import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.imeController
 import dev.patrickgold.florisboard.lib.observeAsTransformingState
 import dev.patrickgold.florisboard.lib.util.NetworkUtils
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -142,7 +142,7 @@ fun ClipboardInputLayout(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val clipboardManager by context.clipboardManager()
-    val keyboardManager by context.keyboardManager()
+    val imeController by context.imeController()
     val androidKeyguardManager = remember { context.systemService(AndroidKeyguardManager::class) }
 
     val deviceLocked = androidKeyguardManager.let { it.isDeviceLocked || it.isKeyguardLocked }
@@ -192,7 +192,14 @@ fun ClipboardInputLayout(
                 .aspectRatio(1f)
             SnyggIconButton(
                 elementName = FlorisImeUi.ClipboardHeaderButton.elementName,
-                onClick = { keyboardManager.activeState.imeUiMode = ImeUiMode.TEXT },
+                onClick = {
+                    imeController.updateStateBlocking {
+                        state.copy(
+                            flags = state.flags
+                                .withImeUiMode(ImeUiMode.TEXT),
+                        )
+                    }
+                },
                 modifier = sizeModifier,
             ) {
                 SnyggIcon(
@@ -242,6 +249,7 @@ fun ClipboardInputLayout(
                     },
                 )
             }
+            /*
             KeyboardLikeButton(
                 modifier = sizeModifier,
                 inputEventDispatcher = keyboardManager.inputEventDispatcher,
@@ -250,6 +258,7 @@ fun ClipboardInputLayout(
             ) {
                 SnyggIcon(imageVector = Icons.AutoMirrored.Outlined.Backspace)
             }
+             */
         }
     }
 

@@ -38,7 +38,7 @@ import org.k3lp.runtime.doComputeLayout
 
 @Composable
 fun TouchKeyboardBox(
-    inputMethod: FlorisInputMethod,
+    imeController: ImeController,
     modifier: Modifier = Modifier,
 ) = with(LocalDensity.current) {
     BoxWithConstraints(
@@ -55,9 +55,9 @@ fun TouchKeyboardBox(
         val windowController = LocalWindowController.current
         val windowSpec by windowController.activeWindowSpec.collectAsState()
 
-        val inputMethodState by inputMethod.activeState.collectAsState()
-        val model by remember { derivedStateOf { inputMethodState.model } }
-        val touchLayerId by remember { derivedStateOf { inputMethodState.touchLayerId } }
+        val imeState by imeController.activeState.collectAsState()
+        val model by remember { derivedStateOf { imeState.model } }
+        val touchLayerId by remember { derivedStateOf { imeState.touchLayerId } }
 
         val computedLayout = remember(touchLayerId, model, keyboardWidth, keyboardHeight, maxWidth) {
             doComputeLayout(model, keyboardWidth, keyboardHeight, maxWidth.toMm().toInt(), touchLayerId)
@@ -84,7 +84,7 @@ fun TouchKeyboardBox(
                     computedKey,
                     touchSize,
                     visibleSize,
-                    inputMethod,
+                    imeController,
                 )
             }
         }
