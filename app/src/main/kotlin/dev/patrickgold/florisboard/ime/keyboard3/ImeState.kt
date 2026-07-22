@@ -24,24 +24,24 @@ import org.k3lp.runtime.K3InputMethodState
 
 class ImeState(
     model: K3Model = FlorisEmptyK3Model,
-    editor: FlorisEditor = FlorisEditor.Disconnected,
+    editor: ImeEditor = ImeEditor.Disconnected,
     content: K3Content = K3Content.Empty,
     touchLayerId: K3LayerId = K3LayerId.BASE,
     val effRowCount: Int = 4,
     val flags: ImeStateFlags = ImeStateFlags(),
-) : K3InputMethodState<ImeState, FlorisEditor>(
+) : K3InputMethodState<ImeState, ImeEditor>(
     model, editor, content, touchLayerId,
 ) {
     override fun copy(
         model: K3Model,
-        editor: FlorisEditor,
+        editor: ImeEditor,
         content: K3Content,
         touchLayerId: K3LayerId,
     ) = ImeState(model, editor, content, touchLayerId, this.effRowCount, this.flags)
 
     fun copy(
         model: K3Model = this.model,
-        editor: FlorisEditor = this.editor,
+        editor: ImeEditor = this.editor,
         content: K3Content = this.content,
         touchLayerId: K3LayerId = this.touchLayerId,
         effRowCount: Int = this.effRowCount,

@@ -21,6 +21,7 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.ImeUiMode
+import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.input.InputShiftState
@@ -30,28 +31,55 @@ import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.BreakIterators
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.lib.FlorisLocale
+import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.runBlocking
 import org.florisboard.lib.kotlin.collectIn
+import org.k3lp.lib.text.K3String
+import org.k3lp.lib.text.buildK3String
+import org.k3lp.lib.text.normalize
+import org.k3lp.lib.text.unicode.NormalizationForm
 import org.k3lp.model.K3Model
 import org.k3lp.model.key.K3Key
 import org.k3lp.model.layer.K3LayerId
+import org.k3lp.model.transform.K3Transforms
+import org.k3lp.runtime.K3Content
 import org.k3lp.runtime.K3InputMethod
 import org.k3lp.runtime.K3SurroundingText
 import org.k3lp.runtime.K3TextRange
 import java.lang.ref.WeakReference
-import kotlin.contracts.InvocationKind
-import kotlin.contracts.contract
 
-class ImeController : K3InputMethod<ImeState, FlorisEditor, ImeController.UpdateImeStateScope>(
+private class ExpectedContentQueue {
+    private val list = mutableListOf<K3Content>()
+
+    fun popUntilOrNull(predicate: (K3Content) -> Boolean): K3Content? {
+        while (list.isNotEmpty()) {
+            val item = list.get(0)
+            if (predicate(item)) return item
+            list.removeAt(0)
+        }
+        return null
+    }
+
+    fun push(item: K3Content) {
+        list.add(item)
+    }
+
+    fun clear() {
+        list.clear()
+    }
+}
+
+class ImeController : K3InputMethod<ImeState, ImeEditor, ImeController.UpdateImeStateScope>(
     initialState = ImeState(),
 ) {
     private val prefs by FlorisPreferenceStore
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val breakIterators = BreakIterators()
+    private val expectedContentQueue = ExpectedContentQueue()
 
     init {
         combine(
@@ -86,13 +114,35 @@ class ImeController : K3InputMethod<ImeState, FlorisEditor, ImeController.Update
     }
 
     fun onHardwareKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // TODO
-        return false
+        if (event == null) {
+            return false
+        }
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DEL -> true
+            KeyEvent.KEYCODE_FORWARD_DEL -> true
+            else -> false
+        }
     }
 
     fun onHardwareKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        // TODO
-        return false
+        if (event == null) {
+            return false
+        }
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DEL -> {
+                updateStateBlocking {
+                    emitBackspace()
+                }
+                true
+            }
+            KeyEvent.KEYCODE_FORWARD_DEL -> {
+                updateStateBlocking {
+                    emitForwardDelete()
+                }
+                true
+            }
+            else -> false
+        }
     }
 
     fun snapshotState(): ImeState = activeState.value
@@ -111,7 +161,7 @@ class ImeController : K3InputMethod<ImeState, FlorisEditor, ImeController.Update
 
     inner class UpdateImeStateScope(
         state: ImeState,
-    ) : UpdateStateScope<ImeState, FlorisEditor>(state) {
+    ) : UpdateStateScope<ImeState, ImeEditor>(state) {
         fun handleStartInputView(
             ic: WeakReference<InputConnection>,
             info: FlorisEditorInfo,
@@ -162,7 +212,7 @@ class ImeController : K3InputMethod<ImeState, FlorisEditor, ImeController.Update
             )
 
             state = state.copy(
-                editor = FlorisEditor(ic, info),
+                editor = ImeEditor(ic, info),
                 flags = state.flags
                     .withKeyboardMode(keyboardMode)
                     .withKeyVariation(keyVariation)
@@ -205,11 +255,56 @@ class ImeController : K3InputMethod<ImeState, FlorisEditor, ImeController.Update
                     )
             )
             reset(initialSelection, initialSurrounding)
+            expectedContentQueue.clear()
+        }
+
+        fun handleUpdateSelection(newSelection: K3TextRange) {
+            val content = expectedContentQueue.popUntilOrNull { it.selection == newSelection }
+            if (content != null) {
+                flogDebug { "DEDUPLICATED!!1" }
+                return
+            }
+            notifySelectionUpdated(newSelection, state.editor.getSurroundingText(50, 10))
+            expectedContentQueue.push(state.content)
+        }
+
+        override fun emitText(value: K3String) {
+            super.emitText(value)
+            expectedContentQueue.push(state.content)
+        }
+
+        override fun emitBackspace() {
+            super.emitBackspace()
+            expectedContentQueue.push(state.content)
+        }
+
+        fun emitForwardDelete() {
+            // TODO request additional text if too low on context length
+            if (state.content.selection.isNotCollapsed()) {
+                emitBackspace()
+            } else {
+                val newSurroundingText = state.content.surroundingText.copy(
+                    textAfter = state.content.surroundingText.textAfter.let { text ->
+                        // TODO unicode
+                        if (text.isEmpty()) text else text.substring(1)
+                    },
+                )
+                state = state.copy(
+                    content = state.content.copy(
+                        surroundingText = newSurroundingText,
+                    ),
+                )
+                state.editor.deleteSurroundingText(
+                    charsBefore = 0,
+                    charsAfter = 1, // TODO
+                )
+            }
         }
 
         fun handleFinishInputView() {
             reset()
-            state = state.copy(editor = FlorisEditor.Disconnected)
+            state = state.copy(editor = ImeEditor.Disconnected)
+            expectedContentQueue.clear()
         }
 
         override fun evaluateCompositionOf(
@@ -237,7 +332,7 @@ class ImeController : K3InputMethod<ImeState, FlorisEditor, ImeController.Update
                     val offset = (selection.min - surroundingText.textBefore.length).coerceAtLeast(0)
                     K3TextRange(start + offset, end + offset)
                 } else {
-                    K3TextRange.Zero
+                    null
                 }
             }
         }

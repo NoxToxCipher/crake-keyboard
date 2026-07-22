@@ -29,8 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
-import dev.patrickgold.florisboard.ime.keyboard3.GlobalStateNumPopupsShowing
 import dev.patrickgold.florisboard.ime.keyboard.Key
+import dev.patrickgold.florisboard.ime.keyboard3.ui.GlobalStateNumPopupsShowing
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import kotlinx.coroutines.flow.update
 import org.florisboard.lib.snygg.SnyggQueryAttributes

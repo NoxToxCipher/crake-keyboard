@@ -28,7 +28,10 @@ import android.util.Size
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedText
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.view.inputmethod.InlineSuggestionsResponse
 import android.view.inputmethod.InputConnection
@@ -47,6 +50,7 @@ import dev.patrickgold.florisboard.ime.ImeUiMode
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
 import dev.patrickgold.florisboard.ime.input.InputFeedbackController
 import dev.patrickgold.florisboard.ime.keyboard.isFullscreenInputRequired
+import dev.patrickgold.florisboard.ime.keyboard3.ImeEditor
 import dev.patrickgold.florisboard.ime.landscapeinput.ExtractedInputRootView
 import dev.patrickgold.florisboard.ime.landscapeinput.LandscapeInputUiMode
 import dev.patrickgold.florisboard.ime.lifecycle.LifecycleInputMethodService
@@ -55,6 +59,7 @@ import dev.patrickgold.florisboard.ime.theme.WallpaperChangeReceiver
 import dev.patrickgold.florisboard.ime.window.ImeRootView
 import dev.patrickgold.florisboard.ime.window.ImeWindowController
 import dev.patrickgold.florisboard.lib.devtools.LogTopic
+import dev.patrickgold.florisboard.lib.devtools.flogDebug
 import dev.patrickgold.florisboard.lib.devtools.flogError
 import dev.patrickgold.florisboard.lib.devtools.flogInfo
 import dev.patrickgold.florisboard.lib.devtools.flogWarning
@@ -360,14 +365,13 @@ class FlorisImeService : LifecycleInputMethodService() {
         flogInfo { "info=${info?.debugSummarize()} restarting=$restarting" }
         super.onStartInput(info, restarting)
         if (info == null) return
-        val editorInfo = FlorisEditorInfo.wrap(info)
-        editorInstance.handleStartInput(editorInfo)
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         flogInfo { "info=${info?.debugSummarize()} restarting=$restarting" }
         super.onStartInputView(info, restarting)
         if (info == null) return
+        currentInputConnection?.requestCursorUpdates(ImeEditor.CURSOR_UPDATES)
         val ic = WeakReference(currentInputConnection)
         val editorInfo = FlorisEditorInfo.wrap(info)
         imeController.updateStateBlocking {
@@ -382,25 +386,24 @@ class FlorisImeService : LifecycleInputMethodService() {
             || prefs.physicalKeyboard.showOnScreenKeyboard.get()
     }
 
-    override fun onUpdateSelection(
-        oldSelStart: Int,
-        oldSelEnd: Int,
-        newSelStart: Int,
-        newSelEnd: Int,
-        candidatesStart: Int,
-        candidatesEnd: Int,
-    ) {
-        flogInfo { "old={start=$oldSelStart,end=$oldSelEnd} new={start=$newSelStart,end=$newSelEnd} composing={start=$candidatesStart,end=$candidatesEnd}" }
-        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        if (cursorAnchorInfo == null) {
+            return
+        }
+        val newSelection = K3TextRange(
+            start = cursorAnchorInfo.selectionStart,
+            end = cursorAnchorInfo.selectionEnd,
+        )
+        flogInfo { "new=$newSelection" }
         imeController.updateStateBlocking {
-            notifySelectionUpdated(newSelection = K3TextRange(newSelStart, newSelEnd))
+            handleUpdateSelection(newSelection)
         }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         flogInfo { "finishing=$finishingInput" }
         super.onFinishInputView(finishingInput)
-        editorInstance.handleFinishInputView()
+        currentInputConnection?.requestCursorUpdates(0)
         imeController.updateStateBlocking {
             handleFinishInputView()
         }
@@ -409,7 +412,6 @@ class FlorisImeService : LifecycleInputMethodService() {
     override fun onFinishInput() {
         flogInfo { "(no args)" }
         super.onFinishInput()
-        editorInstance.handleFinishInput()
         NlpInlineAutofill.clearInlineSuggestions()
     }
 
@@ -525,10 +527,12 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        flogDebug { "onKeyDown(keyCode=$keyCode, event=$event)" }
         return imeController.onHardwareKeyDown(keyCode, event) || super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        flogDebug { "onKeyUp(keyCode=$keyCode, event=$event)" }
         return imeController.onHardwareKeyUp(keyCode, event) || super.onKeyUp(keyCode, event)
     }
 }

@@ -44,12 +44,14 @@ import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.nlp.NlpInlineAutofill
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
+import dev.patrickgold.florisboard.imeController
 import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.nlpManager
 import dev.patrickgold.florisboard.themeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.snygg.SnyggMissingSchemaException
+import org.k3lp.runtime.K3Content
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -114,11 +116,11 @@ private fun DevtoolsClipboardOverlay() {
 @Composable
 private fun DevtoolsInputStateOverlay() {
     val context = LocalContext.current
-    val editorInstance by context.editorInstance()
+    val imeController by context.imeController()
+    val imeState by imeController.activeState.collectAsState()
 
-    val info by editorInstance.activeInfoFlow.collectAsState()
-    val content by editorInstance.activeContentFlow.collectAsState()
-    val selection = content.selection
+    val info = imeState.editor.info
+    val content = imeState.content
 
     DevtoolsOverlayBox(title = "Input state overlay") {
         DevtoolsSubGroup(title = "EditorInfo") {
@@ -126,13 +128,12 @@ private fun DevtoolsInputStateOverlay() {
             DevtoolsText(text = "InitialSelection: ${info.initialSelection}")
         }
         DevtoolsSubGroup(title = "EditorContent") {
-            DevtoolsText(text = "Selection: { start=${selection.start}, end=${selection.end} }")
-            DevtoolsText(text = "Before: \"${content.textBeforeSelection}\"")
-            DevtoolsText(text = "Selected: \"${content.selectedText}\"")
-            DevtoolsText(text = "After: \"${content.textAfterSelection}\"")
-            DevtoolsText(text = "Composing: ${content.composing}")
-            DevtoolsText(text = "CurrentWord: ${content.currentWord}")
-            DevtoolsText(text = "LastCommit: ${editorInstance.lastCommitPosition}")
+            DevtoolsText(text = "Selection:   { start=${content.selection.start}, end=${content.selection.end} }")
+            DevtoolsText(text = "Composition: { start=${content.composition?.start}, end=${content.composition?.end} }")
+            DevtoolsText(text = "Before: \"${content.surroundingText.textBefore}\"")
+            DevtoolsText(text = "Selected: \"${content.surroundingText.textSelected}\"")
+            DevtoolsText(text = "After: \"${content.surroundingText.textAfter}\"")
+            DevtoolsText(text = "Composition Text: ${content.compositionText}")
         }
     }
 }

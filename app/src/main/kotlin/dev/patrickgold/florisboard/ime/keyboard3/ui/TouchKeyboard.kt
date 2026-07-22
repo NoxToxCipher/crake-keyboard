@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-package dev.patrickgold.florisboard.ime.keyboard3
+package dev.patrickgold.florisboard.ime.keyboard3.ui
 
 sealed interface TouchKeyboardResult

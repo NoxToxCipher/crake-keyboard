@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package dev.patrickgold.florisboard.ime.keyboard3
+package dev.patrickgold.florisboard.ime.keyboard3.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
