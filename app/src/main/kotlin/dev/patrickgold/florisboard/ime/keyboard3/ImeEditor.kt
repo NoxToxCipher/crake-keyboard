@@ -16,8 +16,12 @@
 
 package dev.patrickgold.florisboard.ime.keyboard3
 
+import android.os.SystemClock
+import android.view.KeyCharacterMap
+import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
+import dev.patrickgold.florisboard.ime.editor.ImeOptions
 import org.k3lp.runtime.K3Editor
 import org.k3lp.runtime.K3SurroundingText
 import org.k3lp.runtime.K3TextRange
@@ -41,6 +45,7 @@ class ImeEditor(
 //            },
 //            0,
 //        )
+//        eet.
         val textBeforeCursor = ic.getTextBeforeCursor(charsBefore, 0) ?: return K3SurroundingText.Zero
         val textAfterCursor = ic.getTextAfterCursor(charsAfter, 0) ?: return K3SurroundingText.Zero
         val textSelected = ic.getSelectedText(0) ?: ""
@@ -74,6 +79,31 @@ class ImeEditor(
     fun deleteSurroundingText(charsBefore: Int, charsAfter: Int) {
         val ic = ic.get() ?: return
         ic.deleteSurroundingText(charsBefore, charsAfter)
+    }
+
+    fun performEditorAction(action: ImeOptions.Action) {
+        val ic = ic.get() ?: return
+        ic.performEditorAction(action.toInt())
+    }
+
+    fun sendDownUpKeyEvent(keyCode: Int) {
+        val ic = ic.get() ?: return
+        val downTime = SystemClock.uptimeMillis()
+        ic.sendKeyEvent(
+            KeyEvent(
+                downTime, downTime,
+                KeyEvent.ACTION_DOWN, keyCode, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                KeyEvent.FLAG_SOFT_KEYBOARD or KeyEvent.FLAG_KEEP_TOUCH_MODE
+            )
+        )
+        val upTime = SystemClock.uptimeMillis()
+        ic.sendKeyEvent(
+            KeyEvent(
+                downTime, upTime,
+                KeyEvent.ACTION_UP, keyCode, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                KeyEvent.FLAG_SOFT_KEYBOARD or KeyEvent.FLAG_KEEP_TOUCH_MODE
+            )
+        )
     }
 
     override fun setComposition(newComposition: K3TextRange?) {

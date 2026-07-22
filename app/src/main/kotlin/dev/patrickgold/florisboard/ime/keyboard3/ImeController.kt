@@ -21,14 +21,15 @@ import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.ImeUiMode
-import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.editor.FlorisEditorInfo
+import dev.patrickgold.florisboard.ime.editor.ImeOptions
 import dev.patrickgold.florisboard.ime.editor.InputAttributes
 import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.media.emoji.EmojiSuggestionType
 import dev.patrickgold.florisboard.ime.nlp.BreakIterators
+import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
@@ -39,13 +40,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.runBlocking
 import org.florisboard.lib.kotlin.collectIn
 import org.k3lp.lib.text.K3String
-import org.k3lp.lib.text.buildK3String
-import org.k3lp.lib.text.normalize
-import org.k3lp.lib.text.unicode.NormalizationForm
+import org.k3lp.lib.text.asK3String
 import org.k3lp.model.K3Model
 import org.k3lp.model.key.K3Key
 import org.k3lp.model.layer.K3LayerId
-import org.k3lp.model.transform.K3Transforms
 import org.k3lp.runtime.K3Content
 import org.k3lp.runtime.K3InputMethod
 import org.k3lp.runtime.K3SurroundingText
@@ -57,7 +55,7 @@ private class ExpectedContentQueue {
 
     fun popUntilOrNull(predicate: (K3Content) -> Boolean): K3Content? {
         while (list.isNotEmpty()) {
-            val item = list.get(0)
+            val item = list[0]
             if (predicate(item)) return item
             list.removeAt(0)
         }
@@ -278,6 +276,38 @@ class ImeController : K3InputMethod<ImeState, ImeEditor, ImeController.UpdateIme
             expectedContentQueue.push(state.content)
         }
 
+        override fun emitEnter() {
+            val info = state.editor.info
+            val isShiftPressed = false // TODO inputEventDispatcher.isPressed(KeyCode.SHIFT)
+            if (info.imeOptions.flagNoEnterAction || info.inputAttributes.flagTextMultiLine && isShiftPressed) {
+                emitEnterKey()
+            } else {
+                when (val action = info.imeOptions.action) {
+                    ImeOptions.Action.UNSPECIFIED,
+                    ImeOptions.Action.DONE,
+                    ImeOptions.Action.GO,
+                    ImeOptions.Action.NEXT,
+                    ImeOptions.Action.PREVIOUS,
+                    ImeOptions.Action.SEARCH,
+                    ImeOptions.Action.SEND -> emitEnterAction(action)
+                    else -> emitEnterKey()
+                }
+            }
+        }
+
+        fun emitEnterKey() {
+            val info = state.editor.info
+            if (info.isRawInputEditor) {
+                state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_ENTER)
+            } else {
+                emitText(NEWLINE_SEQ)
+            }
+        }
+
+        fun emitEnterAction(action: ImeOptions.Action) {
+            state.editor.performEditorAction(action)
+        }
+
         fun emitForwardDelete() {
             // TODO request additional text if too low on context length
             if (state.content.selection.isNotCollapsed()) {
@@ -351,5 +381,7 @@ class ImeController : K3InputMethod<ImeState, ImeEditor, ImeController.UpdateIme
         private val LAYER_BASE = K3LayerId.BASE
         private val LAYER_SHIFT = K3LayerId("shift")
         private val LAYER_CAPS = K3LayerId("caps")
+
+        private val NEWLINE_SEQ = "\n".asK3String()
     }
 }
