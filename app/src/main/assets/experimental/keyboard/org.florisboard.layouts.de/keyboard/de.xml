@@ -11,8 +11,8 @@
         <display keyId="numeric" display="${numeric_display}" />
         <display keyId="base-numeric" display="${base_display}" />
         <display keyId="symbols-numeric" display="${symbol_1_display}" />
-        <display output="@k3lp:action/backspace" display="BKSP" />
-        <display output="@k3lp:action/enter" display="ENTER" />
+        <display output="@k3lp:action/backspace" display="@floris:icon/backspace" />
+        <display output="@k3lp:action/enter" display="@floris:icon/enter" />
     </displays>
 
 

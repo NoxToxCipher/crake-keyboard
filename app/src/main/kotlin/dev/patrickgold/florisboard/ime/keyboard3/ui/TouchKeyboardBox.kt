@@ -81,7 +81,7 @@ fun TouchKeyboardBox(
                     width = touchSize.width - windowSpec.keyMarginH * 2,
                     height = touchSize.height - windowSpec.keyMarginV * 2,
                 )
-                TouchKey(
+                TouchKeyBox(
                     computedKey,
                     touchSize,
                     visibleSize,

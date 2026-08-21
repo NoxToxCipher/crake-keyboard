@@ -50,7 +50,7 @@ import org.k3lp.lib.text.K3String
 import org.k3lp.runtime.K3ComputedKey
 
 @Composable
-fun TouchKey(
+fun TouchKeyBox(
     computedKey: K3ComputedKey,
     touchSize: DpSize,
     visibleSize: DpSize,
@@ -139,11 +139,10 @@ fun TouchKeyDisplay(
             )
         }
         is K3Descriptor -> {
-            // TODO this should be an icon
-            SnyggText(
+            DescriptorIcon(
                 modifier = modifier
                     .wrapContentSize(),
-                text = keytop.toString(),
+                descriptor = keytop,
             )
         }
     }
