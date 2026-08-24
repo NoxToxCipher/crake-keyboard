@@ -11,8 +11,8 @@ crate-type = ["lib", "cdylib", "staticlib"]
 name = "floris_core"
 
 [dependencies]
-unicode-segmentation = "1.11"
-thiserror = "1.0"
+unicode-segmentation.workspace = true
+thiserror.workspace = true
 uniffi = { version = "0.28", features = ["cli"], optional = true }
 
 [features]
@@ -20,3 +20,4 @@ default = []
 uniffi-bindings = ["dep:uniffi"]
 
 [dev-dependencies]
+proptest.workspace = true

@@ -2,11 +2,16 @@
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+/// Errors encountered at the FFI / JNI boundary.
 #[derive(Debug, PartialEq, Eq)]
 pub enum FfiError {
+    /// A panic was caught and contained within the native boundary.
     PanicCaught,
+    /// An offset or slice length violated memory bounds.
     BoundsCheckFailed,
+    /// The input bytes were not valid UTF-8.
     Utf8Error,
+    /// An opaque handle ID was invalid or not found.
     InvalidHandle,
 }
 
@@ -25,6 +30,9 @@ impl std::error::Error for FfiError {}
 
 /// Executes a closure inside a fail-closed panic boundary.
 /// If the closure panics, the panic is caught and mapped to `FfiError::PanicCaught`.
+///
+/// # Errors
+/// Returns `FfiError::PanicCaught` if the internal operation panics.
 pub fn catch_ffi_panic<F, T>(op: F) -> Result<T, FfiError>
 where
     F: FnOnce() -> T,
@@ -36,6 +44,9 @@ where
 }
 
 /// Checked byte slice extraction guarding against integer overflow on 32-bit/64-bit targets.
+///
+/// # Errors
+/// Returns `FfiError::BoundsCheckFailed` if `offset + len` overflows or exceeds `data.len()`.
 pub fn checked_slice(data: &[u8], offset: usize, len: usize) -> Result<&[u8], FfiError> {
     let end = offset.checked_add(len).ok_or(FfiError::BoundsCheckFailed)?;
     if end > data.len() {

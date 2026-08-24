@@ -2,6 +2,15 @@
 //! Enforces strict 100% Safe Rust across the entire crate.
 
 #![forbid(unsafe_code)]
+#![deny(
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::complexity,
+    clippy::perf,
+    clippy::style
+)]
+#![warn(missing_docs)]
 
 pub mod ffi_guard;
 pub mod sanitizer;

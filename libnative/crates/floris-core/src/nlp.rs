@@ -2,19 +2,27 @@
 
 use crate::trie::RadixTrie;
 
+/// Represents the ranked suggestion output for a user's input query.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SuggestionResult {
+    /// The original input query string.
     pub query: String,
+    /// Whether the query exactly matched an existing word in the dictionary.
     pub is_exact_match: bool,
+    /// List of ranked candidate word suggestions.
     pub candidates: Vec<String>,
 }
 
+/// Natural Language Processing engine wrapping the dictionary trie.
 #[derive(Debug, Clone, Default)]
 pub struct NlpEngine {
+    /// Internal radix trie holding the word dictionary.
     pub trie: RadixTrie,
 }
 
 impl NlpEngine {
+    /// Creates a new `NlpEngine` with an empty trie.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             trie: RadixTrie::new(),
@@ -29,6 +37,7 @@ impl NlpEngine {
     }
 
     /// Generates ranked word suggestions for a given input query.
+    #[must_use]
     pub fn suggest(&self, query: &str, max_candidates: usize) -> SuggestionResult {
         let trimmed = query.trim().to_lowercase();
         if trimmed.is_empty() {
@@ -105,7 +114,7 @@ mod tests {
             ("pattern", 500),
         ]);
 
-        let res = engine.suggest("pasword", 3); // typo
+        let res = engine.suggest("pasword", 3);
         assert!(!res.is_exact_match);
         assert!(res.candidates.contains(&"password".to_string()));
     }

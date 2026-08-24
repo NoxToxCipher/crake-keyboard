@@ -10,9 +10,8 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
     let len_a = a_chars.len();
     let len_b = b_chars.len();
 
-    // Quick length check
-    let len_diff = if len_a > len_b { len_a - len_b } else { len_b - len_a };
-    if len_diff > max_threshold {
+    // Quick length check using abs_diff
+    if len_a.abs_diff(len_b) > max_threshold {
         return None;
     }
 
@@ -24,7 +23,6 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
     }
 
     // Dynamic programming matrix with transposition support
-    // (len_a + 2) x (len_b + 2)
     let max_dist = len_a + len_b;
     let mut h = vec![vec![0usize; len_b + 2]; len_a + 2];
 
@@ -38,7 +36,6 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
         h[1][j + 1] = j;
     }
 
-    // Alphabet position cache
     let mut da = std::collections::HashMap::new();
 
     for i in 1..=len_a {
@@ -89,6 +86,7 @@ pub fn damerau_levenshtein(a: &str, b: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_identical_strings() {
@@ -98,13 +96,9 @@ mod tests {
 
     #[test]
     fn test_single_operations() {
-        // Insertion
         assert_eq!(damerau_levenshtein("hell", "hello"), 1);
-        // Deletion
         assert_eq!(damerau_levenshtein("hello", "hell"), 1);
-        // Substitution
         assert_eq!(damerau_levenshtein("hello", "jello"), 1);
-        // Transposition (adjacent swap)
         assert_eq!(damerau_levenshtein("hlelo", "hello"), 1);
         assert_eq!(damerau_levenshtein("teh", "the"), 1);
     }
@@ -120,5 +114,38 @@ mod tests {
         assert_eq!(damerau_levenshtein("café", "cafe"), 1);
         assert_eq!(damerau_levenshtein("über", "uber"), 1);
         assert_eq!(damerau_levenshtein("日本語", "日本語"), 0);
+    }
+
+    // Property-Based Verification & Mathematical Oracles
+    proptest! {
+        #[test]
+        fn prop_distance_identity(s in "\\PC{0,30}") {
+            prop_assert_eq!(damerau_levenshtein(&s, &s), 0);
+        }
+
+        #[test]
+        fn prop_distance_symmetry(a in "\\PC{0,20}", b in "\\PC{0,20}") {
+            prop_assert_eq!(damerau_levenshtein(&a, &b), damerau_levenshtein(&b, &a));
+        }
+
+        #[test]
+        fn prop_triangle_inequality(a in "[a-z]{0,10}", b in "[a-z]{0,10}", c in "[a-z]{0,10}") {
+            let d_ac = damerau_levenshtein(&a, &c);
+            let d_ab = damerau_levenshtein(&a, &b);
+            let d_bc = damerau_levenshtein(&b, &c);
+            prop_assert!(d_ac <= d_ab + d_bc);
+        }
+
+        #[test]
+        fn prop_threshold_matches_unbounded(a in "[a-z]{0,15}", b in "[a-z]{0,15}", t in 0usize..5) {
+            let exact = damerau_levenshtein(&a, &b);
+            let threshold_res = damerau_levenshtein_threshold(&a, &b, t);
+
+            if exact <= t {
+                prop_assert_eq!(threshold_res, Some(exact));
+            } else {
+                prop_assert_eq!(threshold_res, None);
+            }
+        }
     }
 }

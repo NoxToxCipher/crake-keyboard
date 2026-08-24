@@ -2,21 +2,31 @@
 
 use std::collections::BTreeMap;
 
+/// An individual node in the Radix Trie.
 #[derive(Debug, Clone, Default)]
 pub struct TrieNode {
+    /// True if this node represents the end of a valid word.
     pub is_terminal: bool,
+    /// The frequency score / weight of the word.
     pub frequency: u32,
+    /// The full word stored at this terminal node.
     pub word: Option<String>,
+    /// Child transitions keyed by unicode character.
     pub children: BTreeMap<char, TrieNode>,
 }
 
+/// A fast, memory-efficient Radix / Prefix Trie.
 #[derive(Debug, Clone, Default)]
 pub struct RadixTrie {
+    /// The root node of the trie.
     pub root: TrieNode,
+    /// Total number of unique terminal words stored in the trie.
     pub size: usize,
 }
 
 impl RadixTrie {
+    /// Creates a new, empty `RadixTrie`.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             root: TrieNode::default(),
@@ -44,6 +54,7 @@ impl RadixTrie {
     }
 
     /// Checks if an exact word exists in the Trie.
+    #[must_use]
     pub fn contains(&self, word: &str) -> bool {
         self.get_terminal_node(word)
             .map(|n| n.is_terminal)
@@ -51,6 +62,7 @@ impl RadixTrie {
     }
 
     /// Returns the frequency of a word if it exists.
+    #[must_use]
     pub fn get_frequency(&self, word: &str) -> Option<u32> {
         self.get_terminal_node(word).and_then(|n| {
             if n.is_terminal {
@@ -64,20 +76,18 @@ impl RadixTrie {
     fn get_terminal_node(&self, word: &str) -> Option<&TrieNode> {
         let mut current = &self.root;
         for ch in word.chars() {
-            match current.children.get(&ch) {
-                Some(next) => current = next,
-                None => return None,
-            }
+            current = current.children.get(&ch)?;
         }
         Some(current)
     }
 
     /// Searches for words starting with `prefix`, ordered by frequency descending.
+    #[must_use]
     pub fn prefix_search(&self, prefix: &str, limit: usize) -> Vec<(String, u32)> {
         let mut results = Vec::new();
         if let Some(node) = self.get_terminal_node(prefix) {
             self.collect_words(node, &mut results);
-            results.sort_by(|a, b| b.1.cmp(&a.1));
+            results.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
             results.truncate(limit);
         }
         results
@@ -96,6 +106,7 @@ impl RadixTrie {
 
     /// Fuzzy search matching candidate words within `max_distance` edit distance.
     /// Traverses the trie directly using branch-and-bound on the DP row to avoid brute force.
+    #[must_use]
     pub fn fuzzy_search(
         &self,
         query: &str,
@@ -120,11 +131,12 @@ impl RadixTrie {
             );
         }
 
-        // Rank by distance ascending, then frequency descending
+        // Rank by distance ascending, then frequency descending, then alphabetical
         results.sort_by(|a, b| {
             a.distance
                 .cmp(&b.distance)
                 .then_with(|| b.frequency.cmp(&a.frequency))
+                .then_with(|| a.word.cmp(&b.word))
         });
         results.truncate(limit);
         results
@@ -144,7 +156,7 @@ impl RadixTrie {
         current_row[0] = prev_row[0] + 1;
 
         for j in 1..cols {
-            let cost = if query[j - 1] == ch { 0 } else { 1 };
+            let cost = usize::from(query[j - 1] != ch);
             let deletion = prev_row[j] + 1;
             let insertion = current_row[j - 1] + 1;
             let substitution = prev_row[j - 1] + cost;
@@ -180,16 +192,23 @@ impl RadixTrie {
     }
 }
 
+/// A candidate word returned from a fuzzy search.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuzzyCandidate {
+    /// The matching candidate word.
     pub word: String,
+    /// The edit distance from the query string.
     pub distance: usize,
+    /// The frequency weight of the word in the dictionary.
     pub frequency: u32,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::collection::vec as prop_vec;
+    use proptest::prelude::*;
+    use std::collections::HashSet;
 
     #[test]
     fn test_insert_and_contains() {
@@ -231,8 +250,57 @@ mod tests {
 
         let candidates = trie.fuzzy_search("helo", 1, 3);
         assert!(!candidates.is_empty());
-        // "hell" or "hello" are distance 1
         let words: Vec<String> = candidates.into_iter().map(|c| c.word).collect();
         assert!(words.contains(&"hello".to_string()) || words.contains(&"hell".to_string()));
+    }
+
+    // Property-Based Verification & Differential Oracles
+    proptest! {
+        #[test]
+        fn prop_trie_insert_and_contains_oracle(
+            words in prop_vec("[a-z]{1,10}", 1..50),
+            freqs in prop_vec(1u32..1000, 1..50)
+        ) {
+            let mut trie = RadixTrie::new();
+            let mut expected_set = HashSet::new();
+
+            for (w, &f) in words.iter().zip(freqs.iter().cycle()) {
+                trie.insert(w, f);
+                expected_set.insert(w.clone());
+            }
+
+            prop_assert_eq!(trie.size, expected_set.len());
+
+            for w in &expected_set {
+                prop_assert!(trie.contains(w));
+            }
+        }
+
+        #[test]
+        fn prop_prefix_search_oracle(
+            words in prop_vec("[a-z]{1,10}", 10..40),
+            prefix in "[a-z]{1,3}"
+        ) {
+            let mut trie = RadixTrie::new();
+            let mut oracle_matches = Vec::new();
+
+            for (i, w) in words.iter().enumerate() {
+                let freq = (i + 1) as u32;
+                trie.insert(w, freq);
+                if w.starts_with(&prefix) {
+                    oracle_matches.push((w.clone(), freq));
+                }
+            }
+
+            let mut oracle_map = std::collections::HashMap::new();
+            for (w, f) in oracle_matches {
+                oracle_map.entry(w).and_modify(|e| *e = std::cmp::max(*e, f)).or_insert(f);
+            }
+            let mut expected: Vec<(String, u32)> = oracle_map.into_iter().collect();
+            expected.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+            let trie_results = trie.prefix_search(&prefix, 100);
+            prop_assert_eq!(trie_results, expected);
+        }
     }
 }

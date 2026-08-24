@@ -58,6 +58,7 @@ pub const TRACKING_PARAMS: &[&str] = &[
 ];
 
 /// Sanitizes a single URL string by stripping all known tracking parameters while preserving benign queries and anchors.
+#[must_use]
 pub fn sanitize_url(raw_url: &str) -> String {
     let trimmed = raw_url.trim();
     if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
@@ -73,7 +74,7 @@ pub fn sanitize_url(raw_url: &str) -> String {
     // Split query ?params if present
     let (base, query_str) = match url_without_fragment.find('?') {
         Some(idx) => (&url_without_fragment[..idx], Some(&url_without_fragment[idx + 1..])),
-        None => return raw_url.to_string(), // No query string to sanitize
+        None => return raw_url.to_string(),
     };
 
     let Some(query) = query_str else {
@@ -98,7 +99,6 @@ pub fn sanitize_url(raw_url: &str) -> String {
 
         let key_lower = key.to_ascii_lowercase();
 
-        // Check if key matches known tracking parameter list
         let is_tracking = TRACKING_PARAMS
             .iter()
             .any(|&t| t.eq_ignore_ascii_case(&key_lower));
@@ -121,7 +121,8 @@ pub fn sanitize_url(raw_url: &str) -> String {
     result
 }
 
-/// Scans an arbitrary block of text and sanitizes any URLs contained within it (e.g., in a chat message or clipboard paste).
+/// Scans an arbitrary block of text and sanitizes any URLs contained within it.
+#[must_use]
 pub fn sanitize_text(text: &str) -> String {
     let mut output = String::with_capacity(text.len());
     let mut cursor = 0;
@@ -135,7 +136,6 @@ pub fn sanitize_text(text: &str) -> String {
                 let url_start = cursor + offset;
                 output.push_str(&text[cursor..url_start]);
 
-                // Find end of URL (whitespace, quotes, brackets, or end of string)
                 let url_remaining = &text[url_start..];
                 let url_len = url_remaining
                     .find(|c: char| c.is_whitespace() || c == ')' || c == ']' || c == '>' || c == '"' || c == '\'')
@@ -160,6 +160,7 @@ pub fn sanitize_text(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_standalone_url_sanitization() {
@@ -189,5 +190,45 @@ mod tests {
     fn test_non_url_text_preserved() {
         let raw = "Just a normal conversation with no links: 1 + 1 = 2 & a < b";
         assert_eq!(sanitize_text(raw), raw);
+    }
+
+    // Property-Based Verification & Fuzzing Oracles
+    proptest! {
+        #[test]
+        fn prop_sanitization_is_idempotent(text in "\\PC{0,100}") {
+            let once = sanitize_text(&text);
+            let twice = sanitize_text(&once);
+            prop_assert_eq!(once, twice, "Sanitization must be strictly idempotent");
+        }
+
+        #[test]
+        fn prop_never_panics_on_arbitrary_input(text in "\\PC*") {
+            let _ = sanitize_text(&text);
+        }
+
+        #[test]
+        fn prop_zero_tracking_leakage(
+            domain in "[a-z]{3,10}\\.com",
+            path in "/[a-z0-9/]{0,10}",
+            benign_key_suffix in "[a-z0-9]{1,5}",
+            benign_v in "[a-z0-9]{1,5}"
+        ) {
+            let benign_k = format!("app_param_{}", benign_key_suffix);
+            let url = format!(
+                "https://{}{}?{}={}&utm_source=evil&fbclid=123456&si=share_token_abc&gclid=ad999",
+                domain, path, benign_k, benign_v
+            );
+            let cleaned = sanitize_url(&url);
+
+            for &tracking in TRACKING_PARAMS {
+                let needle = format!("{}=", tracking);
+                let leaked = cleaned.contains(&needle);
+                prop_assert!(!leaked, "Found leaked tracking parameter: {}", tracking);
+            }
+
+            let expected_benign = format!("{}={}", benign_k, benign_v);
+            prop_assert!(cleaned.contains(&domain));
+            prop_assert!(cleaned.contains(&expected_benign));
+        }
     }
 }

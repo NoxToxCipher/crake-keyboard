@@ -12,8 +12,8 @@ name = "crake_privacy"
 
 [dependencies]
 floris-core = { path = "../floris-core" }
-zeroize = { version = "1.8", features = ["derive"] }
-thiserror = "1.0"
+zeroize.workspace = true
+thiserror.workspace = true
 uniffi = { version = "0.28", features = ["cli"], optional = true }
 
 [features]
@@ -21,3 +21,4 @@ default = []
 uniffi-bindings = ["dep:uniffi", "floris-core/uniffi-bindings"]
 
 [dev-dependencies]
+proptest.workspace = true
