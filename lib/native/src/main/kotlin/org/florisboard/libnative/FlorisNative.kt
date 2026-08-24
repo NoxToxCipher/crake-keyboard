@@ -17,7 +17,7 @@
 package org.florisboard.libnative
 
 /**
- * Type-safe Kotlin interface to the high-speed Native Rust Core.
+ * JNI interface to native floris-core NLP engine.
  */
 object FlorisNative {
     private var isLoaded = false
@@ -26,59 +26,26 @@ object FlorisNative {
         try {
             System.loadLibrary("fl_native")
             isLoaded = true
-        } catch (e: UnsatisfiedLinkError) {
-            // Fallback for JVM host unit tests where native library is absent
+        } catch (_: UnsatisfiedLinkError) {
             isLoaded = false
         }
     }
 
-    /**
-     * Checks if the native Rust library was successfully loaded.
-     */
     fun isAvailable(): Boolean = isLoaded
 
-    /**
-     * Inserts a word with a frequency weight into the native Radix Trie.
-     */
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         nativeNlpInsertWord(word, frequency)
     }
 
-    /**
-     * Queries autocompletion candidates and typo corrections in 33µs.
-     */
     fun suggest(query: String, limit: Int = 3): List<String> {
         if (!isLoaded || query.isBlank()) return emptyList()
         return nativeNlpSuggest(query, limit).toList()
     }
 
-    /**
-     * Real-time URL tracker and UTM parameter scrubber.
-     */
-    fun sanitizeUrl(rawUrl: String): String {
-        if (!isLoaded || rawUrl.isBlank()) return rawUrl
-        return nativeSanitizeUrl(rawUrl)
-    }
-
-    /**
-     * Scans arbitrary text blocks and strips tracking queries from any URLs contained within.
-     */
-    fun sanitizeText(rawText: String): String {
-        if (!isLoaded || rawText.isBlank()) return rawText
-        return nativeSanitizeText(rawText)
-    }
-
-    // --- External JNI Declarations ---
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
     @JvmStatic
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>
-
-    @JvmStatic
-    private external fun nativeSanitizeUrl(rawUrl: String): String
-
-    @JvmStatic
-    private external fun nativeSanitizeText(rawText: String): String
 }
