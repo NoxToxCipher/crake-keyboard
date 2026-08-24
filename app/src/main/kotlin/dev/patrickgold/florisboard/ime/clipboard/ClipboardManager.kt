@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (C) 2021-2025 The FlorisBoard Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -223,8 +223,8 @@ class ClipboardManager(
     /**
      * Wraps some plaintext in a ClipData and calls [addNewClip]
      */
-    fun addNewPlaintext(newText: String) {
-        val newData = ClipboardItem.text(newText)
+    fun addNewPlaintext(newText: String) { val sanitized = org.florisboard.libnative.FlorisNative.sanitizeText(newText)
+        val newData = ClipboardItem.text(sanitized)
         addNewClip(newData)
     }
 
