@@ -1,0 +1,21 @@
+﻿//! floris-core: Radix Trie and NLP candidate engine for FlorisBoard.
+
+#![forbid(unsafe_code)]
+#![deny(
+    clippy::all,
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::complexity,
+    clippy::perf
+)]
+
+pub mod distance;
+pub mod nlp;
+pub mod trie;
+
+pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold};
+pub use nlp::{NlpEngine, SuggestionResult};
+pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};
+
+#[cfg(feature = "uniffi-bindings")]
+uniffi::setup_scaffolding!();
