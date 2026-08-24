@@ -57,6 +57,14 @@ fn bench_throughput_and_latencies() {
     println!("Damerau-Levenshtein:   {} ns / comparison", avg_dl_ns);
     println!("===============================\n");
 
-    assert!(avg_prefix_ns < 50_000, "Prefix lookup should be < 50µs");
-    assert!(avg_fuzzy_us < 500.0, "Fuzzy search should be < 500µs");
+    #[cfg(not(debug_assertions))]
+    {
+        assert!(avg_prefix_ns < 50_000, "Prefix lookup should be < 50µs in release");
+        assert!(avg_fuzzy_us < 500.0, "Fuzzy search should be < 500µs in release");
+    }
+    #[cfg(debug_assertions)]
+    {
+        assert!(avg_prefix_ns < 500_000, "Prefix lookup debug threshold");
+        assert!(avg_fuzzy_us < 5_000.0, "Fuzzy search debug threshold");
+    }
 }

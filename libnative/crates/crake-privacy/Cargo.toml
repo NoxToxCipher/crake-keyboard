@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Hardened privacy engine for Crake Keyboard (URL tracker scrubbing, ephemeral zeroize memory, 5-layer FFI defense)"
+description = "Hardened privacy engine for Crake Keyboard (URL tracker scrubbing, ephemeral zeroize memory, 5-layer FFI defense, sealed intrusion logs, profile isolation)"
 
 [lib]
 crate-type = ["lib", "cdylib", "staticlib"]
@@ -14,6 +14,10 @@ name = "crake_privacy"
 floris-core = { path = "../floris-core" }
 zeroize.workspace = true
 thiserror.workspace = true
+chacha20poly1305.workspace = true
+x25519-dalek.workspace = true
+sha2.workspace = true
+rand.workspace = true
 uniffi = { version = "0.28", features = ["cli"], optional = true }
 
 [features]
