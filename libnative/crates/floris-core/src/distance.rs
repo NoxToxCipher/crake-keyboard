@@ -1,6 +1,8 @@
 ﻿use std::cmp::min;
 
-/// Compute Damerau-Levenshtein distance with early threshold cutoff.
+const STACK_BUFFER_MAX: usize = 32;
+
+/// Compute Damerau-Levenshtein distance with early threshold cutoff and flat stack memory.
 /// Returns None if edit distance exceeds max_threshold.
 pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> Option<usize> {
     let a_chars: Vec<char> = a.chars().collect();
@@ -8,7 +10,7 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
     let len_a = a_chars.len();
     let len_b = b_chars.len();
 
-    // Fast-path: length delta alone exceeds cutoff budget
+    // Fast-path 1: length delta exceeds cutoff budget
     if len_a.abs_diff(len_b) > max_threshold {
         return None;
     }
@@ -20,22 +22,72 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
         return (len_a <= max_threshold).then_some(len_a);
     }
 
-    // 2D DP matrix with adjacent transposition tracking (Damerau 1964)
-    let max_dist = len_a + len_b;
-    let mut h = vec![vec![0usize; len_b + 2]; len_a + 2];
+    // Fast-path 2: identical string check
+    if a == b {
+        return Some(0);
+    }
 
-    h[0][0] = max_dist;
+    let rows = len_a + 2;
+    let cols = len_b + 2;
+    let max_dist = len_a + len_b;
+
+    // Stack-allocated flat matrix for strings <= 30 chars, fallback to flat heap vector for large text
+    if rows <= STACK_BUFFER_MAX && cols <= STACK_BUFFER_MAX {
+        let mut matrix = [0usize; STACK_BUFFER_MAX * STACK_BUFFER_MAX];
+        run_dl_matrix(&a_chars, &b_chars, rows, cols, max_dist, &mut matrix, max_threshold)
+    } else {
+        let mut matrix = vec![0usize; rows * cols];
+        run_dl_matrix(&a_chars, &b_chars, rows, cols, max_dist, &mut matrix, max_threshold)
+    }
+}
+
+#[inline(always)]
+fn run_dl_matrix(
+    a_chars: &[char],
+    b_chars: &[char],
+    _rows: usize,
+    cols: usize,
+    max_dist: usize,
+    h: &mut [usize],
+    max_threshold: usize,
+) -> Option<usize> {
+    let len_a = a_chars.len();
+    let len_b = b_chars.len();
+
+    // Indexing helper for flat 1D matrix
+    let idx = |r: usize, c: usize| -> usize { r * cols + c };
+
+    h[idx(0, 0)] = max_dist;
     for i in 0..=len_a {
-        h[i + 1][0] = max_dist;
-        h[i + 1][1] = i;
+        h[idx(i + 1, 0)] = max_dist;
+        h[idx(i + 1, 1)] = i;
     }
     for j in 0..=len_b {
-        h[0][j + 1] = max_dist;
-        h[1][j + 1] = j;
+        h[idx(0, j + 1)] = max_dist;
+        h[idx(1, j + 1)] = j;
     }
 
-    // Last seen character indices in alphabet
-    let mut da = std::collections::HashMap::new();
+    // Fast alphabet cache for ASCII (covers 95%+ of characters)
+    let mut da_ascii = [0usize; 256];
+    let mut da_unicode = std::collections::HashMap::new();
+
+    let get_da = |ch: char, da_ascii: &[usize; 256], da_unicode: &std::collections::HashMap<char, usize>| -> usize {
+        let u = ch as usize;
+        if u < 256 {
+            da_ascii[u]
+        } else {
+            *da_unicode.get(&ch).unwrap_or(&0)
+        }
+    };
+
+    let set_da = |ch: char, val: usize, da_ascii: &mut [usize; 256], da_unicode: &mut std::collections::HashMap<char, usize>| {
+        let u = ch as usize;
+        if u < 256 {
+            da_ascii[u] = val;
+        } else {
+            da_unicode.insert(ch, val);
+        }
+    };
 
     for i in 1..=len_a {
         let mut db = 0;
@@ -43,7 +95,7 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
 
         for j in 1..=len_b {
             let char_b = b_chars[j - 1];
-            let i1 = *da.get(&char_b).unwrap_or(&0);
+            let i1 = get_da(char_b, &da_ascii, &da_unicode);
             let j1 = db;
 
             let cost = usize::from(char_a != char_b);
@@ -51,22 +103,22 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
                 db = j;
             }
 
-            let deletion = h[i][j + 1] + 1;
-            let insertion = h[i + 1][j] + 1;
-            let substitution = h[i][j] + cost;
+            let deletion = h[idx(i, j + 1)] + 1;
+            let insertion = h[idx(i + 1, j)] + 1;
+            let substitution = h[idx(i, j)] + cost;
             let transposition = if i1 > 0 && j1 > 0 {
-                h[i1][j1] + (i - i1 - 1) + 1 + (j - j1 - 1)
+                h[idx(i1, j1)] + (i - i1 - 1) + 1 + (j - j1 - 1)
             } else {
                 max_dist
             };
 
-            h[i + 1][j + 1] = min(min(deletion, insertion), min(substitution, transposition));
+            h[idx(i + 1, j + 1)] = min(min(deletion, insertion), min(substitution, transposition));
         }
 
-        da.insert(char_a, i);
+        set_da(char_a, i, &mut da_ascii, &mut da_unicode);
     }
 
-    let dist = h[len_a + 1][len_b + 1];
+    let dist = h[idx(len_a + 1, len_b + 1)];
     (dist <= max_threshold).then_some(dist)
 }
 
@@ -109,6 +161,7 @@ mod tests {
         assert_eq!(damerau_levenshtein("日本語", "日本語"), 0);
     }
 
+    // Property-Based Verification & Differential Oracles
     proptest! {
         #[test]
         fn prop_distance_identity(s in "\\PC{0,30}") {

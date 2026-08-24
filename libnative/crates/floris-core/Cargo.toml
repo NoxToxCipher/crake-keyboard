@@ -6,10 +6,6 @@ authors.workspace = true
 license.workspace = true
 description = "High-performance, pure-Rust Radix Trie and NLP engine for FlorisBoard"
 
-[lib]
-crate-type = ["lib", "cdylib", "staticlib"]
-name = "floris_core"
-
 [dependencies]
 unicode-segmentation.workspace = true
 thiserror.workspace = true
