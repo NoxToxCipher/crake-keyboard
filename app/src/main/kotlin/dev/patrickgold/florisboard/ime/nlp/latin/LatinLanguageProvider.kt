@@ -74,7 +74,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
-        val query = content.composingText.ifBlank { return emptyList() }
+        val query = content.composingText.toString().ifBlank { return emptyList() }
         if (!FlorisNative.isAvailable()) return emptyList()
 
         val rawCandidates = FlorisNative.suggest(query, maxCandidateCount)
@@ -92,7 +92,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
         flogDebug { candidate.toString() }
         if (candidate is WordSuggestionCandidate) {
-            FlorisNative.insertWord(candidate.text, 100)
+            FlorisNative.insertWord(candidate.text.toString(), 100)
         }
     }
 

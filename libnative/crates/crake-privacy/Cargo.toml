@@ -4,11 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Hardened privacy engine for Crake Keyboard (URL tracker scrubbing, ephemeral zeroize memory, 5-layer FFI defense, sealed intrusion logs, profile isolation)"
-
-[lib]
-crate-type = ["lib", "cdylib", "staticlib"]
-name = "crake_privacy"
+description = "Hardened privacy engine for Crake Keyboard"
 
 [dependencies]
 floris-core = { path = "../floris-core" }
