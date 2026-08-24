@@ -2,7 +2,7 @@
 
 const STACK_BUFFER_MAX: usize = 32;
 
-/// Compute Damerau-Levenshtein distance with early threshold cutoff and flat stack memory.
+/// Compute Damerau-Levenshtein distance with threshold cutoff.
 /// Returns None if edit distance exceeds max_threshold.
 pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> Option<usize> {
     let a_chars: Vec<char> = a.chars().collect();
@@ -10,7 +10,7 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
     let len_a = a_chars.len();
     let len_b = b_chars.len();
 
-    // Fast-path 1: length delta exceeds cutoff budget
+    // Length delta exceeds threshold budget
     if len_a.abs_diff(len_b) > max_threshold {
         return None;
     }
@@ -22,7 +22,7 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
         return (len_a <= max_threshold).then_some(len_a);
     }
 
-    // Fast-path 2: identical string check
+    // Identical string fast-path
     if a == b {
         return Some(0);
     }

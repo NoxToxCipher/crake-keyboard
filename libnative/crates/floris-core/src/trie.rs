@@ -2,7 +2,7 @@
 
 const MAX_QUERY_STACK_LEN: usize = 32;
 
-/// A lightweight, stack-friendly Bloom Filter for 5-nanosecond negative membership checks.
+/// Bloom filter for fast negative word lookup.
 #[derive(Debug, Clone)]
 pub struct BloomFilter {
     bits: Vec<u64>,
@@ -99,7 +99,7 @@ impl RadixTrie {
     }
 
     pub fn contains(&self, word: &str) -> bool {
-        // Fast-path: 5ns Bloom check (if false, 100% not in trie)
+        // Fast negative check via Bloom filter
         if !self.bloom.may_contain(word) {
             return false;
         }

@@ -17,7 +17,7 @@
 package org.florisboard.libnative
 
 /**
- * Type-safe Kotlin interface to the high-speed Native Rust Core.
+ * JNI interface to native floris-core NLP engine.
  */
 object FlorisNative {
     private var isLoaded = false
@@ -26,34 +26,23 @@ object FlorisNative {
         try {
             System.loadLibrary("fl_native")
             isLoaded = true
-        } catch (e: UnsatisfiedLinkError) {
-            // Fallback for JVM host unit tests where native library is absent
+        } catch (_: UnsatisfiedLinkError) {
             isLoaded = false
         }
     }
 
-    /**
-     * Checks if the native Rust library was successfully loaded.
-     */
     fun isAvailable(): Boolean = isLoaded
 
-    /**
-     * Inserts a word with a frequency weight into the native Radix Trie.
-     */
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         nativeNlpInsertWord(word, frequency)
     }
 
-    /**
-     * Queries autocompletion candidates and typo corrections in 33µs.
-     */
     fun suggest(query: String, limit: Int = 3): List<String> {
         if (!isLoaded || query.isBlank()) return emptyList()
         return nativeNlpSuggest(query, limit).toList()
     }
 
-    // --- External JNI Declarations ---
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
