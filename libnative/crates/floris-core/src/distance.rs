@@ -1,28 +1,26 @@
-﻿//! Fast Damerau-Levenshtein distance calculation with threshold cutoff.
+﻿use std::cmp::min;
 
-use std::cmp::min;
-
-/// Computes the Damerau-Levenshtein distance between two strings `a` and `b`.
-/// If the distance exceeds `max_threshold`, computation aborts early and returns `None`.
+/// Compute Damerau-Levenshtein distance with early threshold cutoff.
+/// Returns None if edit distance exceeds max_threshold.
 pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> Option<usize> {
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
     let len_a = a_chars.len();
     let len_b = b_chars.len();
 
-    // Quick length check using abs_diff
+    // Fast-path: length delta alone exceeds cutoff budget
     if len_a.abs_diff(len_b) > max_threshold {
         return None;
     }
 
     if len_a == 0 {
-        return if len_b <= max_threshold { Some(len_b) } else { None };
+        return (len_b <= max_threshold).then_some(len_b);
     }
     if len_b == 0 {
-        return if len_a <= max_threshold { Some(len_a) } else { None };
+        return (len_a <= max_threshold).then_some(len_a);
     }
 
-    // Dynamic programming matrix with transposition support
+    // 2D DP matrix with adjacent transposition tracking (Damerau 1964)
     let max_dist = len_a + len_b;
     let mut h = vec![vec![0usize; len_b + 2]; len_a + 2];
 
@@ -36,6 +34,7 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
         h[1][j + 1] = j;
     }
 
+    // Last seen character indices in alphabet
     let mut da = std::collections::HashMap::new();
 
     for i in 1..=len_a {
@@ -47,12 +46,10 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
             let i1 = *da.get(&char_b).unwrap_or(&0);
             let j1 = db;
 
-            let cost = if char_a == char_b {
+            let cost = usize::from(char_a != char_b);
+            if cost == 0 {
                 db = j;
-                0
-            } else {
-                1
-            };
+            }
 
             let deletion = h[i][j + 1] + 1;
             let insertion = h[i + 1][j] + 1;
@@ -70,14 +67,10 @@ pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> 
     }
 
     let dist = h[len_a + 1][len_b + 1];
-    if dist <= max_threshold {
-        Some(dist)
-    } else {
-        None
-    }
+    (dist <= max_threshold).then_some(dist)
 }
 
-/// Computes the exact Damerau-Levenshtein distance without threshold bounds.
+/// Unbounded Damerau-Levenshtein distance.
 pub fn damerau_levenshtein(a: &str, b: &str) -> usize {
     let max_len = a.chars().count() + b.chars().count();
     damerau_levenshtein_threshold(a, b, max_len).unwrap_or(max_len)
@@ -116,7 +109,6 @@ mod tests {
         assert_eq!(damerau_levenshtein("日本語", "日本語"), 0);
     }
 
-    // Property-Based Verification & Mathematical Oracles
     proptest! {
         #[test]
         fn prop_distance_identity(s in "\\PC{0,30}") {

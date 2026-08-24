@@ -1,32 +1,20 @@
-﻿//! High-performance Radix / Prefix Trie for dictionary storage and candidate lookup.
+﻿use std::collections::BTreeMap;
 
-use std::collections::BTreeMap;
-
-/// An individual node in the Radix Trie.
 #[derive(Debug, Clone, Default)]
 pub struct TrieNode {
-    /// True if this node represents the end of a valid word.
     pub is_terminal: bool,
-    /// The frequency score / weight of the word.
     pub frequency: u32,
-    /// The full word stored at this terminal node.
     pub word: Option<String>,
-    /// Child transitions keyed by unicode character.
     pub children: BTreeMap<char, TrieNode>,
 }
 
-/// A fast, memory-efficient Radix / Prefix Trie.
 #[derive(Debug, Clone, Default)]
 pub struct RadixTrie {
-    /// The root node of the trie.
     pub root: TrieNode,
-    /// Total number of unique terminal words stored in the trie.
     pub size: usize,
 }
 
 impl RadixTrie {
-    /// Creates a new, empty `RadixTrie`.
-    #[must_use]
     pub fn new() -> Self {
         Self {
             root: TrieNode::default(),
@@ -34,7 +22,6 @@ impl RadixTrie {
         }
     }
 
-    /// Inserts a word with an associated frequency into the Trie.
     pub fn insert(&mut self, word: &str, frequency: u32) {
         if word.is_empty() {
             return;
@@ -53,16 +40,12 @@ impl RadixTrie {
         current.word = Some(word.to_string());
     }
 
-    /// Checks if an exact word exists in the Trie.
-    #[must_use]
     pub fn contains(&self, word: &str) -> bool {
         self.get_terminal_node(word)
             .map(|n| n.is_terminal)
             .unwrap_or(false)
     }
 
-    /// Returns the frequency of a word if it exists.
-    #[must_use]
     pub fn get_frequency(&self, word: &str) -> Option<u32> {
         self.get_terminal_node(word).and_then(|n| {
             if n.is_terminal {
@@ -81,8 +64,7 @@ impl RadixTrie {
         Some(current)
     }
 
-    /// Searches for words starting with `prefix`, ordered by frequency descending.
-    #[must_use]
+    /// Prefix completion ordered by frequency descending, then alphabetical.
     pub fn prefix_search(&self, prefix: &str, limit: usize) -> Vec<(String, u32)> {
         let mut results = Vec::new();
         if let Some(node) = self.get_terminal_node(prefix) {
@@ -105,8 +87,6 @@ impl RadixTrie {
     }
 
     /// Fuzzy search matching candidate words within `max_distance` edit distance.
-    /// Traverses the trie directly using branch-and-bound on the DP row to avoid brute force.
-    #[must_use]
     pub fn fuzzy_search(
         &self,
         query: &str,
@@ -117,7 +97,6 @@ impl RadixTrie {
         let query_len = query_chars.len();
         let mut results = Vec::new();
 
-        // Initial row: 0, 1, 2, 3, ...
         let initial_row: Vec<usize> = (0..=query_len).collect();
 
         for (&ch, child) in &self.root.children {
@@ -131,7 +110,6 @@ impl RadixTrie {
             );
         }
 
-        // Rank by distance ascending, then frequency descending, then alphabetical
         results.sort_by(|a, b| {
             a.distance
                 .cmp(&b.distance)
@@ -164,7 +142,6 @@ impl RadixTrie {
             current_row[j] = std::cmp::min(std::cmp::min(deletion, insertion), substitution);
         }
 
-        // If this node is a complete word and the final cell is within max_distance
         if node.is_terminal && current_row[query.len()] <= max_distance {
             if let Some(ref word) = node.word {
                 out.push(FuzzyCandidate {
@@ -175,7 +152,6 @@ impl RadixTrie {
             }
         }
 
-        // Branch and bound: continue if any entry in current_row <= max_distance
         let min_row_val = *current_row.iter().min().unwrap_or(&usize::MAX);
         if min_row_val <= max_distance {
             for (&next_ch, child) in &node.children {
@@ -192,14 +168,10 @@ impl RadixTrie {
     }
 }
 
-/// A candidate word returned from a fuzzy search.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuzzyCandidate {
-    /// The matching candidate word.
     pub word: String,
-    /// The edit distance from the query string.
     pub distance: usize,
-    /// The frequency weight of the word in the dictionary.
     pub frequency: u32,
 }
 
@@ -254,7 +226,6 @@ mod tests {
         assert!(words.contains(&"hello".to_string()) || words.contains(&"hell".to_string()));
     }
 
-    // Property-Based Verification & Differential Oracles
     proptest! {
         #[test]
         fn prop_trie_insert_and_contains_oracle(

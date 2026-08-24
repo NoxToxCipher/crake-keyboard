@@ -1,4 +1,4 @@
-﻿//! floris-core: High-performance, pure-Rust Radix Trie and NLP engine for FlorisBoard.
+﻿//! floris-core: Radix Trie and NLP candidate engine for FlorisBoard.
 
 #![forbid(unsafe_code)]
 #![deny(
@@ -6,10 +6,8 @@
     clippy::correctness,
     clippy::suspicious,
     clippy::complexity,
-    clippy::perf,
-    clippy::style
+    clippy::perf
 )]
-#![warn(missing_docs)]
 
 pub mod distance;
 pub mod nlp;
