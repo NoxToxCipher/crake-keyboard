@@ -1,0 +1,22 @@
+﻿[package]
+name = "floris-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-performance, pure-Rust Radix Trie and NLP engine for FlorisBoard"
+
+[lib]
+crate-type = ["lib", "cdylib", "staticlib"]
+name = "floris_core"
+
+[dependencies]
+unicode-segmentation = "1.11"
+thiserror = "1.0"
+uniffi = { version = "0.28", features = ["cli"], optional = true }
+
+[features]
+default = []
+uniffi-bindings = ["dep:uniffi"]
+
+[dev-dependencies]
