@@ -17,7 +17,7 @@
 package org.florisboard.libnative
 
 /**
- * JNI interface to native floris-core NLP engine.
+ * JNI interface to native floris-core NLP engine and crake-privacy engine.
  */
 object FlorisNative {
     private var isLoaded = false
@@ -43,9 +43,25 @@ object FlorisNative {
         return nativeNlpSuggest(query, limit).toList()
     }
 
+    fun sanitizeUrl(rawUrl: String): String {
+        if (!isLoaded || rawUrl.isBlank()) return rawUrl
+        return nativeSanitizeUrl(rawUrl)
+    }
+
+    fun sanitizeText(rawText: String): String {
+        if (!isLoaded || rawText.isBlank()) return rawText
+        return nativeSanitizeText(rawText)
+    }
+
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
     @JvmStatic
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>
+
+    @JvmStatic
+    private external fun nativeSanitizeUrl(rawUrl: String): String
+
+    @JvmStatic
+    private external fun nativeSanitizeText(rawText: String): String
 }

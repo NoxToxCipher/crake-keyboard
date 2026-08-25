@@ -26,8 +26,14 @@ import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.lib.devtools.flogDebug
+import dev.patrickgold.florisboard.lib.devtools.flogInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import org.florisboard.lib.android.readText
+import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.libnative.FlorisNative
 
 class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider {
@@ -36,15 +42,36 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     private val appContext by context.appContext()
+    private val wordData = guardedByLock { mutableMapOf<String, Int>() }
+    private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
 
     override val providerId = ProviderId
 
+    override val forcesSuggestionOn: Boolean
+        get() = true
+
     override suspend fun create() {
-        // Native core is initialized automatically by FlorisNative
+        // Native core is initialized automatically
     }
 
     override suspend fun preload(subtype: Subtype) = withContext(Dispatchers.IO) {
-        // Preload standard words into native Trie if needed
+        wordData.withLock { words ->
+            if (words.isEmpty()) {
+                try {
+                    val rawData = appContext.assets.readText("ime/dict/data.json")
+                    val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
+                    words.putAll(jsonData)
+
+                    // Populate native Rust Trie with dictionary words
+                    for ((word, freq) in jsonData) {
+                        FlorisNative.insertWord(word, freq)
+                    }
+                    flogInfo { "Loaded ${jsonData.size} dictionary words into native Rust Trie" }
+                } catch (e: Exception) {
+                    flogDebug { "Error loading dictionary: ${e.message}" }
+                }
+            }
+        }
     }
 
     override suspend fun spell(
@@ -74,7 +101,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
-        val query = content.composingText.toString().ifBlank { return emptyList() }
+        val query = content.composingText.toString().trim()
+        if (query.isBlank()) return emptyList()
         if (!FlorisNative.isAvailable()) return emptyList()
 
         val rawCandidates = FlorisNative.suggest(query, maxCandidateCount)
@@ -106,14 +134,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun getListOfWords(subtype: Subtype): List<String> {
-        return emptyList()
+        return wordData.withLock { it.keys.toList() }
     }
 
     override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-        return 1.0
+        return wordData.withLock { it.getOrDefault(word, 0) / 255.0 }
     }
 
     override suspend fun destroy() {
-        // Native cleanup handled on process teardown
     }
 }
