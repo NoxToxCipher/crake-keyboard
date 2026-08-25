@@ -1,7 +1,8 @@
-﻿use crate::trie::RadixTrie;
+use crate::trie::RadixTrie;
 
 /// Comprehensive lexicon of common English contractions.
 pub const CONTRACTIONS: &[(&str, &str)] = &[
+    ("aint", "ain't"),
     ("dont", "don't"),
     ("cant", "can't"),
     ("wont", "won't"),
@@ -18,7 +19,14 @@ pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("wouldnt", "wouldn't"),
     ("mustnt", "mustn't"),
     ("neednt", "needn't"),
+    ("mightnt", "mightn't"),
+    ("oughtnt", "oughtn't"),
     ("darent", "daren't"),
+    ("couldve", "could've"),
+    ("shouldve", "should've"),
+    ("wouldve", "would've"),
+    ("mightve", "might've"),
+    ("mustve", "must've"),
     ("im", "I'm"),
     ("ive", "I've"),
     ("ill", "I'll"),
@@ -45,29 +53,54 @@ pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("whats", "what's"),
     ("whatll", "what'll"),
     ("whatd", "what'd"),
+    ("whatre", "what're"),
+    ("whatve", "what've"),
     ("thats", "that's"),
     ("thatll", "that'll"),
     ("thatd", "that'd"),
     ("theres", "there's"),
     ("therell", "there'll"),
     ("thered", "there'd"),
+    ("therere", "there're"),
     ("heres", "here's"),
     ("wheres", "where's"),
     ("wherell", "where'll"),
     ("whered", "where'd"),
+    ("wherere", "where're"),
+    ("whereve", "where've"),
     ("hows", "how's"),
     ("howll", "how'll"),
     ("howd", "how'd"),
+    ("howre", "how're"),
+    ("howve", "how've"),
     ("whos", "who's"),
     ("wholl", "who'll"),
     ("whod", "who'd"),
+    ("whore", "who're"),
+    ("whove", "who've"),
     ("whys", "why's"),
     ("whyll", "why'll"),
     ("whyd", "why'd"),
+    ("whyre", "why're"),
+    ("whyve", "why've"),
     ("lets", "let's"),
+    ("yall", "y'all"),
+    ("yalld", "y'all'd"),
+    ("yallve", "y'all've"),
+    ("somethings", "something's"),
+    ("everythings", "everything's"),
+    ("nothings", "nothing's"),
+    ("someones", "someone's"),
+    ("everyones", "everyone's"),
+    ("anyones", "anyone's"),
+    ("somebodys", "somebody's"),
+    ("everybodys", "everybody's"),
+    ("anybodys", "anybody's"),
     ("cmon", "c'mon"),
     ("maam", "ma'am"),
     ("oclock", "o'clock"),
+    ("tis", "'tis"),
+    ("twas", "'twas"),
 ];
 
 /// Known common English typographical misspellings mapped to canonical corrections.
@@ -283,6 +316,9 @@ mod tests {
         ]);
 
         let test_cases = &[
+            ("aint", "ain't", true),
+            ("Aint", "Ain't", true),
+            ("AINT", "AIN'T", true),
             ("dont", "don't", true),
             ("Dont", "Don't", true),
             ("DONT", "DON'T", true),
@@ -292,6 +328,8 @@ mod tests {
             ("im", "I'm", true),
             ("youre", "you're", true),
             ("theyre", "they're", true),
+            ("yall", "y'all", true),
+            ("couldve", "could've", true),
         ];
 
         for &(input, expected, should_auto) in test_cases {
