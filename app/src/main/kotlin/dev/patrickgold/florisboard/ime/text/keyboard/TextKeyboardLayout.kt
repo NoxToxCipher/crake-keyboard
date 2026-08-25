@@ -324,6 +324,34 @@ fun TextKeyboardLayout(
                 emptyMap()
             }
         }
+        // Authentic BlackBerry 10 Metallic Fret Lines (Row Dividers)
+        if (keyboard.mode == KeyboardMode.CHARACTERS) {
+            val rowTops = remember(keyboard) {
+                keyboard.keys().asSequence().map { it.visibleBounds.top.toInt() }.distinct().sorted().toList()
+            }
+            for (rowTop in rowTops) {
+                if (rowTop > 5) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.5.dp)
+                            .absoluteOffset { IntOffset(0, rowTop - 1) }
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0x2294A3B8),
+                                        Color(0x55CBD5E1),
+                                        Color(0x88E2E8F0),
+                                        Color(0x55CBD5E1),
+                                        Color(0x2294A3B8),
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
+        }
+
         for (textKey in keyboard.keys()) {
             val keyLabel = evaluator.computeLabel(textKey.computedData)?.lowercase() ?: ""
             val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
@@ -345,12 +373,12 @@ fun TextKeyboardLayout(
                 Box(
                     modifier = Modifier
                         .requiredSize(
-                            width = (textKey.visibleBounds.width * 1.3f).toDp(),
+                            width = (textKey.visibleBounds.width * 1.35f).toDp(),
                             height = 24.dp,
                         )
                         .absoluteOffset {
                             IntOffset(
-                                x = (textKey.visibleBounds.center.x - (textKey.visibleBounds.width * 0.65f)).toInt(),
+                                x = (textKey.visibleBounds.center.x - (textKey.visibleBounds.width * 0.675f)).toInt(),
                                 y = (textKey.visibleBounds.top - 12.dp.toPx()).toInt(),
                             )
                         },
@@ -359,15 +387,25 @@ fun TextKeyboardLayout(
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .background(
-                                color = androidx.compose.ui.graphics.Color(0xEE0D1B2A),
+                                color = androidx.compose.ui.graphics.Color(0xF2091428),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
                             )
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .border(
+                                width = 1.dp,
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.6f),
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.2f),
+                                    )
+                                ),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
                     ) {
                         androidx.compose.material3.Text(
                             text = flickWord,
-                            fontSize = 11.5.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                             color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
                             maxLines = 1,
                             softWrap = false,
