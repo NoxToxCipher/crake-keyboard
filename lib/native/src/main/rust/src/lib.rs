@@ -103,3 +103,25 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeSanitiz
     }
     raw_text.into_raw()
 }
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspectSecret(
+    mut env: JNIEnv,
+    _class: JClass,
+    raw_text: JString,
+) -> jstring {
+    if let Ok(s) = env.get_string(&raw_text) {
+        let res = crake_privacy::inspect_text(s.to_str().unwrap_or(""));
+        let warning = res.warning_message.unwrap_or_default();
+        let payload = format!(
+            "{}|{}|{}",
+            if res.is_secret_detected { "1" } else { "0" },
+            warning.replace('|', "_"),
+            res.redacted_text.replace('|', "_")
+        );
+        if let Ok(out) = env.new_string(&payload) {
+            return out.into_raw();
+        }
+    }
+    env.new_string("0||").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
+}

@@ -31,10 +31,20 @@ object FlorisNative {
         }
     }
 
+    data class ShieldInspectionResult(
+        val isSecretDetected: Boolean,
+        val warningMessage: String?,
+        val redactedText: String,
+    )
+
     fun isAvailable(): Boolean = isLoaded
 
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
+        // Never learn text if it is detected as a secret/mnemonic
+        val inspection = inspectSecret(word)
+        if (inspection.isSecretDetected) return
+
         nativeNlpInsertWord(word, frequency)
     }
 
@@ -53,6 +63,18 @@ object FlorisNative {
         return nativeSanitizeText(rawText)
     }
 
+    fun inspectSecret(rawText: String): ShieldInspectionResult {
+        if (!isLoaded || rawText.isBlank()) {
+            return ShieldInspectionResult(false, null, rawText)
+        }
+        val raw = nativeInspectSecret(rawText)
+        val parts = raw.split("|", limit = 3)
+        val isDetected = parts.getOrNull(0) == "1"
+        val warning = parts.getOrNull(1)?.takeIf { it.isNotEmpty() }
+        val redacted = parts.getOrNull(2) ?: rawText
+        return ShieldInspectionResult(isDetected, warning, redacted)
+    }
+
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
@@ -64,4 +86,7 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeSanitizeText(rawText: String): String
+
+    @JvmStatic
+    private external fun nativeInspectSecret(rawText: String): String
 }
