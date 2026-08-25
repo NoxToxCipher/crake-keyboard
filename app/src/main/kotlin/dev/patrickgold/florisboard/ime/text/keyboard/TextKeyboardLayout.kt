@@ -21,6 +21,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.view.MotionEvent
 import android.view.animation.AccelerateInterpolator
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,8 +29,10 @@ import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +51,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -323,12 +327,54 @@ fun TextKeyboardLayout(
         for (textKey in keyboard.keys()) {
             val keyLabel = evaluator.computeLabel(textKey.computedData)?.lowercase() ?: ""
             val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
-            val flickWord = if (flickPredictionsEnabled) flickPredictions[charCode] else null
+            val hasFlick = flickPredictions.containsKey(charCode)
             TextKeyButton(
                 textKey, evaluator, desiredKey,
                 debugShowTouchBoundaries,
-                flickWord,
+                hideHint = hasFlick,
             )
+        }
+
+        // Authentic BlackBerry 10 Floating Fret Word Overlay Layer
+        if (flickPredictionsEnabled && flickPredictions.isNotEmpty() && keyboard.mode == KeyboardMode.CHARACTERS) {
+            for (textKey in keyboard.keys()) {
+                val keyLabel = evaluator.computeLabel(textKey.computedData)?.lowercase() ?: ""
+                val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
+                val flickWord = flickPredictions[charCode] ?: continue
+
+                Box(
+                    modifier = Modifier
+                        .requiredSize(
+                            width = (textKey.visibleBounds.width * 1.3f).toDp(),
+                            height = 24.dp,
+                        )
+                        .absoluteOffset {
+                            IntOffset(
+                                x = (textKey.visibleBounds.center.x - (textKey.visibleBounds.width * 0.65f)).toInt(),
+                                y = (textKey.visibleBounds.top - 12.dp.toPx()).toInt(),
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .background(
+                                color = androidx.compose.ui.graphics.Color(0xEE0D1B2A),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = flickWord,
+                            fontSize = 11.5.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                }
+            }
         }
 
         popupUiController.RenderPopups()
@@ -349,7 +395,7 @@ private fun TextKeyButton(
     evaluator: ComputingEvaluator,
     desiredKey: TextKey,
     debugShowTouchBoundaries: Boolean,
-    flickWord: String? = null,
+    hideHint: Boolean = false,
 ) = with(LocalDensity.current) {
     val attributes = mapOf(
         FlorisImeUi.Attr.Code to key.computedData.code,
@@ -373,7 +419,6 @@ private fun TextKeyButton(
             .absoluteOffset { key.visibleBounds.topLeft.toIntOffset() },
     ) {
         val isTelPadKey = key.computedData.type == KeyType.NUMERIC && evaluator.keyboard.mode == KeyboardMode.PHONE
-        val hasFlick = flickWord != null
 
         key.label?.let { label ->
             var customLabel = label
@@ -386,21 +431,14 @@ private fun TextKeyButton(
                     SpaceBarMode.SPACE_BAR_KEY -> customLabel = "␣"
                 }
             }
-            val letterAlignment = if (isTelPadKey) {
-                BiasAlignment(-0.5f, 0f)
-            } else if (hasFlick) {
-                BiasAlignment(0f, 0.45f)
-            } else {
-                Alignment.Center
-            }
             SnyggText(
                 modifier = Modifier
                     .wrapContentSize()
-                    .align(letterAlignment),
+                    .align(if (isTelPadKey) BiasAlignment(-0.5f, 0f) else Alignment.Center),
                 text = customLabel,
             )
         }
-        if (!hasFlick) {
+        if (!hideHint) {
             key.hintedLabel?.let { hintedLabel ->
                 SnyggText(
                     elementName = FlorisImeUi.KeyHint.elementName,
@@ -418,25 +456,6 @@ private fun TextKeyButton(
                 modifier = Modifier.align(Alignment.Center),
                 imageVector = imageVector,
                 contentDescription = null,
-            )
-        }
-        if (flickWord != null) {
-            val fontSize = when {
-                flickWord.length <= 4 -> 11.5.sp
-                flickWord.length <= 6 -> 10.sp
-                else -> 8.5.sp
-            }
-            androidx.compose.material3.Text(
-                text = flickWord,
-                fontSize = fontSize,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
-                maxLines = 1,
-                softWrap = false,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = (-3).dp),
             )
         }
     }
