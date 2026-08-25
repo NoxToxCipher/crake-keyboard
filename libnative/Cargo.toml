@@ -1,4 +1,4 @@
-﻿[workspace]
+[workspace]
 members = [
     "crates/floris-core",
     "crates/crake-privacy",
@@ -19,6 +19,7 @@ chacha20poly1305 = { version = "0.10", features = ["alloc"] }
 x25519-dalek = { version = "2.0", features = ["static_secrets"] }
 sha2 = "0.10"
 rand = "0.8"
+boreal = { version = "0.9", default-features = false }
 proptest = "1.5"
 
 [profile.release]

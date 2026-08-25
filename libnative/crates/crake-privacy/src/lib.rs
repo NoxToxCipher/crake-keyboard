@@ -10,6 +10,7 @@
     clippy::perf
 )]
 
+pub mod boreal_guard;
 pub mod ffi_guard;
 pub mod intrusion;
 pub mod profile;
@@ -18,6 +19,7 @@ pub mod secret_shield;
 pub mod sync_bundle;
 pub mod zeroize_buffer;
 
+pub use boreal_guard::{BorealScanner, ThreatMatch, DEFAULT_YARA_RULES};
 pub use ffi_guard::{catch_ffi_panic, checked_slice, FfiError};
 pub use intrusion::{open, parse_sealed_records, seal, IntrusionRecord};
 pub use profile::{ProfileKind, ProfileManager};

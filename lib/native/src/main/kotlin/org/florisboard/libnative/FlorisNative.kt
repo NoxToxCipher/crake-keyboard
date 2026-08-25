@@ -17,7 +17,7 @@
 package org.florisboard.libnative
 
 /**
- * JNI interface to native floris-core NLP engine and crake-privacy engine.
+ * JNI interface to native floris-core NLP engine, crake-privacy Secret Shield, and Boreal YARA scanner.
  */
 object FlorisNative {
     private var isLoaded = false
@@ -37,11 +37,17 @@ object FlorisNative {
         val redactedText: String,
     )
 
+    data class ThreatResult(
+        val ruleName: String,
+        val category: String,
+        val severity: String,
+    )
+
     fun isAvailable(): Boolean = isLoaded
 
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
-        // Never learn text if it is detected as a secret/mnemonic
+        // Never learn text if it is detected as a secret/mnemonic or threat
         val inspection = inspectSecret(word)
         if (inspection.isSecretDetected) return
 
@@ -75,6 +81,19 @@ object FlorisNative {
         return ShieldInspectionResult(isDetected, warning, redacted)
     }
 
+    fun scanThreats(rawText: String): List<ThreatResult> {
+        if (!isLoaded || rawText.isBlank()) return emptyList()
+        val rawMatches = nativeScanThreats(rawText)
+        return rawMatches.mapNotNull { entry ->
+            val parts = entry.split(":", limit = 3)
+            if (parts.size == 3) {
+                ThreatResult(parts[0], parts[1], parts[2])
+            } else {
+                null
+            }
+        }
+    }
+
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
@@ -89,4 +108,7 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeInspectSecret(rawText: String): String
+
+    @JvmStatic
+    private external fun nativeScanThreats(rawText: String): Array<String>
 }

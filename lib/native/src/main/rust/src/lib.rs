@@ -6,6 +6,8 @@ use once_cell::sync::Lazy;
 use std::sync::RwLock;
 
 static NLP_ENGINE: Lazy<RwLock<NlpEngine>> = Lazy::new(|| RwLock::new(NlpEngine::new()));
+static BOREAL_SCANNER: Lazy<RwLock<crake_privacy::BorealScanner>> =
+    Lazy::new(|| RwLock::new(crake_privacy::BorealScanner::new().expect("Failed to init Boreal")));
 
 #[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInsertWord(
@@ -124,4 +126,55 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspect
         }
     }
     env.new_string("0||").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeScanThreats(
+    mut env: JNIEnv,
+    _class: JClass,
+    raw_text: JString,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let text_str = match env.get_string(&raw_text) {
+        Ok(s) => match s.to_str() {
+            Ok(v) => v.to_string(),
+            Err(_) => return empty_array,
+        },
+        Err(_) => return empty_array,
+    };
+
+    let matches = {
+        if let Ok(scanner) = BOREAL_SCANNER.read() {
+            scanner.scan_text(&text_str)
+        } else {
+            Vec::new()
+        }
+    };
+
+    let string_class = match env.find_class("java/lang/String") {
+        Ok(cls) => cls,
+        Err(_) => return empty_array,
+    };
+
+    let result_array = match env.new_object_array(
+        matches.len() as jint,
+        string_class,
+        JString::default(),
+    ) {
+        Ok(arr) => arr,
+        Err(_) => return empty_array,
+    };
+
+    for (i, m) in matches.iter().enumerate() {
+        let serialized = format!("{}:{}:{}", m.rule_name, m.category, m.severity);
+        if let Ok(jstr) = env.new_string(&serialized) {
+            let _ = env.set_object_array_element(&result_array, i as jint, jstr);
+        }
+    }
+
+    result_array.into_raw()
 }
