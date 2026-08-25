@@ -1253,10 +1253,13 @@ private class TextKeyboardLayoutController(
         var prevX = gestureData.lastOrNull()?.first?.x ?: 0.0f
         var prevY = gestureData.lastOrNull()?.first?.y ?: 0.0f
         val time = System.currentTimeMillis()
+        val trailDuration = prefs.glide.trailDuration.get().coerceAtLeast(100)
 
         outer@ for (i in gestureData.size - 1 downTo 1) {
-            if (time - gestureData[i - 1].second > prefs.glide.trailDuration.get()) break
+            val age = time - gestureData[i - 1].second
+            if (age > trailDuration) break
 
+            val alphaFactor = ((trailDuration - age).toFloat() / trailDuration).coerceIn(0f, 1f)
             val dx = prevX - gestureData[i - 1].first.x
             val dy = prevY - gestureData[i - 1].first.y
             val dist = sqrt(dx * dx + dy * dy)
@@ -1268,7 +1271,27 @@ private class TextKeyboardLayoutController(
                     gestureData[i].first.x * (1 - j.toFloat() / numPoints) + gestureData[i - 1].first.x * (j.toFloat() / numPoints)
                 val intermediateY =
                     gestureData[i].first.y * (1 - j.toFloat() / numPoints) + gestureData[i - 1].first.y * (j.toFloat() / numPoints)
-                drawScope.drawCircle(color, radius, center = Offset(intermediateX, intermediateY))
+                val centerOffset = Offset(intermediateX, intermediateY)
+
+                // 1. Soft Outer Neon Glow Halo
+                drawScope.drawCircle(
+                    color = color.copy(alpha = 0.22f * alphaFactor),
+                    radius = radius * 1.85f,
+                    center = centerOffset,
+                )
+                // 2. Main Electric Cyan Ribbon Body
+                drawScope.drawCircle(
+                    color = color.copy(alpha = 0.85f * alphaFactor),
+                    radius = radius,
+                    center = centerOffset,
+                )
+                // 3. Specular White Center Core
+                drawScope.drawCircle(
+                    color = Color.White.copy(alpha = 0.65f * alphaFactor),
+                    radius = radius * 0.38f,
+                    center = centerOffset,
+                )
+
                 drawnPoints += 1
                 prevX = intermediateX
                 prevY = intermediateY
