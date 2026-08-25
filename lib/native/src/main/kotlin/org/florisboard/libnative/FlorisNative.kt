@@ -49,6 +49,11 @@ object FlorisNative {
         val cleanedText: String,
     )
 
+    data class NativeCandidate(
+        val text: String,
+        val isAutocorrect: Boolean,
+    )
+
     fun isAvailable(): Boolean = isLoaded
 
     fun insertWord(word: String, frequency: Int) {
@@ -60,9 +65,19 @@ object FlorisNative {
         nativeNlpInsertWord(word, frequency)
     }
 
-    fun suggest(query: String, limit: Int = 3): List<String> {
+    fun suggest(query: String, limit: Int = 3): List<NativeCandidate> {
         if (!isLoaded || query.isBlank()) return emptyList()
-        return nativeNlpSuggest(query, limit).toList()
+        val rawMatches = nativeNlpSuggest(query, limit)
+        return rawMatches.map { raw ->
+            val lastColon = raw.lastIndexOf(':')
+            if (lastColon > 0) {
+                val word = raw.substring(0, lastColon)
+                val isAuto = raw.substring(lastColon + 1) == "1"
+                NativeCandidate(word, isAuto)
+            } else {
+                NativeCandidate(raw, false)
+            }
+        }
     }
 
     fun sanitizeUrl(rawUrl: String): String {

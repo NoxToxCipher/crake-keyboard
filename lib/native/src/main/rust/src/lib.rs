@@ -68,7 +68,8 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpSugg
     };
 
     for (i, cand) in candidates.iter().enumerate() {
-        if let Ok(jstr) = env.new_string(cand) {
+        let serialized = format!("{}:{}", cand.word, if cand.is_autocorrect { 1 } else { 0 });
+        if let Ok(jstr) = env.new_string(&serialized) {
             let _ = env.set_object_array_element(&result_array, i as jint, jstr);
         }
     }

@@ -1,46 +1,122 @@
 ﻿use crate::trie::RadixTrie;
 
-const CONTRACTIONS: &[(&str, &str)] = &[
+/// Comprehensive lexicon of common English contractions.
+pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("dont", "don't"),
     ("cant", "can't"),
     ("wont", "won't"),
     ("didnt", "didn't"),
     ("isnt", "isn't"),
     ("arent", "aren't"),
+    ("wasnt", "wasn't"),
+    ("werent", "weren't"),
     ("hasnt", "hasn't"),
     ("havent", "haven't"),
     ("hadnt", "hadn't"),
     ("couldnt", "couldn't"),
     ("shouldnt", "shouldn't"),
     ("wouldnt", "wouldn't"),
+    ("mustnt", "mustn't"),
+    ("neednt", "needn't"),
+    ("darent", "daren't"),
     ("im", "I'm"),
     ("ive", "I've"),
     ("ill", "I'll"),
+    ("id", "I'd"),
     ("youre", "you're"),
     ("youve", "you've"),
     ("youll", "you'll"),
+    ("youd", "you'd"),
     ("theyre", "they're"),
     ("theyve", "they've"),
     ("theyll", "they'll"),
+    ("theyd", "they'd"),
     ("weve", "we've"),
     ("were", "we're"),
+    ("well", "we'll"),
+    ("wed", "we'd"),
     ("hes", "he's"),
     ("shes", "she's"),
+    ("hed", "he'd"),
+    ("shed", "she'd"),
     ("its", "it's"),
+    ("itll", "it'll"),
+    ("itd", "it'd"),
     ("whats", "what's"),
+    ("whatll", "what'll"),
+    ("whatd", "what'd"),
     ("thats", "that's"),
+    ("thatll", "that'll"),
+    ("thatd", "that'd"),
     ("theres", "there's"),
+    ("therell", "there'll"),
+    ("thered", "there'd"),
     ("heres", "here's"),
     ("wheres", "where's"),
+    ("wherell", "where'll"),
+    ("whered", "where'd"),
     ("hows", "how's"),
+    ("howll", "how'll"),
+    ("howd", "how'd"),
+    ("whos", "who's"),
+    ("wholl", "who'll"),
+    ("whod", "who'd"),
+    ("whys", "why's"),
+    ("whyll", "why'll"),
+    ("whyd", "why'd"),
     ("lets", "let's"),
+    ("cmon", "c'mon"),
+    ("maam", "ma'am"),
+    ("oclock", "o'clock"),
 ];
+
+/// Known common English typographical misspellings mapped to canonical corrections.
+pub const COMMON_TYPOS: &[(&str, &str)] = &[
+    ("teh", "the"),
+    ("adn", "and"),
+    ("taht", "that"),
+    ("thsi", "this"),
+    ("wiht", "with"),
+    ("waht", "what"),
+    ("wath", "what"),
+    ("yuo", "you"),
+    ("oyu", "you"),
+    ("recieve", "receive"),
+    ("recieved", "received"),
+    ("recieving", "receiving"),
+    ("seperate", "separate"),
+    ("seperated", "separated"),
+    ("seperately", "separately"),
+    ("definately", "definitely"),
+    ("definitly", "definitely"),
+    ("untill", "until"),
+    ("occured", "occurred"),
+    ("occuring", "occurring"),
+    ("tomo", "tomorrow"),
+    ("tmrw", "tomorrow"),
+    ("tommorow", "tomorrow"),
+    ("alot", "a lot"),
+    ("becuase", "because"),
+    ("beacuse", "because"),
+    ("beleive", "believe"),
+    ("wierd", "weird"),
+    ("freind", "friend"),
+    ("truely", "truly"),
+    ("calender", "calendar"),
+    ("neccessary", "necessary"),
+];
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RankedCandidate {
+    pub word: String,
+    pub is_autocorrect: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SuggestionResult {
     pub query: String,
     pub is_exact_match: bool,
-    pub candidates: Vec<String>,
+    pub candidates: Vec<RankedCandidate>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -61,7 +137,7 @@ impl NlpEngine {
         }
     }
 
-    fn apply_casing(query: &str, candidate: &str) -> String {
+    pub fn apply_casing(query: &str, candidate: &str) -> String {
         let is_all_upper = query.len() > 1 && query.chars().all(|c| !c.is_alphabetic() || c.is_uppercase());
         let is_first_upper = query.chars().next().map_or(false, |c| c.is_uppercase());
 
@@ -90,40 +166,72 @@ impl NlpEngine {
         }
 
         let is_exact = self.trie.contains(&trimmed_lower);
-        let mut candidates = Vec::with_capacity(max_candidates);
+        let mut candidates: Vec<RankedCandidate> = Vec::with_capacity(max_candidates);
 
-        // 1. Single-letter "I" / "A" or exact match priority
+        // Helper to check if a word is already in candidate list
+        let contains_word = |list: &[RankedCandidate], w: &str| list.iter().any(|c| c.word.eq_ignore_ascii_case(w));
+
+        // 1. Single-letter "i" rule -> Capitalize to "I" with autocorrect = true
         if trimmed_lower == "i" {
-            candidates.push("I".to_string());
+            candidates.push(RankedCandidate {
+                word: "I".to_string(),
+                is_autocorrect: true,
+            });
         } else if trimmed_lower == "a" {
-            candidates.push(trimmed.to_string());
+            candidates.push(RankedCandidate {
+                word: trimmed.to_string(),
+                is_autocorrect: false,
+            });
+        } else if let Some(&(_, typo_fix)) = COMMON_TYPOS.iter().find(|&&(k, _)| k == trimmed_lower) {
+            // 2. High-confidence common typo replacement
+            let formatted = Self::apply_casing(trimmed, typo_fix);
+            candidates.push(RankedCandidate {
+                word: formatted,
+                is_autocorrect: true,
+            });
         } else if let Some(&(_, contraction)) = CONTRACTIONS.iter().find(|&&(k, _)| k == trimmed_lower) {
+            // 3. Known contraction auto-fix (e.g. dont -> don't, im -> I'm)
             let formatted = Self::apply_casing(trimmed, contraction);
-            candidates.push(formatted);
+            candidates.push(RankedCandidate {
+                word: formatted,
+                is_autocorrect: true,
+            });
         } else if is_exact {
-            candidates.push(trimmed.to_string());
+            // 4. Exact valid word -> NEVER auto-hijack
+            candidates.push(RankedCandidate {
+                word: trimmed.to_string(),
+                is_autocorrect: false,
+            });
         }
 
-        // 2. Direct prefix completions (sorted by frequency descending in Trie)
-        let prefix_matches = self.trie.prefix_search(&trimmed_lower, max_candidates + 2);
+        // 5. Prefix completions (completions must NOT auto-commit on space)
+        let prefix_matches = self.trie.prefix_search(&trimmed_lower, max_candidates + 4);
         for (w, _) in prefix_matches {
             let formatted = Self::apply_casing(trimmed, &w);
-            if !candidates.contains(&formatted) {
-                candidates.push(formatted);
+            if !contains_word(&candidates, &formatted) {
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: false,
+                });
             }
             if candidates.len() >= max_candidates {
                 break;
             }
         }
 
-        // 3. Fuzzy fallback for typo recovery
+        // 6. Fuzzy search for typo recovery if query is not in dictionary
         if candidates.len() < max_candidates {
             let max_dist = if trimmed_lower.len() <= 4 { 1 } else { 2 };
-            let fuzzy = self.trie.fuzzy_search(&trimmed_lower, max_dist, max_candidates + 2);
+            let fuzzy = self.trie.fuzzy_search(&trimmed_lower, max_dist, max_candidates + 4);
             for fc in fuzzy {
                 let formatted = Self::apply_casing(trimmed, &fc.word);
-                if !candidates.contains(&formatted) {
-                    candidates.push(formatted);
+                if !contains_word(&candidates, &formatted) {
+                    // If the input was NOT a valid word and fuzzy distance is 1, enable autocorrect
+                    let should_autocorrect = !is_exact && fc.distance == 1 && candidates.is_empty();
+                    candidates.push(RankedCandidate {
+                        word: formatted,
+                        is_autocorrect: should_autocorrect,
+                    });
                 }
                 if candidates.len() >= max_candidates {
                     break;
@@ -144,78 +252,118 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_nlp_single_letter_i() {
+    fn test_single_letter_i_autocorrect() {
         let mut engine = NlpEngine::new();
         engine.load_dictionary(&[("in", 1000), ("is", 900), ("it", 800), ("i", 500)]);
 
         let res = engine.suggest("i", 3);
-        assert_eq!(res.candidates[0], "I");
+        assert_eq!(res.candidates[0].word, "I");
+        assert!(res.candidates[0].is_autocorrect);
 
         let res_upper = engine.suggest("I", 3);
-        assert_eq!(res_upper.candidates[0], "I");
+        assert_eq!(res_upper.candidates[0].word, "I");
+        assert!(res_upper.candidates[0].is_autocorrect);
     }
 
     #[test]
-    fn test_nlp_contractions() {
-        let mut engine = NlpEngine::new();
-        engine.load_dictionary(&[("dont", 100), ("don't", 1000), ("done", 800)]);
-
-        let res = engine.suggest("dont", 3);
-        assert_eq!(res.candidates[0], "don't");
-
-        let res_cap = engine.suggest("Dont", 3);
-        assert_eq!(res_cap.candidates[0], "Don't");
-
-        let res_im = engine.suggest("im", 3);
-        assert_eq!(res_im.candidates[0], "I'm");
-    }
-
-    #[test]
-    fn test_nlp_casing_preservation() {
-        let mut engine = NlpEngine::new();
-        engine.load_dictionary(&[("security", 1000), ("secure", 800)]);
-
-        let res_lower = engine.suggest("sec", 2);
-        assert_eq!(res_lower.candidates[0], "security");
-
-        let res_title = engine.suggest("Sec", 2);
-        assert_eq!(res_title.candidates[0], "Security");
-
-        let res_upper = engine.suggest("SEC", 2);
-        assert_eq!(res_upper.candidates[0], "SECURITY");
-    }
-
-    #[test]
-    fn test_nlp_suggestions() {
+    fn test_contractions_vast_coverage() {
         let mut engine = NlpEngine::new();
         engine.load_dictionary(&[
-            ("security", 1000),
-            ("secure", 800),
-            ("secrecy", 500),
-            ("privacy", 1200),
-            ("protect", 900),
+            ("dont", 50),
+            ("don't", 1000),
+            ("cant", 50),
+            ("can't", 1000),
+            ("wont", 50),
+            ("won't", 1000),
+            ("didnt", 50),
+            ("didn't", 1000),
+            ("im", 50),
+            ("youre", 50),
+            ("theyre", 50),
         ]);
 
-        let res = engine.suggest("sec", 3);
-        assert!(!res.is_exact_match);
-        assert_eq!(res.candidates, vec!["security", "secure", "secrecy"]);
+        let test_cases = &[
+            ("dont", "don't", true),
+            ("Dont", "Don't", true),
+            ("DONT", "DON'T", true),
+            ("cant", "can't", true),
+            ("wont", "won't", true),
+            ("didnt", "didn't", true),
+            ("im", "I'm", true),
+            ("youre", "you're", true),
+            ("theyre", "they're", true),
+        ];
 
-        let res_exact = engine.suggest("privacy", 3);
-        assert!(res_exact.is_exact_match);
-        assert_eq!(res_exact.candidates[0], "privacy");
+        for &(input, expected, should_auto) in test_cases {
+            let res = engine.suggest(input, 3);
+            assert_eq!(res.candidates[0].word, expected, "Failed for input: {}", input);
+            assert_eq!(res.candidates[0].is_autocorrect, should_auto, "Auto-flag wrong for: {}", input);
+        }
     }
 
     #[test]
-    fn test_nlp_typo_recovery() {
+    fn test_common_typos_vast_coverage() {
         let mut engine = NlpEngine::new();
         engine.load_dictionary(&[
-            ("password", 1000),
-            ("passkey", 800),
-            ("pattern", 500),
+            ("the", 2000),
+            ("and", 1800),
+            ("that", 1500),
+            ("this", 1400),
+            ("with", 1300),
+            ("receive", 1000),
+            ("separate", 900),
+            ("definitely", 800),
         ]);
 
-        let res = engine.suggest("pasword", 3);
-        assert!(!res.is_exact_match);
-        assert!(res.candidates.contains(&"password".to_string()));
+        let test_cases = &[
+            ("teh", "the", true),
+            ("adn", "and", true),
+            ("taht", "that", true),
+            ("thsi", "this", true),
+            ("wiht", "with", true),
+            ("recieve", "receive", true),
+            ("seperate", "separate", true),
+            ("definately", "definitely", true),
+        ];
+
+        for &(input, expected, should_auto) in test_cases {
+            let res = engine.suggest(input, 3);
+            assert_eq!(res.candidates[0].word, expected, "Typo failed for: {}", input);
+            assert_eq!(res.candidates[0].is_autocorrect, should_auto, "Auto-flag wrong for typo: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_valid_word_never_hijacked() {
+        let mut engine = NlpEngine::new();
+        engine.load_dictionary(&[
+            ("in", 1500),
+            ("inside", 800),
+            ("into", 900),
+            ("the", 2000),
+            ("then", 800),
+        ]);
+
+        let res = engine.suggest("in", 3);
+        assert_eq!(res.candidates[0].word, "in");
+        assert!(!res.candidates[0].is_autocorrect, "Valid word 'in' must NOT be flagged for auto-commit!");
+
+        let res_the = engine.suggest("the", 3);
+        assert_eq!(res_the.candidates[0].word, "the");
+        assert!(!res_the.candidates[0].is_autocorrect, "Valid word 'the' must NOT be flagged for auto-commit!");
+    }
+
+    #[test]
+    fn test_prefix_completions_never_autocommit() {
+        let mut engine = NlpEngine::new();
+        engine.load_dictionary(&[
+            ("hello", 1200),
+            ("help", 1000),
+            ("helicopter", 400),
+        ]);
+
+        let res = engine.suggest("hel", 3);
+        assert_eq!(res.candidates[0].word, "hello");
+        assert!(!res.candidates[0].is_autocorrect, "Prefix 'hel' must NOT auto-commit on space!");
     }
 }

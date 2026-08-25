@@ -90,10 +90,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         if (word.isBlank()) return SpellingResult.unspecified()
         ensureLoaded()
         val suggestions = FlorisNative.suggest(word, maxSuggestionCount)
-        return if (suggestions.contains(word)) {
+        val wordList = suggestions.map { it.text }
+        return if (wordList.any { it.equals(word, ignoreCase = true) }) {
             SpellingResult.validWord()
-        } else if (suggestions.isNotEmpty()) {
-            SpellingResult.typo(suggestions.toTypedArray())
+        } else if (wordList.isNotEmpty()) {
+            SpellingResult.typo(wordList.toTypedArray())
         } else {
             SpellingResult.unspecified()
         }
@@ -116,13 +117,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         if (query.isBlank()) return emptyList()
         if (!FlorisNative.isAvailable()) return emptyList()
 
-        val rawCandidates = FlorisNative.suggest(query, maxCandidateCount)
-        return rawCandidates.mapIndexed { index, candidate ->
+        val candidates = FlorisNative.suggest(query, maxCandidateCount)
+        return candidates.mapIndexed { index, candidate ->
             WordSuggestionCandidate(
-                text = candidate,
+                text = candidate.text,
                 secondaryText = null,
                 confidence = 1.0 - (index * 0.1),
-                isEligibleForAutoCommit = false, // Suggestions are tap-to-complete, preventing spacebar from hijacking typed words
+                isEligibleForAutoCommit = candidate.isAutocorrect,
                 sourceProvider = this@LatinLanguageProvider,
             )
         }
