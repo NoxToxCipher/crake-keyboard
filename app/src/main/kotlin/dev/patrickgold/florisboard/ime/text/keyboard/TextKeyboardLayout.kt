@@ -373,6 +373,8 @@ private fun TextKeyButton(
             .absoluteOffset { key.visibleBounds.topLeft.toIntOffset() },
     ) {
         val isTelPadKey = key.computedData.type == KeyType.NUMERIC && evaluator.keyboard.mode == KeyboardMode.PHONE
+        val hasFlick = flickWord != null
+
         key.label?.let { label ->
             var customLabel = label
             if (key.computedData.code == KeyCode.SPACE) {
@@ -384,23 +386,32 @@ private fun TextKeyButton(
                     SpaceBarMode.SPACE_BAR_KEY -> customLabel = "␣"
                 }
             }
+            val letterAlignment = if (isTelPadKey) {
+                BiasAlignment(-0.5f, 0f)
+            } else if (hasFlick) {
+                BiasAlignment(0f, 0.45f)
+            } else {
+                Alignment.Center
+            }
             SnyggText(
                 modifier = Modifier
                     .wrapContentSize()
-                    .align(if (isTelPadKey) BiasAlignment(-0.5f, 0f) else Alignment.Center),
+                    .align(letterAlignment),
                 text = customLabel,
             )
         }
-        key.hintedLabel?.let { hintedLabel ->
-            SnyggText(
-                elementName = FlorisImeUi.KeyHint.elementName,
-                attributes = attributes,
-                selector = selector,
-                modifier = Modifier
-                    .wrapContentSize()
-                    .align(if (isTelPadKey) BiasAlignment(0.5f, 0f) else Alignment.TopEnd),
-                text = hintedLabel,
-            )
+        if (!hasFlick) {
+            key.hintedLabel?.let { hintedLabel ->
+                SnyggText(
+                    elementName = FlorisImeUi.KeyHint.elementName,
+                    attributes = attributes,
+                    selector = selector,
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .align(if (isTelPadKey) BiasAlignment(0.5f, 0f) else Alignment.TopEnd),
+                    text = hintedLabel,
+                )
+            }
         }
         key.foregroundImageVector?.let { imageVector ->
             SnyggIcon(
@@ -412,13 +423,13 @@ private fun TextKeyButton(
         if (flickWord != null) {
             androidx.compose.material3.Text(
                 text = flickWord,
-                fontSize = 8.5.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                fontSize = 10.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
                 maxLines = 1,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = (-4).dp),
+                    .offset(y = (-2).dp),
             )
         }
     }

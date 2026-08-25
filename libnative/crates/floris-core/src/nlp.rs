@@ -125,9 +125,11 @@ pub struct NlpEngine {
 
 impl NlpEngine {
     pub fn new() -> Self {
-        Self {
-            trie: RadixTrie::new(),
+        let mut trie = RadixTrie::new();
+        for &(word, freq) in crate::core_dict::CORE_DICTIONARY {
+            trie.insert(word, freq);
         }
+        Self { trie }
     }
 
     pub fn load_dictionary(&mut self, words: &[(&str, u32)]) {
