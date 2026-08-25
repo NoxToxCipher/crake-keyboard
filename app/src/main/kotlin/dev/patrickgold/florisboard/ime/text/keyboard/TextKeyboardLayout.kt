@@ -21,6 +21,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.view.MotionEvent
 import android.view.animation.AccelerateInterpolator
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -51,6 +54,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -415,6 +419,64 @@ fun TextKeyboardLayout(
             }
         }
 
+        // BlackBerry 10 Flick Catapult Particle & Glow Animation Layer
+        val activeCatapult = controller.activeCatapult
+        if (activeCatapult != null) {
+            val animProgress = remember(activeCatapult.timestamp) { Animatable(0f) }
+            LaunchedEffect(activeCatapult.timestamp) {
+                animProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 240,
+                        easing = FastOutSlowInEasing,
+                    )
+                )
+                controller.activeCatapult = null
+            }
+            val yOffset = (animProgress.value * -60f).dp
+            val alpha = (1f - animProgress.value).coerceIn(0f, 1f)
+            val scale = 1f + (animProgress.value * 0.25f)
+
+            Box(
+                modifier = Modifier
+                    .requiredSize(90.dp, 30.dp)
+                    .absoluteOffset {
+                        IntOffset(
+                            x = (activeCatapult.position.x - 45.dp.toPx()).toInt(),
+                            y = (activeCatapult.position.y - 15.dp.toPx() + yOffset.toPx()).toInt(),
+                        )
+                    }
+                    .graphicsLayer {
+                        this.alpha = alpha
+                        this.scaleX = scale
+                        this.scaleY = scale
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.35f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = alpha),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    androidx.compose.material3.Text(
+                        text = activeCatapult.word,
+                        fontSize = 13.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                        color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+
         popupUiController.RenderPopups()
     }
 
@@ -531,6 +593,13 @@ private class TextKeyboardLayoutController(
     val fadingGlide = mutableStateListOf<Pair<GlideTypingGesture.Detector.Position, Long>>()
     var fadingGlideRadius by mutableFloatStateOf(0.0f)
     private val swipeGestureDetector = SwipeGesture.Detector(this)
+
+    data class CatapultEffect(
+        val word: String,
+        val position: Offset,
+        val timestamp: Long = System.currentTimeMillis(),
+    )
+    var activeCatapult by mutableStateOf<CatapultEffect?>(null)
 
     lateinit var keyboard: TextKeyboard
     var size = Size.Zero
@@ -883,6 +952,7 @@ private class TextKeyboardLayoutController(
                                 }
                                 val predictedWord = predictions[charCode]
                                 if (predictedWord != null) {
+                                    activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
                                     keyboardManager.commitFlickPrediction(predictedWord)
                                     inputFeedbackController?.keyPress(initialKey.computedData)
                                     return true
