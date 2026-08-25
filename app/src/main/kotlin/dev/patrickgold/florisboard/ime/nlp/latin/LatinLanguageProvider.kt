@@ -90,7 +90,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         if (word.isBlank()) return SpellingResult.unspecified()
         ensureLoaded()
         val suggestions = FlorisNative.suggest(word, maxSuggestionCount)
-        val wordList = suggestions.map { it.word }
+        val wordList = suggestions.map { it.text }
         return if (wordList.any { it.equals(word, ignoreCase = true) }) {
             SpellingResult.validWord()
         } else if (wordList.isNotEmpty()) {
@@ -115,11 +115,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }.trim()
 
         if (query.isBlank()) return emptyList()
+        if (!FlorisNative.isAvailable()) return emptyList()
 
         val candidates = FlorisNative.suggest(query, maxCandidateCount)
         return candidates.mapIndexed { index, candidate ->
             WordSuggestionCandidate(
-                text = candidate.word,
+                text = candidate.text,
                 secondaryText = null,
                 confidence = 1.0 - (index * 0.1),
                 isEligibleForAutoCommit = candidate.isAutocorrect,

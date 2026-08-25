@@ -87,7 +87,7 @@ fun DevtoolsOverlay(modifier: Modifier = Modifier) {
             if (devtoolsEnabled && showInputStateOverlay) {
                 DevtoolsInputStateOverlay()
             }
-            if (debugLayoutResult?.allLayoutsSuccess() == false) {
+            if (devtoolsEnabled && debugLayoutResult?.allLayoutsSuccess() == false) {
                 DevtoolsLastLayoutComputationOverlay(debugLayoutResult)
             }
             if (devtoolsEnabled && showSpellingOverlay) {

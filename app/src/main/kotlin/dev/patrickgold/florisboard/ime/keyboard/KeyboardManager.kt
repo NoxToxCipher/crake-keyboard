@@ -81,7 +81,7 @@ import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
 
-private val DoubleSpacePeriodMatcher = """([^.!?‽\s]\s)""".toRegex()
+private val DoubleSpacePeriodMatcher = """([^.!?\s]\s)""".toRegex()
 
 class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private val prefs by FlorisPreferenceStore
@@ -282,14 +282,23 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    fun commitCandidate(candidate: SuggestionCandidate) {
+    fun commitCandidate(candidate: SuggestionCandidate, withSpace: Boolean = false) {
         scope.launch {
             candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
         }
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
-            else -> editorInstance.commitCompletion(candidate)
+            else -> {
+                editorInstance.commitCompletion(candidate)
+                if (withSpace) {
+                    editorInstance.commitText(" ")
+                }
+            }
         }
+    }
+
+    fun commitFlickPrediction(word: String) {
+        editorInstance.commitFlickPrediction(fixCase(word))
     }
 
     fun commitGesture(word: String) {
@@ -568,6 +577,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 if (text.length == 2 && DoubleSpacePeriodMatcher.matches(text)) {
                     editorInstance.deleteBackwards(OperationUnit.CHARACTERS)
                     editorInstance.commitText(". ")
+                    reevaluateInputShiftState()
                     return
                 }
             }

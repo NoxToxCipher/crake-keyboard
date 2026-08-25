@@ -283,6 +283,13 @@ fun EmojiPaletteView(
             pageCount = { calculatePageNumbers() }
         )
 
+        // Sync active tab with pager swipes cleanly at parent level
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.currentPage }.collect { page ->
+                activeCategory = pageNumberToCategory(page)
+            }
+        }
+
         // Reset the pager to the first page when emojiHistory is enabled
         LaunchedEffect(emojiHistoryEnabled) {
             pagerState.animateScrollToPage(0)
@@ -298,15 +305,6 @@ fun EmojiPaletteView(
         HorizontalPager(pagerState, beyondViewportPageCount = 1) { page ->
             // Every page needs its own lazyGridState in order to scroll correctly
             val lazyGridState = rememberLazyGridState()
-
-            // Update the lazyGridState and active category on scroll
-            LaunchedEffect(pagerState) {
-                snapshotFlow { pagerState.currentPage }.collect { page ->
-                    lazyGridState.scrollToItem(0)
-                    activeCategory = pageNumberToCategory(page)
-                    recentlyUsedVersion++
-                }
-            }
 
             val category = pageNumberToCategory(page)
             val emojiMapping = if (category == EmojiCategory.RECENTLY_USED) {
@@ -362,14 +360,14 @@ fun EmojiPaletteView(
                         modifier = Modifier
                             .fillMaxSize()
                             .florisScrollbar(lazyGridState),
-                        columns = GridCells.Adaptive(minSize = EmojiBaseWidth),
+                        columns = if (category == EmojiCategory.KAOMOJI) GridCells.Adaptive(minSize = 110.dp) else GridCells.Adaptive(minSize = EmojiBaseWidth),
                         state = lazyGridState,
                     ) {
                         if (emojiMapping.pinned.isNotEmpty()) {
                             header("header_pinned") {
                                 GridHeader(text = stringRes(R.string.emoji__history__pinned))
                             }
-                            items(emojiMapping.pinned) { emojiSet ->
+                            items(emojiMapping.pinned, key = { "pinned_" + (it.emojis.firstOrNull()?.value ?: it.hashCode()) }) { emojiSet ->
                                 EmojiKeyWrapper(emojiSet, isPinned = true)
                             }
                         }
@@ -377,12 +375,12 @@ fun EmojiPaletteView(
                             header("header_recent") {
                                 GridHeader(text = stringRes(R.string.emoji__history__recent))
                             }
-                            items(emojiMapping.recent) { emojiSet ->
+                            items(emojiMapping.recent, key = { "recent_" + (it.emojis.firstOrNull()?.value ?: it.hashCode()) }) { emojiSet ->
                                 EmojiKeyWrapper(emojiSet, isRecent = true)
                             }
                         }
                         if (emojiMapping.simple.isNotEmpty()) {
-                            items(emojiMapping.simple) { emojiSet ->
+                            items(emojiMapping.simple, key = { it.emojis.firstOrNull()?.value ?: it.hashCode() }) { emojiSet ->
                                 EmojiKeyWrapper(emojiSet)
                             }
                         }
@@ -407,10 +405,11 @@ private fun EmojiKey(
     val base = emojiSet.base(withSkinTone = preferredSkinTone)
     val variations = emojiSet.variations(withoutSkinTone = preferredSkinTone)
     var showVariantsBox by remember { mutableStateOf(false) }
+    val isKaomoji = base.value.length > 2
 
     SnyggBox(FlorisImeUi.MediaEmojiKey.elementName,
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (isKaomoji) 2.6f else 1f)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -432,6 +431,7 @@ private fun EmojiKey(
             modifier = Modifier.align(Alignment.Center),
             text = base.value,
             emojiCompatInstance = emojiCompatInstance,
+            fontSize = if (isKaomoji) 13.sp else EmojiDefaultFontSize,
         )
         if (variations.isNotEmpty() || isPinned || isRecent) {
             val style = rememberSnyggThemeQuery(FlorisImeUi.MediaEmojiKeyPopupExtendedIndicator.elementName)
@@ -632,34 +632,25 @@ fun EmojiText(
     text: String,
     emojiCompatInstance: EmojiCompat?,
     modifier: Modifier = Modifier,
-    color: Color = Color.Black,
+    color: Color = Color.Unspecified,
     fontSize: TextUnit = EmojiDefaultFontSize,
 ) {
-    if (emojiCompatInstance != null) {
-        AndroidView(
-            modifier = modifier,
-            factory = { context ->
-                EmojiTextView(context).also {
-                    it.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize.value)
-                    it.setTextColor(color.toArgb())
-                }
-            },
-            update = { view ->
-                view.text = text
-            },
-        )
-    } else {
-        AndroidView(
-            modifier = modifier,
-            factory = { context ->
-                TextView(context).also {
-                    it.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize.value)
-                    it.setTextColor(color.toArgb())
-                }
-            },
-            update = { view ->
-                view.text = text
-            },
-        )
+    val processedText = remember(text, emojiCompatInstance) {
+        if (emojiCompatInstance != null) {
+            try {
+                emojiCompatInstance.process(text) ?: text
+            } catch (_: Exception) {
+                text
+            }
+        } else {
+            text
+        }
     }
+
+    Text(
+        text = processedText.toString(),
+        modifier = modifier,
+        fontSize = fontSize,
+        color = color,
+    )
 }

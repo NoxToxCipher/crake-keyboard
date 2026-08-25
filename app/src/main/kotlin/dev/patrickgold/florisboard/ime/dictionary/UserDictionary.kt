@@ -429,6 +429,8 @@ class SystemUserDictionaryDatabase(context: Context) : UserDictionaryDatabase {
         }
 
         override fun insert(entry: UserDictionaryEntry) {
+            val shield = org.florisboard.libnative.FlorisNative.inspectSecret(entry.word)
+            if (shield.isSecretDetected) return // Strictly air-gap secrets from persistent storage
             val resolver = applicationContext.get()?.contentResolver ?: return
             val contentValues = ContentValues(5).apply {
                 put(UserDictionary.Words.WORD, entry.word)

@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.text.gestures
 
 import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKey
 import dev.patrickgold.florisboard.keyboardManager
@@ -28,11 +29,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.florisboard.libnative.FlorisNative
 import kotlin.math.min
 
 /**
- * Handles the [GlideTypingClassifier]. Basically responsible for linking [GlideTypingGesture.Detector]
- * with [GlideTypingClassifier].
+ * Handles the native Safe Rust DTW [GlideTypingClassifier]. Responsible for linking [GlideTypingGesture.Detector]
+ * with native Rust DTW Trajectory Matching and fallback [GlideTypingClassifier].
  */
 class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     companion object {
@@ -46,21 +48,32 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var glideTypingClassifier = StatisticalGlideTypingClassifier(context)
+    private val gesturePoints = mutableListOf<FlorisNative.GlidePoint>()
     private var lastTime = System.currentTimeMillis()
 
     override fun onGlideComplete(data: GlideTypingGesture.Detector.PointerData) {
         updateSuggestionsAsync(MAX_SUGGESTION_COUNT, true) {
+            synchronized(gesturePoints) { gesturePoints.clear() }
             glideTypingClassifier.clear()
         }
     }
 
     override fun onGlideCancelled() {
+        synchronized(gesturePoints) { gesturePoints.clear() }
+        glideTypingClassifier.clear()
+    }
+
+    fun cancelGlide() {
+        synchronized(gesturePoints) { gesturePoints.clear() }
         glideTypingClassifier.clear()
     }
 
     override fun onGlideAddPoint(point: GlideTypingGesture.Detector.Position) {
         val normalized = GlideTypingGesture.Detector.Position(point.x, point.y)
 
+        synchronized(gesturePoints) {
+            gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y))
+        }
         this.glideTypingClassifier.addGesturePoint(normalized)
 
         val time = System.currentTimeMillis()
@@ -71,16 +84,28 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     }
 
     /**
-     * Change the layout of the internal gesture classifier
+     * Change the layout of the internal gesture classifier and native Rust DTW engine
      */
     fun setLayout(keys: List<TextKey>) {
         if (keys.isNotEmpty()) {
+            // Populate Native Safe Rust DTW key geometry
+            val letterKeys = keys.filter { (it.data as? KeyData)?.code?.toChar()?.isLetter() == true }
+            if (letterKeys.isNotEmpty()) {
+                val codes = IntArray(letterKeys.size) { (letterKeys[it].data as KeyData).code }
+                val chars = buildString { letterKeys.forEach { append((it.data as KeyData).code.toChar()) } }
+                val xs = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.center.x }
+                val ys = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.center.y }
+                val widths = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.width }
+                val heights = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.height }
+                FlorisNative.glideSetLayout(codes, chars, xs, ys, widths, heights)
+            }
+
             glideTypingClassifier.setLayout(keys, subtypeManager.activeSubtype)
         }
     }
 
     /**
-     * Asks gesture classifier for suggestions and then passes that on to the smartbar.
+     * Asks native Rust DTW engine for suggestions and then passes that on to the smartbar.
      * Also commits the most confident suggestion if [commit] is set. All happens on an async executor.
      * NB: only fetches [MAX_SUGGESTION_COUNT] suggestions.
      *
@@ -88,13 +113,21 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
      * were successfully set.
      */
     private fun updateSuggestionsAsync(maxSuggestionsToShow: Int, commit: Boolean, callback: (Boolean) -> Unit) {
-        if (!glideTypingClassifier.ready) {
-            callback.invoke(false)
-            return
-        }
-
         scope.launch(Dispatchers.Default) {
-            val suggestions = glideTypingClassifier.getSuggestions(MAX_SUGGESTION_COUNT, true)
+            val pts = synchronized(gesturePoints) { gesturePoints.toList() }
+            val nativeSuggestions = if (FlorisNative.isAvailable() && pts.size >= 2) {
+                FlorisNative.glideMatch(pts, MAX_SUGGESTION_COUNT)
+            } else {
+                emptyList()
+            }
+
+            val suggestions = if (nativeSuggestions.isNotEmpty()) {
+                nativeSuggestions
+            } else if (glideTypingClassifier.ready) {
+                glideTypingClassifier.getSuggestions(MAX_SUGGESTION_COUNT, true)
+            } else {
+                emptyList()
+            }
 
             withContext(Dispatchers.Main) {
                 val suggestionList = buildList {

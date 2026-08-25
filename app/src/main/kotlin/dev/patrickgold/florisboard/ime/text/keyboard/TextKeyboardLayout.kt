@@ -21,14 +21,21 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.view.MotionEvent
 import android.view.animation.AccelerateInterpolator
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +54,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -56,6 +65,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -68,6 +79,7 @@ import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
+import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.popup.ExceptionsForKeyCodes
 import dev.patrickgold.florisboard.ime.popup.PopupUiController
 import dev.patrickgold.florisboard.ime.popup.rememberPopupUiController
@@ -111,6 +123,7 @@ fun TextKeyboardLayout(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val glideTypingManager by context.glideTypingManager()
+    val editorInstance by context.editorInstance()
 
     val keyboard = evaluator.keyboard as TextKeyboard
     val glideEnabledInternal by prefs.glide.enabled.collectAsState()
@@ -293,11 +306,175 @@ fun TextKeyboardLayout(
         popupUiController.keyHintConfiguration = prefs.keyboard.keyHintConfiguration()
         controller.popupUiController = popupUiController
         val debugShowTouchBoundaries by prefs.devtools.showKeyTouchBoundaries.collectAsState()
+        val flickPredictionsEnabled by prefs.glide.flickPredictionsEnabled.collectAsState()
+        val activeContent by editorInstance.activeContentFlow.collectAsState()
+        val currentWord = remember(activeContent) {
+            when {
+                activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> {
+                    activeContent.composingText
+                }
+                activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> {
+                    activeContent.currentWordText
+                }
+                else -> {
+                    activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                }
+            }
+        }
+        val flickPredictions = remember(currentWord, flickPredictionsEnabled) {
+            if (flickPredictionsEnabled && currentWord.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
+                org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord)
+            } else {
+                emptyMap()
+            }
+        }
+        // Authentic BlackBerry 10 Metallic Fret Lines (Row Dividers)
+        if (keyboard.mode == KeyboardMode.CHARACTERS) {
+            val rowTops = remember(keyboard) {
+                keyboard.keys().asSequence().map { it.visibleBounds.top.toInt() }.distinct().sorted().toList()
+            }
+            for (rowTop in rowTops) {
+                if (rowTop > 5) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.5.dp)
+                            .absoluteOffset { IntOffset(0, rowTop - 1) }
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0x2294A3B8),
+                                        Color(0x55CBD5E1),
+                                        Color(0x88E2E8F0),
+                                        Color(0x55CBD5E1),
+                                        Color(0x2294A3B8),
+                                    )
+                                )
+                            )
+                    )
+                }
+            }
+        }
+
         for (textKey in keyboard.keys()) {
+            val keyLabel = evaluator.computeLabel(textKey.computedData)?.lowercase() ?: ""
+            val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
+            val hasFlick = flickPredictions.containsKey(charCode)
             TextKeyButton(
                 textKey, evaluator, desiredKey,
                 debugShowTouchBoundaries,
+                hideHint = hasFlick,
             )
+        }
+
+        // Authentic BlackBerry 10 Floating Fret Word Overlay Layer
+        if (flickPredictionsEnabled && flickPredictions.isNotEmpty() && keyboard.mode == KeyboardMode.CHARACTERS) {
+            for (textKey in keyboard.keys()) {
+                val keyLabel = evaluator.computeLabel(textKey.computedData)?.lowercase() ?: ""
+                val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
+                val flickWord = flickPredictions[charCode] ?: continue
+
+                Box(
+                    modifier = Modifier
+                        .requiredSize(
+                            width = (textKey.visibleBounds.width * 1.35f).toDp(),
+                            height = 24.dp,
+                        )
+                        .absoluteOffset {
+                            IntOffset(
+                                x = (textKey.visibleBounds.center.x - (textKey.visibleBounds.width * 0.675f)).toInt(),
+                                y = (textKey.visibleBounds.top - 12.dp.toPx()).toInt(),
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .background(
+                                color = androidx.compose.ui.graphics.Color(0xF2091428),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                            )
+                            .border(
+                                width = 1.dp,
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.6f),
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.2f),
+                                    )
+                                ),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = flickWord,
+                            fontSize = 12.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                }
+            }
+        }
+
+        // BlackBerry 10 Flick Catapult Particle & Glow Animation Layer
+        val activeCatapult = controller.activeCatapult
+        if (activeCatapult != null) {
+            val animProgress = remember(activeCatapult.timestamp) { Animatable(0f) }
+            LaunchedEffect(activeCatapult.timestamp) {
+                animProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 240,
+                        easing = FastOutSlowInEasing,
+                    )
+                )
+                controller.activeCatapult = null
+            }
+            val yOffset = (animProgress.value * -60f).dp
+            val alpha = (1f - animProgress.value).coerceIn(0f, 1f)
+            val scale = 1f + (animProgress.value * 0.25f)
+
+            Box(
+                modifier = Modifier
+                    .requiredSize(90.dp, 30.dp)
+                    .absoluteOffset {
+                        IntOffset(
+                            x = (activeCatapult.position.x - 45.dp.toPx()).toInt(),
+                            y = (activeCatapult.position.y - 15.dp.toPx() + yOffset.toPx()).toInt(),
+                        )
+                    }
+                    .graphicsLayer {
+                        this.alpha = alpha
+                        this.scaleX = scale
+                        this.scaleY = scale
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.35f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        )
+                        .border(
+                            width = 1.5.dp,
+                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = alpha),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    androidx.compose.material3.Text(
+                        text = activeCatapult.word,
+                        fontSize = 13.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                        color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                        maxLines = 1,
+                    )
+                }
+            }
         }
 
         popupUiController.RenderPopups()
@@ -342,6 +519,7 @@ private fun TextKeyButton(
             .absoluteOffset { key.visibleBounds.topLeft.toIntOffset() },
     ) {
         val isTelPadKey = key.computedData.type == KeyType.NUMERIC && evaluator.keyboard.mode == KeyboardMode.PHONE
+
         key.label?.let { label ->
             var customLabel = label
             if (key.computedData.code == KeyCode.SPACE) {
@@ -398,6 +576,7 @@ private class TextKeyboardLayoutController(
     private val prefs by FlorisPreferenceStore
     private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
+    private val glideTypingManager by context.glideTypingManager()
 
     private val inputEventDispatcher get() = keyboardManager.inputEventDispatcher
     private val inputFeedbackController get() = FlorisImeService.inputFeedbackController()
@@ -415,11 +594,25 @@ private class TextKeyboardLayoutController(
     var fadingGlideRadius by mutableFloatStateOf(0.0f)
     private val swipeGestureDetector = SwipeGesture.Detector(this)
 
+    data class CatapultEffect(
+        val word: String,
+        val position: Offset,
+        val timestamp: Long = System.currentTimeMillis(),
+    )
+    var activeCatapult by mutableStateOf<CatapultEffect?>(null)
+
     lateinit var keyboard: TextKeyboard
     var size = Size.Zero
 
     val isGlideEnabled: Boolean get() = prefs.glide.enabled.get() && editorInstance.activeInfo.isRichInputEditor &&
         keyboardManager.activeState.keyVariation != KeyVariation.PASSWORD
+
+    fun cancelGlideActive() {
+        glideTypingDetector.cancel()
+        glideTypingManager.cancelGlide()
+        glideDataForDrawing.clear()
+        isGliding = false
+    }
 
     fun onTouchEventInternal(event: MotionEvent) {
         flogDebug { "event=$event" }
@@ -505,6 +698,7 @@ private class TextKeyboardLayoutController(
                 if (pointer != null) {
                     pointer.index = pointerIndex
                     if (swipeGestureDetector.onTouchUp(event, pointer) || pointer.hasTriggeredGestureMove) {
+                        cancelGlideActive()
                         if (pointer.hasTriggeredGestureMove && pointer.initialKey?.computedData?.code == KeyCode.DELETE) {
                             val selection = editorInstance.activeContent.selection
                             if (selection.isSelectionMode) {
@@ -525,6 +719,7 @@ private class TextKeyboardLayoutController(
                     if (pointer.id == pointerId) {
                         pointer.index = pointerIndex
                         if (swipeGestureDetector.onTouchUp(event, pointer) || pointer.hasTriggeredGestureMove) {
+                            cancelGlideActive()
                             if (pointer.hasTriggeredGestureMove &&
                                 pointer.initialKey?.computedData?.code == KeyCode.DELETE &&
                                 prefs.gestures.deleteKeySwipeLeft.get() != SwipeAction.SELECT_CHARACTERS_PRECISELY &&
@@ -722,6 +917,7 @@ private class TextKeyboardLayoutController(
         val initialKey = pointer.initialKey ?: return false
         val activeKey = pointer.activeKey
         flogDebug(LogTopic.TEXT_KEYBOARD_VIEW)
+        cancelGlideActive()
 
         return when (initialKey.computedData.code) {
             KeyCode.DELETE -> handleDeleteSwipe(event)
@@ -739,8 +935,30 @@ private class TextKeyboardLayoutController(
                     true
                 }
                 initialKey.computedData.code > KeyCode.SPACE && !popupUiController.isShowingExtendedPopup -> when {
-                    !isGlideEnabled && !pointer.hasTriggeredGestureMove -> when (event.type) {
+                    !pointer.hasTriggeredGestureMove -> when (event.type) {
                         SwipeGesture.Type.TOUCH_UP -> {
+                            if (event.direction == SwipeGesture.Direction.UP && prefs.glide.flickPredictionsEnabled.get()) {
+                                val charCode = initialKey.computedData.code.toChar().lowercaseChar()
+                                val activeContent = editorInstance.activeContent
+                                val prefix = when {
+                                    activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> activeContent.composingText
+                                    activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> activeContent.currentWordText
+                                    else -> activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                                }
+                                val predictions = if (prefix.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
+                                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix)
+                                } else {
+                                    emptyMap()
+                                }
+                                val predictedWord = predictions[charCode]
+                                if (predictedWord != null) {
+                                    activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
+                                    keyboardManager.commitFlickPrediction(predictedWord)
+                                    inputFeedbackController?.keyPress(initialKey.computedData)
+                                    return true
+                                }
+                            }
+
                             val swipeAction = when (event.direction) {
                                 SwipeGesture.Direction.UP -> prefs.gestures.swipeUp.get()
                                 SwipeGesture.Direction.DOWN -> prefs.gestures.swipeDown.get()

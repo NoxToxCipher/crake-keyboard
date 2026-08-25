@@ -17,6 +17,8 @@
 package dev.patrickgold.florisboard.ime.media.emoji
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.EmojiFlags
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.EmojiObjects
 import androidx.compose.material.icons.filled.EmojiPeople
 import androidx.compose.material.icons.filled.EmojiSymbols
 import androidx.compose.material.icons.filled.EmojiTransportation
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.patrickgold.florisboard.R
@@ -40,7 +43,10 @@ enum class EmojiCategory(val id: String) {
     ACTIVITIES("activities"),
     OBJECTS("objects"),
     SYMBOLS("symbols"),
-    FLAGS("flags");
+    FLAGS("flags"),
+    KAOMOJI("kaomoji"),
+    MATH_LOGIC("math_logic"),
+    CRYPTO("crypto");
 
     fun icon(): ImageVector {
         return when (this) {
@@ -54,6 +60,9 @@ enum class EmojiCategory(val id: String) {
             OBJECTS -> Icons.Default.EmojiObjects
             SYMBOLS -> Icons.Default.EmojiSymbols
             FLAGS -> Icons.Default.EmojiFlags
+            KAOMOJI -> Icons.Default.Face
+            MATH_LOGIC -> Icons.Default.Calculate
+            CRYPTO -> Icons.Default.AccountBalanceWallet
         }
     }
 }

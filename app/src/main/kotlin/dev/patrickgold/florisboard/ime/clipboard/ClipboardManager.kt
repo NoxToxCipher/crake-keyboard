@@ -43,6 +43,7 @@ import org.florisboard.lib.android.AndroidClipboardManager_OnPrimaryClipChangedL
 import org.florisboard.lib.android.clearPrimaryClipAnyApi
 import org.florisboard.lib.android.setOrClearPrimaryClip
 import org.florisboard.lib.android.showShortToastSync
+import org.florisboard.libnative.FlorisNative
 import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.tryOrNull
 
@@ -58,8 +59,8 @@ class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
-        // 1 minute
-        private const val INTERVAL = 60 * 1000L
+        // Ephemeral Auto-Destruct polling interval (2 seconds high resolution)
+        private const val INTERVAL = 2 * 1000L
 
         /**
          * Taken from ClipboardDescription.java from the AOSP
@@ -204,7 +205,13 @@ class ClipboardManager(
 
                 val isEqual = internalPrimaryClip?.isEqualTo(systemPrimaryClip) == true
                 if (!isEqual) {
-                    val item = ClipboardItem.fromClipData(appContext, systemPrimaryClip, cloneUri = true)
+                    var item = ClipboardItem.fromClipData(appContext, systemPrimaryClip, cloneUri = true)
+                    if (item.type == ItemType.TEXT && item.text != null) {
+                        val scrubbed = FlorisNative.metascrubText(item.text!!)
+                        val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
+                        val isSensitive = item.isSensitive || shield.isSecretDetected
+                        item = item.copy(text = scrubbed.cleanedText, isSensitive = isSensitive)
+                    }
                     primaryClip = item
                     insertOrMoveBeginning(item)
                 }
@@ -224,7 +231,10 @@ class ClipboardManager(
      * Wraps some plaintext in a ClipData and calls [addNewClip]
      */
     fun addNewPlaintext(newText: String) {
-        val newData = ClipboardItem.text(newText)
+        val scrubbed = FlorisNative.metascrubText(newText)
+        val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
+        val isSensitive = shield.isSecretDetected
+        val newData = ClipboardItem.text(scrubbed.cleanedText).copy(isSensitive = isSensitive)
         addNewClip(newData)
     }
 
@@ -277,7 +287,15 @@ class ClipboardManager(
             itemsToRemove.addAll(sensitiveData.filter { it.creationTimestampMs < expiryTime })
         }
         if (itemsToRemove.isNotEmpty()) {
+            val currentPrimary = primaryClip
+            if (currentPrimary != null && itemsToRemove.any { it.id == currentPrimary.id || (it.text == currentPrimary.text && it.type == currentPrimary.type) }) {
+                updatePrimaryClip(null)
+                systemClipboardManager.clearPrimaryClipAnyApi()
+            }
             ioScope.launch {
+                for (item in itemsToRemove) {
+                    item.close(appContext)
+                }
                 clipHistoryDao?.delete(itemsToRemove.toList())
             }
         }

@@ -140,6 +140,13 @@ class GlideTypingGesture {
             listeners.remove(listener)
         }
 
+        fun cancel() {
+            if (pointerData.isActuallyGesture == true) {
+                listeners.forEach { it.onGlideCancelled() }
+            }
+            resetState()
+        }
+
         private fun resetState() {
             pointerData.apply {
                 positions.clear()
