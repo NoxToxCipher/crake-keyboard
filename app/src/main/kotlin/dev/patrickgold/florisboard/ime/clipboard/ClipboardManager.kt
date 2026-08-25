@@ -59,8 +59,8 @@ class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
-        // 1 minute
-        private const val INTERVAL = 60 * 1000L
+        // Ephemeral Auto-Destruct polling interval (2 seconds high resolution)
+        private const val INTERVAL = 2 * 1000L
 
         /**
          * Taken from ClipboardDescription.java from the AOSP
@@ -287,7 +287,15 @@ class ClipboardManager(
             itemsToRemove.addAll(sensitiveData.filter { it.creationTimestampMs < expiryTime })
         }
         if (itemsToRemove.isNotEmpty()) {
+            val currentPrimary = primaryClip
+            if (currentPrimary != null && itemsToRemove.any { it.id == currentPrimary.id || (it.text == currentPrimary.text && it.type == currentPrimary.type) }) {
+                updatePrimaryClip(null)
+                systemClipboardManager.clearPrimaryClipAnyApi()
+            }
             ioScope.launch {
+                for (item in itemsToRemove) {
+                    item.close(appContext)
+                }
                 clipHistoryDao?.delete(itemsToRemove.toList())
             }
         }

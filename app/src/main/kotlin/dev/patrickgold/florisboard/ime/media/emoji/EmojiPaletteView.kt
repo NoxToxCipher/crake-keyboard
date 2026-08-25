@@ -360,7 +360,7 @@ fun EmojiPaletteView(
                         modifier = Modifier
                             .fillMaxSize()
                             .florisScrollbar(lazyGridState),
-                        columns = GridCells.Adaptive(minSize = EmojiBaseWidth),
+                        columns = if (category == EmojiCategory.KAOMOJI) GridCells.Adaptive(minSize = 110.dp) else GridCells.Adaptive(minSize = EmojiBaseWidth),
                         state = lazyGridState,
                     ) {
                         if (emojiMapping.pinned.isNotEmpty()) {
@@ -405,10 +405,11 @@ private fun EmojiKey(
     val base = emojiSet.base(withSkinTone = preferredSkinTone)
     val variations = emojiSet.variations(withoutSkinTone = preferredSkinTone)
     var showVariantsBox by remember { mutableStateOf(false) }
+    val isKaomoji = base.value.length > 2
 
     SnyggBox(FlorisImeUi.MediaEmojiKey.elementName,
         modifier = Modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (isKaomoji) 2.6f else 1f)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -430,6 +431,7 @@ private fun EmojiKey(
             modifier = Modifier.align(Alignment.Center),
             text = base.value,
             emojiCompatInstance = emojiCompatInstance,
+            fontSize = if (isKaomoji) 13.sp else EmojiDefaultFontSize,
         )
         if (variations.isNotEmpty() || isPinned || isRecent) {
             val style = rememberSnyggThemeQuery(FlorisImeUi.MediaEmojiKeyPopupExtendedIndicator.elementName)

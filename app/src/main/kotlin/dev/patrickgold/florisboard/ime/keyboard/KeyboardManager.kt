@@ -81,7 +81,7 @@ import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
 
-private val DoubleSpacePeriodMatcher = """([^.!?‽\s]\s)""".toRegex()
+private val DoubleSpacePeriodMatcher = """([^.!?\s]\s)""".toRegex()
 
 class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private val prefs by FlorisPreferenceStore
@@ -568,6 +568,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 if (text.length == 2 && DoubleSpacePeriodMatcher.matches(text)) {
                     editorInstance.deleteBackwards(OperationUnit.CHARACTERS)
                     editorInstance.commitText(". ")
+                    reevaluateInputShiftState()
                     return
                 }
             }

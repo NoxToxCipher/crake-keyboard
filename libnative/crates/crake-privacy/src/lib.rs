@@ -11,6 +11,7 @@
 )]
 
 pub mod boreal_guard;
+pub mod ephemeral_clipboard;
 pub mod ffi_guard;
 pub mod intrusion;
 pub mod metascrub;
@@ -21,6 +22,7 @@ pub mod sync_bundle;
 pub mod zeroize_buffer;
 
 pub use boreal_guard::{BorealScanner, ThreatMatch, DEFAULT_YARA_RULES};
+pub use ephemeral_clipboard::{EphemeralClip, EphemeralClipboardSentry};
 pub use ffi_guard::{catch_ffi_panic, checked_slice, FfiError};
 pub use intrusion::{open, parse_sealed_records, seal, IntrusionRecord};
 pub use metascrub::{is_invisible_char, metascrub_text, strip_invisible_characters, MetaScrubResult};

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2021-2025 The FlorisBoard Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -128,11 +128,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val historyAutoCleanSensitiveEnabled = boolean(
             key = "clipboard__history_auto_clean_sensitive_enabled",
-            default = false,
+            default = true,
         )
         val historyAutoCleanSensitiveAfter = int(
             key = "clipboard__history_auto_clean_sensitive_after",
-            default = 20,
+            default = 60,
         )
         val historySizeLimitEnabled = boolean(
             key = "clipboard__history_size_limit_enabled",
