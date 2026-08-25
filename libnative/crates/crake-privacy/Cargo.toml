@@ -16,6 +16,7 @@ sha2.workspace = true
 rand.workspace = true
 boreal.workspace = true
 uniffi = { version = "0.28", features = ["cli"], optional = true }
+qrcode = { version = "0.14.1", default-features = false }
 
 [features]
 default = []

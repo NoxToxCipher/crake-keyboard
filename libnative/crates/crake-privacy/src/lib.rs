@@ -28,8 +28,8 @@ pub use profile::{ProfileKind, ProfileManager};
 pub use sanitizer::{sanitize_text, sanitize_url, TRACKING_PARAMS};
 pub use secret_shield::{inspect_text, verify_bip39_phrase, SecretKind, ShieldResult, BIP39_WORDLIST};
 pub use sync_bundle::{
-    chunk_for_optical_qr, create_encrypted_sync_bundle, open_encrypted_sync_bundle,
-    reassemble_qr_frames, QrFrame,
+    chunk_for_optical_qr, create_encrypted_sync_bundle, generate_qr_matrix,
+    open_encrypted_sync_bundle, reassemble_qr_frames, QrFrame,
 };
 pub use zeroize_buffer::EphemeralBuffer;
 

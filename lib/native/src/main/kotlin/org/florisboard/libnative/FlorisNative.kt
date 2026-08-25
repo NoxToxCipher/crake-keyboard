@@ -112,6 +112,21 @@ object FlorisNative {
         }
     }
 
+    fun generateQrMatrix(data: String): String {
+        if (!isLoaded || data.isBlank()) return ""
+        return nativeGenerateQrMatrix(data)
+    }
+
+    fun createSyncBundle(keyHex: String, rawData: String, chunkSize: Int = 128): List<String> {
+        if (!isLoaded || rawData.isBlank()) return emptyList()
+        return nativeCreateSyncBundle(keyHex, rawData, chunkSize).toList()
+    }
+
+    fun reassembleSyncBundle(keyHex: String, frames: List<String>): String {
+        if (!isLoaded || frames.isEmpty()) return ""
+        return nativeReassembleSyncBundle(keyHex, frames.toTypedArray())
+    }
+
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
@@ -132,4 +147,13 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeScanThreats(rawText: String): Array<String>
+
+    @JvmStatic
+    private external fun nativeGenerateQrMatrix(data: String): String
+
+    @JvmStatic
+    private external fun nativeCreateSyncBundle(keyHex: String, rawData: String, chunkSize: Int): Array<String>
+
+    @JvmStatic
+    private external fun nativeReassembleSyncBundle(keyHex: String, frames: Array<String>): String
 }

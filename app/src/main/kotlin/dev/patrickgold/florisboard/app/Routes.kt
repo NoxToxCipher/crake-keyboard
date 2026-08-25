@@ -54,6 +54,7 @@ import dev.patrickgold.florisboard.app.settings.about.AboutScreen
 import dev.patrickgold.florisboard.app.settings.about.ProjectLicenseScreen
 import dev.patrickgold.florisboard.app.settings.about.ThirdPartyLicensesScreen
 import dev.patrickgold.florisboard.app.settings.advanced.BackupScreen
+import dev.patrickgold.florisboard.app.settings.advanced.OpticalQrSyncScreen
 import dev.patrickgold.florisboard.app.settings.advanced.OtherScreen
 import dev.patrickgold.florisboard.app.settings.advanced.PhysicalKeyboardScreen
 import dev.patrickgold.florisboard.app.settings.advanced.RestoreScreen
@@ -183,6 +184,10 @@ object Routes {
         @Serializable
         @Deeplink("settings/other/backup")
         object Backup
+
+        @Serializable
+        @Deeplink("settings/optical-qr-sync")
+        object OpticalQrSync
 
         @Serializable
         @Deeplink("settings/other/restore")
@@ -317,6 +322,7 @@ object Routes {
             composableWithDeepLink(Settings.Other::class) { OtherScreen() }
             composableWithDeepLink(Settings.PhysicalKeyboard::class) { PhysicalKeyboardScreen() }
             composableWithDeepLink(Settings.Backup::class) { BackupScreen() }
+            composableWithDeepLink(Settings.OpticalQrSync::class) { OpticalQrSyncScreen() }
             composableWithDeepLink(Settings.Restore::class) { RestoreScreen() }
 
             composableWithDeepLink(Settings.About::class) { AboutScreen() }

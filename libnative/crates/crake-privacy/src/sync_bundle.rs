@@ -1,4 +1,4 @@
-﻿//! Encrypted Sync Bundle for Optical Air-Gap (Animated QR) and NFC back-to-back transfer.
+//! Encrypted Sync Bundle for Optical Air-Gap (Animated QR) and NFC back-to-back transfer.
 
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 use chacha20poly1305::{ChaCha20Poly1305, Key, Nonce};
@@ -115,6 +115,24 @@ pub fn reassemble_qr_frames(frames: &[QrFrame]) -> Option<Vec<u8>> {
     Some(out)
 }
 
+/// Generates a binary string representation of a QR code for given text.
+/// Format: `"<width>:<binary_string>"` where '1' is a dark module and '0' is light.
+pub fn generate_qr_matrix(data: &str) -> Option<String> {
+    use qrcode::{EcLevel, QrCode};
+    let code = QrCode::with_error_correction_level(data.as_bytes(), EcLevel::M).ok()?;
+    let width = code.width();
+    let colors = code.to_colors();
+    let mut bits = String::with_capacity(width * width);
+    for c in colors {
+        if c == qrcode::Color::Dark {
+            bits.push('1');
+        } else {
+            bits.push('0');
+        }
+    }
+    Some(format!("{}:{}", width, bits))
+}
+
 fn hex_encode(bytes: &[u8]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
     for b in bytes {
@@ -165,5 +183,16 @@ mod tests {
 
         let reassembled = reassemble_qr_frames(&frames).unwrap();
         assert_eq!(reassembled, raw_bundle);
+    }
+
+    #[test]
+    fn test_generate_qr_matrix() {
+        let text = "CRAKE:1/1:deadbeef";
+        let matrix = generate_qr_matrix(text).unwrap();
+        let parts: Vec<&str> = matrix.split(':').collect();
+        assert_eq!(parts.len(), 2);
+        let width: usize = parts[0].parse().unwrap();
+        assert!(width >= 21);
+        assert_eq!(parts[1].len(), width * width);
     }
 }

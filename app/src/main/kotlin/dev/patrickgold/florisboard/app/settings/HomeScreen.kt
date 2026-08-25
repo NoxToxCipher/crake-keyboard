@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2021-2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -254,7 +254,7 @@ fun HomeScreen() = FlorisScreen {
             icon = Icons.Default.QrCode2,
             title = "Air-Gapped Optical QR Sync",
             summary = "Zero-network animated QR frame pairing & backup",
-            onClick = { navController.navigate(Routes.Settings.Backup) },
+            onClick = { navController.navigate(Routes.Settings.OpticalQrSync) },
         )
         Preference(
             icon = Icons.Outlined.Palette,
