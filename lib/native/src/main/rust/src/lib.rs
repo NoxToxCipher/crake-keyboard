@@ -98,8 +98,29 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeSanitiz
     raw_text: JString,
 ) -> jstring {
     if let Ok(s) = env.get_string(&raw_text) {
-        let clean = crake_privacy::sanitize_text(s.to_str().unwrap_or(""));
-        if let Ok(out) = env.new_string(&clean) {
+        let res = crake_privacy::metascrub_text(s.to_str().unwrap_or(""));
+        if let Ok(out) = env.new_string(&res.cleaned_text) {
+            return out.into_raw();
+        }
+    }
+    raw_text.into_raw()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeMetaScrubText(
+    mut env: JNIEnv,
+    _class: JClass,
+    raw_text: JString,
+) -> jstring {
+    if let Ok(s) = env.get_string(&raw_text) {
+        let res = crake_privacy::metascrub_text(s.to_str().unwrap_or(""));
+        let payload = format!(
+            "{}|{}|{}",
+            res.invisible_chars_removed,
+            if res.urls_sanitized { "1" } else { "0" },
+            res.cleaned_text.replace('|', "_")
+        );
+        if let Ok(out) = env.new_string(&payload) {
             return out.into_raw();
         }
     }

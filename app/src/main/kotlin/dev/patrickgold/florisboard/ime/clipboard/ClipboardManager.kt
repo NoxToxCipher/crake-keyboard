@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2021-2025 The FlorisBoard Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,7 @@ import org.florisboard.lib.android.AndroidClipboardManager_OnPrimaryClipChangedL
 import org.florisboard.lib.android.clearPrimaryClipAnyApi
 import org.florisboard.lib.android.setOrClearPrimaryClip
 import org.florisboard.lib.android.showShortToastSync
+import org.florisboard.libnative.FlorisNative
 import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.tryOrNull
 
@@ -204,7 +205,13 @@ class ClipboardManager(
 
                 val isEqual = internalPrimaryClip?.isEqualTo(systemPrimaryClip) == true
                 if (!isEqual) {
-                    val item = ClipboardItem.fromClipData(appContext, systemPrimaryClip, cloneUri = true)
+                    var item = ClipboardItem.fromClipData(appContext, systemPrimaryClip, cloneUri = true)
+                    if (item.type == ItemType.TEXT && item.text != null) {
+                        val scrubbed = FlorisNative.metascrubText(item.text!!)
+                        val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
+                        val isSensitive = item.isSensitive || shield.isSecretDetected
+                        item = item.copy(text = scrubbed.cleanedText, isSensitive = isSensitive)
+                    }
                     primaryClip = item
                     insertOrMoveBeginning(item)
                 }
@@ -223,8 +230,11 @@ class ClipboardManager(
     /**
      * Wraps some plaintext in a ClipData and calls [addNewClip]
      */
-    fun addNewPlaintext(newText: String) { val sanitized = org.florisboard.libnative.FlorisNative.sanitizeText(newText)
-        val newData = ClipboardItem.text(sanitized)
+    fun addNewPlaintext(newText: String) {
+        val scrubbed = FlorisNative.metascrubText(newText)
+        val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
+        val isSensitive = shield.isSecretDetected
+        val newData = ClipboardItem.text(scrubbed.cleanedText).copy(isSensitive = isSensitive)
         addNewClip(newData)
     }
 

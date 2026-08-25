@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2025-2026 The FlorisBoard Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,12 @@ object FlorisNative {
         val severity: String,
     )
 
+    data class MetaScrubResult(
+        val invisibleCharsRemoved: Int,
+        val urlsSanitized: Boolean,
+        val cleanedText: String,
+    )
+
     fun isAvailable(): Boolean = isLoaded
 
     fun insertWord(word: String, frequency: Int) {
@@ -81,6 +87,18 @@ object FlorisNative {
         return ShieldInspectionResult(isDetected, warning, redacted)
     }
 
+    fun metascrubText(rawText: String): MetaScrubResult {
+        if (!isLoaded || rawText.isBlank()) {
+            return MetaScrubResult(0, false, rawText)
+        }
+        val raw = nativeMetaScrubText(rawText)
+        val parts = raw.split("|", limit = 3)
+        val removed = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val sanitized = parts.getOrNull(1) == "1"
+        val cleaned = parts.getOrNull(2) ?: rawText
+        return MetaScrubResult(removed, sanitized, cleaned)
+    }
+
     fun scanThreats(rawText: String): List<ThreatResult> {
         if (!isLoaded || rawText.isBlank()) return emptyList()
         val rawMatches = nativeScanThreats(rawText)
@@ -105,6 +123,9 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeSanitizeText(rawText: String): String
+
+    @JvmStatic
+    private external fun nativeMetaScrubText(rawText: String): String
 
     @JvmStatic
     private external fun nativeInspectSecret(rawText: String): String
