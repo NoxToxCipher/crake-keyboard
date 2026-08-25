@@ -257,6 +257,12 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
             super.finalizeComposingText(text)
         } else {
+            val wordPrefix = content.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
+            if (wordPrefix.isNotEmpty()) {
+                runBlocking {
+                    deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = wordPrefix.length)
+                }
+            }
             val isPhantomSpaceActive = phantomSpace.determine(text)
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
             return if (isPhantomSpaceActive) {
@@ -264,7 +270,6 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             } else {
                 super.commitText(text)
             }.also {
-                // handled in finalizeComposingText if content.composing.isValid
                 updateLastCommitPosition()
             }
         }

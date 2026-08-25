@@ -51,10 +51,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         get() = true
 
     override suspend fun create() {
-        // Native core is initialized automatically
+        ensureLoaded()
     }
 
-    override suspend fun preload(subtype: Subtype) = withContext(Dispatchers.IO) {
+    private suspend fun ensureLoaded() = withContext(Dispatchers.IO) {
         wordData.withLock { words ->
             if (words.isEmpty()) {
                 try {
@@ -74,6 +74,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
+    override suspend fun preload(subtype: Subtype) {
+        ensureLoaded()
+    }
+
     override suspend fun spell(
         subtype: Subtype,
         word: String,
@@ -84,6 +88,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         isPrivateSession: Boolean,
     ): SpellingResult {
         if (word.isBlank()) return SpellingResult.unspecified()
+        ensureLoaded()
         val suggestions = FlorisNative.suggest(word, maxSuggestionCount)
         return if (suggestions.contains(word)) {
             SpellingResult.validWord()
@@ -101,7 +106,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
-        val query = content.composingText.toString().trim()
+        ensureLoaded()
+        val query = when {
+            content.composingText.isNotBlank() -> content.composingText
+            content.currentWordText.isNotBlank() -> content.currentWordText
+            else -> content.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
+        }.trim()
+
         if (query.isBlank()) return emptyList()
         if (!FlorisNative.isAvailable()) return emptyList()
 
@@ -134,10 +145,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun getListOfWords(subtype: Subtype): List<String> {
+        ensureLoaded()
         return wordData.withLock { it.keys.toList() }
     }
 
     override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
+        ensureLoaded()
         return wordData.withLock { it.getOrDefault(word, 0) / 255.0 }
     }
 
