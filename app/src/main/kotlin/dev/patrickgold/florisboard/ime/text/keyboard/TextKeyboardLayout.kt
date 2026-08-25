@@ -318,6 +318,7 @@ private fun TextKeyButton(
     evaluator: ComputingEvaluator,
     desiredKey: TextKey,
     debugShowTouchBoundaries: Boolean,
+    hideHint: Boolean = false,
 ) = with(LocalDensity.current) {
     val attributes = mapOf(
         FlorisImeUi.Attr.Code to key.computedData.code,
@@ -359,16 +360,18 @@ private fun TextKeyButton(
                 text = customLabel,
             )
         }
-        key.hintedLabel?.let { hintedLabel ->
-            SnyggText(
-                elementName = FlorisImeUi.KeyHint.elementName,
-                attributes = attributes,
-                selector = selector,
-                modifier = Modifier
-                    .wrapContentSize()
-                    .align(if (isTelPadKey) BiasAlignment(0.5f, 0f) else Alignment.TopEnd),
-                text = hintedLabel,
-            )
+        if (!hideHint) {
+            key.hintedLabel?.let { hintedLabel ->
+                SnyggText(
+                    elementName = FlorisImeUi.KeyHint.elementName,
+                    attributes = attributes,
+                    selector = selector,
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .align(if (isTelPadKey) BiasAlignment(0.5f, 0f) else Alignment.TopEnd),
+                    text = hintedLabel,
+                )
+            }
         }
         key.foregroundImageVector?.let { imageVector ->
             SnyggIcon(
