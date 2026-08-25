@@ -451,23 +451,50 @@ fun TextKeyboardLayout(
                 animProgress.animateTo(
                     targetValue = 1f,
                     animationSpec = tween(
-                        durationMillis = 240,
+                        durationMillis = 260,
                         easing = FastOutSlowInEasing,
                     )
                 )
                 controller.activeCatapult = null
             }
-            val yOffset = (animProgress.value * -60f).dp
-            val alpha = (1f - animProgress.value).coerceIn(0f, 1f)
-            val scale = 1f + (animProgress.value * 0.25f)
+            val progress = animProgress.value
+            val yOffset = (progress * -75f).dp
+            val alpha = (1f - progress).coerceIn(0f, 1f)
+            val scale = 1f + (progress * 0.30f)
 
+            // Luminous upward velocity beam trail
             Box(
                 modifier = Modifier
-                    .requiredSize(90.dp, 30.dp)
+                    .requiredSize(40.dp, 80.dp)
                     .absoluteOffset {
                         IntOffset(
-                            x = (activeCatapult.position.x - 45.dp.toPx()).toInt(),
-                            y = (activeCatapult.position.y - 15.dp.toPx() + yOffset.toPx()).toInt(),
+                            x = (activeCatapult.position.x - 20.dp.toPx()).toInt(),
+                            y = (activeCatapult.position.y - 40.dp.toPx() + (yOffset.toPx() * 0.6f)).toInt(),
+                        )
+                    }
+                    .graphicsLayer {
+                        this.alpha = alpha * 0.7f
+                    }
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.8f * alpha),
+                                androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.2f * alpha),
+                                androidx.compose.ui.graphics.Color.Transparent,
+                            )
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    )
+            )
+
+            // Catapult Word Capsule with Specular Ring Glow
+            Box(
+                modifier = Modifier
+                    .requiredSize(110.dp, 36.dp)
+                    .absoluteOffset {
+                        IntOffset(
+                            x = (activeCatapult.position.x - 55.dp.toPx()).toInt(),
+                            y = (activeCatapult.position.y - 18.dp.toPx() + yOffset.toPx()).toInt(),
                         )
                     }
                     .graphicsLayer {
@@ -480,15 +507,20 @@ fun TextKeyboardLayout(
                 Box(
                     modifier = Modifier
                         .background(
-                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.35f),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                colors = listOf(
+                                    androidx.compose.ui.graphics.Color(0xEE091428),
+                                    androidx.compose.ui.graphics.Color(0xCC00E5FF),
+                                )
+                            ),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
                         )
                         .border(
                             width = 1.5.dp,
                             color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = alpha),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
                         )
-                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                        .padding(horizontal = 10.dp, vertical = 3.dp),
                 ) {
                     androidx.compose.material3.Text(
                         text = activeCatapult.word,
