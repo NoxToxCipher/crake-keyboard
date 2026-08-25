@@ -1,4 +1,4 @@
-﻿//! floris-core: Radix Trie and NLP candidate engine for FlorisBoard.
+//! floris-core: Radix Trie and NLP candidate engine for FlorisBoard.
 
 #![forbid(unsafe_code)]
 #![deny(
@@ -12,10 +12,12 @@
 pub mod distance;
 pub mod nlp;
 pub mod trie;
+pub mod typo_corpus;
 
 pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold};
 pub use nlp::{NlpEngine, SuggestionResult};
 pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};
+pub use typo_corpus::{lookup_common_typo, WIKIPEDIA_COMMON_TYPOS};
 
 #[cfg(feature = "uniffi-bindings")]
 uniffi::setup_scaffolding!();
