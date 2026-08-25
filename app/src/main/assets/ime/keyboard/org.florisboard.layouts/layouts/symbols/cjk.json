@@ -78,12 +78,16 @@
         },
         "relevant": [
           {
-            "code": 926,
-            "label": "Ξ"
+            "code": 8364,
+            "label": "€"
           },
           {
-            "code": 321,
-            "label": "Ł"
+            "code": 163,
+            "label": "£"
+          },
+          {
+            "code": 926,
+            "label": "Ξ"
           },
           {
             "code": 625,
@@ -96,6 +100,18 @@
           {
             "code": 9883,
             "label": "⚛"
+          },
+          {
+            "code": 321,
+            "label": "Ł"
+          },
+          {
+            "code": 165,
+            "label": "¥"
+          },
+          {
+            "code": 162,
+            "label": "¢"
           }
         ]
       }
