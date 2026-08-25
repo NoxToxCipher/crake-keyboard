@@ -71,6 +71,7 @@ import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
+import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.popup.ExceptionsForKeyCodes
 import dev.patrickgold.florisboard.ime.popup.PopupUiController
 import dev.patrickgold.florisboard.ime.popup.rememberPopupUiController
@@ -298,7 +299,20 @@ fun TextKeyboardLayout(
         controller.popupUiController = popupUiController
         val debugShowTouchBoundaries by prefs.devtools.showKeyTouchBoundaries.collectAsState()
         val flickPredictionsEnabled by prefs.glide.flickPredictionsEnabled.collectAsState()
-        val currentWord = editorInstance.activeContent.currentWordText
+        val activeContent by editorInstance.activeContentFlow.collectAsState()
+        val currentWord = remember(activeContent) {
+            when {
+                activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> {
+                    activeContent.composingText
+                }
+                activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> {
+                    activeContent.currentWordText
+                }
+                else -> {
+                    activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                }
+            }
+        }
         val flickPredictions = remember(currentWord, flickPredictionsEnabled) {
             if (flickPredictionsEnabled && currentWord.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
                 org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord)
@@ -307,8 +321,9 @@ fun TextKeyboardLayout(
             }
         }
         for (textKey in keyboard.keys()) {
-            val charCode = textKey.computedData.code.toChar().lowercaseChar()
-            val flickWord = if (flickPredictionsEnabled && textKey.computedData.code > 0) flickPredictions[charCode] else null
+            val keyLabel = evaluator.computeLabel(textKey.computedData)?.lowercase() ?: ""
+            val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
+            val flickWord = if (flickPredictionsEnabled) flickPredictions[charCode] else null
             TextKeyButton(
                 textKey, evaluator, desiredKey,
                 debugShowTouchBoundaries,
