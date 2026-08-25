@@ -31,15 +31,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "dummy"
-version = "0.1.0"
-
-[[package]]
 name = "fl_native_rust"
 version = "0.1.0"
 dependencies = [
- "dummy",
+ "floris-core",
  "jni",
+ "once_cell",
+]
+
+[[package]]
+name = "floris-core"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -75,6 +80,12 @@ name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8ca58f447f06ed17d5fc4043ce1b10dd205e060fb3ce5b979b8ed8e59ff3f79"
+
+[[package]]
+name = "once_cell"
+version = "1.21.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "proc-macro2"
@@ -139,6 +150,12 @@ name = "unicode-ident"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "537dd038a89878be9b64dd4bd1b260315c1bb94f4d784956b81e27a088d9a09e"
+
+[[package]]
+name = "unicode-segmentation"
+version = "1.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 
 [[package]]
 name = "walkdir"
