@@ -118,7 +118,7 @@ fun CandidatesRow(modifier: Modifier = Modifier) {
                     displayMode = displayMode,
                     onClick = {
                         // Can't use candidate directly
-                        keyboardManager.commitCandidate(candidates[n])
+                        keyboardManager.commitCandidate(candidates[n], withSpace = true)
                     },
                     onLongPress = {
                         // Can't use candidate directly

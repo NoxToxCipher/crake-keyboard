@@ -282,13 +282,18 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    fun commitCandidate(candidate: SuggestionCandidate) {
+    fun commitCandidate(candidate: SuggestionCandidate, withSpace: Boolean = false) {
         scope.launch {
             candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
         }
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
-            else -> editorInstance.commitCompletion(candidate)
+            else -> {
+                editorInstance.commitCompletion(candidate)
+                if (withSpace) {
+                    editorInstance.commitText(" ")
+                }
+            }
         }
     }
 

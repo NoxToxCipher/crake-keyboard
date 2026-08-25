@@ -153,57 +153,6 @@ impl NlpEngine {
         }
     }
 
-    /// Dynamic Suffix / Possessive Engine.
-    /// Checks if stripping common contraction suffixes yields a valid root word in the Trie.
-    pub fn derive_dynamic_possessive_or_contraction(&self, query: &str) -> Option<String> {
-        let trimmed_lower = query.trim().to_lowercase();
-        if trimmed_lower.len() < 3 {
-            return None;
-        }
-
-        // Possessive 's (e.g. bitcoin -> bitcoin's, satoshi -> satoshi's)
-        if trimmed_lower.ends_with('s') && !trimmed_lower.ends_with("ss") {
-            let root = &trimmed_lower[..trimmed_lower.len() - 1];
-            if root.len() >= 2 && self.trie.contains(root) {
-                return Some(format!("{}'s", root));
-            }
-        }
-
-        // Modal 've (e.g. could -> could've)
-        if trimmed_lower.ends_with("ve") {
-            let root = &trimmed_lower[..trimmed_lower.len() - 2];
-            if root.len() >= 3 && self.trie.contains(root) {
-                return Some(format!("{}'ve", root));
-            }
-        }
-
-        // Modal 'll (e.g. that -> that'll)
-        if trimmed_lower.ends_with("ll") {
-            let root = &trimmed_lower[..trimmed_lower.len() - 2];
-            if root.len() >= 3 && self.trie.contains(root) {
-                return Some(format!("{}'ll", root));
-            }
-        }
-
-        // Modal 'd (e.g. how -> how'd, why -> why'd)
-        if trimmed_lower.ends_with('d') {
-            let root = &trimmed_lower[..trimmed_lower.len() - 1];
-            if root.len() >= 3 && self.trie.contains(root) {
-                return Some(format!("{}'d", root));
-            }
-        }
-
-        // Modal n't (e.g. should -> shouldn't)
-        if trimmed_lower.ends_with("nt") {
-            let root = &trimmed_lower[..trimmed_lower.len() - 2];
-            if root.len() >= 3 && self.trie.contains(root) {
-                return Some(format!("{}n't", root));
-            }
-        }
-
-        None
-    }
-
     pub fn suggest(&self, query: &str, max_candidates: usize) -> SuggestionResult {
         let trimmed = query.trim();
         let trimmed_lower = trimmed.to_lowercase();
@@ -247,21 +196,28 @@ impl NlpEngine {
                 is_autocorrect: true,
             });
         } else if let Some(&(_, contraction)) = CONTRACTIONS.iter().find(|&&(k, _)| k == trimmed_lower) {
-            // 4. Known contraction auto-fix (e.g. dont -> don't, aint -> ain't, yall -> y'all)
+            // 4. Known contraction handling:
+            // High-confidence unambiguous contractions (dont, cant, aint, wont, yall, etc.) auto-correct.
+            // Ambiguous words (well, were, shed, wed, hell, its) do NOT auto-correct over exact word.
+            let is_ambiguous = matches!(trimmed_lower.as_str(), "well" | "were" | "shed" | "wed" | "hell" | "its" | "ill" | "id");
             let formatted = Self::apply_casing(trimmed, contraction);
-            candidates.push(RankedCandidate {
-                word: formatted,
-                is_autocorrect: true,
-            });
-        } else if let Some(dynamic_contraction) = self.derive_dynamic_possessive_or_contraction(trimmed) {
-            // 5. Algorithmic Suffix / Possessive derivation (e.g. bitcoin's)
-            let formatted = Self::apply_casing(trimmed, &dynamic_contraction);
-            candidates.push(RankedCandidate {
-                word: formatted,
-                is_autocorrect: true,
-            });
+            if is_ambiguous && is_exact {
+                candidates.push(RankedCandidate {
+                    word: trimmed.to_string(),
+                    is_autocorrect: false,
+                });
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: false,
+                });
+            } else {
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: true,
+                });
+            }
         } else if is_exact {
-            // 6. Exact valid word -> NEVER auto-hijack
+            // 5. Exact valid word -> NEVER auto-hijack
             candidates.push(RankedCandidate {
                 word: trimmed.to_string(),
                 is_autocorrect: false,
@@ -375,17 +331,39 @@ mod tests {
     }
 
     #[test]
-    fn test_dynamic_possessives_and_contractions() {
+    fn test_exact_words_never_mangled_to_contractions() {
         let mut engine = NlpEngine::new();
-        engine.load_dictionary(&[("bitcoin", 1000), ("computer", 900), ("friend", 800)]);
+        engine.load_dictionary(&[
+            ("word", 1000),
+            ("words", 900),
+            ("desired", 800),
+            ("desire", 700),
+            ("well", 1000),
+            ("were", 1000),
+            ("shed", 500),
+        ]);
 
-        let res_btc = engine.suggest("bitcoins", 3);
-        assert_eq!(res_btc.candidates[0].word, "bitcoin's");
-        assert!(res_btc.candidates[0].is_autocorrect);
+        // "word", "words", "desired" must NEVER become "wor'd", "word's", "desire'd"
+        let res_word = engine.suggest("word", 3);
+        assert_eq!(res_word.candidates[0].word, "word");
+        assert!(!res_word.candidates[0].is_autocorrect);
 
-        let res_comp = engine.suggest("computers", 3);
-        assert_eq!(res_comp.candidates[0].word, "computer's");
-        assert!(res_comp.candidates[0].is_autocorrect);
+        let res_words = engine.suggest("words", 3);
+        assert_eq!(res_words.candidates[0].word, "words");
+        assert!(!res_words.candidates[0].is_autocorrect);
+
+        let res_desired = engine.suggest("desired", 3);
+        assert_eq!(res_desired.candidates[0].word, "desired");
+        assert!(!res_desired.candidates[0].is_autocorrect);
+
+        // Ambiguous words like "well" and "were" must NOT auto-hijack to "we'll" / "we're"
+        let res_well = engine.suggest("well", 3);
+        assert_eq!(res_well.candidates[0].word, "well");
+        assert!(!res_well.candidates[0].is_autocorrect);
+
+        let res_were = engine.suggest("were", 3);
+        assert_eq!(res_were.candidates[0].word, "were");
+        assert!(!res_were.candidates[0].is_autocorrect);
     }
 
     #[test]
