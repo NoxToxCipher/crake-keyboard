@@ -1,4 +1,4 @@
-﻿//! Real-time URL and metadata tracking parameter sanitizer.
+//! Real-time URL and metadata tracking parameter sanitizer.
 
 /// Known privacy-invasive tracking query parameter keys.
 pub const TRACKING_PARAMS: &[&str] = &[
@@ -221,9 +221,13 @@ mod tests {
             let cleaned = sanitize_url(&url);
 
             for &tracking in TRACKING_PARAMS {
-                let needle = format!("{}=", tracking);
-                let leaked = cleaned.contains(&needle);
-                prop_assert!(!leaked, "Found leaked tracking parameter: {}", tracking);
+                let needle_start = format!("?{}=", tracking);
+                let needle_mid = format!("&{}=", tracking);
+                prop_assert!(
+                    !cleaned.contains(&needle_start) && !cleaned.contains(&needle_mid),
+                    "Found leaked tracking parameter: {}",
+                    tracking
+                );
             }
 
             let expected_benign = format!("{}={}", benign_k, benign_v);
