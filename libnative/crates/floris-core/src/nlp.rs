@@ -240,13 +240,15 @@ impl NlpEngine {
         }
 
         // 7. Fuzzy search for typo recovery if query is not in dictionary
+        let is_capitalized = trimmed.chars().next().map_or(false, |c| c.is_uppercase());
         if candidates.len() < max_candidates {
             let max_dist = if trimmed_lower.len() <= 4 { 1 } else { 2 };
             let fuzzy = self.trie.fuzzy_search(&trimmed_lower, max_dist, max_candidates + 4);
             for fc in fuzzy {
                 let formatted = Self::apply_casing(trimmed, &fc.word);
                 if !contains_word(&candidates, &formatted) {
-                    let should_autocorrect = !is_exact && fc.distance == 1 && candidates.is_empty();
+                    // Capitalized words (names/places) and multi-word inputs must NEVER be auto-hijacked by fuzzy matching
+                    let should_autocorrect = !is_exact && !is_capitalized && fc.distance == 1 && candidates.is_empty();
                     candidates.push(RankedCandidate {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
@@ -256,6 +258,27 @@ impl NlpEngine {
                     break;
                 }
             }
+        }
+
+        // 8. CRITICAL: The literal raw typed word MUST ALWAYS be in the candidate list
+        // so the user can always tap their exact text (e.g. custom names, passphrases, codes)
+        if !contains_word(&candidates, trimmed) {
+            if is_capitalized || candidates.is_empty() {
+                // For capitalized names/proper nouns, prioritize the literal typed word in slot 0
+                candidates.insert(0, RankedCandidate {
+                    word: trimmed.to_string(),
+                    is_autocorrect: false,
+                });
+            } else {
+                candidates.push(RankedCandidate {
+                    word: trimmed.to_string(),
+                    is_autocorrect: false,
+                });
+            }
+        }
+
+        if candidates.len() > max_candidates {
+            candidates.truncate(max_candidates);
         }
 
         SuggestionResult {
@@ -328,6 +351,28 @@ mod tests {
         let res_acc = engine.suggest("accomodation", 3);
         assert_eq!(res_acc.candidates[0].word, "accommodation");
         assert!(res_acc.candidates[0].is_autocorrect);
+    }
+
+    #[test]
+    fn test_custom_names_and_literal_candidate_presence() {
+        let mut engine = NlpEngine::new();
+        engine.load_dictionary(&[
+            ("lock", 1000),
+            ("loom", 900),
+            ("look", 800),
+            ("alice", 700),
+        ]);
+
+        // Custom name "Lochran" (not in dictionary)
+        let res_name = engine.suggest("Lochran", 3);
+        // "Lochran" must be candidate 0 and NOT auto-corrected
+        assert_eq!(res_name.candidates[0].word, "Lochran");
+        assert!(!res_name.candidates[0].is_autocorrect);
+
+        // Rare custom lowercase word "qwertyuiop"
+        let res_custom = engine.suggest("qwertyuiop", 3);
+        assert!(res_custom.candidates.iter().any(|c| c.word == "qwertyuiop"));
+        assert!(!res_custom.candidates.iter().find(|c| c.word == "qwertyuiop").unwrap().is_autocorrect);
     }
 
     #[test]
