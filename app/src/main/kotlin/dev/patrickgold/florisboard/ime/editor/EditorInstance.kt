@@ -294,8 +294,8 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             content.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
         }
         if (wordPrefix.isNotEmpty()) {
-            kotlinx.coroutines.runBlocking {
-                deleteAroundCursor(dev.patrickgold.florisboard.ime.editor.OperationUnit.CHARACTERS, dev.patrickgold.florisboard.ime.editor.OperationScope.BEFORE_CURSOR, n = wordPrefix.length)
+            runBlocking {
+                deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = wordPrefix.length)
             }
         }
         val isPhantomSpaceActive = phantomSpace.determine(text)

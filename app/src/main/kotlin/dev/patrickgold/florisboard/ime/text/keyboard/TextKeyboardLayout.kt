@@ -813,7 +813,12 @@ private class TextKeyboardLayoutController(
                         SwipeGesture.Type.TOUCH_UP -> {
                             if (event.direction == SwipeGesture.Direction.UP && prefs.glide.flickPredictionsEnabled.get()) {
                                 val charCode = initialKey.computedData.code.toChar().lowercaseChar()
-                                val prefix = editorInstance.activeContent.currentWordText
+                                val activeContent = editorInstance.activeContent
+                                val prefix = when {
+                                    activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> activeContent.composingText
+                                    activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> activeContent.currentWordText
+                                    else -> activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                                }
                                 val predictions = if (prefix.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
                                     org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix)
                                 } else {
