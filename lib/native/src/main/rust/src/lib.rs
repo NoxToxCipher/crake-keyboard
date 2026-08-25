@@ -79,6 +79,57 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpSugg
 }
 
 #[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPredictNextLetterWords(
+    mut env: JNIEnv,
+    _class: JClass,
+    query: JString,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let query_str = match env.get_string(&query) {
+        Ok(s) => match s.to_str() {
+            Ok(valid) => valid.to_string(),
+            Err(_) => return empty_array,
+        },
+        Err(_) => return empty_array,
+    };
+
+    let predictions = {
+        if let Ok(engine) = NLP_ENGINE.read() {
+            engine.predict_next_letter_words(&query_str)
+        } else {
+            Vec::new()
+        }
+    };
+
+    let string_class = match env.find_class("java/lang/String") {
+        Ok(cls) => cls,
+        Err(_) => return empty_array,
+    };
+
+    let result_array = match env.new_object_array(
+        predictions.len() as jint,
+        string_class,
+        JString::default(),
+    ) {
+        Ok(arr) => arr,
+        Err(_) => return empty_array,
+    };
+
+    for (i, (ch, word)) in predictions.iter().enumerate() {
+        let serialized = format!("{}:{}", ch, word);
+        if let Ok(jstr) = env.new_string(&serialized) {
+            let _ = env.set_object_array_element(&result_array, i as jint, jstr);
+        }
+    }
+
+    result_array.into_raw()
+}
+
+#[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeSanitizeUrl(
     mut env: JNIEnv,
     _class: JClass,

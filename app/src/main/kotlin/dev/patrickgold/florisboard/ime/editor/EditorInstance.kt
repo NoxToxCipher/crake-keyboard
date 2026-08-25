@@ -285,6 +285,26 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      *
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
+    fun commitFlickPrediction(text: String): Boolean {
+        if (text.isEmpty() || activeInfo.isRawInputEditor) return false
+        val content = activeContent
+        val wordPrefix = if (content.composing.isValid) {
+            content.composingText
+        } else {
+            content.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
+        }
+        if (wordPrefix.isNotEmpty()) {
+            kotlinx.coroutines.runBlocking {
+                deleteAroundCursor(dev.patrickgold.florisboard.ime.editor.OperationUnit.CHARACTERS, dev.patrickgold.florisboard.ime.editor.OperationScope.BEFORE_CURSOR, n = wordPrefix.length)
+            }
+        }
+        val isPhantomSpaceActive = phantomSpace.determine(text)
+        phantomSpace.setActive(showComposingRegion = false)
+        return super.commitText("$text$SPACE").also {
+            updateLastCommitPosition()
+        }
+    }
+
     fun commitGesture(text: String): Boolean {
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val isPhantomSpaceActive = phantomSpace.determine(text, forceActive = true)

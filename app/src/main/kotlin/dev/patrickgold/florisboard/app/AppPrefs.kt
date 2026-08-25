@@ -293,15 +293,15 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val swipeDown = enum(
             key = "gestures__swipe_down",
-            default = SwipeAction.HIDE_KEYBOARD,
+            default = SwipeAction.CYCLE_TO_NEXT_KEYBOARD_MODE,
         )
         val swipeLeft = enum(
             key = "gestures__swipe_left",
-            default = SwipeAction.SWITCH_TO_NEXT_SUBTYPE,
+            default = SwipeAction.DELETE_WORD,
         )
         val swipeRight = enum(
             key = "gestures__swipe_right",
-            default = SwipeAction.SWITCH_TO_PREV_SUBTYPE,
+            default = SwipeAction.INSERT_SPACE,
         )
         val spaceBarSwipeUp = enum(
             key = "gestures__space_bar_swipe_up",
@@ -341,6 +341,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
     inner class Glide {
         val enabled = boolean(
             key = "glide__enabled",
+            default = true,
+        )
+        val flickPredictionsEnabled = boolean(
+            key = "glide__flick_predictions_enabled",
             default = true,
         )
         val showTrail = boolean(

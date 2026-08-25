@@ -80,6 +80,21 @@ object FlorisNative {
         }
     }
 
+    fun predictNextLetterWords(prefix: String): Map<Char, String> {
+        if (!isLoaded || prefix.isBlank()) return emptyMap()
+        val rawMatches = nativeNlpPredictNextLetterWords(prefix)
+        val result = mutableMapOf<Char, String>()
+        for (raw in rawMatches) {
+            val colonIdx = raw.indexOf(':')
+            if (colonIdx > 0 && raw.isNotEmpty()) {
+                val ch = raw[0].lowercaseChar()
+                val word = raw.substring(colonIdx + 1)
+                result[ch] = word
+            }
+        }
+        return result
+    }
+
     fun sanitizeUrl(rawUrl: String): String {
         if (!isLoaded || rawUrl.isBlank()) return rawUrl
         return nativeSanitizeUrl(rawUrl)
@@ -185,6 +200,9 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>
+
+    @JvmStatic
+    private external fun nativeNlpPredictNextLetterWords(query: String): Array<String>
 
     @JvmStatic
     private external fun nativeSanitizeUrl(rawUrl: String): String

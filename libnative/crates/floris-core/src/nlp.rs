@@ -287,11 +287,67 @@ impl NlpEngine {
             candidates,
         }
     }
+
+    /// Predicts the highest-frequency word for each next possible letter key (BlackBerry Flick Predictions).
+    /// Returns a list of (next_char, predicted_word).
+    pub fn predict_next_letter_words(&self, prefix: &str) -> Vec<(char, String)> {
+        let trimmed = prefix.trim();
+        if trimmed.is_empty() {
+            return Vec::new();
+        }
+
+        let trimmed_lower = trimmed.to_ascii_lowercase();
+        let mut results = Vec::with_capacity(26);
+
+        for ch in 'a'..='z' {
+            let candidate_prefix = format!("{}{}", trimmed_lower, ch);
+            let matches = self.trie.prefix_search(&candidate_prefix, 1);
+            if let Some((word, _)) = matches.first() {
+                // Ensure the predicted word is longer than the prefix itself
+                if word.len() > trimmed_lower.len() {
+                    let formatted = Self::apply_casing(trimmed, word);
+                    results.push((ch, formatted));
+                }
+            }
+        }
+
+        results
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_predict_next_letter_words() {
+        let mut engine = NlpEngine::new();
+        engine.load_dictionary(&[
+            ("the", 1000),
+            ("this", 900),
+            ("that", 850),
+            ("those", 800),
+            ("three", 750),
+            ("crypto", 950),
+            ("can", 900),
+            ("could", 850),
+        ]);
+
+        let th_preds = engine.predict_next_letter_words("th");
+        let pred_map: std::collections::HashMap<char, String> = th_preds.into_iter().collect();
+
+        assert_eq!(pred_map.get(&'e').unwrap(), "the");
+        assert_eq!(pred_map.get(&'i').unwrap(), "this");
+        assert_eq!(pred_map.get(&'a').unwrap(), "that");
+        assert_eq!(pred_map.get(&'o').unwrap(), "those");
+        assert_eq!(pred_map.get(&'r').unwrap(), "three");
+
+        // Test with capitalization preservation
+        let c_preds = engine.predict_next_letter_words("C");
+        let c_map: std::collections::HashMap<char, String> = c_preds.into_iter().collect();
+        assert_eq!(c_map.get(&'r').unwrap(), "Crypto");
+        assert_eq!(c_map.get(&'a').unwrap(), "Can");
+    }
 
     #[test]
     fn test_single_letter_i_autocorrect() {

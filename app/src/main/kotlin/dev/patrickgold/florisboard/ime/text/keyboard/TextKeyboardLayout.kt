@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.runtime.Composable
@@ -56,6 +57,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
@@ -111,6 +114,7 @@ fun TextKeyboardLayout(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val glideTypingManager by context.glideTypingManager()
+    val editorInstance by context.editorInstance()
 
     val keyboard = evaluator.keyboard as TextKeyboard
     val glideEnabledInternal by prefs.glide.enabled.collectAsState()
@@ -293,10 +297,22 @@ fun TextKeyboardLayout(
         popupUiController.keyHintConfiguration = prefs.keyboard.keyHintConfiguration()
         controller.popupUiController = popupUiController
         val debugShowTouchBoundaries by prefs.devtools.showKeyTouchBoundaries.collectAsState()
+        val flickPredictionsEnabled by prefs.glide.flickPredictionsEnabled.collectAsState()
+        val currentWord = editorInstance.activeContent.currentWordText
+        val flickPredictions = remember(currentWord, flickPredictionsEnabled) {
+            if (flickPredictionsEnabled && currentWord.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
+                org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord)
+            } else {
+                emptyMap()
+            }
+        }
         for (textKey in keyboard.keys()) {
+            val charCode = textKey.computedData.code.toChar().lowercaseChar()
+            val flickWord = if (flickPredictionsEnabled && textKey.computedData.code > 0) flickPredictions[charCode] else null
             TextKeyButton(
                 textKey, evaluator, desiredKey,
                 debugShowTouchBoundaries,
+                flickWord,
             )
         }
 
@@ -318,6 +334,7 @@ private fun TextKeyButton(
     evaluator: ComputingEvaluator,
     desiredKey: TextKey,
     debugShowTouchBoundaries: Boolean,
+    flickWord: String? = null,
 ) = with(LocalDensity.current) {
     val attributes = mapOf(
         FlorisImeUi.Attr.Code to key.computedData.code,
@@ -375,6 +392,18 @@ private fun TextKeyButton(
                 modifier = Modifier.align(Alignment.Center),
                 imageVector = imageVector,
                 contentDescription = null,
+            )
+        }
+        if (flickWord != null) {
+            androidx.compose.material3.Text(
+                text = flickWord,
+                fontSize = 8.5.sp,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-4).dp),
             )
         }
     }
@@ -736,8 +765,24 @@ private class TextKeyboardLayoutController(
                     true
                 }
                 initialKey.computedData.code > KeyCode.SPACE && !popupUiController.isShowingExtendedPopup -> when {
-                    !isGlideEnabled && !pointer.hasTriggeredGestureMove -> when (event.type) {
+                    !pointer.hasTriggeredGestureMove -> when (event.type) {
                         SwipeGesture.Type.TOUCH_UP -> {
+                            if (event.direction == SwipeGesture.Direction.UP && prefs.glide.flickPredictionsEnabled.get()) {
+                                val charCode = initialKey.computedData.code.toChar().lowercaseChar()
+                                val prefix = editorInstance.activeContent.currentWordText
+                                val predictions = if (prefix.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
+                                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix)
+                                } else {
+                                    emptyMap()
+                                }
+                                val predictedWord = predictions[charCode]
+                                if (predictedWord != null) {
+                                    keyboardManager.commitFlickPrediction(predictedWord)
+                                    inputFeedbackController?.keyPress(initialKey.computedData)
+                                    return true
+                                }
+                            }
+
                             val swipeAction = when (event.direction) {
                                 SwipeGesture.Direction.UP -> prefs.gestures.swipeUp.get()
                                 SwipeGesture.Direction.DOWN -> prefs.gestures.swipeDown.get()

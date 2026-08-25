@@ -297,6 +297,10 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
+    fun commitFlickPrediction(word: String) {
+        editorInstance.commitFlickPrediction(fixCase(word))
+    }
+
     fun commitGesture(word: String) {
         editorInstance.commitGesture(fixCase(word))
     }
