@@ -421,15 +421,22 @@ private fun TextKeyButton(
             )
         }
         if (flickWord != null) {
+            val fontSize = when {
+                flickWord.length <= 4 -> 11.5.sp
+                flickWord.length <= 6 -> 10.sp
+                else -> 8.5.sp
+            }
             androidx.compose.material3.Text(
                 text = flickWord,
-                fontSize = 10.sp,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                fontSize = fontSize,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
                 maxLines = 1,
+                softWrap = false,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = (-2).dp),
+                    .offset(y = (-3).dp),
             )
         }
     }

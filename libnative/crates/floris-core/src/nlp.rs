@@ -299,21 +299,24 @@ impl NlpEngine {
         }
 
         let trimmed_lower = trimmed.to_ascii_lowercase();
-        let mut results = Vec::with_capacity(26);
+        let mut candidates: Vec<(char, String, u32)> = Vec::with_capacity(26);
 
         for ch in 'a'..='z' {
             let candidate_prefix = format!("{}{}", trimmed_lower, ch);
             let matches = self.trie.prefix_search(&candidate_prefix, 1);
-            if let Some((word, _)) = matches.first() {
-                // Ensure the predicted word is longer than the prefix itself
-                if word.len() > trimmed_lower.len() {
+            if let Some((word, freq)) = matches.first() {
+                if word.len() > trimmed_lower.len() && *freq >= 140 {
                     let formatted = Self::apply_casing(trimmed, word);
-                    results.push((ch, formatted));
+                    candidates.push((ch, formatted, *freq));
                 }
             }
         }
 
-        results
+        // Keep top 5 most confident word predictions
+        candidates.sort_by(|a, b| b.2.cmp(&a.2));
+        candidates.truncate(5);
+
+        candidates.into_iter().map(|(ch, word, _)| (ch, word)).collect()
     }
 }
 
