@@ -393,15 +393,20 @@ fun TextKeyboardLayout(
                 val charCode = if (keyLabel.length == 1) keyLabel[0] else textKey.computedData.code.toChar().lowercaseChar()
                 val flickWord = flickPredictions[charCode] ?: continue
 
+                val extraChars = (flickWord.length - 3).coerceAtLeast(0)
+                val widthFactor = (1.25f + extraChars * 0.14f).coerceIn(1.25f, 2.4f)
+                val dynamicWidth = textKey.visibleBounds.width * widthFactor
+                val halfWidth = dynamicWidth / 2f
+
                 Box(
                     modifier = Modifier
                         .requiredSize(
-                            width = (textKey.visibleBounds.width * 1.35f).toDp(),
+                            width = dynamicWidth.toDp(),
                             height = 24.dp,
                         )
                         .absoluteOffset {
                             IntOffset(
-                                x = (textKey.visibleBounds.center.x - (textKey.visibleBounds.width * 0.675f)).toInt(),
+                                x = (textKey.visibleBounds.center.x - halfWidth).toInt(),
                                 y = (textKey.visibleBounds.top - 12.dp.toPx()).toInt(),
                             )
                         },
@@ -411,19 +416,19 @@ fun TextKeyboardLayout(
                         modifier = Modifier
                             .background(
                                 color = androidx.compose.ui.graphics.Color(0xF2091428),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
                             )
                             .border(
                                 width = 1.dp,
                                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                     colors = listOf(
-                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.6f),
-                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.2f),
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.75f),
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.20f),
                                     )
                                 ),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
                             )
-                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
                     ) {
                         androidx.compose.material3.Text(
                             text = flickWord,
@@ -569,6 +574,22 @@ private fun TextKeyButton(
                     text = hintedLabel,
                 )
             }
+        }
+        if (key.isPressed && key.isEnabled) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(
+                                Color(0x4000E5FF),
+                                Color(0x1200E5FF),
+                                Color.Transparent,
+                            )
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                    )
+            )
         }
         key.foregroundImageVector?.let { imageVector ->
             SnyggIcon(
