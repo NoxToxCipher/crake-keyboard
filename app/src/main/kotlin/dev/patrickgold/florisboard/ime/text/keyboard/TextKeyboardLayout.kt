@@ -424,6 +424,7 @@ private class TextKeyboardLayoutController(
     private val prefs by FlorisPreferenceStore
     private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
+    private val glideTypingManager by context.glideTypingManager()
 
     private val inputEventDispatcher get() = keyboardManager.inputEventDispatcher
     private val inputFeedbackController get() = FlorisImeService.inputFeedbackController()
@@ -446,6 +447,13 @@ private class TextKeyboardLayoutController(
 
     val isGlideEnabled: Boolean get() = prefs.glide.enabled.get() && editorInstance.activeInfo.isRichInputEditor &&
         keyboardManager.activeState.keyVariation != KeyVariation.PASSWORD
+
+    fun cancelGlideActive() {
+        glideTypingDetector.cancel()
+        glideTypingManager.cancelGlide()
+        glideDataForDrawing.clear()
+        isGliding = false
+    }
 
     fun onTouchEventInternal(event: MotionEvent) {
         flogDebug { "event=$event" }
@@ -531,6 +539,7 @@ private class TextKeyboardLayoutController(
                 if (pointer != null) {
                     pointer.index = pointerIndex
                     if (swipeGestureDetector.onTouchUp(event, pointer) || pointer.hasTriggeredGestureMove) {
+                        cancelGlideActive()
                         if (pointer.hasTriggeredGestureMove && pointer.initialKey?.computedData?.code == KeyCode.DELETE) {
                             val selection = editorInstance.activeContent.selection
                             if (selection.isSelectionMode) {
@@ -551,6 +560,7 @@ private class TextKeyboardLayoutController(
                     if (pointer.id == pointerId) {
                         pointer.index = pointerIndex
                         if (swipeGestureDetector.onTouchUp(event, pointer) || pointer.hasTriggeredGestureMove) {
+                            cancelGlideActive()
                             if (pointer.hasTriggeredGestureMove &&
                                 pointer.initialKey?.computedData?.code == KeyCode.DELETE &&
                                 prefs.gestures.deleteKeySwipeLeft.get() != SwipeAction.SELECT_CHARACTERS_PRECISELY &&
@@ -748,6 +758,7 @@ private class TextKeyboardLayoutController(
         val initialKey = pointer.initialKey ?: return false
         val activeKey = pointer.activeKey
         flogDebug(LogTopic.TEXT_KEYBOARD_VIEW)
+        cancelGlideActive()
 
         return when (initialKey.computedData.code) {
             KeyCode.DELETE -> handleDeleteSwipe(event)

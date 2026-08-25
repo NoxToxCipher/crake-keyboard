@@ -63,6 +63,11 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
         glideTypingClassifier.clear()
     }
 
+    fun cancelGlide() {
+        synchronized(gesturePoints) { gesturePoints.clear() }
+        glideTypingClassifier.clear()
+    }
+
     override fun onGlideAddPoint(point: GlideTypingGesture.Detector.Position) {
         val normalized = GlideTypingGesture.Detector.Position(point.x, point.y)
 
