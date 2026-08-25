@@ -1,4 +1,4 @@
-﻿# cargo-deny configuration for crake-keyboard native engine
+# cargo-deny configuration for floris-core native engine
 [advisories]
 vulnerability = "deny"
 unmaintained = "warn"

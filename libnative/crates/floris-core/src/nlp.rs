@@ -424,10 +424,10 @@ mod tests {
             ("alice", 700),
         ]);
 
-        // Custom name "Lochran" (not in dictionary)
-        let res_name = engine.suggest("Lochran", 3);
-        // "Lochran" must be candidate 0 and NOT auto-corrected
-        assert_eq!(res_name.candidates[0].word, "Lochran");
+        // Custom name "Alexander" (not in dictionary)
+        let res_name = engine.suggest("Alexander", 3);
+        // "Alexander" must be candidate 0 and NOT auto-corrected
+        assert_eq!(res_name.candidates[0].word, "Alexander");
         assert!(!res_name.candidates[0].is_autocorrect);
 
         // Rare custom lowercase word "qwertyuiop"
