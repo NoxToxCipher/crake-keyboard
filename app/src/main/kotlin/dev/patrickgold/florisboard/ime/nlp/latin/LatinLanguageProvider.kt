@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2022-2026 The FlorisBoard Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -122,7 +122,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 text = candidate,
                 secondaryText = null,
                 confidence = 1.0 - (index * 0.1),
-                isEligibleForAutoCommit = index == 0,
+                isEligibleForAutoCommit = false, // Suggestions are tap-to-complete, preventing spacebar from hijacking typed words
                 sourceProvider = this@LatinLanguageProvider,
             )
         }
