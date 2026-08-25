@@ -328,26 +328,45 @@ fun TextKeyboardLayout(
                 emptyMap()
             }
         }
-        // Authentic BlackBerry 10 Metallic Fret Lines (Row Dividers)
+        // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Specular Highlight & Ambient Shadow)
         if (keyboard.mode == KeyboardMode.CHARACTERS) {
             val rowTops = remember(keyboard) {
                 keyboard.keys().asSequence().map { it.visibleBounds.top.toInt() }.distinct().sorted().toList()
             }
             for (rowTop in rowTops) {
                 if (rowTop > 5) {
+                    // Top Specular Chrome Highlight
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(1.5.dp)
+                            .height(1.dp)
                             .absoluteOffset { IntOffset(0, rowTop - 1) }
                             .background(
                                 brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                     colors = listOf(
-                                        Color(0x2294A3B8),
-                                        Color(0x55CBD5E1),
-                                        Color(0x88E2E8F0),
-                                        Color(0x55CBD5E1),
-                                        Color(0x2294A3B8),
+                                        Color(0x2594A3B8),
+                                        Color(0x70CBD5E1),
+                                        Color(0xCCE2E8F0),
+                                        Color(0x70CBD5E1),
+                                        Color(0x2594A3B8),
+                                    )
+                                )
+                            )
+                    )
+                    // Bottom Deep Ambient Shadow Line
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .absoluteOffset { IntOffset(0, rowTop) }
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0x15000000),
+                                        Color(0x60000000),
+                                        Color(0x90000000),
+                                        Color(0x60000000),
+                                        Color(0x15000000),
                                     )
                                 )
                             )
@@ -954,7 +973,7 @@ private class TextKeyboardLayoutController(
                                 if (predictedWord != null) {
                                     activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
                                     keyboardManager.commitFlickPrediction(predictedWord)
-                                    inputFeedbackController?.keyPress(initialKey.computedData)
+                                    inputFeedbackController?.flickCommit(initialKey.computedData)
                                     return true
                                 }
                             }

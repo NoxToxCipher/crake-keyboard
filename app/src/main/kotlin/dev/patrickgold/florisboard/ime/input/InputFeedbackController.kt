@@ -81,6 +81,11 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
         if (prefs.inputFeedback.hapticFeatGestureSwipe.get()) performHapticFeedback(data, 0.4)
     }
 
+    fun flickCommit(data: KeyData = TextKeyData.UNSPECIFIED) {
+        if (prefs.inputFeedback.audioFeatGestureSwipe.get()) performAudioFeedback(data, 1.2)
+        if (prefs.inputFeedback.hapticFeatGestureSwipe.get()) performHapticFeedback(data, 1.4)
+    }
+
     fun gestureMovingSwipe(data: KeyData = TextKeyData.UNSPECIFIED) {
         if (prefs.inputFeedback.audioFeatGestureMovingSwipe.get()) performAudioFeedback(data, 0.4)
         if (prefs.inputFeedback.hapticFeatGestureMovingSwipe.get()) performHapticFeedback(data, 0.05)

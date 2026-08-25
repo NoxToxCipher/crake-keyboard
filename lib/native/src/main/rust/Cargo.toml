@@ -1,11 +1,11 @@
-﻿[package]
+[package]
 name = "fl_native_rust"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
 name = "fl_native_rust"
-crate-type = ["staticlib", "cdylib"]
+crate-type = ["staticlib"]
 
 [dependencies]
 floris-core = { path = "../../../../../libnative/crates/floris-core" }
