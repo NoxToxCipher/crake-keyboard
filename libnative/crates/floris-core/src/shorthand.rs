@@ -1,0 +1,209 @@
+//! English SMS, Chat, and Internet Slang Shorthand Lexicon.
+//! Binary search lookup table for instant zero-latency slang expansion.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ShorthandEntry {
+    pub code: &'static str,
+    pub expansion: &'static str,
+    pub is_autocorrect: bool,
+}
+
+pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
+    ShorthandEntry { code: "2", expansion: "to", is_autocorrect: false },
+    ShorthandEntry { code: "4", expansion: "for", is_autocorrect: false },
+    ShorthandEntry { code: "8", expansion: "ate", is_autocorrect: false },
+    ShorthandEntry { code: "afaik", expansion: "as far as I know", is_autocorrect: true },
+    ShorthandEntry { code: "afk", expansion: "away from keyboard", is_autocorrect: true },
+    ShorthandEntry { code: "aka", expansion: "also known as", is_autocorrect: true },
+    ShorthandEntry { code: "asap", expansion: "as soon as possible", is_autocorrect: true },
+    ShorthandEntry { code: "atm", expansion: "at the moment", is_autocorrect: true },
+    ShorthandEntry { code: "b", expansion: "be", is_autocorrect: false },
+    ShorthandEntry { code: "b/c", expansion: "because", is_autocorrect: true },
+    ShorthandEntry { code: "b4", expansion: "before", is_autocorrect: true },
+    ShorthandEntry { code: "b4n", expansion: "bye for now", is_autocorrect: true },
+    ShorthandEntry { code: "bc", expansion: "because", is_autocorrect: true },
+    ShorthandEntry { code: "bf", expansion: "boyfriend", is_autocorrect: true },
+    ShorthandEntry { code: "bff", expansion: "best friends forever", is_autocorrect: true },
+    ShorthandEntry { code: "brb", expansion: "be right back", is_autocorrect: true },
+    ShorthandEntry { code: "btw", expansion: "by the way", is_autocorrect: true },
+    ShorthandEntry { code: "c", expansion: "see", is_autocorrect: false },
+    ShorthandEntry { code: "cmon", expansion: "c'mon", is_autocorrect: true },
+    ShorthandEntry { code: "cu", expansion: "see you", is_autocorrect: true },
+    ShorthandEntry { code: "cul8r", expansion: "see you later", is_autocorrect: true },
+    ShorthandEntry { code: "cuz", expansion: "because", is_autocorrect: true },
+    ShorthandEntry { code: "cya", expansion: "see ya", is_autocorrect: true },
+    ShorthandEntry { code: "dae", expansion: "does anyone else", is_autocorrect: true },
+    ShorthandEntry { code: "diy", expansion: "do it yourself", is_autocorrect: true },
+    ShorthandEntry { code: "dm", expansion: "direct message", is_autocorrect: true },
+    ShorthandEntry { code: "dnd", expansion: "do not disturb", is_autocorrect: true },
+    ShorthandEntry { code: "eta", expansion: "estimated time of arrival", is_autocorrect: true },
+    ShorthandEntry { code: "faq", expansion: "frequently asked questions", is_autocorrect: true },
+    ShorthandEntry { code: "fb", expansion: "facebook", is_autocorrect: true },
+    ShorthandEntry { code: "ffs", expansion: "for fuck's sake", is_autocorrect: true },
+    ShorthandEntry { code: "fml", expansion: "fuck my life", is_autocorrect: true },
+    ShorthandEntry { code: "fomo", expansion: "fear of missing out", is_autocorrect: true },
+    ShorthandEntry { code: "ftf", expansion: "face to face", is_autocorrect: true },
+    ShorthandEntry { code: "ftr", expansion: "for the record", is_autocorrect: true },
+    ShorthandEntry { code: "ftw", expansion: "for the win", is_autocorrect: true },
+    ShorthandEntry { code: "fwiw", expansion: "for what it's worth", is_autocorrect: true },
+    ShorthandEntry { code: "fyi", expansion: "for your information", is_autocorrect: true },
+    ShorthandEntry { code: "g2g", expansion: "got to go", is_autocorrect: true },
+    ShorthandEntry { code: "gf", expansion: "girlfriend", is_autocorrect: true },
+    ShorthandEntry { code: "gg", expansion: "good game", is_autocorrect: true },
+    ShorthandEntry { code: "gj", expansion: "good job", is_autocorrect: true },
+    ShorthandEntry { code: "gl", expansion: "good luck", is_autocorrect: true },
+    ShorthandEntry { code: "glhf", expansion: "good luck have fun", is_autocorrect: true },
+    ShorthandEntry { code: "gm", expansion: "good morning", is_autocorrect: true },
+    ShorthandEntry { code: "gn", expansion: "good night", is_autocorrect: true },
+    ShorthandEntry { code: "gr8", expansion: "great", is_autocorrect: true },
+    ShorthandEntry { code: "gtg", expansion: "got to go", is_autocorrect: true },
+    ShorthandEntry { code: "hbd", expansion: "happy birthday", is_autocorrect: true },
+    ShorthandEntry { code: "hbu", expansion: "how about you", is_autocorrect: true },
+    ShorthandEntry { code: "hru", expansion: "how are you", is_autocorrect: true },
+    ShorthandEntry { code: "htf", expansion: "how the fuck", is_autocorrect: true },
+    ShorthandEntry { code: "icymi", expansion: "in case you missed it", is_autocorrect: true },
+    ShorthandEntry { code: "idc", expansion: "I don't care", is_autocorrect: true },
+    ShorthandEntry { code: "idgaf", expansion: "I don't give a fuck", is_autocorrect: true },
+    ShorthandEntry { code: "idk", expansion: "I don't know", is_autocorrect: true },
+    ShorthandEntry { code: "idts", expansion: "I don't think so", is_autocorrect: true },
+    ShorthandEntry { code: "iirc", expansion: "if I remember correctly", is_autocorrect: true },
+    ShorthandEntry { code: "ik", expansion: "I know", is_autocorrect: true },
+    ShorthandEntry { code: "ikr", expansion: "I know right", is_autocorrect: true },
+    ShorthandEntry { code: "ily", expansion: "I love you", is_autocorrect: true },
+    ShorthandEntry { code: "ilysm", expansion: "I love you so much", is_autocorrect: true },
+    ShorthandEntry { code: "imho", expansion: "in my humble opinion", is_autocorrect: true },
+    ShorthandEntry { code: "imo", expansion: "in my opinion", is_autocorrect: true },
+    ShorthandEntry { code: "irl", expansion: "in real life", is_autocorrect: true },
+    ShorthandEntry { code: "istg", expansion: "I swear to god", is_autocorrect: true },
+    ShorthandEntry { code: "iykyk", expansion: "if you know you know", is_autocorrect: true },
+    ShorthandEntry { code: "jk", expansion: "just kidding", is_autocorrect: true },
+    ShorthandEntry { code: "k", expansion: "okay", is_autocorrect: false },
+    ShorthandEntry { code: "kk", expansion: "okay", is_autocorrect: false },
+    ShorthandEntry { code: "l8r", expansion: "later", is_autocorrect: true },
+    ShorthandEntry { code: "lmao", expansion: "lmao", is_autocorrect: true },
+    ShorthandEntry { code: "lmfao", expansion: "lmfao", is_autocorrect: true },
+    ShorthandEntry { code: "lmk", expansion: "let me know", is_autocorrect: true },
+    ShorthandEntry { code: "lol", expansion: "lol", is_autocorrect: true },
+    ShorthandEntry { code: "mfw", expansion: "my face when", is_autocorrect: true },
+    ShorthandEntry { code: "msg", expansion: "message", is_autocorrect: true },
+    ShorthandEntry { code: "mybad", expansion: "my bad", is_autocorrect: true },
+    ShorthandEntry { code: "nbd", expansion: "no big deal", is_autocorrect: true },
+    ShorthandEntry { code: "ne1", expansion: "anyone", is_autocorrect: true },
+    ShorthandEntry { code: "nfc", expansion: "no fucking clue", is_autocorrect: true },
+    ShorthandEntry { code: "ngl", expansion: "not gonna lie", is_autocorrect: true },
+    ShorthandEntry { code: "nm", expansion: "not much", is_autocorrect: true },
+    ShorthandEntry { code: "np", expansion: "no problem", is_autocorrect: true },
+    ShorthandEntry { code: "nsfw", expansion: "not safe for work", is_autocorrect: true },
+    ShorthandEntry { code: "nvm", expansion: "never mind", is_autocorrect: true },
+    ShorthandEntry { code: "nw", expansion: "no worries", is_autocorrect: true },
+    ShorthandEntry { code: "ofc", expansion: "of course", is_autocorrect: true },
+    ShorthandEntry { code: "omfg", expansion: "oh my fucking god", is_autocorrect: true },
+    ShorthandEntry { code: "omg", expansion: "oh my god", is_autocorrect: true },
+    ShorthandEntry { code: "omw", expansion: "on my way", is_autocorrect: true },
+    ShorthandEntry { code: "ootd", expansion: "outfit of the day", is_autocorrect: true },
+    ShorthandEntry { code: "op", expansion: "original poster", is_autocorrect: true },
+    ShorthandEntry { code: "otw", expansion: "on the way", is_autocorrect: true },
+    ShorthandEntry { code: "pls", expansion: "please", is_autocorrect: true },
+    ShorthandEntry { code: "plz", expansion: "please", is_autocorrect: true },
+    ShorthandEntry { code: "pov", expansion: "point of view", is_autocorrect: true },
+    ShorthandEntry { code: "ppl", expansion: "people", is_autocorrect: true },
+    ShorthandEntry { code: "prolly", expansion: "probably", is_autocorrect: true },
+    ShorthandEntry { code: "ptfo", expansion: "passed the fuck out", is_autocorrect: true },
+    ShorthandEntry { code: "qna", expansion: "question and answer", is_autocorrect: true },
+    ShorthandEntry { code: "r", expansion: "are", is_autocorrect: false },
+    ShorthandEntry { code: "rip", expansion: "rest in peace", is_autocorrect: true },
+    ShorthandEntry { code: "rlly", expansion: "really", is_autocorrect: true },
+    ShorthandEntry { code: "rn", expansion: "right now", is_autocorrect: true },
+    ShorthandEntry { code: "rofl", expansion: "rolling on the floor laughing", is_autocorrect: true },
+    ShorthandEntry { code: "rt", expansion: "retweet", is_autocorrect: true },
+    ShorthandEntry { code: "sec", expansion: "second", is_autocorrect: true },
+    ShorthandEntry { code: "sfc", expansion: "safe for work", is_autocorrect: true },
+    ShorthandEntry { code: "smh", expansion: "shaking my head", is_autocorrect: true },
+    ShorthandEntry { code: "srsly", expansion: "seriously", is_autocorrect: true },
+    ShorthandEntry { code: "stfu", expansion: "shut the fuck up", is_autocorrect: true },
+    ShorthandEntry { code: "sup", expansion: "what's up", is_autocorrect: true },
+    ShorthandEntry { code: "tbf", expansion: "to be fair", is_autocorrect: true },
+    ShorthandEntry { code: "tbh", expansion: "to be honest", is_autocorrect: true },
+    ShorthandEntry { code: "tbt", expansion: "throwback thursday", is_autocorrect: true },
+    ShorthandEntry { code: "tfw", expansion: "that feel when", is_autocorrect: true },
+    ShorthandEntry { code: "tg", expansion: "thank goodness", is_autocorrect: true },
+    ShorthandEntry { code: "tgif", expansion: "thank god it's friday", is_autocorrect: true },
+    ShorthandEntry { code: "thx", expansion: "thanks", is_autocorrect: true },
+    ShorthandEntry { code: "tia", expansion: "thanks in advance", is_autocorrect: true },
+    ShorthandEntry { code: "til", expansion: "today I learned", is_autocorrect: true },
+    ShorthandEntry { code: "tldr", expansion: "too long didn't read", is_autocorrect: true },
+    ShorthandEntry { code: "tmi", expansion: "too much information", is_autocorrect: true },
+    ShorthandEntry { code: "ttyl", expansion: "talk to you later", is_autocorrect: true },
+    ShorthandEntry { code: "ttys", expansion: "talk to you soon", is_autocorrect: true },
+    ShorthandEntry { code: "ty", expansion: "thank you", is_autocorrect: true },
+    ShorthandEntry { code: "tysm", expansion: "thank you so much", is_autocorrect: true },
+    ShorthandEntry { code: "tyt", expansion: "take your time", is_autocorrect: true },
+    ShorthandEntry { code: "u", expansion: "you", is_autocorrect: false },
+    ShorthandEntry { code: "u2", expansion: "you too", is_autocorrect: true },
+    ShorthandEntry { code: "ur", expansion: "your", is_autocorrect: false },
+    ShorthandEntry { code: "w/", expansion: "with", is_autocorrect: true },
+    ShorthandEntry { code: "w/e", expansion: "whatever", is_autocorrect: true },
+    ShorthandEntry { code: "w/o", expansion: "without", is_autocorrect: true },
+    ShorthandEntry { code: "wb", expansion: "welcome back", is_autocorrect: true },
+    ShorthandEntry { code: "wdym", expansion: "what do you mean", is_autocorrect: true },
+    ShorthandEntry { code: "wfh", expansion: "work from home", is_autocorrect: true },
+    ShorthandEntry { code: "wip", expansion: "work in progress", is_autocorrect: true },
+    ShorthandEntry { code: "wtf", expansion: "what the fuck", is_autocorrect: true },
+    ShorthandEntry { code: "wth", expansion: "what the hell", is_autocorrect: true },
+    ShorthandEntry { code: "wyd", expansion: "what are you doing", is_autocorrect: true },
+    ShorthandEntry { code: "wym", expansion: "what you mean", is_autocorrect: true },
+    ShorthandEntry { code: "y", expansion: "why", is_autocorrect: false },
+    ShorthandEntry { code: "yolo", expansion: "you only live once", is_autocorrect: true },
+    ShorthandEntry { code: "yt", expansion: "youtube", is_autocorrect: true },
+    ShorthandEntry { code: "yw", expansion: "you're welcome", is_autocorrect: true },
+];
+
+/// Looks up an SMS/slang shorthand code in O(log N) binary search time.
+#[inline]
+pub fn lookup_shorthand(query: &str) -> Option<ShorthandEntry> {
+    let query_lower = query.to_lowercase();
+    match SHORTHAND_LEXICON.binary_search_by_key(&query_lower.as_str(), |entry| entry.code) {
+        Ok(idx) => Some(SHORTHAND_LEXICON[idx]),
+        Err(_) => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shorthand_lexicon_is_sorted() {
+        for window in SHORTHAND_LEXICON.windows(2) {
+            assert!(
+                window[0].code <= window[1].code,
+                "SHORTHAND_LEXICON must be alphabetically sorted: {} > {}",
+                window[0].code,
+                window[1].code
+            );
+        }
+    }
+
+    #[test]
+    fn test_shorthand_lookups() {
+        let u = lookup_shorthand("u").unwrap();
+        assert_eq!(u.expansion, "you");
+        assert!(!u.is_autocorrect);
+
+        let r = lookup_shorthand("r").unwrap();
+        assert_eq!(r.expansion, "are");
+        assert!(!r.is_autocorrect);
+
+        let idk = lookup_shorthand("idk").unwrap();
+        assert_eq!(idk.expansion, "I don't know");
+        assert!(idk.is_autocorrect);
+
+        let tbh = lookup_shorthand("tbh").unwrap();
+        assert_eq!(tbh.expansion, "to be honest");
+        assert!(tbh.is_autocorrect);
+
+        let omw = lookup_shorthand("omw").unwrap();
+        assert_eq!(omw.expansion, "on my way");
+        assert!(omw.is_autocorrect);
+    }
+}

@@ -1,4 +1,5 @@
-﻿use crate::trie::RadixTrie;
+use crate::shorthand::lookup_shorthand;
+use crate::trie::RadixTrie;
 use crate::typo_corpus::lookup_common_typo;
 
 /// Comprehensive lexicon of common English contractions (SCOWL & Wiktionary).
@@ -231,29 +232,36 @@ impl NlpEngine {
                 word: trimmed.to_string(),
                 is_autocorrect: false,
             });
+        } else if let Some(shorthand) = lookup_shorthand(&trimmed_lower) {
+            // 2. SMS & internet slang shorthand quick expansion (e.g. idk -> I don't know, u -> you, r -> are)
+            let formatted = Self::apply_casing(trimmed, shorthand.expansion);
+            candidates.push(RankedCandidate {
+                word: formatted,
+                is_autocorrect: shorthand.is_autocorrect,
+            });
         } else if let Some(typo_fix) = lookup_common_typo(&trimmed_lower) {
-            // 2. Wikipedia 4,500+ Misspelling Corpus instant O(log N) lookup
+            // 3. Wikipedia 1,770+ Misspelling Corpus instant O(log N) lookup
             let formatted = Self::apply_casing(trimmed, typo_fix);
             candidates.push(RankedCandidate {
                 word: formatted,
                 is_autocorrect: true,
             });
         } else if let Some(&(_, contraction)) = CONTRACTIONS.iter().find(|&&(k, _)| k == trimmed_lower) {
-            // 3. Known contraction auto-fix (e.g. dont -> don't, aint -> ain't, yall -> y'all)
+            // 4. Known contraction auto-fix (e.g. dont -> don't, aint -> ain't, yall -> y'all)
             let formatted = Self::apply_casing(trimmed, contraction);
             candidates.push(RankedCandidate {
                 word: formatted,
                 is_autocorrect: true,
             });
         } else if let Some(dynamic_contraction) = self.derive_dynamic_possessive_or_contraction(trimmed) {
-            // 4. Algorithmic Suffix / Possessive derivation (e.g. bitcoin's)
+            // 5. Algorithmic Suffix / Possessive derivation (e.g. bitcoin's)
             let formatted = Self::apply_casing(trimmed, &dynamic_contraction);
             candidates.push(RankedCandidate {
                 word: formatted,
                 is_autocorrect: true,
             });
         } else if is_exact {
-            // 5. Exact valid word -> NEVER auto-hijack
+            // 6. Exact valid word -> NEVER auto-hijack
             candidates.push(RankedCandidate {
                 word: trimmed.to_string(),
                 is_autocorrect: false,
@@ -318,6 +326,34 @@ mod tests {
         let res_upper = engine.suggest("I", 3);
         assert_eq!(res_upper.candidates[0].word, "I");
         assert!(res_upper.candidates[0].is_autocorrect);
+    }
+
+    #[test]
+    fn test_shorthand_slang_expansions() {
+        let mut engine = NlpEngine::new();
+        engine.load_dictionary(&[("you", 1000), ("are", 1000), ("know", 500), ("honest", 400)]);
+
+        // Single letter abbreviations (suggest 'you'/'are' without space hijacking)
+        let res_u = engine.suggest("u", 3);
+        assert_eq!(res_u.candidates[0].word, "you");
+        assert!(!res_u.candidates[0].is_autocorrect);
+
+        let res_r = engine.suggest("r", 3);
+        assert_eq!(res_r.candidates[0].word, "are");
+        assert!(!res_r.candidates[0].is_autocorrect);
+
+        // 2+ char acronyms (auto-commit enabled)
+        let res_idk = engine.suggest("idk", 3);
+        assert_eq!(res_idk.candidates[0].word, "I don't know");
+        assert!(res_idk.candidates[0].is_autocorrect);
+
+        let res_tbh = engine.suggest("tbh", 3);
+        assert_eq!(res_tbh.candidates[0].word, "to be honest");
+        assert!(res_tbh.candidates[0].is_autocorrect);
+
+        let res_omw = engine.suggest("omw", 3);
+        assert_eq!(res_omw.candidates[0].word, "on my way");
+        assert!(res_omw.candidates[0].is_autocorrect);
     }
 
     #[test]

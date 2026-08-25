@@ -11,11 +11,13 @@
 
 pub mod distance;
 pub mod nlp;
+pub mod shorthand;
 pub mod trie;
 pub mod typo_corpus;
 
 pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold};
 pub use nlp::{NlpEngine, SuggestionResult};
+pub use shorthand::{lookup_shorthand, ShorthandEntry, SHORTHAND_LEXICON};
 pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};
 pub use typo_corpus::{lookup_common_typo, WIKIPEDIA_COMMON_TYPOS};
 
