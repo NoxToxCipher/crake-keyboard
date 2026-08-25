@@ -162,13 +162,12 @@ abstract class CrashUtility private constructor() {
             }
         }
 
-        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
         fun handleStagedButUnhandledExceptions() {
             val e = stagedException ?: return
             val handler = Thread.getDefaultUncaughtExceptionHandler()
             if (handler is UncaughtExceptionHandler) {
                 stagedException = null
-                handler.uncaughtException(null, e)
+                handler.uncaughtException(Thread.currentThread(), e)
             }
         }
 

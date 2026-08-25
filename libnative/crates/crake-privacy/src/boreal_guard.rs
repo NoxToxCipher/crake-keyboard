@@ -1,4 +1,4 @@
-﻿use boreal::{Compiler, Scanner};
+use boreal::{Compiler, Scanner};
 
 pub const DEFAULT_YARA_RULES: &str = r#"
 rule US_SSN_Pattern {
@@ -75,6 +75,9 @@ impl BorealScanner {
 
     /// Scans a byte payload against all compiled YARA threat rules.
     pub fn scan_payload(&self, data: &[u8]) -> Vec<ThreatMatch> {
+        if data.is_empty() {
+            return Vec::new();
+        }
         let scan_result = match self.scanner.scan_mem(data) {
             Ok(res) => res,
             Err((_, res)) => res,

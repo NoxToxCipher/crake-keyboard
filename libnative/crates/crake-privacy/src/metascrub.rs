@@ -1,4 +1,4 @@
-﻿//! MetaScrub: Advanced zero-width steganography, invisible watermark, and metadata scrubber.
+//! MetaScrub: Advanced zero-width steganography, invisible watermark, and metadata scrubber.
 
 use crate::sanitizer::sanitize_text;
 
@@ -46,6 +46,9 @@ pub fn is_invisible_char(c: char) -> bool {
 /// Strips all invisible zero-width watermarks and tracking bytes from text.
 #[must_use]
 pub fn strip_invisible_characters(text: &str) -> (String, usize) {
+    if text.is_empty() {
+        return (String::new(), 0);
+    }
     let mut cleaned = String::with_capacity(text.len());
     let mut removed = 0;
 
@@ -63,6 +66,13 @@ pub fn strip_invisible_characters(text: &str) -> (String, usize) {
 /// Full MetaScrub pipeline: cleans invisible watermarks and purges tracking URLs.
 #[must_use]
 pub fn metascrub_text(text: &str) -> MetaScrubResult {
+    if text.is_empty() {
+        return MetaScrubResult {
+            cleaned_text: String::new(),
+            invisible_chars_removed: 0,
+            urls_sanitized: false,
+        };
+    }
     let (stripped_text, removed_count) = strip_invisible_characters(text);
     let sanitized_url_text = sanitize_text(&stripped_text);
     let urls_sanitized = sanitized_url_text != stripped_text;
