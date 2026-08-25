@@ -1,11 +1,12 @@
-use floris_core::NlpEngine;
-use jni::objects::{JClass, JObjectArray, JString};
-use jni::sys::{jint, jobjectArray, jstring};
+use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
+use jni::objects::{JClass, JFloatArray, JIntArray, JObjectArray, JString};
+use jni::sys::{jfloatArray, jint, jintArray, jobjectArray, jstring};
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
 
 static NLP_ENGINE: Lazy<RwLock<NlpEngine>> = Lazy::new(|| RwLock::new(NlpEngine::new()));
+static GLIDE_ENGINE: Lazy<RwLock<GlideEngine>> = Lazy::new(|| RwLock::new(GlideEngine::new()));
 static BOREAL_SCANNER: Lazy<RwLock<crake_privacy::BorealScanner>> =
     Lazy::new(|| RwLock::new(crake_privacy::BorealScanner::new().expect("Failed to init Boreal")));
 
@@ -329,4 +330,125 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeReassem
     }
 
     env.new_string("").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideSetLayout(
+    mut env: JNIEnv,
+    _class: JClass,
+    codes: JIntArray,
+    chars: JString,
+    xs: JFloatArray,
+    ys: JFloatArray,
+    widths: JFloatArray,
+    heights: JFloatArray,
+) {
+    let chars_str = match env.get_string(&chars) {
+        Ok(s) => match s.to_str() {
+            Ok(v) => v.to_string(),
+            Err(_) => return,
+        },
+        Err(_) => return,
+    };
+
+    let len = chars_str.chars().count();
+    let mut code_buf = vec![0i32; len];
+    let mut x_buf = vec![0.0f32; len];
+    let mut y_buf = vec![0.0f32; len];
+    let mut w_buf = vec![0.0f32; len];
+    let mut h_buf = vec![0.0f32; len];
+
+    if env.get_int_array_region(&codes, 0, &mut code_buf).is_err()
+        || env.get_float_array_region(&xs, 0, &mut x_buf).is_err()
+        || env.get_float_array_region(&ys, 0, &mut y_buf).is_err()
+        || env.get_float_array_region(&widths, 0, &mut w_buf).is_err()
+        || env.get_float_array_region(&heights, 0, &mut h_buf).is_err()
+    {
+        return;
+    }
+
+    let mut keys = Vec::with_capacity(len);
+    for (i, ch) in chars_str.chars().enumerate() {
+        keys.push(KeyInfo {
+            code: code_buf[i],
+            character: ch,
+            center: Point2D::new(x_buf[i], y_buf[i]),
+            width: w_buf[i],
+            height: h_buf[i],
+        });
+    }
+
+    if let Ok(mut engine) = GLIDE_ENGINE.write() {
+        engine.set_layout(keys);
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMatch(
+    mut env: JNIEnv,
+    _class: JClass,
+    xs: JFloatArray,
+    ys: JFloatArray,
+    max_results: jint,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let len = match env.get_array_length(&xs) {
+        Ok(l) => l as usize,
+        Err(_) => return empty_array,
+    };
+
+    if len < 2 {
+        return empty_array;
+    }
+
+    let mut x_buf = vec![0.0f32; len];
+    let mut y_buf = vec![0.0f32; len];
+
+    if env.get_float_array_region(&xs, 0, &mut x_buf).is_err()
+        || env.get_float_array_region(&ys, 0, &mut y_buf).is_err()
+    {
+        return empty_array;
+    }
+
+    let mut path = Vec::with_capacity(len);
+    for i in 0..len {
+        path.push(Point2D::new(x_buf[i], y_buf[i]));
+    }
+
+    let matches = {
+        let glide_guard = GLIDE_ENGINE.read();
+        let nlp_guard = NLP_ENGINE.read();
+
+        if let (Ok(glide), Ok(nlp)) = (glide_guard, nlp_guard) {
+            glide.match_gesture(&path, &nlp.trie, max_results.max(1) as usize)
+        } else {
+            Vec::new()
+        }
+    };
+
+    let string_class = match env.find_class("java/lang/String") {
+        Ok(cls) => cls,
+        Err(_) => return empty_array,
+    };
+
+    let result_array = match env.new_object_array(
+        matches.len() as jint,
+        string_class,
+        JString::default(),
+    ) {
+        Ok(arr) => arr,
+        Err(_) => return empty_array,
+    };
+
+    for (i, m) in matches.iter().enumerate() {
+        if let Ok(jstr) = env.new_string(&m.word) {
+            let _ = env.set_object_array_element(&result_array, i as jint, jstr);
+        }
+    }
+
+    result_array.into_raw()
 }

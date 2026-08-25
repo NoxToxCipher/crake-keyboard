@@ -142,6 +142,44 @@ object FlorisNative {
         return nativeReassembleSyncBundle(keyHex, frames.toTypedArray())
     }
 
+    data class GlidePoint(val x: Float, val y: Float)
+
+    fun glideSetLayout(
+        codes: IntArray,
+        chars: String,
+        xs: FloatArray,
+        ys: FloatArray,
+        widths: FloatArray,
+        heights: FloatArray,
+    ) {
+        if (!isLoaded) return
+        nativeGlideSetLayout(codes, chars, xs, ys, widths, heights)
+    }
+
+    fun glideMatch(points: List<GlidePoint>, maxResults: Int = 5): List<String> {
+        if (!isLoaded || points.size < 2) return emptyList()
+        val xs = FloatArray(points.size) { points[it].x }
+        val ys = FloatArray(points.size) { points[it].y }
+        return nativeGlideMatch(xs, ys, maxResults).toList()
+    }
+
+    @JvmStatic
+    private external fun nativeGlideSetLayout(
+        codes: IntArray,
+        chars: String,
+        xs: FloatArray,
+        ys: FloatArray,
+        widths: FloatArray,
+        heights: FloatArray,
+    )
+
+    @JvmStatic
+    private external fun nativeGlideMatch(
+        xs: FloatArray,
+        ys: FloatArray,
+        maxResults: Int,
+    ): Array<String>
+
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 

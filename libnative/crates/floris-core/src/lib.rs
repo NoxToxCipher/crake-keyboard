@@ -10,12 +10,14 @@
 )]
 
 pub mod distance;
+pub mod glide;
 pub mod nlp;
 pub mod shorthand;
 pub mod trie;
 pub mod typo_corpus;
 
 pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold};
+pub use glide::{compute_dtw, simplify_rdp, GlideEngine, GlideMatch, KeyInfo, Point2D};
 pub use nlp::{NlpEngine, SuggestionResult};
 pub use shorthand::{lookup_shorthand, ShorthandEntry, SHORTHAND_LEXICON};
 pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};

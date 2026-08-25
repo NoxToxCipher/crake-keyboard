@@ -1,0 +1,388 @@
+//! Native Safe Rust Glide / Gesture Typing Engine.
+//! Powered by Dynamic Time Warping (DTW) and Ramer-Douglas-Peucker (RDP) trajectory simplification.
+
+use crate::trie::RadixTrie;
+use std::collections::HashMap;
+
+/// 2D coordinate point for touch inputs and key positions.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Point2D {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Point2D {
+    #[inline]
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+
+    #[inline]
+    pub fn distance_squared(&self, other: &Point2D) -> f32 {
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        dx * dx + dy * dy
+    }
+
+    #[inline]
+    pub fn distance(&self, other: &Point2D) -> f32 {
+        self.distance_squared(other).sqrt()
+    }
+}
+
+/// Metadata about a single keyboard key's geometric layout.
+#[derive(Debug, Clone)]
+pub struct KeyInfo {
+    pub code: i32,
+    pub character: char,
+    pub center: Point2D,
+    pub width: f32,
+    pub height: f32,
+}
+
+/// A classified gesture match candidate.
+#[derive(Debug, Clone, PartialEq)]
+pub struct GlideMatch {
+    pub word: String,
+    pub score: f32,
+    pub dtw_distance: f32,
+}
+
+/// Simplifies a touch trajectory using the Ramer-Douglas-Peucker (RDP) algorithm.
+/// Reduces hundreds of noisy touch samples down to essential inflection points.
+pub fn simplify_rdp(points: &[Point2D], epsilon: f32) -> Vec<Point2D> {
+    if points.len() <= 2 {
+        return points.to_vec();
+    }
+
+    let epsilon_sq = epsilon * epsilon;
+    let mut dmax_sq = 0.0f32;
+    let mut index = 0;
+    let start = points[0];
+    let end = points[points.len() - 1];
+
+    let line_len_sq = start.distance_squared(&end);
+
+    for i in 1..points.len() - 1 {
+        let pt = points[i];
+        let dist_sq = if line_len_sq == 0.0 {
+            pt.distance_squared(&start)
+        } else {
+            // Perpendicular distance squared from point to line segment
+            let t = (((pt.x - start.x) * (end.x - start.x) + (pt.y - start.y) * (end.y - start.y)) / line_len_sq)
+                .clamp(0.0, 1.0);
+            let proj = Point2D::new(start.x + t * (end.x - start.x), start.y + t * (end.y - start.y));
+            pt.distance_squared(&proj)
+        };
+
+        if dist_sq > dmax_sq {
+            index = i;
+            dmax_sq = dist_sq;
+        }
+    }
+
+    if dmax_sq > epsilon_sq {
+        let left = simplify_rdp(&points[..=index], epsilon);
+        let right = simplify_rdp(&points[index..], epsilon);
+
+        let mut result = left;
+        result.pop(); // remove duplicate middle point
+        result.extend(right);
+        result
+    } else {
+        vec![start, end]
+    }
+}
+
+/// Computes Dynamic Time Warping (DTW) distance between two trajectories.
+/// Time complexity: O(N * M) with dynamic programming.
+pub fn compute_dtw(path_a: &[Point2D], path_b: &[Point2D]) -> f32 {
+    let n = path_a.len();
+    let m = path_b.len();
+    if n == 0 || m == 0 {
+        return f32::INFINITY;
+    }
+
+    // Two-row DP buffer for optimal memory locality and zero heap churn
+    let mut prev_row = vec![f32::INFINITY; m + 1];
+    let mut curr_row = vec![f32::INFINITY; m + 1];
+
+    prev_row[0] = 0.0;
+
+    for i in 1..=n {
+        curr_row[0] = f32::INFINITY;
+        let pt_a = path_a[i - 1];
+
+        for j in 1..=m {
+            let pt_b = path_b[j - 1];
+            let cost = pt_a.distance(&pt_b);
+
+            let min_prev = prev_row[j].min(curr_row[j - 1]).min(prev_row[j - 1]);
+            curr_row[j] = cost + min_prev;
+        }
+
+        std::mem::swap(&mut prev_row, &mut curr_row);
+        curr_row.fill(f32::INFINITY);
+    }
+
+    prev_row[m]
+}
+
+/// Native Glide Typing Engine managing key geometry and trajectory matching.
+#[derive(Debug, Default)]
+pub struct GlideEngine {
+    key_centers: HashMap<char, Point2D>,
+    key_bounds: Vec<KeyInfo>,
+    average_key_radius: f32,
+}
+
+impl GlideEngine {
+    pub fn new() -> Self {
+        Self {
+            key_centers: HashMap::new(),
+            key_bounds: Vec::new(),
+            average_key_radius: 50.0,
+        }
+    }
+
+    /// Sets or updates the active keyboard key layout geometry.
+    pub fn set_layout(&mut self, keys: Vec<KeyInfo>) {
+        self.key_centers.clear();
+        let mut total_radius = 0.0;
+
+        for key in &keys {
+            let char_lower = key.character.to_ascii_lowercase();
+            self.key_centers.insert(char_lower, key.center);
+            total_radius += (key.width + key.height) * 0.25;
+        }
+
+        if !keys.is_empty() {
+            self.average_key_radius = total_radius / keys.len() as f32;
+        }
+        self.key_bounds = keys;
+    }
+
+    /// Builds the ideal ideal keypath trajectory for a given candidate word.
+    pub fn build_ideal_keypath(&self, word: &str) -> Option<Vec<Point2D>> {
+        let mut path = Vec::with_capacity(word.len());
+        for ch in word.chars() {
+            let ch_lower = ch.to_ascii_lowercase();
+            match self.key_centers.get(&ch_lower) {
+                Some(&pt) => {
+                    // Deduplicate consecutive identical keys (e.g. 'll' or 'ee')
+                    if path.last() != Some(&pt) {
+                        path.push(pt);
+                    }
+                }
+                None => return None, // Unknown character in layout
+            }
+        }
+        if path.len() >= 2 {
+            Some(path)
+        } else {
+            None
+        }
+    }
+
+    /// Matches a raw touch gesture against candidate words in the Radix Trie.
+    pub fn match_gesture(
+        &self,
+        raw_path: &[Point2D],
+        trie: &RadixTrie,
+        max_results: usize,
+    ) -> Vec<GlideMatch> {
+        if raw_path.len() < 2 || self.key_centers.is_empty() {
+            return Vec::new();
+        }
+
+        // 1. Simplify touch curve using RDP (epsilon proportional to key radius)
+        let rdp_epsilon = (self.average_key_radius * 0.35).max(10.0);
+        let simplified_gesture = simplify_rdp(raw_path, rdp_epsilon);
+        if simplified_gesture.len() < 2 {
+            return Vec::new();
+        }
+
+        let start_pt = simplified_gesture[0];
+        let end_pt = simplified_gesture[simplified_gesture.len() - 1];
+
+        // 2. Spatial bounding box filter for start & end keys (within 1.75x key radius)
+        let search_radius_sq = (self.average_key_radius * 1.75).powi(2);
+        let mut start_chars = Vec::new();
+        let mut end_chars = Vec::new();
+
+        for (&ch, &center) in &self.key_centers {
+            if center.distance_squared(&start_pt) <= search_radius_sq {
+                start_chars.push(ch);
+            }
+            if center.distance_squared(&end_pt) <= search_radius_sq {
+                end_chars.push(ch);
+            }
+        }
+
+        if start_chars.is_empty() || end_chars.is_empty() {
+            return Vec::new();
+        }
+
+        // 3. Collect candidate words from Radix Trie matching start characters
+        let mut matches = Vec::new();
+
+        for &start_ch in &start_chars {
+            let prefix = start_ch.to_string();
+            let candidates = trie.prefix_search(&prefix, 250);
+
+            for (word, freq) in candidates {
+                if word.len() < 2 {
+                    continue;
+                }
+
+                // Check if last letter matches candidate end regions
+                let last_ch = word.chars().last().unwrap().to_ascii_lowercase();
+                if !end_chars.contains(&last_ch) {
+                    continue;
+                }
+
+                // Build ideal keypath for the word
+                if let Some(ideal_path) = self.build_ideal_keypath(&word) {
+                    let dtw_dist = compute_dtw(&simplified_gesture, &ideal_path);
+                    
+                    // Normalize distance by gesture length
+                    let normalized_dist = dtw_dist / (simplified_gesture.len() + ideal_path.len()) as f32;
+
+                    // Combine DTW geometric closeness with word frequency bonus
+                    let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
+                    let total_score = normalized_dist - freq_bonus;
+
+                    matches.push(GlideMatch {
+                        word,
+                        score: total_score,
+                        dtw_distance: dtw_dist,
+                    });
+                }
+            }
+        }
+
+        // Sort by lowest score (lowest DTW distance + frequency boost)
+        matches.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
+        matches.truncate(max_results);
+        matches
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_mock_qwerty_engine() -> GlideEngine {
+        let mut engine = GlideEngine::new();
+        let mut keys = Vec::new();
+
+        // Standard QWERTY layout grid approximation
+        let row1 = "qwertyuiop";
+        for (i, c) in row1.chars().enumerate() {
+            keys.push(KeyInfo {
+                code: c as i32,
+                character: c,
+                center: Point2D::new(50.0 + i as f32 * 100.0, 100.0),
+                width: 90.0,
+                height: 120.0,
+            });
+        }
+
+        let row2 = "asdfghjkl";
+        for (i, c) in row2.chars().enumerate() {
+            keys.push(KeyInfo {
+                code: c as i32,
+                character: c,
+                center: Point2D::new(100.0 + i as f32 * 100.0, 250.0),
+                width: 90.0,
+                height: 120.0,
+            });
+        }
+
+        let row3 = "zxcvbnm";
+        for (i, c) in row3.chars().enumerate() {
+            keys.push(KeyInfo {
+                code: c as i32,
+                character: c,
+                center: Point2D::new(200.0 + i as f32 * 100.0, 400.0),
+                width: 90.0,
+                height: 120.0,
+            });
+        }
+
+        engine.set_layout(keys);
+        engine
+    }
+
+    #[test]
+    fn test_rdp_path_simplification() {
+        let noisy_line = vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(1.0, 0.2),
+            Point2D::new(2.0, -0.1),
+            Point2D::new(5.0, 10.0), // Inflection peak
+            Point2D::new(8.0, 9.8),
+            Point2D::new(10.0, 10.0),
+        ];
+
+        let simplified = simplify_rdp(&noisy_line, 1.0);
+        assert!(simplified.len() < noisy_line.len());
+        assert_eq!(simplified[0], Point2D::new(0.0, 0.0));
+        assert_eq!(simplified[simplified.len() - 1], Point2D::new(10.0, 10.0));
+    }
+
+    #[test]
+    fn test_dtw_distance_identical_and_warped() {
+        let path1 = vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(50.0, 50.0),
+            Point2D::new(100.0, 100.0),
+        ];
+
+        // Identical path has zero DTW distance
+        assert_eq!(compute_dtw(&path1, &path1), 0.0);
+
+        // Stretched / Warped time path (slow swipe)
+        let path_stretched = vec![
+            Point2D::new(0.0, 0.0),
+            Point2D::new(25.0, 25.0),
+            Point2D::new(50.0, 50.0),
+            Point2D::new(75.0, 75.0),
+            Point2D::new(100.0, 100.0),
+        ];
+
+        let dist = compute_dtw(&path1, &path_stretched);
+        assert!(dist <= 75.0, "DTW distance should be small for elastic aligned path: {}", dist);
+    }
+
+    #[test]
+    fn test_glide_word_matching() {
+        let engine = create_mock_qwerty_engine();
+        let mut trie = RadixTrie::new();
+        trie.insert("quick", 200);
+        trie.insert("quiet", 150);
+        trie.insert("quit", 180);
+        trie.insert("hello", 250);
+        trie.insert("bitcoin", 220);
+
+        // Generate synthetic swipe path for "quick" (Q -> U -> I -> C -> K)
+        let pt_q = engine.key_centers[&'q'];
+        let pt_u = engine.key_centers[&'u'];
+        let pt_i = engine.key_centers[&'i'];
+        let pt_c = engine.key_centers[&'c'];
+        let pt_k = engine.key_centers[&'k'];
+
+        let swipe_quick = vec![
+            pt_q,
+            Point2D::new((pt_q.x + pt_u.x) / 2.0, (pt_q.y + pt_u.y) / 2.0),
+            pt_u,
+            pt_i,
+            pt_c,
+            pt_k,
+        ];
+
+        let matches = engine.match_gesture(&swipe_quick, &trie, 3);
+        assert!(!matches.is_empty());
+        assert_eq!(matches[0].word, "quick", "Top gesture match should be 'quick'");
+    }
+}
