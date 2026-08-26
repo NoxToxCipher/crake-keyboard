@@ -34,7 +34,7 @@ import dev.patrickgold.florisboard.ime.smartbar.SmartbarLayout
 import dev.patrickgold.florisboard.lib.compose.CrakeRadioPreference
 import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import org.florisboard.lib.compose.stringRes
 
 private val CyberEmerald = Color(0xFF00E5A3)
@@ -55,7 +55,7 @@ fun SmartbarScreen() = FlorisScreen {
             icon = Icons.Default.SmartButton,
             accentColor = CyberEmerald,
         )
-        ListPreference(
+        CrakeListPreference(
             listPref = prefs.smartbar.layout,
             title = "Smartbar Layout Mode",
             entries = enumDisplayEntriesOf(SmartbarLayout::class),
@@ -64,7 +64,7 @@ fun SmartbarScreen() = FlorisScreen {
 
         // 2. CANDIDATE CAPSULES & ACTIONS
         CrakeSectionHeader(title = "Candidate Display & Action Placement", badgeText = "CAPSULES", accentColor = CyberEmerald)
-        ListPreference(
+        CrakeListPreference(
             prefs.suggestion.displayMode,
             title = "Word Candidate Display Mode",
             entries = enumDisplayEntriesOf(CandidatesDisplayMode::class),
@@ -83,7 +83,7 @@ fun SmartbarScreen() = FlorisScreen {
                     prefs.smartbar.layout.get() == SmartbarLayout.SUGGESTIONS_ACTIONS_EXTENDED
             },
         )
-        ListPreference(
+        CrakeListPreference(
             listPref = prefs.smartbar.extendedActionsPlacement,
             title = "Extended Actions Bar Placement",
             entries = enumDisplayEntriesOf(ExtendedActionsPlacement::class),

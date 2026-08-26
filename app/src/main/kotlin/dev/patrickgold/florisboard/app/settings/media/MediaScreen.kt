@@ -43,7 +43,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import kotlinx.coroutines.launch
@@ -69,7 +69,7 @@ fun MediaScreen() = FlorisScreen {
     content {
         // 1. EMOJI PALETTE & TONE
         CrakeSectionHeader(title = "Unicode Emoji & Skin Tones", badgeText = "PALETTE", accentColor = ElectricCyan)
-        ListPreference(
+        CrakeListPreference(
             prefs.emoji.preferredSkinTone,
             title = "Default Skin Tone",
             entries = enumDisplayEntriesOf(EmojiSkinTone::class),
@@ -112,7 +112,7 @@ fun MediaScreen() = FlorisScreen {
             icon = Icons.Outlined.EmojiSymbols,
             accentColor = ElectricCyan,
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.emoji.suggestionType,
             title = "Emoji Suggestion Trigger Mode",
             entries = enumDisplayEntriesOf(EmojiSuggestionType::class),

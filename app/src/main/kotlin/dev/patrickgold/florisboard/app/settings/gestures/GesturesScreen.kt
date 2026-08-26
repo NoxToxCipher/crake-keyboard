@@ -33,7 +33,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import org.florisboard.lib.compose.stringRes
 
 private val CyberEmerald = Color(0xFF00E5A3)
@@ -81,22 +81,22 @@ fun GesturesScreen() = FlorisScreen {
 
         // 2. SPACE BAR GESTURES
         CrakeSectionHeader(title = "Space Bar Trackpad Gestures", badgeText = "TRACKPAD", accentColor = ElectricCyan)
-        ListPreference(
+        CrakeListPreference(
             prefs.gestures.spaceBarSwipeLeft,
             title = "Space Bar Swipe Left (Cursor Move)",
             entries = enumDisplayEntriesOf(SwipeAction::class, "general"),
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.gestures.spaceBarSwipeRight,
             title = "Space Bar Swipe Right (Cursor Move)",
             entries = enumDisplayEntriesOf(SwipeAction::class, "general"),
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.gestures.spaceBarSwipeUp,
             title = "Space Bar Swipe Up",
             entries = enumDisplayEntriesOf(SwipeAction::class, "general"),
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.gestures.spaceBarLongPress,
             title = "Space Bar Long-Press",
             entries = enumDisplayEntriesOf(SwipeAction::class, "general"),
@@ -104,12 +104,12 @@ fun GesturesScreen() = FlorisScreen {
 
         // 3. DELETE KEY GESTURES
         CrakeSectionHeader(title = "Delete Key Gestures", badgeText = "DELETE", accentColor = CyberEmerald)
-        ListPreference(
+        CrakeListPreference(
             prefs.gestures.deleteKeySwipeLeft,
             title = "Delete Key Swipe Left (Quick Erase)",
             entries = enumDisplayEntriesOf(SwipeAction::class, "deleteSwipe"),
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.gestures.deleteKeyLongPress,
             title = "Delete Key Long-Press",
             entries = enumDisplayEntriesOf(SwipeAction::class, "deleteLongPress"),

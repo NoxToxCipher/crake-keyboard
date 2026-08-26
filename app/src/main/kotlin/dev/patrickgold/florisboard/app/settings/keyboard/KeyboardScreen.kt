@@ -59,7 +59,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import org.florisboard.lib.compose.stringRes
 
 private val CardSurface = Color(0xFF131A29)
@@ -92,18 +92,18 @@ fun KeyboardScreen() = FlorisScreen {
             summary = "Show quick action key next to the spacebar",
             accentColor = ElectricCyan,
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.keyboard.utilityKeyAction,
             title = "Utility Key Action",
             entries = enumDisplayEntriesOf(UtilityKeyAction::class),
             visibleIf = { prefs.keyboard.utilityKeyEnabled.get() },
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.keyboard.spaceBarMode,
             title = "Space Bar Mode",
             entries = enumDisplayEntriesOf(SpaceBarMode::class),
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.keyboard.capitalizationBehavior,
             title = "Shift Key Capitalization Mode",
             entries = enumDisplayEntriesOf(CapitalizationBehavior::class),
@@ -165,7 +165,7 @@ fun KeyboardScreen() = FlorisScreen {
             max = 150,
             stepIncrement = 5,
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.keyboard.landscapeInputUiMode,
             title = "Landscape Input Mode",
             entries = enumDisplayEntriesOf(LandscapeInputUiMode::class),

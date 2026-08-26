@@ -36,7 +36,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.pluralsRes
 import org.florisboard.lib.compose.stringRes
@@ -67,13 +67,13 @@ fun ClipboardScreen() = FlorisScreen {
             icon = Icons.AutoMirrored.Outlined.Assignment,
             accentColor = ElectricCyan,
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.clipboard.syncToFloris,
             title = "Sync from System Clipboard",
             entries = enumDisplayEntriesOf(ClipboardSyncBehavior::class),
             enabledIf = { prefs.clipboard.useInternalClipboard.get() },
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.clipboard.syncToSystem,
             title = "Sync to System Clipboard",
             entries = enumDisplayEntriesOf(ClipboardSyncBehavior::class),

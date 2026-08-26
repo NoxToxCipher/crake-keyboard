@@ -63,7 +63,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeRadioPreference
 import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import org.florisboard.lib.android.AndroidVersion
 import org.florisboard.lib.compose.stringRes
 
@@ -166,7 +166,7 @@ fun TypingScreen() = FlorisScreen {
             accentColor = ElectricCyan,
             visibleIf = { AndroidVersion.ATLEAST_API30_R },
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.suggestion.incognitoMode,
             icon = ImageVector.vectorResource(id = R.drawable.ic_incognito),
             title = "Incognito Privacy Mode",

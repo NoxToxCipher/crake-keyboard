@@ -35,7 +35,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.ui.DialogSliderPreference
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import org.florisboard.lib.android.systemVibratorOrNull
 import org.florisboard.lib.android.vibrate
 import org.florisboard.lib.compose.stringRes
@@ -63,7 +63,7 @@ fun InputFeedbackScreen() = FlorisScreen {
             icon = Icons.Default.Vibration,
             accentColor = CyberEmerald,
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.inputFeedback.hapticVibrationMode,
             title = "Haptic Vibration Profile",
             enabledIf = { prefs.inputFeedback.hapticEnabled.get() },

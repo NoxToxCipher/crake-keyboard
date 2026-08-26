@@ -40,7 +40,7 @@ import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ColorPickerPreference
-import dev.patrickgold.jetpref.datastore.ui.ListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
@@ -60,7 +60,7 @@ fun OtherScreen() = FlorisScreen {
     val context = LocalContext.current
 
     content {
-        ListPreference(
+        CrakeListPreference(
             prefs.other.settingsTheme,
             icon = Icons.Default.Palette,
             title = stringRes(R.string.pref__other__settings_theme__label),
@@ -82,7 +82,7 @@ fun OtherScreen() = FlorisScreen {
                 }
             }
         )
-        ListPreference(
+        CrakeListPreference(
             prefs.other.settingsLanguage,
             icon = Icons.Default.Language,
             title = stringRes(R.string.pref__other__settings_language__label),
