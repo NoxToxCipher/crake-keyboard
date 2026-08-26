@@ -4,29 +4,271 @@
   "direction": "ltr",
   "arrangement": [
     [
-      { "icon":   "=-O", "meaning": ["laughing", "big grin"] },
-      { "icon":   ":-P", "meaning": ["cheeky", "tongue sticking out"] },
-      { "icon":   ";-)", "meaning": ["wink", "smirk"] },
-      { "icon":   ":-(", "meaning": ["sad", "frown"] },
-      { "icon":   ":-)", "meaning": ["happy", "smiley"] },
-      { "icon":   ":-!", "meaning": ["indecision"] },
-      { "icon":   ":-$", "meaning": ["embarrassing"] }
-    ], [
-      { "icon":   "B-)", "meaning": ["happy", "smiley"] },
-      { "icon":    ":O", "meaning": ["surprised"] },
-      { "icon":   ":-*", "meaning": ["kiss"] },
-      { "icon":   ":-D", "meaning": ["laughing", "big grin"] },
-      { "icon":   ":'(", "meaning": ["crying"] },
-      { "icon":  ":-\\", "meaning": ["skeptical", "annoyed"] },
-      { "icon":  "O:-)", "meaning": ["angel", "saint", "innocent"] }
-    ], [
-      { "icon":   ":-[", "meaning": ["sad", "frown", "angry"] },
-      { "icon":  "(^^)", "meaning": ["joyful"] },
-      { "icon":   "^_^", "meaning": ["joyful"] },
-      { "icon":   ":-|", "meaning": ["indecision", "straight face"] },
-      { "icon":  "(TT)", "meaning": ["crying"] },
-      { "icon":   "=_=", "meaning": ["tired"] },
-      { "icon": "(+_+)", "meaning": ["amazed"] }
+      {
+        "icon": ":-)",
+        "meaning": [
+          "happy",
+          "smile",
+          "classic"
+        ]
+      },
+      {
+        "icon": ":-D",
+        "meaning": [
+          "laugh",
+          "grin",
+          "happy"
+        ]
+      },
+      {
+        "icon": ";-)",
+        "meaning": [
+          "wink",
+          "smirk"
+        ]
+      },
+      {
+        "icon": ":-P",
+        "meaning": [
+          "playful",
+          "tongue"
+        ]
+      },
+      {
+        "icon": "B-)",
+        "meaning": [
+          "cool",
+          "glasses",
+          "sunglasses"
+        ]
+      },
+      {
+        "icon": ":-*",
+        "meaning": [
+          "kiss",
+          "love"
+        ]
+      },
+      {
+        "icon": "O:-)",
+        "meaning": [
+          "angel",
+          "innocent"
+        ]
+      },
+      {
+        "icon": ":3",
+        "meaning": [
+          "cute",
+          "cat face"
+        ]
+      },
+      {
+        "icon": "XD",
+        "meaning": [
+          "laugh",
+          "excited"
+        ]
+      },
+      {
+        "icon": ":-(",
+        "meaning": [
+          "sad",
+          "frown"
+        ]
+      },
+      {
+        "icon": ":'(",
+        "meaning": [
+          "crying",
+          "tear"
+        ]
+      },
+      {
+        "icon": ":-/",
+        "meaning": [
+          "confused",
+          "skeptical"
+        ]
+      },
+      {
+        "icon": ":-|",
+        "meaning": [
+          "neutral",
+          "straight face"
+        ]
+      },
+      {
+        "icon": ":-O",
+        "meaning": [
+          "surprised",
+          "shocked"
+        ]
+      }
+    ],
+    [
+      {
+        "icon": "¯\\_(ツ)_/¯",
+        "meaning": [
+          "shrug",
+          "whatever",
+          "idk"
+        ]
+      },
+      {
+        "icon": "( ͡° ͜ʖ ͡°)",
+        "meaning": [
+          "lenny",
+          "smirk",
+          "mischief"
+        ]
+      },
+      {
+        "icon": "ಠ_ಠ",
+        "meaning": [
+          "disapproval",
+          "look",
+          "stare"
+        ]
+      },
+      {
+        "icon": "(╯°□°)╯︵ ┻━┻",
+        "meaning": [
+          "tableflip",
+          "rage",
+          "angry"
+        ]
+      },
+      {
+        "icon": "┬─┬ノ( º _ ºノ)",
+        "meaning": [
+          "unflip",
+          "calm",
+          "respect"
+        ]
+      },
+      {
+        "icon": "(•‿•)",
+        "meaning": [
+          "smile",
+          "happy",
+          "cute"
+        ]
+      },
+      {
+        "icon": "(◕‿◕✿)",
+        "meaning": [
+          "flower",
+          "happy",
+          "cheerful"
+        ]
+      },
+      {
+        "icon": "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧",
+        "meaning": [
+          "magic",
+          "sparkle",
+          "joy"
+        ]
+      },
+      {
+        "icon": "(ง'̀-'́)ง",
+        "meaning": [
+          "fight",
+          "boxer",
+          "ready"
+        ]
+      },
+      {
+        "icon": "(¬_¬)",
+        "meaning": [
+          "side eye",
+          "skeptical",
+          "meh"
+        ]
+      }
+    ],
+    [
+      {
+        "icon": "(づ｡◕‿‿◕｡)づ",
+        "meaning": [
+          "hug",
+          "cute",
+          "embrace"
+        ]
+      },
+      {
+        "icon": "(｡♥‿♥｡)",
+        "meaning": [
+          "love",
+          "hearts",
+          "adore"
+        ]
+      },
+      {
+        "icon": "(づ￣ ³￣)づ",
+        "meaning": [
+          "kiss",
+          "smooch",
+          "love"
+        ]
+      },
+      {
+        "icon": "(≧◡≦)",
+        "meaning": [
+          "joy",
+          "blush",
+          "delight"
+        ]
+      },
+      {
+        "icon": "(´･ω･`)",
+        "meaning": [
+          "puppy eyes",
+          "innocent",
+          "denko"
+        ]
+      },
+      {
+        "icon": "(=^･ω･^=)",
+        "meaning": [
+          "cat",
+          "kitty",
+          "animal"
+        ]
+      },
+      {
+        "icon": "(•_•) ( •_•)>⌐■-■ (⌐■_■)",
+        "meaning": [
+          "deal with it",
+          "cool",
+          "shades"
+        ]
+      },
+      {
+        "icon": "(⊙_☉)",
+        "meaning": [
+          "shocked",
+          "wide eyes",
+          "amazed"
+        ]
+      },
+      {
+        "icon": "(╥﹏╥)",
+        "meaning": [
+          "crying",
+          "sad",
+          "tears"
+        ]
+      },
+      {
+        "icon": "＼(＾O＾)／",
+        "meaning": [
+          "celebration",
+          "hooray",
+          "cheer"
+        ]
+      }
     ]
   ]
 }
