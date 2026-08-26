@@ -627,3 +627,19 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
 
     result_array.into_raw()
 }
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRecordPersonalCorrection(
+    mut env: JNIEnv,
+    _class: JClass,
+    typo: JString,
+    intended: JString,
+) {
+    if let (Ok(t), Ok(i)) = (env.get_string(&typo), env.get_string(&intended)) {
+        if let Ok(mut engine) = NLP_ENGINE.write() {
+            let typo_str = t.to_str().unwrap_or("");
+            let intended_str = i.to_str().unwrap_or("");
+            engine.record_personal_correction(typo_str, intended_str);
+        }
+    }
+}

@@ -219,17 +219,29 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
+    private var lastRevertedWord: String? = null
+    private var lastRevertedTimestamp: Long = 0L
+
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
         // Never log candidate content: on debug builds flogDebug writes to
         // logcat, and typed words must not leave the app even there.
         flogDebug { "suggestion accepted (${candidate.javaClass.simpleName})" }
         if (candidate is WordSuggestionCandidate) {
-            FlorisNative.insertWord(candidate.text.toString(), 100)
+            val acceptedWord = candidate.text.toString()
+            val now = SystemClock.elapsedRealtime()
+            val reverted = lastRevertedWord
+            if (reverted != null && now - lastRevertedTimestamp < 10000L && !reverted.equals(acceptedWord, ignoreCase = true)) {
+                FlorisNative.recordPersonalCorrection(reverted, acceptedWord)
+                lastRevertedWord = null
+            }
+            FlorisNative.insertWord(acceptedWord, 100)
         }
     }
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
         flogDebug { "suggestion reverted (${candidate.javaClass.simpleName})" }
+        lastRevertedWord = candidate.text.toString()
+        lastRevertedTimestamp = SystemClock.elapsedRealtime()
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
