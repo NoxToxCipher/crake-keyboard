@@ -123,6 +123,59 @@ fn two_slip_splits_are_not_repaired_yet() {
     );
 }
 
+/// Two-slip splits DO repair when the preceding word arbitrates uniquely:
+/// "I ho or you're" -> only "i hope" is attested, so hope is safe; if both
+/// hope and door carried context evidence, nothing is offered.
+#[test]
+fn two_slip_splits_repair_with_a_unique_context_witness() {
+    use floris_core::TouchModel;
+    let mut e = engine();
+    for (w, f) in [("hope", 244), ("door", 240), ("i", 250)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let mut keys = Vec::new();
+    for (r, row) in ["qwertyuiop", "asdfghjkl", "zxcvbnm"].iter().enumerate() {
+        for (i, ch) in row.chars().enumerate() {
+            keys.push((ch, (i as f32 + [0.0, 0.5, 1.5][r] + 0.5) * 100.0, (r as f32 + 0.5) * 140.0));
+        }
+    }
+    e.set_touch_model(TouchModel::from_layout(&keys));
+
+    let id = |eng: &NlpEngine, w: &str| eng.corpus_words().iter().position(|c| c == w).unwrap() as u32;
+    let make_blob = |eng: &NlpEngine, pairs: &[(&str, &str, u8)]| {
+        let mut entries: Vec<(u32, u32, u8)> =
+            pairs.iter().map(|&(a, b, s)| (id(eng, a), id(eng, b), s)).collect();
+        entries.sort();
+        let mut blob = Vec::new();
+        blob.extend_from_slice(b"CRKB");
+        blob.push(2);
+        blob.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+        blob.extend_from_slice(&(eng.corpus_words().len() as u32).to_le_bytes());
+        for (a, b, s) in entries {
+            blob.extend_from_slice(&a.to_le_bytes());
+            blob.extend_from_slice(&b.to_le_bytes());
+            blob.push(s);
+        }
+        blob
+    };
+
+    // Unique witness: only "i hope" attested -> repair fires.
+    let blob = make_blob(&e, &[("i", "hope", 200)]);
+    e.load_bigrams(&blob).unwrap();
+    assert_eq!(
+        e.merge_repair_with_context("i", "ho", "or").as_deref(),
+        Some("hope")
+    );
+    // Context-free call still refuses (documented limit stands).
+    assert_eq!(e.merge_repair("ho", "or"), None);
+
+    // Ambiguous witnesses: both hope and door attested after "i" -> refuse.
+    let blob = make_blob(&e, &[("i", "hope", 200), ("i", "door", 180)]);
+    e.load_bigrams(&blob).unwrap();
+    assert_eq!(e.merge_repair_with_context("i", "ho", "or"), None);
+}
+
 /// Merge repair surfaces contractions apostrophized too: the split "do nt"
 /// welds to the dictionary's bare "dont" but must display as "don't".
 #[test]

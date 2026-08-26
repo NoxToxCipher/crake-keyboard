@@ -192,6 +192,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpSugg
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpMergeRepair(
     mut env: JNIEnv,
     _class: JClass,
+    preceding: JString,
     prev_word: JString,
     current: JString,
 ) -> jstring {
@@ -199,6 +200,10 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpMerg
         .new_string("")
         .map(|s| s.into_raw())
         .unwrap_or(std::ptr::null_mut());
+    let ctx = env
+        .get_string(&preceding)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
     let prev = match env.get_string(&prev_word) {
         Ok(s) => s.to_str().unwrap_or("").to_string(),
         Err(_) => return empty,
@@ -208,7 +213,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpMerg
         Err(_) => return empty,
     };
     let merged = match NLP_ENGINE.read() {
-        Ok(engine) => engine.merge_repair(&prev, &cur),
+        Ok(engine) => engine.merge_repair_with_context(&ctx, &prev, &cur),
         Err(_) => None,
     };
     match merged {

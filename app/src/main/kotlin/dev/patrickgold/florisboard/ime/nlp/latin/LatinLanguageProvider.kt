@@ -208,13 +208,22 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             .dropLast(query.length)
             .trimEnd()
             .takeLastWhile { !it.isWhitespace() }
+        // One more token back: context witness for two-slip merge repair
+        // ("I ho or" -> the "I" arbitrates hope vs door).
+        val precedingToken = content.textBeforeSelection
+            .dropLast(query.length)
+            .trimEnd()
+            .dropLast(prevToken.length)
+            .trimEnd()
+            .takeLastWhile { !it.isWhitespace() }
+            .toString()
 
         return buildList {
             // 0. Spurious mid-word space repair: offered first, never
             // auto-committed — the user taps it deliberately and BOTH
             // fragments are replaced (see MergedWordSuggestionCandidate).
             if (FlorisNative.isAvailable() && prevToken.isNotEmpty()) {
-                val merged = FlorisNative.mergeRepair(prevToken, query)
+                val merged = FlorisNative.mergeRepair(prevToken, query, precedingToken)
                 if (merged != null) {
                     add(
                         MergedWordSuggestionCandidate(

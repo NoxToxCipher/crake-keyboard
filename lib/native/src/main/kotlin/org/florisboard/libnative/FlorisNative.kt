@@ -106,9 +106,9 @@ object FlorisNative {
      * fragments were meant to be ("shou" + "kd" -> "should"), or null when
      * they should not merge. Legitimate word pairs never merge.
      */
-    fun mergeRepair(prevWord: String, current: String): String? {
+    fun mergeRepair(prevWord: String, current: String, preceding: String = ""): String? {
         if (!isLoaded || prevWord.isEmpty() || current.isEmpty()) return null
-        return nativeNlpMergeRepair(prevWord, current).takeIf { it.isNotEmpty() }
+        return nativeNlpMergeRepair(preceding, prevWord, current).takeIf { it.isNotEmpty() }
     }
 
     fun insertWord(word: String, frequency: Int) {
@@ -277,7 +277,7 @@ object FlorisNative {
 
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 
-    private external fun nativeNlpMergeRepair(prevWord: String, current: String): String
+    private external fun nativeNlpMergeRepair(preceding: String, prevWord: String, current: String): String
 
     private external fun nativeNlpLoadBigramBlob(data: ByteArray): Int
 

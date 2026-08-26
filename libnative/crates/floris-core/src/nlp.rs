@@ -449,6 +449,64 @@ impl NlpEngine {
             .map(|fc| display(fc.word))
     }
 
+    /// Context-armed merge repair: everything [`Self::merge_repair`] does,
+    /// plus a second, wider attempt (two adjacent slips) that fires ONLY
+    /// when the word preceding the fragments arbitrates uniquely. The
+    /// specimen "I ho or you're..." (2026-08-27): "hoor" is two slips from
+    /// both "hope" and "door", but only "i hope" is an attested pair — a
+    /// unique context witness, so the repair is safe. If zero or several
+    /// two-slip candidates carry context evidence, nothing is offered:
+    /// a coin-flip repair is worse than none.
+    pub fn merge_repair_with_context(
+        &self,
+        preceding: &str,
+        prev_word: &str,
+        current: &str,
+    ) -> Option<String> {
+        if let Some(word) = self.merge_repair(prev_word, current) {
+            return Some(word);
+        }
+        let ctx = preceding.trim().to_lowercase();
+        if ctx.is_empty() {
+            return None;
+        }
+        let prev = prev_word.trim().to_lowercase();
+        let cur = current.trim().to_lowercase();
+        if prev.is_empty()
+            || cur.is_empty()
+            || !prev.chars().all(|c| c.is_alphabetic() || c == '\'')
+            || !cur.chars().all(|c| c.is_alphabetic() || c == '\'')
+            || self.bigram_pair_score(&prev, &cur) > 0
+        {
+            return None;
+        }
+        let joined = format!("{prev}{cur}");
+        let joined_len = joined.chars().count();
+        if !(4..=24).contains(&joined_len) {
+            return None;
+        }
+        const MIN_MERGED_FREQ: u32 = 150;
+        let witnessed: Vec<String> = self
+            .trie
+            .fuzzy_search_weighted(&joined, 2, 8, |a, b| self.keys_near(a, b))
+            .into_iter()
+            .filter(|fc| {
+                fc.word.chars().count() == joined_len
+                    && fc.frequency >= MIN_MERGED_FREQ
+                    && self.bigram_pair_score(&ctx, &fc.word) > 0
+            })
+            .map(|fc| fc.word)
+            .collect();
+        match witnessed.as_slice() {
+            [only] => Some(
+                contraction_display(only)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| only.clone()),
+            ),
+            _ => None,
+        }
+    }
+
     pub fn suggest_with_context(&self, query: &str, prev_word: &str, max_candidates: usize) -> SuggestionResult {
         let trimmed = query.trim();
         let trimmed_lower = trimmed.to_lowercase();
