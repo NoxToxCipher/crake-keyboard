@@ -737,12 +737,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val dayThemeId = custom(
             key = "theme__day_theme_id",
-            default = extCoreTheme("crake_cyan_bordered"),
+            default = extCoreTheme("crake_cyan_borderless"),
             serializer = ExtensionComponentName.Serializer,
         )
         val nightThemeId = custom(
             key = "theme__night_theme_id",
-            default = extCoreTheme("crake_cyan_bordered"),
+            default = extCoreTheme("crake_cyan_borderless"),
             serializer = ExtensionComponentName.Serializer,
         )
         val accentColor = custom(
