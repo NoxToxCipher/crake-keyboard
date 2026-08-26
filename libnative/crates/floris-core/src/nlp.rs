@@ -168,15 +168,28 @@ impl NlpEngine {
     }
 
     pub fn apply_casing(query: &str, candidate: &str) -> String {
-        let is_all_upper = query.len() > 1 && query.chars().all(|c| !c.is_alphabetic() || c.is_uppercase());
-        let is_first_upper = query.chars().next().map_or(false, |c| c.is_uppercase());
+        let chars: Vec<char> = query.chars().collect();
+        let is_all_upper = chars.len() > 1 && chars.iter().all(|&c| !c.is_alphabetic() || c.is_uppercase());
+        
+        // Accidental CapsLock Inversion (e.g. tHIS -> This, hELLO -> Hello)
+        let is_inverted_caps = chars.len() >= 3 
+            && chars[0].is_lowercase() 
+            && chars[1..].iter().all(|&c| !c.is_alphabetic() || c.is_uppercase());
+            
+        // Accidental Double-Shift (e.g. THis -> This, HEllo -> Hello)
+        let is_double_shift = chars.len() >= 3 
+            && chars[0].is_uppercase() 
+            && chars[1].is_uppercase() 
+            && chars[2..].iter().all(|&c| !c.is_alphabetic() || c.is_lowercase());
+
+        let is_first_upper = chars.first().map_or(false, |c| c.is_uppercase());
 
         if is_all_upper {
             candidate.to_uppercase()
-        } else if is_first_upper {
-            let mut chars = candidate.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        } else if is_first_upper || is_inverted_caps || is_double_shift {
+            let mut cand_chars = candidate.chars();
+            match cand_chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + cand_chars.as_str(),
                 None => candidate.to_string(),
             }
         } else {
@@ -257,6 +270,22 @@ impl NlpEngine {
                 word: trimmed.to_string(),
                 is_autocorrect: false,
             });
+        } else if trimmed_lower.len() >= 4 && candidates.is_empty() {
+            // 5b. Missing Space Splitter (e.g. andthe -> and the, inmy -> in my, tothe -> to the)
+            for split_idx in 2..trimmed_lower.len() - 1 {
+                let left = &trimmed_lower[..split_idx];
+                let right = &trimmed_lower[split_idx..];
+                if self.trie.contains(left) && self.trie.contains(right) {
+                    let formatted_left = Self::apply_casing(&trimmed[..split_idx], left);
+                    let formatted_right = right.to_string();
+                    let split_phrase = format!("{} {}", formatted_left, formatted_right);
+                    candidates.push(RankedCandidate {
+                        word: split_phrase,
+                        is_autocorrect: true,
+                    });
+                    break;
+                }
+            }
         }
 
         // 6. Prefix completions (completions must NOT auto-commit on space)
