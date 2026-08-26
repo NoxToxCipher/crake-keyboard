@@ -432,6 +432,8 @@ fun TextKeyboardLayout(
         var murmurFlockTriggerTime by remember { mutableStateOf(0L) }
         var lunaCrashTriggerTime by remember { mutableStateOf(0L) }
         var sundaeTriggerTime by remember { mutableStateOf(0L) }
+        var trainTriggerTime by remember { mutableStateOf(0L) }
+        var isNobleTrainMode by remember { mutableStateOf(false) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -519,6 +521,15 @@ fun TextKeyboardLayout(
             val sundaeKeys = listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait")
             if (sundaeKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 sundaeTriggerTime = System.currentTimeMillis()
+            }
+            val nobleTrainKeys = listOf("noble train", "nobletrain", "noble_train", "sniping trains")
+            val regularTrainKeys = listOf("train", "trains", "choo choo", "choochoo", "locomotive", "steam train")
+            if (nobleTrainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+                isNobleTrainMode = true
+                trainTriggerTime = System.currentTimeMillis()
+            } else if (regularTrainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+                isNobleTrainMode = false
+                trainTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -3811,6 +3822,283 @@ fun TextKeyboardLayout(
 
                         drawContext.canvas.nativeCanvas.restore()
                     }
+                }
+            }
+        }
+
+        // Train & Royal Golden Noble Train on Middle Fret Easter Egg
+        if (trainTriggerTime > 0L) {
+            val isNoble = isNobleTrainMode
+            val trainProgress = remember(trainTriggerTime) { Animatable(0f) }
+            LaunchedEffect(trainTriggerTime) {
+                trainProgress.snapTo(0f)
+                trainProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4400, easing = LinearEasing),
+                )
+                trainTriggerTime = 0L
+            }
+            if (trainProgress.value in 0.001f..0.999f) {
+                val u = trainProgress.value
+                val currentMs = u * 4400f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    val rowCount = (keyboard.rowCount).coerceAtLeast(4)
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+                    val middleFretY = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
+
+                    // Train travels Left to Right along the middle fret rail
+                    val trainLen = if (isNoble) (130f * density) else (100f * density)
+                    val startX = -trainLen - 20f * density
+                    val endX = canvasW + 40f * density
+                    val trainHeadX = startX + u * (endX - startX)
+                    val trainY = middleFretY - 2.5f * density // Wheels on middle fret
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(trainHeadX, trainY)
+
+                    // 1. Headlight Light Beam Cone
+                    val headlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = if (isNoble) 0x55FEF08A.toInt() else 0x44FEF08A.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val beamPath = android.graphics.Path().apply {
+                        moveTo(14f * density, -5.5f * density)
+                        lineTo(45f * density, -9f * density)
+                        lineTo(45f * density, 2f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(beamPath, headlightPaint)
+
+                    // 2. Chuffing Steam & Spark Puffs from Smokestack
+                    val steamPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = if (isNoble) 0x88FDE047.toInt() else 0x77CBD5E1.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFEF08A.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    val chuffOffsets = listOf(
+                        Pair(5f * density, -16f * density),
+                        Pair(-4f * density, -22f * density),
+                        Pair(-16f * density, -27f * density),
+                        Pair(-30f * density, -30f * density)
+                    )
+                    for ((idx, offset) in chuffOffsets.withIndex()) {
+                        val chuffSize = (3.5f + idx * 1.8f) * density
+                        val bob = kotlin.math.sin(currentMs * 0.015f + idx) * 2f * density
+                        drawContext.canvas.nativeCanvas.drawCircle(offset.first, offset.second + bob, chuffSize, steamPaint)
+                        if (isNoble && idx % 2 == 0) {
+                            drawContext.canvas.nativeCanvas.drawCircle(offset.first + 2f * density, offset.second + bob, 1.2f * density, sparkPaint)
+                        }
+                    }
+
+                    // 3. Render Cars
+                    val wheelTirePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0F172A.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val wheelRimPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = if (isNoble) 0xFFF59E0B.toInt() else 0xFF94A3B8.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val windowLightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFEF08A.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val couplingPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF475569.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.4f * density
+                    }
+
+                    if (!isNoble) {
+                        // ==========================================
+                        // REGULAR STEAM TRAIN
+                        // ==========================================
+                        // A. Locomotive Engine (0dp)
+                        val boilerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF1E293B.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val cabPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFDC2626.toInt() // Red Engine Cab
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val brassPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFF59E0B.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val cowcatcherPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFEF4444.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // Boiler Cylinder
+                        drawContext.canvas.nativeCanvas.drawRoundRect(0f, -8f * density, 14f * density, 0f, 2f * density, 2f * density, boilerPaint)
+                        // Brass boiler bands
+                        drawContext.canvas.nativeCanvas.drawRect(4f * density, -8f * density, 5.5f * density, 0f, brassPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(9f * density, -8f * density, 10.5f * density, 0f, brassPaint)
+                        // Smokestack
+                        drawContext.canvas.nativeCanvas.drawRect(9f * density, -13f * density, 12.5f * density, -8f * density, boilerPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(8f * density, -14.5f * density, 13.5f * density, -13f * density, brassPaint)
+                        // Cowcatcher / Pilot
+                        val plow = android.graphics.Path().apply {
+                            moveTo(14f * density, 0f)
+                            lineTo(18f * density, 0f)
+                            lineTo(14f * density, -4f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(plow, cowcatcherPaint)
+
+                        // Cab
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-10f * density, -12.5f * density, 0f, 0f, 1.5f * density, 1.5f * density, cabPaint)
+                        // Cab Window
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-8f * density, -10.5f * density, -3f * density, -5.5f * density, 1f * density, 1f * density, windowLightPaint)
+
+                        // Wheels (Engine)
+                        drawContext.canvas.nativeCanvas.drawCircle(-6f * density, 0f, 3.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-6f * density, 0f, 1.6f * density, wheelRimPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(4f * density, 0f, 3.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(4f * density, 0f, 1.6f * density, wheelRimPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(11f * density, 0f, 2.2f * density, wheelTirePaint)
+
+                        // Piston connecting rod
+                        val rodPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFCBD5E1.toInt()
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.2f * density
+                        }
+                        val pistonY = kotlin.math.sin(currentMs * 0.02f) * 1.2f * density
+                        drawContext.canvas.nativeCanvas.drawLine(-6f * density, pistonY, 4f * density, pistonY, rodPaint)
+
+                        // B. Coal Tender (-14dp -> -32dp)
+                        drawContext.canvas.nativeCanvas.drawLine(-10f * density, -2f * density, -14f * density, -2f * density, couplingPaint)
+                        val tenderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF0F172A.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val coalPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF020617.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-32f * density, -7f * density, -14f * density, 0f, 1.5f * density, 1.5f * density, tenderPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-23f * density, -7.5f * density, 3.5f * density, coalPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-27f * density, 0f, 2.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-19f * density, 0f, 2.2f * density, wheelTirePaint)
+
+                        // C. Passenger Coach 1 - Royal Blue (-36dp -> -60dp)
+                        drawContext.canvas.nativeCanvas.drawLine(-32f * density, -2f * density, -36f * density, -2f * density, couplingPaint)
+                        val coach1Paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF2563EB.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-60f * density, -10f * density, -36f * density, 0f, 1.5f * density, 1.5f * density, coach1Paint)
+                        // Windows
+                        drawContext.canvas.nativeCanvas.drawRect(-56f * density, -8f * density, -51f * density, -4f * density, windowLightPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(-47f * density, -8f * density, -42f * density, -4f * density, windowLightPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-53f * density, 0f, 2.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-43f * density, 0f, 2.2f * density, wheelTirePaint)
+
+                        // D. Passenger Coach 2 - Emerald Green (-64dp -> -88dp)
+                        drawContext.canvas.nativeCanvas.drawLine(-60f * density, -2f * density, -64f * density, -2f * density, couplingPaint)
+                        val coach2Paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF059669.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-88f * density, -10f * density, -64f * density, 0f, 1.5f * density, 1.5f * density, coach2Paint)
+                        // Windows
+                        drawContext.canvas.nativeCanvas.drawRect(-84f * density, -8f * density, -79f * density, -4f * density, windowLightPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(-75f * density, -8f * density, -70f * density, -4f * density, windowLightPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-81f * density, 0f, 2.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-71f * density, 0f, 2.2f * density, wheelTirePaint)
+                    } else {
+                        // ==========================================
+                        // ROYAL GOLDEN NOBLE TRAIN (4 NOBLE CARRIAGES)
+                        // ==========================================
+                        val nobleGoldPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFF59E0B.toInt() // Royal Gold
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val nobleGlintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFFDE047.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val noblePurplePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF581C87.toInt() // Imperial Purple
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val royalCrownPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFFACC15.toInt() // Imperial Crown
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // A. Gilded Royal Locomotive
+                        // Golden Boiler
+                        drawContext.canvas.nativeCanvas.drawRoundRect(0f, -8f * density, 15f * density, 0f, 2f * density, 2f * density, nobleGoldPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(4f * density, -8f * density, 6f * density, 0f, nobleGlintPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(10f * density, -8f * density, 12f * density, 0f, nobleGlintPaint)
+                        // Gilded Smokestack
+                        drawContext.canvas.nativeCanvas.drawRect(10f * density, -13.5f * density, 13.5f * density, -8f * density, nobleGoldPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(9f * density, -15f * density, 14.5f * density, -13.5f * density, nobleGlintPaint)
+
+                        // Royal Purple Cab
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-10f * density, -13f * density, 0f, 0f, 1.5f * density, 1.5f * density, noblePurplePaint)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-8.5f * density, -11f * density, -3f * density, -6f * density, 1f * density, 1f * density, windowLightPaint)
+
+                        // Imperial Crown on Cab Roof
+                        val crown = android.graphics.Path().apply {
+                            moveTo(-9f * density, -13f * density)
+                            lineTo(-9f * density, -16.5f * density)
+                            lineTo(-6.5f * density, -14.5f * density)
+                            lineTo(-4.5f * density, -17.5f * density)
+                            lineTo(-2.5f * density, -14.5f * density)
+                            lineTo(0f, -16.5f * density)
+                            lineTo(0f, -13f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(crown, royalCrownPaint)
+
+                        // Gilded Wheels
+                        drawContext.canvas.nativeCanvas.drawCircle(-6f * density, 0f, 3.4f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-6f * density, 0f, 2.1f * density, nobleGoldPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(4f * density, 0f, 3.4f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(4f * density, 0f, 2.1f * density, nobleGoldPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(12f * density, 0f, 2.4f * density, nobleGoldPaint)
+
+                        // B. 4 Royal Noble Carriages (Nobles 1, 2, 3, 4)
+                        for (nobleIdx in 0 until 4) {
+                            val startCarX = -14f * density - (nobleIdx * 28f * density)
+                            val endCarX = startCarX - 22f * density
+
+                            // Coupling link
+                            drawContext.canvas.nativeCanvas.drawLine(startCarX + 4f * density, -2f * density, startCarX, -2f * density, couplingPaint)
+
+                            // Noble Coach
+                            drawContext.canvas.nativeCanvas.drawRoundRect(endCarX, -10.5f * density, startCarX, 0f, 2f * density, 2f * density, noblePurplePaint)
+                            drawContext.canvas.nativeCanvas.drawRect(endCarX, -10.5f * density, startCarX, -9f * density, nobleGoldPaint) // Gold roof trim
+
+                            // Noble Window & Gold Heraldry Crest
+                            drawContext.canvas.nativeCanvas.drawRoundRect(endCarX + 4f * density, -8.5f * density, endCarX + 10f * density, -4f * density, 1f * density, 1f * density, windowLightPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(endCarX + 16f * density, -6.2f * density, 2.2f * density, royalCrownPaint) // Noble Crest
+
+                            // Wheels
+                            drawContext.canvas.nativeCanvas.drawCircle(endCarX + 5f * density, 0f, 2.4f * density, wheelTirePaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(endCarX + 5f * density, 0f, 1.2f * density, nobleGoldPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(endCarX + 17f * density, 0f, 2.4f * density, wheelTirePaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(endCarX + 17f * density, 0f, 1.2f * density, nobleGoldPaint)
+                        }
+                    }
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
