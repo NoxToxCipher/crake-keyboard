@@ -50,6 +50,52 @@ import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
 
+private fun evaluateMathOrMacro(input: String): String? {
+    val clean = input.trim()
+    val now = java.time.ZonedDateTime.now()
+    when (clean.lowercase()) {
+        ".now" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        ".today" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))
+        ".date" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        ".time" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+        ".utc" -> return java.time.Instant.now().toString()
+        ".ts" -> return (System.currentTimeMillis() / 1000).toString()
+    }
+    if (clean.endsWith("=") && clean.length > 2) {
+        val expr = clean.dropLast(1).trim()
+        val mathResult = evalSimpleMath(expr)
+        if (mathResult != null) return mathResult
+    }
+    return null
+}
+
+private fun evalSimpleMath(expr: String): String? {
+    return runCatching {
+        val sanitized = expr.replace("x", "*").replace("X", "*").replace("×", "*").replace("÷", "/")
+        val match = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$").matchEntire(sanitized)
+        if (match != null) {
+            val a = match.groupValues[1].toDouble()
+            val op = match.groupValues[2]
+            val b = match.groupValues[3].toDouble()
+            val res = when (op) {
+                "+" -> a + b
+                "-" -> a - b
+                "*" -> a * b
+                "/" -> if (b != 0.0) a / b else null
+                "^" -> Math.pow(a, b)
+                "%" -> a % b
+                else -> null
+            } ?: return null
+            if (res % 1.0 == 0.0 && res <= Long.MAX_VALUE && res >= Long.MIN_VALUE) {
+                res.toLong().toString()
+            } else {
+                "%.4f".format(res).trimEnd('0').trimEnd('.')
+            }
+        } else null
+    }.getOrNull()
+}
+
+
 class NlpManager(context: Context) {
     private val blankStrRegex = Regex(BLANK_STR_PATTERN)
 
@@ -208,6 +254,25 @@ class NlpManager(context: Context) {
                 }
                 else -> emptyList()
             }
+            val wordInput = when {
+                content.composing.isValid && content.composingText.isNotBlank() -> content.composingText
+                content.localCurrentWord.isValid && content.currentWordText.isNotBlank() -> content.currentWordText
+                else -> content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }.toString()
+            }
+            val macroEvaluated = evaluateMathOrMacro(wordInput)
+            val macroCandidate: List<SuggestionCandidate> = if (macroEvaluated != null) {
+                listOf(
+                    WordSuggestionCandidate(
+                        text = macroEvaluated,
+                        secondaryText = if (wordInput.endsWith("=")) "🧮 Math Result" else "📅 Macro",
+                        confidence = 1.0,
+                        isEligibleForAutoCommit = false,
+                    )
+                )
+            } else {
+                emptyList()
+            }
+
             val suggestions = when {
                 emojiSuggestions.isNotEmpty() && prefs.emoji.suggestionType.get().prefix.isNotEmpty() -> {
                     emptyList()
@@ -225,6 +290,7 @@ class NlpManager(context: Context) {
             internalSuggestionsGuard.withLock {
                 if (internalSuggestions.first < reqTime) {
                     internalSuggestions = reqTime to buildList {
+                        addAll(macroCandidate)
                         addAll(emojiSuggestions)
                         addAll(suggestions)
                     }
