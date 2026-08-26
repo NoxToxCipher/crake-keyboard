@@ -4,6 +4,32 @@
 
 use floris_core::NlpEngine;
 
+/// The personal frequency layer: learning NEVER demotes a word (accepting
+/// "the" used to overwrite 254 -> 100), repeated use nudges a word upward,
+/// and the personal boost is bounded to corpus base + 30 so the frequency
+/// table can never flatten into uniform 255s over months of typing.
+#[test]
+fn learning_never_demotes_and_personal_boost_is_bounded() {
+    let mut e = NlpEngine::new();
+    e.corpus_insert("the", 254);
+    e.trie.insert("the", 254);
+    e.learn_word("the", 100); // the acceptance path's flat 100
+    assert!(
+        e.trie.get_frequency("the").unwrap() >= 254,
+        "acceptance must never demote a common word"
+    );
+
+    // A personal out-of-vocabulary word rises with use, within its headroom.
+    e.learn_word("roratus", 100);
+    let start = e.trie.get_frequency("roratus").unwrap();
+    for _ in 0..50 {
+        e.learn_word("roratus", 100);
+    }
+    let end = e.trie.get_frequency("roratus").unwrap();
+    assert!(end > start, "repeated use must build preference: {start} -> {end}");
+    assert!(end <= 130, "personal boost is bounded: {end}");
+}
+
 #[test]
 fn learned_words_and_habits_survive_a_restart() {
     let mut first = NlpEngine::new();

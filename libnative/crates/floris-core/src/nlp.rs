@@ -221,13 +221,25 @@ impl NlpEngine {
 
     /// Learns a word the user accepted or typed: enters the trie AND the
     /// persisted learned set.
+    ///
+    /// The personal frequency layer's contract:
+    /// - NEVER demote (the acceptance path used to overwrite "the" 254 -> a
+    ///   flat 100, and persistence would have made that permanent);
+    /// - each learn event nudges the word up by a small step;
+    /// - the personal boost is BOUNDED to corpus base + 30 (or the learn
+    ///   value + 30 for out-of-vocabulary words), so months of typing can
+    ///   sharpen preferences without flattening the table into 255s.
     pub fn learn_word(&mut self, word: &str, freq: u32) {
         let trimmed = word.trim().to_ascii_lowercase();
         if trimmed.len() < 2 || trimmed.chars().count() > crate::persist::MAX_TOKEN_LEN {
             return;
         }
-        self.trie.insert(&trimmed, freq);
-        self.learned_words.insert(trimmed, freq);
+        let base = self.corpus_freq(&trimmed).max(freq.min(150));
+        let ceiling = base.saturating_add(30).min(255);
+        let current = self.trie.get_frequency(&trimmed).unwrap_or(0);
+        let new_freq = current.max(base).saturating_add(3).min(ceiling.max(current));
+        self.trie.insert(&trimmed, new_freq);
+        self.learned_words.insert(trimmed, new_freq);
     }
 
     /// Serializes learned words + personal corrections for persistence.
@@ -251,8 +263,13 @@ impl NlpEngine {
         let state = crate::persist::LearnedState::parse(data)?;
         let count = state.words.len();
         for (word, freq) in state.words {
-            self.trie.insert(&word, freq);
-            self.learned_words.insert(word, freq);
+            // Same never-demote contract as learn_word: a stale blob (or a
+            // dictionary updated to higher frequencies since the export)
+            // must not pull words down.
+            let current = self.trie.get_frequency(&word).unwrap_or(0);
+            let restored = freq.max(current);
+            self.trie.insert(&word, restored);
+            self.learned_words.insert(word, restored);
         }
         for (typo, intended, n) in state.corrections {
             let counter = self.personal_corrections.entry(typo).or_default();
