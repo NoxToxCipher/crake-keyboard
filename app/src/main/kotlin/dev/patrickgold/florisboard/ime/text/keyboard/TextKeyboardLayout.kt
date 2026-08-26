@@ -593,7 +593,13 @@ private fun TextKeyButton(
             SnyggText(
                 modifier = Modifier
                     .wrapContentSize()
-                    .align(if (isTelPadKey) BiasAlignment(-0.5f, 0f) else Alignment.Center),
+                    .align(if (isTelPadKey) BiasAlignment(-0.5f, 0f) else Alignment.Center)
+                    .graphicsLayer {
+                        if (key.isPressed && key.isEnabled) {
+                            scaleX = 1.12f
+                            scaleY = 1.12f
+                        }
+                    },
                 text = customLabel,
             )
         }
@@ -628,7 +634,14 @@ private fun TextKeyButton(
         }
         key.foregroundImageVector?.let { imageVector ->
             SnyggIcon(
-                modifier = Modifier.align(Alignment.Center),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        if (key.isPressed && key.isEnabled) {
+                            scaleX = 1.12f
+                            scaleY = 1.12f
+                        }
+                    },
                 imageVector = imageVector,
                 contentDescription = null,
             )
