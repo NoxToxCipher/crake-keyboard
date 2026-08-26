@@ -585,6 +585,17 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideSe
         });
     }
 
+    // The same geometry feeds the Gaussian touch model, so autocorrect slip
+    // costs always describe the layout the user is actually typing on
+    // (Dvorak gets Dvorak neighbours, not a hardcoded union table).
+    let model_keys: Vec<(char, f32, f32)> = keys
+        .iter()
+        .map(|k| (k.character, k.center.x, k.center.y))
+        .collect();
+    if let Ok(mut engine) = NLP_ENGINE.write() {
+        engine.set_touch_model(floris_core::TouchModel::from_layout(&model_keys));
+    }
+
     if let Ok(mut engine) = GLIDE_ENGINE.write() {
         engine.set_layout(keys);
     }

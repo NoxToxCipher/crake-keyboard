@@ -125,6 +125,12 @@ pub struct NlpEngine {
     corpus_freqs: std::collections::HashMap<String, u32>,
     session_recency: std::collections::VecDeque<String>,
     personal_corrections: std::collections::HashMap<String, std::collections::HashMap<String, u32>>,
+    /// Gaussian touch model built from the ACTIVE layout's key geometry.
+    /// While present it replaces the static QWERTY∪Dvorak adjacency table
+    /// for slip-cost decisions, so the engine is exactly as permissive as
+    /// the keyboard the user is really typing on. None until the first
+    /// layout upload (and in host-side tests, which exercise the fallback).
+    touch_model: Option<crate::TouchModel>,
 }
 
 impl NlpEngine {
@@ -139,6 +145,24 @@ impl NlpEngine {
             corpus_freqs: std::collections::HashMap::new(),
             session_recency: std::collections::VecDeque::new(),
             personal_corrections: std::collections::HashMap::new(),
+            touch_model: None,
+        }
+    }
+
+    pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
+        self.touch_model = model;
+    }
+
+    /// Whether typing `b` while meaning `a` is a plausible physical slip:
+    /// answered by the Gaussian touch model when a layout has been uploaded,
+    /// by the static adjacency table otherwise. Governs the weighted fuzzy
+    /// search and merge repair; the ranking-side `is_spatial_slip_match`
+    /// deliberately keeps the static table (more permissive is harmless for
+    /// ordering, and that function has other callers).
+    pub fn keys_near(&self, a: char, b: char) -> bool {
+        match &self.touch_model {
+            Some(model) => model.is_near(a, b),
+            None => Self::is_spatial_keyboard_neighbor(a, b),
         }
     }
 
@@ -302,7 +326,7 @@ impl NlpEngine {
         // a false merge ("can"+"for" -> "cancer") because the adjacency graph
         // unions QWERTY and Dvorak neighbourhoods.
         self.trie
-            .fuzzy_search_weighted(&joined, 1, 4, Self::is_spatial_keyboard_neighbor)
+            .fuzzy_search_weighted(&joined, 1, 4, |a, b| self.keys_near(a, b))
             .into_iter()
             .find(|fc| fc.word.chars().count() == joined_len && fc.frequency >= MIN_MERGED_FREQ)
             .map(|fc| fc.word)
@@ -512,7 +536,7 @@ impl NlpEngine {
                 &trimmed_lower,
                 max_units,
                 max_candidates + 4,
-                Self::is_spatial_keyboard_neighbor,
+                |a, b| self.keys_near(a, b),
             );
             // Partition fuzzy matches: spatial keyboard neighbor slips get top priority
             let mut sorted_fuzzy = fuzzy;
