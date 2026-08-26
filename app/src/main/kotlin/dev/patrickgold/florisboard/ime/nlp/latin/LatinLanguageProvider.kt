@@ -250,6 +250,27 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                             sourceProvider = this@LatinLanguageProvider,
                         )
                     )
+                } else if (precedingToken.isNotEmpty()) {
+                    // Three-fragment repair ("cha nbn ges"): witness is one
+                    // more token back.
+                    val witness = content.textBeforeSelection
+                        .dropLast(query.length).trimEnd()
+                        .dropLast(prevToken.length).trimEnd()
+                        .dropLast(precedingToken.length).trimEnd()
+                        .takeLastWhile { !it.isWhitespace() }
+                        .toString()
+                    val merged3 = FlorisNative.mergeRepair3(precedingToken, prevToken.toString(), query.toString(), witness)
+                    if (merged3 != null) {
+                        add(
+                            MergedWordSuggestionCandidate(
+                                text = merged3,
+                                secondaryText = "$precedingToken $prevToken $query",
+                                confidence = 0.9,
+                                sourceProvider = this@LatinLanguageProvider,
+                                fragments = 3,
+                            )
+                        )
+                    }
                 }
             }
 

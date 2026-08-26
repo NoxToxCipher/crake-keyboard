@@ -636,6 +636,75 @@ impl NlpEngine {
         }
     }
 
+    /// Three-fragment split repair: "cha nbn ges" -> changes,
+    /// "t hj ings" -> things (field specimens 2026-08-27). Three-way splits
+    /// bring stowaway keys along, so the join needs deletion tolerance —
+    /// which multiplies candidates, so the safety rules are strict:
+    /// - an EXACT join of all three fragments may repair witness-free;
+    /// - any fuzzy join (≤ 2 edits, candidate within 2 chars of the join)
+    ///   requires a UNIQUE context witness from the word before the
+    ///   fragments, exactly like two-slip pair repair;
+    /// - fragments forming attested pairs are real language and never weld.
+    pub fn merge_repair3(
+        &self,
+        preceding: &str,
+        first: &str,
+        second: &str,
+        third: &str,
+    ) -> Option<String> {
+        let f1 = first.trim().to_lowercase();
+        let f2 = second.trim().to_lowercase();
+        let f3 = third.trim().to_lowercase();
+        let ok = |s: &str| {
+            !s.is_empty()
+                && s.chars().count() <= crate::persist::MAX_TOKEN_LEN
+                && s.chars().all(|c| c.is_alphabetic() || c == '\'')
+        };
+        if !(ok(&f1) && ok(&f2) && ok(&f3)) {
+            return None;
+        }
+        if self.bigram_pair_score(&f1, &f2) > 0 || self.bigram_pair_score(&f2, &f3) > 0 {
+            return None;
+        }
+        let joined = format!("{f1}{f2}{f3}");
+        let joined_len = joined.chars().count();
+        if !(4..=24).contains(&joined_len) {
+            return None;
+        }
+        const MIN_MERGED_FREQ: u32 = 150;
+        let display = |word: &str| {
+            contraction_display(word)
+                .map(str::to_string)
+                .unwrap_or_else(|| word.to_string())
+        };
+        if let Some(freq) = self.trie.get_frequency(&joined) {
+            if freq >= MIN_MERGED_FREQ {
+                return Some(display(&joined));
+            }
+        }
+        let ctx = preceding.trim().to_lowercase();
+        if ctx.is_empty() {
+            return None;
+        }
+        let witnessed: Vec<String> = self
+            .trie
+            .fuzzy_search_weighted(&joined, 4, 8, |a, b| self.keys_near(a, b))
+            .into_iter()
+            .filter(|fc| {
+                let len = fc.word.chars().count();
+                len + 2 >= joined_len
+                    && len <= joined_len
+                    && fc.frequency >= MIN_MERGED_FREQ
+                    && self.bigram_pair_score(&ctx, &fc.word) > 0
+            })
+            .map(|fc| fc.word)
+            .collect();
+        match witnessed.as_slice() {
+            [only] => Some(display(only)),
+            _ => None,
+        }
+    }
+
     pub fn suggest_with_context(&self, query: &str, prev_word: &str, max_candidates: usize) -> SuggestionResult {
         let trimmed = query.trim();
         let trimmed_lower = trimmed.to_lowercase();

@@ -131,6 +131,8 @@ data class MergedWordSuggestionCandidate(
     override val isEligibleForAutoCommit: Boolean = false,
     override val isEligibleForUserRemoval: Boolean = false,
     override val sourceProvider: SuggestionProvider? = null,
+    /** How many typed fragments the commit replaces (2 or 3). */
+    val fragments: Int = 2,
 ) : SuggestionCandidate {
     override val icon: ImageVector? = null
 }

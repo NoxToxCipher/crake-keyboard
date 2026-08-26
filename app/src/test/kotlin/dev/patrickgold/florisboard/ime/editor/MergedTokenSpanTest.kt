@@ -44,4 +44,11 @@ class MergedTokenSpanTest : FunSpec({
         mergedTokenSpan("stakes") shouldBe 6
         mergedTokenSpan("") shouldBe 0
     }
+
+    test("three-fragment span covers all three tokens and their gaps") {
+        mergedTokenSpan("cha nbn ges", 3) shouldBe "cha nbn ges".length
+        mergedTokenSpan("all your cha nbn ges", 3) shouldBe "cha nbn ges".length
+        // Degrades when fewer tokens exist than requested.
+        mergedTokenSpan("nbn ges", 3) shouldBe "nbn ges".length
+    }
 })

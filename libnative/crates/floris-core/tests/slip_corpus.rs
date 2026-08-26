@@ -97,6 +97,43 @@ fn repairs_spurious_space_splits() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// Three-fragment splits with stowaway keys, verbatim field specimens:
+/// "cha nbn ges" (changes), "t hj ings" (things), "ui mp rove" (improve).
+/// Fuzzy three-way joins repair only under a unique context witness.
+#[test]
+fn three_fragment_splits_repair_with_a_witness() {
+    let mut e = engine();
+    for (w, f) in [("changes", 230), ("things", 240), ("improve", 210), ("your", 250), ("many", 240), ("to", 250)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let id = |eng: &NlpEngine, w: &str| eng.corpus_words().iter().position(|c| c == w).unwrap() as u32;
+    let mut entries = vec![
+        (id(&e, "your"), id(&e, "changes"), 200u8),
+        (id(&e, "many"), id(&e, "things"), 200u8),
+        (id(&e, "to"), id(&e, "improve"), 200u8),
+    ];
+    entries.sort();
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"CRKB");
+    blob.push(2);
+    blob.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    blob.extend_from_slice(&(e.corpus_words().len() as u32).to_le_bytes());
+    for (a, b, s) in entries {
+        blob.extend_from_slice(&a.to_le_bytes());
+        blob.extend_from_slice(&b.to_le_bytes());
+        blob.push(s);
+    }
+    e.load_bigrams(&blob).unwrap();
+
+    assert_eq!(e.merge_repair3("your", "cha", "nbn", "ges").as_deref(), Some("changes"));
+    assert_eq!(e.merge_repair3("many", "t", "hj", "ings").as_deref(), Some("things"));
+    assert_eq!(e.merge_repair3("to", "ui", "mp", "rove").as_deref(), Some("improve"));
+    // No witness -> fuzzy three-way joins refuse.
+    assert_eq!(e.merge_repair3("", "cha", "nbn", "ges"), None);
+    assert_eq!(e.merge_repair3("unrelated", "cha", "nbn", "ges"), None);
+}
+
 /// KNOWN LIMIT, documented as a test: a split with TWO slips in a fragment
 /// ("I ho or you're..." for "hope", field specimen 2026-08-27) is NOT
 /// repaired — at that distance the join is ambiguous ("hoor" is as close to

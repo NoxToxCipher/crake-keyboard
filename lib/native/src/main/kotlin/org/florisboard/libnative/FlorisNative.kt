@@ -141,6 +141,16 @@ object FlorisNative {
         return nativeNlpImportLearned(data)
     }
 
+    /**
+     * Three-fragment split repair ("cha" + "nbn" + "ges" -> "changes"), or
+     * null. Fuzzy joins fire only under a unique context witness from
+     * [preceding]; exact joins may fire witness-free.
+     */
+    fun mergeRepair3(first: String, second: String, third: String, preceding: String = ""): String? {
+        if (!isLoaded || first.isEmpty() || second.isEmpty() || third.isEmpty()) return null
+        return nativeNlpMergeRepair3(preceding, first, second, third).takeIf { it.isNotEmpty() }
+    }
+
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         // Never learn text if it is detected as a secret/mnemonic or threat
@@ -312,6 +322,8 @@ object FlorisNative {
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 
     private external fun nativeNlpMergeRepair(preceding: String, prevWord: String, current: String): String
+
+    private external fun nativeNlpMergeRepair3(preceding: String, first: String, second: String, third: String): String
 
     private external fun nativeNlpRecordPersonalBigram(prevWord: String, nextWord: String)
 

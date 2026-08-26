@@ -29,6 +29,40 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInse
     }
 }
 
+/// Three-fragment split repair ("cha nbn ges" -> "changes"); empty string
+/// when the fragments should not weld. See NlpEngine::merge_repair3.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpMergeRepair3(
+    mut env: JNIEnv,
+    _class: JClass,
+    preceding: JString,
+    first: JString,
+    second: JString,
+    third: JString,
+) -> jstring {
+    let empty = env
+        .new_string("")
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+    let get = |env: &mut JNIEnv, s: &JString| {
+        env.get_string(s)
+            .map(|v| v.to_str().unwrap_or("").to_string())
+            .unwrap_or_default()
+    };
+    let ctx = get(&mut env, &preceding);
+    let f1 = get(&mut env, &first);
+    let f2 = get(&mut env, &second);
+    let f3 = get(&mut env, &third);
+    let merged = match NLP_ENGINE.read() {
+        Ok(engine) => engine.merge_repair3(&ctx, &f1, &f2, &f3),
+        Err(_) => None,
+    };
+    match merged {
+        Some(word) => env.new_string(&word).map(|s| s.into_raw()).unwrap_or(empty),
+        None => empty,
+    }
+}
+
 /// Records a personal bigram: the user wrote `next` after `prev`. Feeds the
 /// personal context layer consulted by every bigram consumer.
 #[no_mangle]

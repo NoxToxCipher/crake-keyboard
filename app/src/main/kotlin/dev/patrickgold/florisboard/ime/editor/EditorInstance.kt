@@ -260,7 +260,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         // deletion span is BOTH fragments plus the whitespace between them
         // ("shou kd" -> "should" replaces all seven characters).
         val tokenBeforeCursor = if (candidate is MergedWordSuggestionCandidate) {
-            content.textBeforeSelection.takeLast(mergedTokenSpan(content.textBeforeSelection))
+            content.textBeforeSelection.takeLast(mergedTokenSpan(content.textBeforeSelection, candidate.fragments))
         } else {
             content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
         }
@@ -703,10 +703,17 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
  * it is unit-testable; the merge candidate is only offered when both tokens
  * exist, but a missing previous token degrades to the current-token span.
  */
-internal fun mergedTokenSpan(before: CharSequence): Int {
-    val current = before.takeLastWhile { !it.isWhitespace() }
-    val afterPrev = before.dropLast(current.length)
-    val gap = afterPrev.takeLastWhile { it.isWhitespace() }
-    val prev = afterPrev.dropLast(gap.length).takeLastWhile { !it.isWhitespace() }
-    return if (prev.isEmpty()) current.length else current.length + gap.length + prev.length
+internal fun mergedTokenSpan(before: CharSequence, fragments: Int = 2): Int {
+    var span = before.takeLastWhile { !it.isWhitespace() }.length
+    var rest = before.dropLast(span)
+    // Walk further fragments back; stop early (degrade gracefully) if the
+    // text runs out of tokens.
+    repeat((fragments - 1).coerceAtLeast(0)) {
+        val gap = rest.takeLastWhile { it.isWhitespace() }
+        val token = rest.dropLast(gap.length).takeLastWhile { !it.isWhitespace() }
+        if (token.isEmpty()) return span
+        span += gap.length + token.length
+        rest = rest.dropLast(gap.length + token.length)
+    }
+    return span
 }
