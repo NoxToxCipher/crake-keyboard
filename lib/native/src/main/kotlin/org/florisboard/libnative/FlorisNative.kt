@@ -289,4 +289,41 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeReassembleSyncBundle(keyHex: String, frames: Array<String>): String
+
+    @JvmStatic
+    external fun nativePgponyGenerateKeypair(): Array<String>
+
+    @JvmStatic
+    external fun nativePgponyEncrypt(plaintext: String, recipientPubkey: String): String?
+
+    @JvmStatic
+    external fun nativePgponyDecrypt(armoredText: String, privateKeyHex: String): String?
+
+    @JvmStatic
+    external fun nativePgponyIsArmored(text: String): Boolean
+
+    fun pgponyGenerateKeypair(): Pair<String, String>? {
+        if (!isAvailable()) return null
+        val arr = nativePgponyGenerateKeypair()
+        if (arr.size >= 2) {
+            return Pair(arr[0], arr[1])
+        }
+        return null
+    }
+
+    fun pgponyEncrypt(plaintext: String, recipientPubkey: String): String? {
+        if (!isAvailable()) return null
+        return nativePgponyEncrypt(plaintext, recipientPubkey)
+    }
+
+    fun pgponyDecrypt(armoredText: String, privateKeyHex: String): String? {
+        if (!isAvailable()) return null
+        return nativePgponyDecrypt(armoredText, privateKeyHex)
+    }
+
+    fun pgponyIsArmored(text: String): Boolean {
+        if (!isAvailable()) return false
+        return nativePgponyIsArmored(text)
+    }
+
 }
