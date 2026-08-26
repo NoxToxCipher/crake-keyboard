@@ -423,6 +423,7 @@ fun TextKeyboardLayout(
         var iceSkateSwirlTriggerTime by remember { mutableStateOf(0L) }
         var berriesFlowTriggerTime by remember { mutableStateOf(0L) }
         var tribalwarsTriggerTime by remember { mutableStateOf(0L) }
+        var bawenCatTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -461,6 +462,10 @@ fun TextKeyboardLayout(
             val twKeys = listOf("tw", "tribalwars", "tribal wars", "tribal_wars")
             if (twKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 tribalwarsTriggerTime = System.currentTimeMillis()
+            }
+            val bawenKeys = listOf("bawen")
+            if (bawenKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                bawenCatTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1819,6 +1824,227 @@ fun TextKeyboardLayout(
                         drawContext.canvas.nativeCanvas.drawText(text, px, py2, finalPaint)
                         drawContext.canvas.nativeCanvas.drawText(text, px, py3, finalPaint)
                     }
+                }
+            }
+        }
+
+        // Bawen Ginger & White Cat Face Easter Egg (1 second each on B -> A -> W -> E -> N)
+        if (bawenCatTriggerTime > 0L) {
+            val bawenProgress = remember(bawenCatTriggerTime) { Animatable(0f) }
+            LaunchedEffect(bawenCatTriggerTime) {
+                bawenProgress.snapTo(0f)
+                bawenProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 5000, easing = LinearEasing),
+                )
+                bawenCatTriggerTime = 0L
+            }
+            if (bawenProgress.value in 0.001f..0.999f) {
+                val currentMs = bawenProgress.value * 5000f
+                val density = LocalDensity.current.density
+                val letterSequence = listOf('b', 'a', 'w', 'e', 'n')
+                val stepIdx = (currentMs / 1000f).toInt().coerceIn(0, 4)
+                val targetChar = letterSequence[stepIdx]
+                val stepU = ((currentMs - (stepIdx * 1000f)) / 1000f).coerceIn(0f, 1f)
+
+                // Soft sine breathing fade in and out
+                val alpha = (kotlin.math.sin(stepU * Math.PI.toFloat())).coerceIn(0f, 1f)
+                val scale = 0.88f + 0.12f * alpha
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // Find key center position for targetChar
+                    var matchedKey: TextKey? = null
+                    for (key in keyboard.keys()) {
+                        if (key is TextKey) {
+                            val code = key.computedData.code
+                            val ch = code.toChar().lowercaseChar()
+                            if (ch == targetChar || key.computedData.asString(true).equals(targetChar.toString(), ignoreCase = true)) {
+                                matchedKey = key
+                                break
+                            }
+                        }
+                    }
+
+                    val keyCenterX = if (matchedKey != null) {
+                        matchedKey.visibleBounds.left + (matchedKey.visibleBounds.width / 2f)
+                    } else {
+                        canvasW * (0.2f + stepIdx * 0.15f)
+                    }
+                    val keyCenterY = if (matchedKey != null) {
+                        matchedKey.visibleBounds.top + (matchedKey.visibleBounds.height / 2f)
+                    } else {
+                        canvasH * 0.5f
+                    }
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(keyCenterX, keyCenterY)
+                    drawContext.canvas.nativeCanvas.scale(scale, scale)
+
+                    val r = 16.5f * density
+
+                    // 1. Soft Ambient Cat Aura
+                    val auraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 110).toInt().coerceIn(0, 255), 254, 215, 170) // Soft warm peach
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, r * 1.25f, auraPaint)
+
+                    // Paints for Ginger & White Cat
+                    val whitePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val gingerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 249, 115, 22) // Classic Marmalade Orange
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val darkGingerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 217, 83, 4) // Ginger tabby stripes
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.2f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val innerEarPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 251, 113, 133) // Soft Pink
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val eyeGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 16, 185, 129) // Emerald Green Eyes
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val eyePupilPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val glintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val nosePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 251, 113, 133)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val mouthPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 71, 85, 105)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.1f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val whiskerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 200).toInt().coerceIn(0, 255), 148, 163, 184)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.9f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+
+                    // 2. Ears (Left Ear White, Right Ear Ginger)
+                    // Left Ear (White)
+                    val leftEar = android.graphics.Path().apply {
+                        moveTo(-r * 0.82f, -r * 0.3f)
+                        lineTo(-r * 0.88f, -r * 1.15f)
+                        lineTo(-r * 0.25f, -r * 0.82f)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(leftEar, whitePaint)
+                    // Left Inner Ear (Pink)
+                    val leftInnerEar = android.graphics.Path().apply {
+                        moveTo(-r * 0.76f, -r * 0.4f)
+                        lineTo(-r * 0.80f, -r * 0.98f)
+                        lineTo(-r * 0.35f, -r * 0.76f)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(leftInnerEar, innerEarPaint)
+
+                    // Right Ear (Ginger / Marmalade Orange)
+                    val rightEar = android.graphics.Path().apply {
+                        moveTo(r * 0.25f, -r * 0.82f)
+                        lineTo(r * 0.88f, -r * 1.15f)
+                        lineTo(r * 0.82f, -r * 0.3f)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(rightEar, gingerPaint)
+                    // Right Inner Ear (Pink)
+                    val rightInnerEar = android.graphics.Path().apply {
+                        moveTo(r * 0.35f, -r * 0.76f)
+                        lineTo(r * 0.80f, -r * 0.98f)
+                        lineTo(r * 0.76f, -r * 0.4f)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(rightInnerEar, innerEarPaint)
+
+                    // 3. Head Base (Fluffy White Round Face)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, r, whitePaint)
+
+                    // 4. Ginger Patches on Face (Right Forehead & Cheek Patch)
+                    val gingerPatch = android.graphics.Path().apply {
+                        moveTo(0f, -r)
+                        cubicTo(r * 0.6f, -r * 0.9f, r, -r * 0.3f, r, 0.1f * r)
+                        cubicTo(r * 0.8f, 0.5f * r, r * 0.3f, 0.2f * r, 0.15f * r, -0.1f * r)
+                        cubicTo(0.05f * r, -0.4f * r, 0f, -0.7f * r, 0f, -r)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(gingerPatch, gingerPaint)
+
+                    // Tabby Forehead Stripes
+                    drawContext.canvas.nativeCanvas.drawLine(r * 0.35f, -r * 0.75f, r * 0.45f, -r * 0.5f, darkGingerPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(r * 0.55f, -r * 0.65f, r * 0.62f, -r * 0.4f, darkGingerPaint)
+
+                    // 5. Big Emerald Cat Eyes with Sparkles
+                    val eyeW = r * 0.32f
+                    val eyeH = r * 0.38f
+                    val eyeLeftX = -r * 0.42f
+                    val eyeRightX = r * 0.42f
+                    val eyeY = -r * 0.12f
+
+                    // Left Eye
+                    drawContext.canvas.nativeCanvas.drawOval(eyeLeftX - eyeW / 2f, eyeY - eyeH / 2f, eyeLeftX + eyeW / 2f, eyeY + eyeH / 2f, eyeGreenPaint)
+                    drawContext.canvas.nativeCanvas.drawOval(eyeLeftX - eyeW * 0.25f, eyeY - eyeH * 0.42f, eyeLeftX + eyeW * 0.25f, eyeY + eyeH * 0.42f, eyePupilPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(eyeLeftX - eyeW * 0.15f, eyeY - eyeH * 0.2f, eyeW * 0.22f, glintPaint)
+
+                    // Right Eye
+                    drawContext.canvas.nativeCanvas.drawOval(eyeRightX - eyeW / 2f, eyeY - eyeH / 2f, eyeRightX + eyeW / 2f, eyeY + eyeH / 2f, eyeGreenPaint)
+                    drawContext.canvas.nativeCanvas.drawOval(eyeRightX - eyeW * 0.25f, eyeY - eyeH * 0.42f, eyeRightX + eyeW * 0.25f, eyeY + eyeH * 0.42f, eyePupilPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(eyeRightX - eyeW * 0.15f, eyeY - eyeH * 0.2f, eyeW * 0.22f, glintPaint)
+
+                    // 6. Pink Button Nose & ':3' Smile
+                    val noseY = r * 0.22f
+                    val nosePath = android.graphics.Path().apply {
+                        moveTo(0f, noseY + r * 0.12f)
+                        lineTo(-r * 0.14f, noseY - r * 0.08f)
+                        lineTo(r * 0.14f, noseY - r * 0.08f)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(nosePath, nosePaint)
+
+                    // ':3' Cat Smile Mouth
+                    val mouthY = noseY + r * 0.12f
+                    val leftMouth = android.graphics.Path().apply {
+                        moveTo(0f, mouthY)
+                        cubicTo(-r * 0.12f, mouthY + r * 0.18f, -r * 0.25f, mouthY + r * 0.14f, -r * 0.32f, mouthY + r * 0.05f)
+                    }
+                    val rightMouth = android.graphics.Path().apply {
+                        moveTo(0f, mouthY)
+                        cubicTo(r * 0.12f, mouthY + r * 0.18f, r * 0.25f, mouthY + r * 0.14f, r * 0.32f, mouthY + r * 0.05f)
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(leftMouth, mouthPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(rightMouth, mouthPaint)
+
+                    // 7. Whiskers (3 on each cheek)
+                    // Left Whiskers
+                    drawContext.canvas.nativeCanvas.drawLine(-r * 0.4f, r * 0.22f, -r * 1.25f, r * 0.08f, whiskerPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(-r * 0.4f, r * 0.32f, -r * 1.30f, r * 0.32f, whiskerPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(-r * 0.4f, r * 0.42f, -r * 1.22f, r * 0.54f, whiskerPaint)
+                    // Right Whiskers
+                    drawContext.canvas.nativeCanvas.drawLine(r * 0.4f, r * 0.22f, r * 1.25f, r * 0.08f, whiskerPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(r * 0.4f, r * 0.32f, r * 1.30f, r * 0.32f, whiskerPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(r * 0.4f, r * 0.42f, r * 1.22f, r * 0.54f, whiskerPaint)
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
