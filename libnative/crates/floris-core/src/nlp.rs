@@ -3,6 +3,39 @@ use crate::trie::RadixTrie;
 use crate::typo_corpus::lookup_common_typo;
 
 /// Comprehensive lexicon of common English contractions (SCOWL & Wiktionary).
+pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
+    ("bitcoin", "Bitcoin"),
+    ("chatgpt", "ChatGPT"),
+    ("claude", "Claude"),
+    ("crake", "Crake"),
+    ("defi", "DeFi"),
+    ("deepmind", "DeepMind"),
+    ("dvorak", "Dvorak"),
+    ("ebay", "eBay"),
+    ("eclectus", "Eclectus"),
+    ("ethereum", "Ethereum"),
+    ("github", "GitHub"),
+    ("gitlab", "GitLab"),
+    ("ios", "iOS"),
+    ("ipad", "iPad"),
+    ("iphone", "iPhone"),
+    ("javascript", "JavaScript"),
+    ("linux", "Linux"),
+    ("macos", "macOS"),
+    ("openai", "OpenAI"),
+    ("paypal", "PayPal"),
+    ("pgp", "PGP"),
+    ("qwerty", "QWERTY"),
+    ("roratus", "Roratus"),
+    ("solana", "Solana"),
+    ("solstice", "Solstice"),
+    ("typescript", "TypeScript"),
+    ("ubuntu", "Ubuntu"),
+    ("webos", "webOS"),
+    ("whatsapp", "WhatsApp"),
+    ("youtube", "YouTube"),
+];
+
 pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("aint", "ain't"),
     ("dont", "don't"),
@@ -375,7 +408,16 @@ impl NlpEngine {
         }
 
         let is_exact = self.trie.contains(&trimmed_lower);
+        let has_internal_uppercase = trimmed.chars().skip(1).any(|c| c.is_uppercase());
         let mut candidates: Vec<RankedCandidate> = Vec::with_capacity(max_candidates);
+
+        // Tech brands & camelCase casing lookup (e.g. webos -> webOS, ios -> iOS, chatgpt -> ChatGPT)
+        if let Some(&(_, brand_casing)) = TECH_BRAND_CASING.iter().find(|&&(k, _)| k == trimmed_lower) {
+            candidates.push(RankedCandidate {
+                word: brand_casing.to_string(),
+                is_autocorrect: !has_internal_uppercase && trimmed != brand_casing,
+            });
+        }
 
         // Helper to check if a word is already in candidate list
         let contains_word = |list: &[RankedCandidate], w: &str| list.iter().any(|c| c.word.eq_ignore_ascii_case(w));

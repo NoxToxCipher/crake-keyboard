@@ -802,12 +802,12 @@ fun TextKeyboardLayout(
                     val w = size.width
                     val h = size.height
 
-                    // Smooth Swooping Bezier Curve across keyboard
-                    val startX = -60f * density
-                    val endX = w + 60f * density
+                    // Smooth Swooping Bezier Curve across keyboard (full screen width + full off-screen exit)
+                    val startX = -100f * density
+                    val endX = w + 220f * density
                     val u = 1f - t
-                    val cx = u * u * startX + 2 * u * t * (w * 0.5f) + t * t * endX
-                    val cy = u * u * (h * 0.70f) + 2 * u * t * (h * 0.15f) + t * t * (h * 0.55f)
+                    val cx = u * u * startX + 2 * u * t * (w * 0.52f) + t * t * endX
+                    val cy = u * u * (h * 0.70f) + 2 * u * t * (h * 0.15f) + t * t * (h * 0.52f)
 
                     // Velocity Heading
                     val vx = 2 * u * (w * 0.5f - startX) + 2 * t * (endX - w * 0.5f)
