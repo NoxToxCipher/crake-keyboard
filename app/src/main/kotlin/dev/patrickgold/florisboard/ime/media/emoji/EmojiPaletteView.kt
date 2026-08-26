@@ -247,15 +247,52 @@ fun EmojiPaletteView(
             selectedTabIndex = selectedTabIndex,
             containerColor = Color.Transparent,
             contentColor = style.foreground(),
+            divider = {
+                Column {
+                    // Top Specular Chrome Highlight with Subtle Cyan Core Glow
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0x1500E5FF),
+                                        Color(0x60CBD5E1),
+                                        Color(0xDDE2E8F0),
+                                        Color(0x8000E5FF),
+                                        Color(0xDDE2E8F0),
+                                        Color(0x60CBD5E1),
+                                        Color(0x1500E5FF),
+                                    )
+                                )
+                            )
+                    )
+                    // Bottom Deep Ambient Shadow Line
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0x15000000),
+                                        Color(0x70000000),
+                                        Color(0xA0000000),
+                                        Color(0x70000000),
+                                        Color(0x15000000),
+                                    )
+                                )
+                            )
+                    )
+                }
+            },
             indicator = {
-                val style = rememberSnyggThemeQuery(
-                    elementName = FlorisImeUi.MediaEmojiTab.elementName,
-                    selector = SnyggSelector.FOCUS,
-                )
                 TabRowDefaults.PrimaryIndicator(
                     Modifier.tabIndicatorOffset(selectedTabIndex),
-                    height = 4.dp,
-                    color = style.foreground(),
+                    height = 3.dp,
+                    color = Color(0xFF00E5FF),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp),
                 )
             },
         ) {

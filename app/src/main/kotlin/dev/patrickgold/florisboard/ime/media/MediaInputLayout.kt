@@ -58,6 +58,11 @@ import org.florisboard.lib.snygg.ui.SnyggBox
 import org.florisboard.lib.snygg.ui.SnyggColumn
 import org.florisboard.lib.snygg.ui.SnyggRow
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
 @SuppressLint("MutableCollectionMutableState")
 @Composable
 fun MediaInputLayout(
@@ -80,6 +85,42 @@ fun MediaInputLayout(
         EmojiPaletteView(
             modifier = Modifier.weight(1f),
             fullEmojiMappings = emojiLayoutDataMap,
+        )
+        // Top Specular Chrome Highlight with Subtle Cyan Core Glow
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0x1500E5FF),
+                            Color(0x60CBD5E1),
+                            Color(0xDDE2E8F0),
+                            Color(0x8000E5FF),
+                            Color(0xDDE2E8F0),
+                            Color(0x60CBD5E1),
+                            Color(0x1500E5FF),
+                        )
+                    )
+                )
+        )
+        // Bottom Deep Ambient Shadow Line
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0x15000000),
+                            Color(0x70000000),
+                            Color(0xA0000000),
+                            Color(0x70000000),
+                            Color(0x15000000),
+                        )
+                    )
+                )
         )
         SnyggRow(
             elementName = FlorisImeUi.MediaBottomRow.elementName,
