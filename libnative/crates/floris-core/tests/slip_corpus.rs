@@ -97,6 +97,34 @@ fn repairs_spurious_space_splits() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// Bare contraction forms are never surfaced: a slip near "dont" suggests
+/// "don't"; but ambiguous bares that are real words ("were") stay untouched.
+#[test]
+fn bare_contraction_forms_display_apostrophized() {
+    let mut e = engine();
+    for (w, f) in [("dont", 228), ("done", 240), ("were", 254), ("wet", 200)] {
+        e.trie.insert(w, f);
+    }
+    let donr = top3(&e, "donr");
+    assert!(
+        donr.iter().any(|w| w == "don't"),
+        "'donr' should offer don't, got {donr:?}"
+    );
+    assert!(
+        !donr.iter().any(|w| w == "dont"),
+        "bare 'dont' must never be displayed, got {donr:?}"
+    );
+    let wete = top3(&e, "wete");
+    assert!(
+        wete.iter().any(|w| w == "were"),
+        "'wete' should offer the real word were, got {wete:?}"
+    );
+    assert!(
+        !wete.iter().any(|w| w == "we're"),
+        "'were' is a real word and must not be rewritten, got {wete:?}"
+    );
+}
+
 /// Bigram attestation is the legitimacy oracle: a pair the corpus has seen
 /// is real language and must never be welded, even when the joined form is
 /// a strong dictionary word ("can not" -> cannot, "are a" -> area). Fragments

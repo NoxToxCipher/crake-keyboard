@@ -328,6 +328,17 @@ impl GlideEngine {
         // Sort by lowest score (lowest DTW distance + frequency boost)
         matches.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
         matches.truncate(max_results);
+
+        // Contractions are unglideable (no apostrophe key), so their bare
+        // non-word forms match instead. Surface the apostrophized form the
+        // user actually means: "dont" -> "don't". Real-word bares ("were",
+        // "wont") are untouched by contraction_display.
+        for m in &mut matches {
+            if let Some(display) = crate::nlp::contraction_display(&m.word) {
+                m.word = display.to_string();
+            }
+        }
+        matches.dedup_by(|a, b| a.word == b.word);
         matches
     }
 }

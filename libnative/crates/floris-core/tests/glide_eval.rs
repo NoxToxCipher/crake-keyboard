@@ -168,6 +168,36 @@ fn synth_sloppy_trace(engine: &GlideEngine, word: &str, rng: &mut Lcg) -> Option
     Some(trace)
 }
 
+/// Contractions are unglideable (no apostrophe key), so the bare form wins
+/// the trace — but the DISPLAYED word must be the apostrophized one, and
+/// real-word bares like "were" must come through untouched.
+#[test]
+fn glided_bare_contractions_display_apostrophized() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for (w, f) in [("dont", 228), ("were", 254)] {
+        nlp.trie.insert(w, f);
+    }
+    let mut rng = Lcg(0xD0C5);
+    let trace = synth_trace(&glide, "dont", &mut rng).unwrap();
+    let results = glide.match_gesture(&trace, &nlp.trie, 3);
+    assert_eq!(
+        results.first().map(|m| m.word.as_str()),
+        Some("don't"),
+        "glided dont must display don't, got {:?}",
+        results.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+
+    let trace_were = synth_trace(&glide, "were", &mut rng).unwrap();
+    let results_were = glide.match_gesture(&trace_were, &nlp.trie, 3);
+    assert_eq!(
+        results_were.first().map(|m| m.word.as_str()),
+        Some("were"),
+        "glided were is a real word and stays bare, got {:?}",
+        results_were.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+}
+
 /// Context-aware glide: "hello" and "jello" trace nearly identical paths
 /// (h/j are adjacent), so geometry cannot separate them. With "jello" given
 /// the higher frequency, only sentence context can rescue "hello" — and it

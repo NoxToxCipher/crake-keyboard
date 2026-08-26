@@ -138,6 +138,30 @@ pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("twas", "'twas"),
 ];
 
+/// Bare contraction forms that are NOT English words in their own right, so
+/// surfacing them as suggestions is always wrong — the apostrophized form is
+/// what the user means. Deliberately excludes every ambiguous bare form:
+/// were/well/its/ill/id/wont/lets/shed/wed/hell/hes/shes/cant are (or can
+/// be) real words and must never be silently rewritten.
+const SAFE_CONTRACTION_BARE: &[&str] = &[
+    "dont", "didnt", "doesnt", "wasnt", "isnt", "arent", "werent", "youre",
+    "theyre", "ive", "youve", "theyve", "weve", "thats", "whats", "theres",
+    "heres", "wheres", "hows", "whos", "whys", "couldnt", "shouldnt",
+    "wouldnt", "havent", "hasnt", "hadnt", "mustnt", "neednt", "couldve",
+    "shouldve", "wouldve", "mightve", "mustve", "im", "youll", "youd",
+    "theyll", "theyd", "itll", "itd", "yall", "aint",
+];
+
+/// The apostrophized display form for a bare token, when (and only when) the
+/// bare token is a non-word: "dont" -> "don't", "im" -> "I'm". Returns None
+/// for real words ("were", "wont") and unknown tokens.
+pub fn contraction_display(bare: &str) -> Option<&'static str> {
+    if !SAFE_CONTRACTION_BARE.contains(&bare) {
+        return None;
+    }
+    CONTRACTIONS.iter().find(|(k, _)| *k == bare).map(|&(_, c)| c)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RankedCandidate {
     pub word: String,
@@ -652,7 +676,11 @@ impl NlpEngine {
                 if candidates.len() >= pool_cap {
                     break;
                 }
-                let formatted = Self::apply_casing(trimmed, &fc.word);
+                // Never surface a bare non-word contraction form: the
+                // apostrophized word is what the user means ("donr" fuzzes
+                // to "dont", which displays as "don't").
+                let base: &str = contraction_display(&fc.word).unwrap_or(fc.word.as_str());
+                let formatted = Self::apply_casing(trimmed, base);
                 if !contains_word(&candidates, &formatted) {
                     let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
                     // Edge apostrophes are deliberate punctuation (quotes sit
@@ -686,7 +714,8 @@ impl NlpEngine {
                     .iter()
                     .find(|fc| Self::is_spatial_slip_match(&trimmed_lower, &fc.word))
                 {
-                    let formatted = Self::apply_casing(trimmed, &fc.word);
+                    let base: &str = contraction_display(&fc.word).unwrap_or(fc.word.as_str());
+                    let formatted = Self::apply_casing(trimmed, base);
                     let pos = candidates
                         .iter()
                         .position(|c| c.word.eq_ignore_ascii_case(&formatted));
