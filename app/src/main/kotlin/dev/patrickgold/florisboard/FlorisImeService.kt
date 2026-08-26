@@ -119,7 +119,6 @@ class FlorisImeService : LifecycleInputMethodService() {
             } catch (_: Throwable) {
                 ims.startActivity(intent)
             }
-            ims.requestHideSelf(0)
         }
 
         fun showUi() {
