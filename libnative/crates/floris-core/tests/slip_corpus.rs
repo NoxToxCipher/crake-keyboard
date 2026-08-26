@@ -80,10 +80,10 @@ fn repairs_spurious_space_splits() {
         ("doi", "ble", Some("double")),
         ("eo", "rd", Some("word")),
         ("oft", "rn", Some("often")),
-        // Legitimate pairs must never merge.
+        // Legitimate pairs must never merge. ("can","for" moved to the
+        // attestation test — blocking it is the bigram guard's job now.)
         ("to", "do", None),
         ("in", "the", None),
-        ("can", "for", None),
     ] {
         let got = e.merge_repair(prev, cur);
         let ok = match expected {
@@ -95,6 +95,32 @@ fn repairs_spurious_space_splits() {
         }
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
+/// KNOWN LIMIT, documented as a test: a split with TWO slips in a fragment
+/// ("I ho or you're..." for "hope", field specimen 2026-08-27) is NOT
+/// repaired — at that distance the join is ambiguous ("hoor" is as close to
+/// "door") and disambiguation needs the preceding word's context, which
+/// merge repair does not receive yet. On a real layout the 1-slip budget
+/// yields nothing here rather than a wrong word.
+#[test]
+fn two_slip_splits_are_not_repaired_yet() {
+    use floris_core::TouchModel;
+    let mut e = engine();
+    e.trie.insert("hope", 244);
+    e.trie.insert("door", 240);
+    let mut keys = Vec::new();
+    for (r, row) in ["qwertyuiop", "asdfghjkl", "zxcvbnm"].iter().enumerate() {
+        for (i, ch) in row.chars().enumerate() {
+            keys.push((ch, (i as f32 + [0.0, 0.5, 1.5][r] + 0.5) * 100.0, (r as f32 + 0.5) * 140.0));
+        }
+    }
+    e.set_touch_model(TouchModel::from_layout(&keys));
+    assert_eq!(
+        e.merge_repair("ho", "or"),
+        None,
+        "two-slip join must yield nothing rather than a guess"
+    );
 }
 
 /// Merge repair surfaces contractions apostrophized too: the split "do nt"
@@ -142,7 +168,7 @@ fn bare_contraction_forms_display_apostrophized() {
 #[test]
 fn attested_pairs_never_merge_even_when_the_joined_word_is_strong() {
     let mut e = engine();
-    for (w, f) in [("cannot", 238), ("area", 246), ("can", 250), ("not", 250), ("are", 250), ("a", 250), ("should", 250)] {
+    for (w, f) in [("cannot", 238), ("area", 246), ("can", 250), ("not", 250), ("are", 250), ("a", 250), ("should", 250), ("for", 250)] {
         e.corpus_insert(w, f);
         e.trie.insert(w, f);
     }
@@ -155,6 +181,7 @@ fn attested_pairs_never_merge_even_when_the_joined_word_is_strong() {
     let mut entries = vec![
         (id(&e, "can"), id(&e, "not"), 219u8),
         (id(&e, "are"), id(&e, "a"), 204u8),
+        (id(&e, "can"), id(&e, "for"), 150u8),
     ];
     entries.sort();
     let mut blob = Vec::new();
@@ -171,6 +198,9 @@ fn attested_pairs_never_merge_even_when_the_joined_word_is_strong() {
 
     assert_eq!(e.merge_repair("can", "not"), None, "attested pair must not merge");
     assert_eq!(e.merge_repair("are", "a"), None, "attested pair must not merge");
+    // With the 2-unit fuzzy budget, "canfor" is 2 slips from "cancer" —
+    // attestation is what keeps this legitimate pair safe now.
+    assert_eq!(e.merge_repair("can", "for"), None, "attested pair must not merge");
     // Unattested spurious fragments still repair.
     assert_eq!(e.merge_repair("shou", "kd").as_deref(), Some("should"));
 }

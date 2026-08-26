@@ -436,10 +436,12 @@ impl NlpEngine {
         if let Some(freq) = self.trie.get_frequency(&joined) {
             return (freq >= MIN_MERGED_FREQ).then(|| display(joined));
         }
-        // One adjacent slip at most: every captured specimen joins within a
-        // single neighbour substitution, and the wider 2-unit budget produced
-        // a false merge ("can"+"for" -> "cancer") because the adjacency graph
-        // unions QWERTY and Dvorak neighbourhoods.
+        // One adjacent slip at most. A 2-unit budget was tried (2026-08-27,
+        // for the "ho or" -> hope specimen: split + two slips) and rejected
+        // by its own tests: at two slips the joined fragment ties between
+        // unrelated words ("hoor" -> door vs hope) and layout fidelity leaks
+        // (Dvorak-far slips slip through). Two-slip split repair needs the
+        // PRECEDING-word context to disambiguate — future bit — not budget.
         self.trie
             .fuzzy_search_weighted(&joined, 1, 4, |a, b| self.keys_near(a, b))
             .into_iter()
