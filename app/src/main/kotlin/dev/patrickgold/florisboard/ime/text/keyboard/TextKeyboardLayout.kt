@@ -427,6 +427,7 @@ fun TextKeyboardLayout(
         var pubgParachuteTriggerTime by remember { mutableStateOf(0L) }
         var luciaBobaTriggerTime by remember { mutableStateOf(0L) }
         var dukuFruitTriggerTime by remember { mutableStateOf(0L) }
+        var carDriveTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -481,6 +482,10 @@ fun TextKeyboardLayout(
             val dukuKeys = listOf("duku", "langsat", "longkong")
             if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 dukuFruitTriggerTime = System.currentTimeMillis()
+            }
+            val carKeys = listOf("drive", "car", "driving", "cars", "aston martin", "aston")
+            if (carKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                carDriveTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -2674,6 +2679,261 @@ fun TextKeyboardLayout(
                     }
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Drive / Car Easter Egg: Generic Car on Top Fret (0-3.2s), then 5s later Aston Martin on Bottom Fret (5.0-7.2s)
+        if (carDriveTriggerTime > 0L) {
+            val carProgress = remember(carDriveTriggerTime) { Animatable(0f) }
+            LaunchedEffect(carDriveTriggerTime) {
+                carProgress.snapTo(0f)
+                carProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 7200, easing = LinearEasing),
+                )
+                carDriveTriggerTime = 0L
+            }
+            if (carProgress.value in 0.001f..0.999f) {
+                val currentMs = carProgress.value * 7200f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+
+                    val fret1Y = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
+                    val fret3Y = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
+
+                    // ==========================================
+                    // 1. GENERIC COMMUTER CAR (Top Fret: 0ms -> 3200ms)
+                    // ==========================================
+                    if (currentMs in 0f..3200f) {
+                        val u1 = (currentMs / 3200f).coerceIn(0f, 1f)
+                        val startX = -45f * density
+                        val endX = canvasW + 45f * density
+                        val carX = startX + u1 * (endX - startX)
+                        val carY = fret1Y - 2.5f * density // Wheels resting on top fret line
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(carX, carY)
+
+                        // Exhaust smoke puffs trailing behind
+                        val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0x6694A3B8.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val s1 = ((currentMs * 0.02f) % 6f) * density
+                        drawContext.canvas.nativeCanvas.drawCircle(-18f * density - s1, -3f * density, 2.2f * density, smokePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-24f * density - s1 * 1.5f, -5f * density, 3f * density, smokePaint)
+
+                        val genericBodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF0D9488.toInt() // Quirky Teal Commuter Car
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val genericRoofPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF0F766E.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val genericWindowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFBAE6FD.toInt() // Light sky blue windows
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val wheelTirePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF1E293B.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val wheelCapPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFE2E8F0.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val headLightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFFEF08A.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val tailLightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFEF4444.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // Lower Body
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-15f * density, -7f * density, 15f * density, 0f, 2f * density, 2f * density, genericBodyPaint)
+                        // Cabin / Roof
+                        val cabin = android.graphics.Path().apply {
+                            moveTo(-8f * density, -7f * density)
+                            lineTo(-5f * density, -13.5f * density)
+                            lineTo(6f * density, -13.5f * density)
+                            lineTo(10f * density, -7f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(cabin, genericRoofPaint)
+                        // Windows
+                        val window = android.graphics.Path().apply {
+                            moveTo(-6.5f * density, -7.5f * density)
+                            lineTo(-4.2f * density, -12.2f * density)
+                            lineTo(4.8f * density, -12.2f * density)
+                            lineTo(8.2f * density, -7.5f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(window, genericWindowPaint)
+                        // Window Divider B-pillar
+                        drawContext.canvas.nativeCanvas.drawLine(0.5f * density, -12.2f * density, 0.5f * density, -7.5f * density, genericRoofPaint)
+
+                        // Headlight & Taillight
+                        drawContext.canvas.nativeCanvas.drawRect(14f * density, -5.5f * density, 15.2f * density, -3f * density, headLightPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(-15.2f * density, -5.5f * density, -14f * density, -3f * density, tailLightPaint)
+
+                        // Wheels (Spinning)
+                        val spinAngle = (u1 * 360f * 8f) % 360f
+                        // Rear Wheel
+                        drawContext.canvas.nativeCanvas.drawCircle(-8.5f * density, 0f, 3.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-8.5f * density, 0f, 1.6f * density, wheelCapPaint)
+                        // Front Wheel
+                        drawContext.canvas.nativeCanvas.drawCircle(8.5f * density, 0f, 3.2f * density, wheelTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(8.5f * density, 0f, 1.6f * density, wheelCapPaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // =======================================================
+                    // 2. ASTON MARTIN SUPERCAR (Bottom Fret: 5000ms -> 7200ms)
+                    // =======================================================
+                    if (currentMs in 5000f..7200f) {
+                        val u2 = ((currentMs - 5000f) / 2200f).coerceIn(0f, 1f)
+                        // Hyper-speed acceleration curve
+                        val speedCurve = u2 * u2
+                        val startX = -65f * density
+                        val endX = canvasW + 75f * density
+                        val carX = startX + speedCurve * (endX - startX)
+                        val carY = fret3Y - 2f * density // Low-slung supercar stance on bottom fret
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(carX, carY)
+
+                        // A. Supersonic Motion Blur & Speed Lines
+                        val blurLinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0x88064E3B.toInt()
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.4f * density
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(-45f * density, -3f * density, -22f * density, -3f * density, blurLinePaint)
+                        drawContext.canvas.nativeCanvas.drawLine(-60f * density, -7f * density, -20f * density, -7f * density, blurLinePaint)
+                        drawContext.canvas.nativeCanvas.drawLine(-35f * density, -11f * density, -15f * density, -11f * density, blurLinePaint)
+
+                        // B. Twin Exhaust Nitro Backfire Flames
+                        val flameOuterPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFEF4444.toInt() // Crimson
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val flameInnerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFFBBF24.toInt() // Amber Nitro Core
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val flameLen = (12f + kotlin.math.sin(u2 * 30f) * 4f) * density
+                        val flamePath = android.graphics.Path().apply {
+                            moveTo(-22f * density, -2f * density)
+                            lineTo(-22f * density - flameLen, -3f * density)
+                            lineTo(-22f * density, -4f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(flamePath, flameOuterPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-22f * density - 3f * density, -3f * density, 1.8f * density, flameInnerPaint)
+
+                        // C. Aston Martin Body Paints (British Racing Green)
+                        val astonBodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF064E3B.toInt() // Deep British Racing Green
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val astonHighlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF047857.toInt() // Aerodynamic light reflection
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val astonGlassPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xDD0F172A.toInt() // Low-profile dark tinted sports glass
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val grillePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFE2E8F0.toInt() // Iconic Aston Martin silver vane grille
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val laserHeadlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFF59E0B.toInt() // Amber LED Laser lights
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val slimTailLightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFDC2626.toInt() // Slim blade LED taillight
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val alloyRimPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF94A3B8.toInt() // Diamond cut forged alloys
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val sportsTirePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF020617.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // D. Sleek Aerodynamic Low-Slung Silhouette
+                        val bodyPath = android.graphics.Path().apply {
+                            moveTo(-22f * density, -2.5f * density)
+                            lineTo(-21f * density, -6.5f * density)
+                            quadTo(-14f * density, -8.5f * density, -7f * density, -9.5f * density) // Rear haunch
+                            lineTo(4f * density, -9.5f * density) // Low roofline
+                            quadTo(12f * density, -7.5f * density, 18f * density, -5.5f * density) // Long sleek bonnet
+                            lineTo(23f * density, -3f * density) // Shark nose front
+                            lineTo(22f * density, -0.8f * density)
+                            lineTo(-22f * density, -0.8f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(bodyPath, astonBodyPaint)
+
+                        // Aero Roofline & Tinted Cockpit
+                        val cockpitPath = android.graphics.Path().apply {
+                            moveTo(-6f * density, -6.5f * density)
+                            quadTo(-3f * density, -9.2f * density, 3f * density, -9.2f * density)
+                            lineTo(9f * density, -6.5f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(cockpitPath, astonGlassPaint)
+
+                        // Signature Aston Martin Sculpted Front Grille
+                        drawContext.canvas.nativeCanvas.drawRoundRect(20f * density, -4f * density, 23.5f * density, -1.2f * density, 1f * density, 1f * density, grillePaint)
+
+                        // Headlight Beam
+                        drawContext.canvas.nativeCanvas.drawRect(18f * density, -5.5f * density, 21.5f * density, -4f * density, laserHeadlightPaint)
+                        // Laser light cone
+                        val lightConePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0x44F59E0B.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val conePath = android.graphics.Path().apply {
+                            moveTo(22f * density, -5f * density)
+                            lineTo(42f * density, -9f * density)
+                            lineTo(42f * density, 1f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(conePath, lightConePaint)
+
+                        // Slim Rear Blade LED Taillight
+                        drawContext.canvas.nativeCanvas.drawRect(-22.2f * density, -6f * density, -20.5f * density, -4.5f * density, slimTailLightPaint)
+
+                        // E. Low-Profile Supercar Sports Wheels (High-RPM Blur)
+                        // Rear Sports Wheel
+                        drawContext.canvas.nativeCanvas.drawCircle(-12f * density, 0f, 3.4f * density, sportsTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-12f * density, 0f, 2.1f * density, alloyRimPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-12f * density, 0f, 0.8f * density, sportsTirePaint)
+                        // Front Sports Wheel
+                        drawContext.canvas.nativeCanvas.drawCircle(13f * density, 0f, 3.4f * density, sportsTirePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(13f * density, 0f, 2.1f * density, alloyRimPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(13f * density, 0f, 0.8f * density, sportsTirePaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
                 }
             }
         }
