@@ -8,7 +8,9 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("abritrary", "arbitrary"),
     ("absense", "absence"),
     ("absorbtion", "absorption"),
-    ("abunch", "about"),
+    // "abunch" is "a bunch" run together, NOT "about" — mapping it to a
+    // different word was a silent mis-replacement (the "israeli" class).
+    ("abunch", "a bunch"),
     ("acadamy", "academy"),
     ("accellerate", "accelerate"),
     ("acceptible", "acceptable"),

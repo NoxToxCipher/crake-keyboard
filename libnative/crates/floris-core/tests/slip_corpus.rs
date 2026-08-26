@@ -233,6 +233,21 @@ fn merged_bare_contractions_display_apostrophized() {
     assert_eq!(e.merge_repair("do", "nt").as_deref(), Some("don't"));
 }
 
+/// Run-together phrases repair to the PHRASE, never to a lookalike word:
+/// "abunch" means "a bunch", and mapping it to "about" would silently
+/// replace what the user wrote with a different word.
+#[test]
+fn run_together_phrases_expand_rather_than_mutate() {
+    let e = engine();
+    let got = top3(&e, "abunch");
+    assert_eq!(
+        got.first().map(String::as_str),
+        Some("a bunch"),
+        "'abunch' must expand to the phrase, got {got:?}"
+    );
+    assert!(!got.iter().any(|w| w == "about"), "never 'about': {got:?}");
+}
+
 /// Bare contraction forms are never surfaced: a slip near "dont" suggests
 /// "don't"; but ambiguous bares that are real words ("were") stay untouched.
 #[test]
