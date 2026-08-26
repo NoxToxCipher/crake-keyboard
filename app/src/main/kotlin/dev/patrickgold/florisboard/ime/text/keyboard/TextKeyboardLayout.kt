@@ -783,7 +783,7 @@ private class TextKeyboardLayoutController(
         flogDebug { "event=$event" }
         swipeGestureDetector.onTouchEvent(event)
         if (isGlideEnabled && keyboard.mode == KeyboardMode.CHARACTERS) {
-            val glidePointer = pointerMap.findById(0)
+            val glidePointer = pointerMap.firstOrNull()
             val isNotBlocked = glidePointer?.hasTriggeredLongPress != true
             if (isNotBlocked && glideTypingDetector.onTouchEvent(event, glidePointer?.initialKey)) {
                 for (pointer in pointerMap) {

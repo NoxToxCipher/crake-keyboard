@@ -62,6 +62,7 @@ import org.florisboard.lib.snygg.ui.SnyggIcon
 import org.florisboard.lib.snygg.ui.SnyggRow
 import org.florisboard.lib.snygg.ui.SnyggSpacer
 import org.florisboard.lib.snygg.ui.SnyggText
+import kotlinx.coroutines.withTimeout
 
 val CandidatesRowScrollbarHeight = 2.dp
 
@@ -110,12 +111,22 @@ fun CandidatesRow(modifier: Modifier = Modifier) {
             }
             for ((n, candidate) in list.withIndex()) {
                 if (n > 0) {
-                    SnyggSpacer(
-                        elementName = FlorisImeUi.SmartbarCandidateSpacer.elementName,
+                    Box(
                         modifier = Modifier
                             .width(1.dp)
-                            .fillMaxHeight(0.6f)
-                            .align(Alignment.CenterVertically),
+                            .fillMaxHeight(0.45f)
+                            .align(Alignment.CenterVertically)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color(0x3500E5FF),
+                                        Color(0x60CBD5E1),
+                                        Color(0x3500E5FF),
+                                        Color.Transparent,
+                                    )
+                                )
+                            )
                     )
                 }
                 CandidateItem(
@@ -149,7 +160,7 @@ private fun CandidateItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = { },
     onLongPress: () -> Boolean = { false },
-    longPressDelay: Long,
+    longPressDelay: Long = 0,
 ) = with(LocalDensity.current) {
     var isPressed by remember { mutableStateOf(false) }
 
@@ -196,15 +207,25 @@ private fun CandidateItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 4.dp, vertical = 5.dp)
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
                     .background(
-                        color = Color(0x1800E5FF),
-                        shape = RoundedCornerShape(6.dp),
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0x2400E5FF),
+                                Color(0x1000E5FF),
+                            )
+                        ),
+                        shape = RoundedCornerShape(8.dp),
                     )
                     .border(
                         width = 1.dp,
-                        color = Color(0x4000E5FF),
-                        shape = RoundedCornerShape(6.dp),
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0x8000E5FF),
+                                Color(0x2500E5FF),
+                            )
+                        ),
+                        shape = RoundedCornerShape(8.dp),
                     )
             )
         }
@@ -212,10 +233,10 @@ private fun CandidateItem(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 4.dp, vertical = 5.dp)
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
                     .background(
-                        color = Color(0x3500E5FF),
-                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0x4000E5FF),
+                        shape = RoundedCornerShape(8.dp),
                     )
             )
         }

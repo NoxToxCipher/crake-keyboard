@@ -71,12 +71,11 @@ class GlideTypingGesture {
                     return false
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    if (pointerId != event.getPointerId(event.actionIndex)) {
-                        // not our pointer.
+                    val pointerIndex = event.findPointerIndex(pointerId)
+                    if (pointerIndex < 0) {
                         return false
                     }
 
-                    val pointerIndex = event.findPointerIndex(pointerId)
                     for (i in 0..event.historySize) {
                         val pos = when (i) {
                             event.historySize -> Position(event.getX(pointerIndex), event.getY(pointerIndex))
@@ -86,9 +85,8 @@ class GlideTypingGesture {
                         if (pointerData.isActuallyGesture == null) {
                             // evaluate whether is actually a gesture
                             val dist = ViewUtils.px2dp(pointerData.positions[0].dist(pos))
-                            val time = (System.currentTimeMillis() - pointerData.startTime) + 1
-                            flogDebug { "Distance glided: $dist dp with velocity: ${dist / time} dp/ms" }
-                            if (dist > keySize && (dist / time) > VELOCITY_THRESHOLD && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS)) {
+                            val triggerSlop = (keySize * 0.35f).coerceIn(10f, 18f)
+                            if (dist > triggerSlop && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS)) {
                                 pointerData.isActuallyGesture = true
                                 // Let listener know all those points need to be added.
                                 pointerData.positions.take(pointerData.positions.size - 1).forEach { point ->
@@ -96,10 +94,7 @@ class GlideTypingGesture {
                                         it.onGlideAddPoint(point)
                                     }
                                 }
-                            } else if (time > MAX_DETECT_TIME) {
-                                pointerData.isActuallyGesture = false
                             }
-
                         }
 
                         if (pointerData.isActuallyGesture == true) {
@@ -111,12 +106,15 @@ class GlideTypingGesture {
                 }
                 MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_POINTER_UP -> {
-                    if (pointerId != event.getPointerId(event.actionIndex)) {
-                        // not our pointer.
-                        return false
+                    val upPointerIndex = if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
+                        event.actionIndex
+                    } else {
+                        event.findPointerIndex(pointerId)
                     }
-                    if (pointerData.isActuallyGesture == true) {
-                        listeners.forEach { listener -> listener.onGlideComplete(pointerData) }
+                    if (upPointerIndex >= 0 && event.getPointerId(upPointerIndex) == pointerId) {
+                        if (pointerData.isActuallyGesture == true) {
+                            listeners.forEach { listener -> listener.onGlideComplete(pointerData) }
+                        }
                     }
                     resetState()
                     return false

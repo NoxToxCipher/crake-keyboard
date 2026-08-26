@@ -3964,97 +3964,67 @@
 🏴󠁧󠁢󠁷󠁬󠁳󠁿;;
 
 
-
 [kaomoji]
 (╯°□°)╯︵ ┻━┻;;table flip|angry|rage
 ¯\_(ツ)_/¯;;shrug|whatever|meh
 (ง •̀_•́)ง;;fight|determined|boxing
-(｡♥‿♥｡);;love|heart|happy
-ʕ•ᴥ•ʔ;;bear|cute|animal
-( ͡° ͜ʖ ͡°);;lenny face|smirk
+(づ｡◕‿‿◕｡)づ;;hug|cute|love
+(✿◠‿◠);;smile|happy|flower
+(¬_¬);;side eye|doubt|unimpressed
+(•_•) ( •_•)>⌐■-■ (⌐■_■);;deal with it|cool|sunglasses
+ʕ•ᴥ•ʔ;;bear|animal|cute
+( ﾟдﾟ);;shocked|surprised
 ಠ_ಠ;;disapproval|look|stare
-(づ｡◕‿‿◕｡)づ;;hug|cute|cuddle
-(☞ﾟヮﾟ)☞;;finger guns|cool|hey
-(ノಠ益ಠ)ノ彡┻━┻;;rage table flip|angry
-ヘ( ^o^)ノ;;wave|hello|cheer
-(*^▽^*);;excited|blush|joy
-(⌐■_■);;deal with it|glasses|cool
-(•_•);;neutral|stare
-(>_<);;oops|pain|frustrated
+(⁄ ⁄•⁄ω⁄•⁄ ⁄);;blush|shy|embarrassed
 (T_T);;crying|sad|tears
-(¬_¬);;side eye|doubt|skeptical
-(ಥ﹏ಥ);;sobbing|tears|touched
-(=^･ω･^=);;cat|kitty|meow
-(◕‿◕✿);;flower|cute|peace
-(✿◠‿◠);;bliss|smile|gentle
-(⊙_☉);;shocked|dazed|confused
-(☞ ͡° ͜ʖ ͡°)☞;;lenny point|wink
-(•ω•);;uwu|cute|smile
-ᕦ(ò_óˇ)ᕤ;;flex|strong|power
-( ˘ ³˘)♥;;kiss|blowing kiss|love
-( ﾟoﾟ);;gasp|surprised
-(•‿•);;simple smile|friendly
+(◕‿◕✿);;cute|flower|girl
+(づ￣ ³￣)づ;;kiss|hug|love
+ヘ( ^o^)ノ＼(^_^ );;high five|friends
+(☞ﾟヮﾟ)☞;;finger guns|you
+(ノಠ益ಠ)ノ;;angry|rage
+(°_°);;blank|neutral
+(>_<);;pain|frustrated
+(ʘ‿ʘ);;happy|eyes
 
 [math_logic]
-λ;;lambda|math|calculus
-π;;pi|math|constant
-Ω;;omega|math|physics
-Δ;;delta|math|change
-∫;;integral|math|calculus
-≈;;almost equal|approximate|math
-≠;;not equal|math|logic
-≤;;less than or equal|math|comparison
-≥;;greater than or equal|math|comparison
-√;;square root|radical|math
-∞;;infinity|math|limit
-∈;;element of|set theory|math
-∉;;not an element of|set theory|math
-∇;;nabla|del|gradient|math
-±;;plus minus|math
-×;;multiplication|times|math
-÷;;division|divide|math
-∑;;summation|sigma|math
-∏;;product|pi|math
+∑;;sum|sigma|math
+∫;;integral|calculus|math
 ∂;;partial derivative|math
-‰;;per mille|percent|math
-∠;;angle|geometry|math
-∴;;therefore|logic|math
-∵;;because|logic|math
-∩;;intersection|set theory|math
-∪;;union|set theory|math
-⊂;;subset|set theory|math
-⊃;;superset|set theory|math
-⊆;;subset or equal|set theory|math
-⊇;;superset or equal|set theory|math
-∧;;logical and|conjunction|logic
-∨;;logical or|disjunction|logic
-¬;;logical not|negation|logic
-∀;;for all|universal quantifier|logic
-∃;;there exists|existential quantifier|logic
-≡;;identical to|equivalent|math
-∝;;proportional to|math
-⊕;;direct sum|xor|math
-⊗;;tensor product|math
-⊥;;perpendicular|orthogonal|logic
+√;;square root|radical|math
+π;;pi|constant|math
+∞;;infinity|limit|math
+≈;;approximately equal|math
+≠;;not equal|math
+≤;;less than or equal|math
+≥;;greater than or equal|math
+±;;plus minus|math
+×;;multiply|math
+÷;;divide|math
+∈;;element of|set|math
+∉;;not an element of|math
+⊂;;subset of|math
+∪;;union|set|math
+∩;;intersection|set|math
+∀;;for all|logic|math
+∃;;there exists|logic|math
+∄;;there does not exist|logic
+∴;;therefore|logic
+∵;;because|logic
+∧;;logical and|conjunction
+∨;;logical or|disjunction
+¬;;logical not|negation
+⊕;;xor|exclusive or
+⇒;;implies|conditional
+⇔;;if and only if|biconditional
+∇;;nabla|del|gradient
 
 [crypto]
-₿;;bitcoin|btc|crypto|currency
-Ξ;;ethereum|eth|crypto|currency
-ᚱ;;thorchain|rune|crypto|currency
-⚛;;cosmos|atom|crypto|currency
-Ł;;litecoin|ltc|crypto|currency
-ɱ;;monero|xmr|crypto|privacy
-$;;dollar|usd|fiat|currency
-€;;euro|eur|fiat|currency
-£;;pound|gbp|fiat|currency
-¥;;yen|jpy|fiat|currency
-¢;;cent|fiat|currency
-₩;;won|krw|fiat|currency
-₪;;shekel|ils|fiat|currency
-₹;;rupee|inr|fiat|currency
-₽;;ruble|rub|fiat|currency
-₣;;franc|chf|fiat|currency
-₱;;peso|php|fiat|currency
-₮;;tugrik|mnt|usdt|currency
-₸;;tenge|kzt|fiat|currency
-₫;;dong|vnd|fiat|currency
+₿;;bitcoin|btc|crypto
+Ξ;;ethereum|eth|crypto
+₮;;tether|usdt|stablecoin
+₳;;cardano|ada|crypto
+Ł;;litecoin|ltc|crypto
+Ð;;dogecoin|doge|crypto
+◈;;monero|xmr|privacy|crypto
+◎;;solana|sol|crypto
+Ⓟ;;polkadot|dot|crypto
