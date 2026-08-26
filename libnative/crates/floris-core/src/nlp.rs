@@ -250,6 +250,13 @@ impl NlpEngine {
                 word: formatted,
                 is_autocorrect: shorthand.is_autocorrect,
             });
+        } else if let Some(&(_, hyphenated)) = Self::COMPOUND_HYPHEN_PHRASES.iter().find(|&&(k, _)| k == trimmed_lower) {
+            // 2b. Compound hyphenated technical & conversational phrase recovery
+            let formatted = Self::apply_casing(trimmed, hyphenated);
+            candidates.push(RankedCandidate {
+                word: formatted,
+                is_autocorrect: true,
+            });
         } else if let Some(typo_fix) = lookup_common_typo(&trimmed_lower) {
             // 3. Wikipedia 1,770+ Misspelling Corpus instant O(log N) lookup
             let formatted = Self::apply_casing(trimmed, typo_fix);
@@ -625,6 +632,33 @@ pub const BIGRAM_TRANSITIONS: &[(&str, &[&str])] = &[
     ("no", &["problem", "worries", "doubt", "idea", "way"]),
 ];
 
+
+
+/// Standard compound hyphenated phrases for technical and professional communication.
+pub const COMPOUND_HYPHEN_PHRASES: &[(&str, &str)] = &[
+    ("realtime", "real-time"),
+    ("longterm", "long-term"),
+    ("shortterm", "short-term"),
+    ("opensource", "open-source"),
+    ("endtoend", "end-to-end"),
+    ("lowlevel", "low-level"),
+    ("highlevel", "high-level"),
+    ("userfriendly", "user-friendly"),
+    ("stateoftheart", "state-of-the-art"),
+    ("facetoface", "face-to-face"),
+    ("daytoday", "day-to-day"),
+    ("stepbystep", "step-by-step"),
+    ("allinone", "all-in-one"),
+    ("uptodate", "up-to-date"),
+    ("peertopeer", "peer-to-peer"),
+    ("pointtopoint", "point-to-point"),
+    ("builtIn", "built-in"),
+    ("builtin", "built-in"),
+    ("optin", "opt-in"),
+    ("optout", "opt-out"),
+    ("handsfree", "hands-free"),
+    ("plugandplay", "plug-and-play"),
+];
 
 /// High-Precision Trigram & Bigram Homophone Disambiguation Table.
 /// Evaluates preceding context word to select the grammatically correct homophone.
