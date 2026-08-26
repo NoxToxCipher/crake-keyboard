@@ -18,6 +18,11 @@ package dev.patrickgold.florisboard.ime.text.keyboard
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.runtime.mutableIntStateOf
 import android.content.Context
 import android.view.MotionEvent
 import android.view.animation.AccelerateInterpolator
@@ -145,6 +150,42 @@ fun TextKeyboardLayout(
             "amber" in activeThemeCompId -> Color(0xFFF59E0B)
             "ghost" in activeThemeCompId -> Color(0xFFF8FAFC)
             else -> Color(0xFF00D2FF)
+        }
+    }
+
+    var powerSurgeTrigger by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val powerSurgeAnim = remember { Animatable(0f) }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_POWER_CONNECTED) {
+                    powerSurgeTrigger++
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_POWER_CONNECTED)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(receiver, filter)
+            }
+        } catch (_: Throwable) {
+            try { context.registerReceiver(receiver, filter) } catch (_: Throwable) {}
+        }
+        onDispose {
+            try { context.unregisterReceiver(receiver) } catch (_: Throwable) {}
+        }
+    }
+
+    LaunchedEffect(powerSurgeTrigger) {
+        if (powerSurgeTrigger > 0) {
+            powerSurgeAnim.snapTo(0f)
+            powerSurgeAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 1100, easing = LinearEasing),
+            )
         }
     }
 
@@ -377,6 +418,77 @@ fun TextKeyboardLayout(
         val rightFade = (rightCore + 0.12f).coerceAtMost(1f)
 
         // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows on all pages)
+        // Easter Egg: Quantum Core Power Surge when plugged into power!
+        if (powerSurgeAnim.value > 0f && powerSurgeAnim.value < 1f) {
+            val surgeProgress = powerSurgeAnim.value
+            val surgeY = keyboardHeight * (1.0f - surgeProgress)
+            val surgeAlpha = when {
+                surgeProgress < 0.2f -> surgeProgress / 0.2f
+                surgeProgress > 0.8f -> (1.0f - surgeProgress) / 0.2f
+                else -> 1.0f
+            }
+
+            // 1. Horizontal Superconductor Energy Wave Scanning Upwards
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(24.dp)
+                    .absoluteOffset { IntOffset(0, (surgeY - 12.dp.toPx()).toInt()) }
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                themeAccentColor.copy(alpha = 0.28f * surgeAlpha),
+                                Color.White.copy(alpha = 0.55f * surgeAlpha),
+                                themeAccentColor.copy(alpha = 0.28f * surgeAlpha),
+                                Color.Transparent,
+                            )
+                        )
+                    )
+            )
+
+            // 2. Central Specular Plasma Line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .absoluteOffset { IntOffset(0, surgeY.toInt()) }
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                themeAccentColor.copy(alpha = 0.5f * surgeAlpha),
+                                Color.White.copy(alpha = 0.95f * surgeAlpha),
+                                themeAccentColor.copy(alpha = 0.5f * surgeAlpha),
+                                Color.Transparent,
+                            )
+                        )
+                    )
+            )
+
+            // 3. Subtle Charging Port Floor Pulse at the Bottom
+            if (surgeProgress < 0.6f) {
+                val floorAlpha = (1.0f - (surgeProgress / 0.6f)) * 0.45f
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    themeAccentColor.copy(alpha = floorAlpha * 0.7f),
+                                    Color.White.copy(alpha = floorAlpha),
+                                    themeAccentColor.copy(alpha = floorAlpha * 0.7f),
+                                    Color.Transparent,
+                                )
+                            )
+                        )
+                )
+            }
+        }
+
         if (!isBorderlessTheme && keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
             val fretPositions = remember(keyboard, keyboard.mode, keyboardWidth, keyboardHeight, desiredKeyHack.value) {
                 val rowBounds = keyboard.keys().asSequence()
@@ -653,6 +765,42 @@ private fun TextKeyButton(
             "amber" in activeThemeCompId -> Color(0xFFF59E0B)
             "ghost" in activeThemeCompId -> Color(0xFFF8FAFC)
             else -> Color(0xFF00D2FF)
+        }
+    }
+
+    var powerSurgeTrigger by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val powerSurgeAnim = remember { Animatable(0f) }
+
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_POWER_CONNECTED) {
+                    powerSurgeTrigger++
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_POWER_CONNECTED)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                context.registerReceiver(receiver, filter)
+            }
+        } catch (_: Throwable) {
+            try { context.registerReceiver(receiver, filter) } catch (_: Throwable) {}
+        }
+        onDispose {
+            try { context.unregisterReceiver(receiver) } catch (_: Throwable) {}
+        }
+    }
+
+    LaunchedEffect(powerSurgeTrigger) {
+        if (powerSurgeTrigger > 0) {
+            powerSurgeAnim.snapTo(0f)
+            powerSurgeAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 1100, easing = LinearEasing),
+            )
         }
     }
     val attributes = mapOf(
