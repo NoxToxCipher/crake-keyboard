@@ -23,6 +23,7 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.os.UserManagerCompat
 import dev.patrickgold.florisboard.app.FlorisPreferenceModel
@@ -115,7 +116,9 @@ class FlorisApplication : Application() {
     }
 
     fun init() {
+        val tStart = SystemClock.elapsedRealtime()
         cacheDir?.deleteContentsRecursively()
+        val tCache = SystemClock.elapsedRealtime()
         scope.launch {
             val result = FlorisPreferenceStore.initAndroid(
                 context = this@FlorisApplication,
@@ -125,8 +128,17 @@ class FlorisApplication : Application() {
             preferenceStoreLoaded.value = true
         }
         extensionManager.value.init()
+        val tExt = SystemClock.elapsedRealtime()
         clipboardManager.value.initializeForContext(this)
+        val tClip = SystemClock.elapsedRealtime()
         DictionaryManager.init(this)
+        val tDict = SystemClock.elapsedRealtime()
+        Log.i(
+            "CrakeStartup",
+            "app init (main thread): cacheClear=${tCache - tStart}ms " +
+                "extensions=${tExt - tCache}ms clipboard=${tClip - tExt}ms " +
+                "dictMgrInit=${tDict - tClip}ms total=${tDict - tStart}ms",
+        )
 
         // Pre-warm critical keyboard engines asynchronously for instant zero-delay cold-start pop-up
         scope.launch(Dispatchers.Default) {
