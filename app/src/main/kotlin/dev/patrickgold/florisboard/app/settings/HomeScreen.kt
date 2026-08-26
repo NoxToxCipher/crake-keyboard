@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Language
@@ -231,67 +232,170 @@ fun HomeScreen() = FlorisScreen {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // NAVIGATION PREFERENCE TILES
-        Preference(
+        // CRAKE CYBER COMMAND HUB NAVIGATION CARDS
+        CrakeNavTile(
             icon = Icons.Default.Spellcheck,
             title = "Typing & Glide NLP Core",
-            summary = "5.3M word/s Radix Trie, auto-correct & gestures",
+            summary = "5.3M word/s Radix Trie, Damerau-Levenshtein & gestures",
+            badgeText = "SAFE RUST",
+            accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Typing) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Default.Security,
             title = "Decoy Profiles & Duress PIN",
-            summary = "Isolated dual-profile vault and panic purge",
+            summary = "Isolated dual-profile vault, duress trigger & panic zeroize",
+            badgeText = "AIR-GAP",
+            accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.Other) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.AutoMirrored.Outlined.Assignment,
             title = "Encrypted Clipboard Vault",
-            summary = "ChaCha20-Poly1305 storage & sensitive clip scrub",
+            summary = "ChaCha20-Poly1305 storage & ephemeral auto-destruct",
+            badgeText = "ENCRYPTED",
+            accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Clipboard) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Default.QrCode2,
             title = "Air-Gapped Optical QR Sync",
-            summary = "Zero-network animated QR frame pairing & backup",
+            summary = "Zero-network animated QR frame pairing & cold backup",
+            badgeText = "OPTICAL",
+            accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.OpticalQrSync) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Outlined.Palette,
             title = stringRes(R.string.settings__theme__title),
-            summary = "OLED Obsidian, Cyber Monospace & keycaps",
+            summary = "OLED Obsidian, BlackBerry 10 Chrome Frets & Cyber Cyan",
+            badgeText = "THEME",
+            accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Theme) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Default.Language,
             title = stringRes(R.string.settings__localization__title),
+            summary = "Subtypes, dictionaries and multilingual layouts",
             onClick = { navController.navigate(Routes.Settings.Localization) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Outlined.Keyboard,
             title = stringRes(R.string.settings__keyboard__title),
+            summary = "Key height, long-press delay, haptics & audio packs",
             onClick = { navController.navigate(Routes.Settings.Keyboard) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Default.SmartButton,
             title = stringRes(R.string.settings__smartbar__title),
+            summary = "Action tiles, candidate capsules & quick actions",
             onClick = { navController.navigate(Routes.Settings.Smartbar) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Default.Gesture,
             title = stringRes(R.string.settings__gestures__title),
+            summary = "Spatial swipe flicks, neon aurora trail & trackpad drag",
             onClick = { navController.navigate(Routes.Settings.Gestures) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Default.SentimentSatisfiedAlt,
             title = stringRes(R.string.settings__media__title),
+            summary = "4,000+ Unicode emojis, Kaomojis, Math & Crypto symbols",
             onClick = { navController.navigate(Routes.Settings.Media) },
         )
-        Preference(
+        CrakeNavTile(
             icon = Icons.Outlined.Info,
             title = stringRes(R.string.about__title),
-            summary = "Safe Rust Core v0.1.0 • Zero Leaks",
+            summary = "Safe Rust Core • Zero Leaks • Local Vault",
+            badgeText = "v0.1.0",
+            accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.About) },
         )
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun CrakeNavTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    summary: String? = null,
+    badgeText: String? = null,
+    accentColor: Color = ElectricCyan,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        border = BorderStroke(1.dp, CardBorder),
+        onClick = onClick,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accentColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        color = Color.White,
+                    )
+                    if (badgeText != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(accentColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = badgeText,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = accentColor,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                    }
+                }
+                if (summary != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = summary,
+                        fontSize = 11.5.sp,
+                        color = TextMuted,
+                        lineHeight = 14.sp,
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextMuted.copy(alpha = 0.6f),
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
