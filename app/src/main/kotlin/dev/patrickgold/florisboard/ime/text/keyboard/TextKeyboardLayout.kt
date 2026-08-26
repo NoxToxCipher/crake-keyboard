@@ -827,6 +827,10 @@ private fun TextKeyButton(
     var lastEggSignature by remember { mutableStateOf("") }
     val eggAlphaAnim = remember { Animatable(0f) }
 
+    var sunConureTriggerTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    var lastSunConureSignature by remember { mutableStateOf("") }
+    val sunConurePulseAlpha = remember { Animatable(0f) }
+
     LaunchedEffect(activeContent) {
         val textBefore = activeContent.textBeforeSelection.toString()
         val composing = activeContent.composingText
@@ -837,6 +841,24 @@ private fun TextKeyButton(
         if (isEgg && signature != lastEggSignature) {
             lastEggSignature = signature
             eggTriggerTime = System.currentTimeMillis()
+        }
+
+        val combined = "$textBefore $composing".lowercase()
+        val isSunConure = combined.contains("sun conure") || combined.contains("sunconure") || combined.contains("sun con ure")
+        if (isSunConure && signature != lastSunConureSignature) {
+            lastSunConureSignature = signature
+            sunConureTriggerTime = System.currentTimeMillis()
+        }
+    }
+
+    LaunchedEffect(sunConureTriggerTime) {
+        if (sunConureTriggerTime > 0L) {
+            val startTime = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startTime < 10_000L) {
+                sunConurePulseAlpha.animateTo(1f, animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing))
+                sunConurePulseAlpha.animateTo(0.20f, animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing))
+            }
+            sunConurePulseAlpha.animateTo(0f, animationSpec = tween(durationMillis = 350, easing = EaseInCubic))
         }
     }
 
@@ -948,14 +970,32 @@ private fun TextKeyButton(
                     }
             )
         }
-        if (key.computedData.code != KeyCode.SHIFT || eggAlphaAnim.value < 1f) {
+        if (key.computedData.code == KeyCode.SHIFT && sunConurePulseAlpha.value > 0f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        alpha = sunConurePulseAlpha.value
+                        val baseScale = 0.92f + 0.16f * sunConurePulseAlpha.value
+                        scaleX = baseScale * (if (key.isPressed && key.isEnabled) 1.25f else 1.0f)
+                        scaleY = baseScale * (if (key.isPressed && key.isEnabled) 1.25f else 1.0f)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                androidx.compose.material3.Text(
+                    text = "🦜",
+                    fontSize = 20.sp,
+                )
+            }
+        }
+        if (key.computedData.code != KeyCode.SHIFT || (eggAlphaAnim.value < 1f && sunConurePulseAlpha.value < 1f)) {
             key.foregroundImageVector?.let { imageVector ->
                 SnyggIcon(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .graphicsLayer {
                             if (key.computedData.code == KeyCode.SHIFT) {
-                                alpha = 1f - eggAlphaAnim.value
+                                alpha = (1f - eggAlphaAnim.value) * (1f - sunConurePulseAlpha.value)
                             }
                             if (key.isPressed && key.isEnabled) {
                                 scaleX = 1.12f
