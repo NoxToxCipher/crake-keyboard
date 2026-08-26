@@ -4259,20 +4259,20 @@ fun TextKeyboardLayout(
             }
         }
 
-        // I, Robot NS-5 Android (Sonny Cyan Core -> VIKI Red Uplink Override -> Free Will Dissolve)
+        // I, Robot NS-5 Android Running Squad (Sonny Parkour Leap + VIKI Red Pursuit on Frets)
         if (irobotTriggerTime > 0L) {
             val irobotProgress = remember(irobotTriggerTime) { Animatable(0f) }
             LaunchedEffect(irobotTriggerTime) {
                 irobotProgress.snapTo(0f)
                 irobotProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 4800, easing = LinearEasing),
+                    animationSpec = tween(durationMillis = 4400, easing = LinearEasing),
                 )
                 irobotTriggerTime = 0L
             }
             if (irobotProgress.value in 0.001f..0.999f) {
-                val u = irobotProgress.value
-                val currentMs = u * 4800f
+                val totalMs = 4400f
+                val currentMs = irobotProgress.value * totalMs
                 val density = LocalDensity.current.density
 
                 androidx.compose.foundation.Canvas(
@@ -4281,143 +4281,204 @@ fun TextKeyboardLayout(
                     val canvasW = this.size.width
                     val canvasH = this.size.height
 
-                    val centerX = canvasW * 0.50f
-                    val centerY = canvasH * 0.48f
+                    val rowCount = (keyboard.rowCount).coerceAtLeast(4)
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+                    val fret1Y = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
+                    val fret2Y = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
+                    val fret3Y = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
 
-                    // Master Alpha: Fade in (0-500ms), Hold, Fade out (4100-4800ms)
-                    val masterAlpha = when {
-                        currentMs < 500f -> (currentMs / 500f).coerceIn(0f, 1f)
-                        currentMs > 4100f -> ((4800f - currentMs) / 700f).coerceIn(0f, 1f)
-                        else -> 1f
-                    }
+                    // Helper to render a fully articulated running NS-5 Android
+                    fun drawRunningNS5(
+                        robotX: Float,
+                        baseY: Float,
+                        jumpOffset: Float,
+                        runCycleMs: Float,
+                        isVikiRed: Boolean,
+                        scaleFactor: Float = 1.0f,
+                        trailColor: Int = 0x6600D2FF.toInt()
+                    ) {
+                        val runPhase = runCycleMs * 0.022f
+                        val isAirborne = kotlin.math.abs(jumpOffset) > 2f * density
 
-                    // Mode: 0ms -> 2200ms (Sonny Cyan), 2200ms -> 3700ms (VIKI Red), 3700ms -> 4800ms (Sonny Free Will)
-                    val isVikiRed = currentMs in 2200f..3700f
-                    val vikiPulse = if (isVikiRed) {
-                        val vu = (currentMs - 2200f) / 1500f
-                        0.7f + kotlin.math.sin(vu * 18f) * 0.3f
-                    } else {
-                        0.85f + kotlin.math.sin(currentMs * 0.006f) * 0.15f
-                    }
+                        // Athletic running bob
+                        val runBobY = if (!isAirborne) -kotlin.math.abs(kotlin.math.sin(runPhase * 2f)) * (2.8f * density) else 0f
+                        val robotY = baseY + jumpOffset + runBobY
 
-                    val glowColor = if (isVikiRed) 0xFFEF4444.toInt() else 0xFF00D2FF.toInt()
-                    val coreColor = if (isVikiRed) 0xFFDC2626.toInt() else 0xFF38BDF8.toInt()
+                        // Forward leaning athletic sprint angle
+                        val leanAngle = if (isAirborne) -14f else -22f
 
-                    drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(centerX, centerY)
+                        // Kinematic angles
+                        val hipAngle1 = if (isAirborne) -40f else kotlin.math.sin(runPhase) * 38f
+                        val hipAngle2 = if (isAirborne) 30f else -kotlin.math.sin(runPhase) * 38f
+                        val kneeAngle1 = if (isAirborne) 55f else (kotlin.math.max(0f, -kotlin.math.sin(runPhase + 0.4f)) * 60f)
+                        val kneeAngle2 = if (isAirborne) 65f else (kotlin.math.max(0f, kotlin.math.sin(runPhase + 0.4f)) * 60f)
+                        val armAngle1 = if (isAirborne) -35f else -kotlin.math.sin(runPhase) * 36f
+                        val armAngle2 = if (isAirborne) 40f else kotlin.math.sin(runPhase) * 36f
 
-                    val hr = 18f * density // Scale factor for NS-5 bust
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(robotX, robotY)
+                        drawContext.canvas.nativeCanvas.scale(scaleFactor, scaleFactor)
+                        drawContext.canvas.nativeCanvas.rotate(leanAngle)
 
-                    // 1. Holographic HUD Scanline Ring
-                    val hudPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 110 * vikiPulse).toInt().coerceIn(0, 255), (glowColor shr 16) and 0xFF, (glowColor shr 8) and 0xFF, glowColor and 0xFF)
-                        style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 1f * density
-                    }
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, hr * 2.1f, hudPaint)
-                    val ringAngle = (currentMs * 0.05f) % 360f
-                    drawContext.canvas.nativeCanvas.drawArc(
-                        -hr * 2.3f, -hr * 2.3f, hr * 2.3f, hr * 2.3f,
-                        ringAngle, 90f, false, hudPaint
-                    )
-                    drawContext.canvas.nativeCanvas.drawArc(
-                        -hr * 2.3f, -hr * 2.3f, hr * 2.3f, hr * 2.3f,
-                        ringAngle + 180f, 90f, false, hudPaint
-                    )
-
-                    // 2. NS-5 Chassis Paints
-                    val chassisPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 248, 250, 252) // Pearlescent White Ceramic
-                        style = android.graphics.Paint.Style.FILL
-                    }
-                    val jointPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 148, 163, 184) // Titanium Joint Metal
-                        style = android.graphics.Paint.Style.FILL
-                    }
-                    val shadePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 203, 213, 225) // Contour Shadow
-                        style = android.graphics.Paint.Style.FILL
-                    }
-                    val eyeGlowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255 * vikiPulse).toInt().coerceIn(0, 255), (glowColor shr 16) and 0xFF, (glowColor shr 8) and 0xFF, glowColor and 0xFF)
-                        style = android.graphics.Paint.Style.FILL
-                    }
-                    val eyeCorePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
-                        style = android.graphics.Paint.Style.FILL
-                    }
-
-                    // A. Torso & Chest Plate
-                    val torso = android.graphics.Path().apply {
-                        moveTo(-hr * 1.1f, hr * 1.5f)
-                        lineTo(-hr * 0.9f, hr * 0.6f)
-                        lineTo(hr * 0.9f, hr * 0.6f)
-                        lineTo(hr * 1.1f, hr * 1.5f)
-                        close()
-                    }
-                    drawContext.canvas.nativeCanvas.drawPath(torso, chassisPaint)
-                    drawContext.canvas.nativeCanvas.drawRect(-hr * 0.9f, hr * 0.6f, hr * 0.9f, hr * 0.8f, jointPaint) // Neck collar
-
-                    // B. Glowing Chest Reactor Core (Pulsing Cyan or VIKI Red)
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, hr * 1.05f, hr * 0.38f, eyeGlowPaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, hr * 1.05f, hr * 0.20f, eyeCorePaint)
-
-                    // C. Neck Vertebrae Struts
-                    drawContext.canvas.nativeCanvas.drawRect(-hr * 0.35f, hr * 0.2f, hr * 0.35f, hr * 0.6f, jointPaint)
-
-                    // D. Sculpted Humanoid Head / Face (Iconic NS-5 Silhouette)
-                    val head = android.graphics.Path().apply {
-                        moveTo(-hr * 0.65f, -hr * 0.2f)
-                        cubicTo(-hr * 0.75f, -hr * 0.9f, -hr * 0.45f, -hr * 1.35f, 0f, -hr * 1.35f) // Smooth skull dome
-                        cubicTo(hr * 0.45f, -hr * 1.35f, hr * 0.75f, -hr * 0.9f, hr * 0.65f, -hr * 0.2f)
-                        cubicTo(hr * 0.65f, hr * 0.2f, hr * 0.35f, hr * 0.35f, 0f, hr * 0.35f) // Jawline
-                        cubicTo(-hr * 0.35f, hr * 0.35f, -hr * 0.65f, hr * 0.2f, -hr * 0.65f, -hr * 0.2f)
-                        close()
-                    }
-                    drawContext.canvas.nativeCanvas.drawPath(head, chassisPaint)
-
-                    // Translucent Cranium Top Sheen
-                    val domeGlint = android.graphics.Path().apply {
-                        moveTo(-hr * 0.45f, -hr * 0.8f)
-                        quadTo(0f, -hr * 1.25f, hr * 0.45f, -hr * 0.8f)
-                        lineTo(0f, -hr * 1.0f)
-                        close()
-                    }
-                    drawContext.canvas.nativeCanvas.drawPath(domeGlint, shadePaint)
-
-                    // E. Optic Photonic Sensors / Eyes (Sonny Blue vs VIKI Red)
-                    val eyeW = hr * 0.26f
-                    val eyeH = hr * 0.12f
-                    val leftEyeX = -hr * 0.32f
-                    val rightEyeX = hr * 0.32f
-                    val eyeY = -hr * 0.42f
-
-                    // Left Optic
-                    drawContext.canvas.nativeCanvas.drawRoundRect(leftEyeX - eyeW / 2f, eyeY - eyeH / 2f, leftEyeX + eyeW / 2f, eyeY + eyeH / 2f, 2f * density, 2f * density, eyeGlowPaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(leftEyeX, eyeY, eyeH * 0.4f, eyeCorePaint)
-
-                    // Right Optic
-                    drawContext.canvas.nativeCanvas.drawRoundRect(rightEyeX - eyeW / 2f, eyeY - eyeH / 2f, rightEyeX + eyeW / 2f, eyeY + eyeH / 2f, 2f * density, 2f * density, eyeGlowPaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(rightEyeX, eyeY, eyeH * 0.4f, eyeCorePaint)
-
-                    // F. Subtle Nose Bridge & Synthetic Lip Line
-                    drawContext.canvas.nativeCanvas.drawLine(0f, -hr * 0.35f, 0f, -hr * 0.08f, shadePaint)
-                    drawContext.canvas.nativeCanvas.drawLine(-hr * 0.18f, hr * 0.12f, hr * 0.18f, hr * 0.12f, shadePaint)
-
-                    // G. VIKI Holographic Override Waves (when Red)
-                    if (isVikiRed) {
-                        val vikiWaveU = ((currentMs - 2200f) * 0.003f) % 1f
-                        val waveRadius = hr * (1.8f + vikiWaveU * 1.6f)
-                        val waveAlpha = ((1f - vikiWaveU) * masterAlpha * 0.85f).coerceIn(0f, 1f)
-                        val vikiWavePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((waveAlpha * 255).toInt().coerceIn(0, 255), 239, 68, 68)
+                        // 1. Motion Speed Trails behind running android
+                        val trailPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = trailColor
                             style = android.graphics.Paint.Style.STROKE
-                            strokeWidth = 1.4f * density
+                            strokeWidth = 1.2f * density
+                            strokeCap = android.graphics.Paint.Cap.ROUND
                         }
-                        drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, waveRadius, vikiWavePaint)
+                        drawContext.canvas.nativeCanvas.drawLine(-8f * density, -8f * density, -22f * density, -8f * density, trailPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(-6f * density, -14f * density, -18f * density, -14f * density, trailPaint)
+
+                        // 2. Color Palette: Pearlescent White Ceramic + Dark Titanium Joints
+                        val chassisPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFF8FAFC.toInt() // Pearlescent White Ceramic
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val jointPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF334155.toInt() // Dark Titanium Joints
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val limbPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFFE2E8F0.toInt()
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 2.4f * density
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        val opticColor = if (isVikiRed) 0xFFEF4444.toInt() else 0xFF00D2FF.toInt()
+                        val opticCoreColor = if (isVikiRed) 0xFFDC2626.toInt() else 0xFF38BDF8.toInt()
+                        val eyeGlowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = opticColor
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val eyeCorePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = opticCoreColor
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // A. Back Leg (Hip -> Knee -> Ankle)
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(-1f * density, -2f * density)
+                        drawContext.canvas.nativeCanvas.rotate(hipAngle2)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 6.5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 6.5f * density, 1.4f * density, jointPaint) // Knee
+                        drawContext.canvas.nativeCanvas.translate(0f, 6.5f * density)
+                        drawContext.canvas.nativeCanvas.rotate(kneeAngle2)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 6.5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(-0.8f * density, 6f * density, 3f * density, 7.5f * density, jointPaint) // Foot
+                        drawContext.canvas.nativeCanvas.restore()
+
+                        // B. Back Arm (Shoulder -> Elbow -> Fist)
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(-1f * density, -13f * density)
+                        drawContext.canvas.nativeCanvas.rotate(armAngle2)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 5.5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 5.5f * density, 1.2f * density, jointPaint)
+                        drawContext.canvas.nativeCanvas.translate(0f, 5.5f * density)
+                        drawContext.canvas.nativeCanvas.rotate(35f)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+
+                        // C. Torso & Pelvis
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-3.5f * density, -15f * density, 3.5f * density, -2f * density, 1.8f * density, 1.8f * density, chassisPaint)
+                        // Glowing Chest Core (Sonny Blue vs VIKI Red)
+                        drawContext.canvas.nativeCanvas.drawCircle(1f * density, -10f * density, 1.8f * density, eyeGlowPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(1f * density, -10f * density, 1.0f * density, eyeCorePaint)
+
+                        // D. Neck Vertebrae & Sculpted NS-5 Head
+                        drawContext.canvas.nativeCanvas.drawRect(-0.8f * density, -17f * density, 0.8f * density, -15f * density, jointPaint)
+                        // Head Dome
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-2.8f * density, -23.5f * density, 4.2f * density, -17f * density, 2.5f * density, 2.5f * density, chassisPaint)
+                        // Optic Slit Eyes (Glowing Cyan / Red)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(2.5f * density, -21.5f * density, 4.8f * density, -19.5f * density, 0.8f * density, 0.8f * density, eyeGlowPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(3.6f * density, -20.5f * density, 0.6f * density, eyeCorePaint)
+
+                        // E. Front Leg (Hip -> Knee -> Foot)
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(1f * density, -2f * density)
+                        drawContext.canvas.nativeCanvas.rotate(hipAngle1)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 6.5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 6.5f * density, 1.4f * density, jointPaint)
+                        drawContext.canvas.nativeCanvas.translate(0f, 6.5f * density)
+                        drawContext.canvas.nativeCanvas.rotate(kneeAngle1)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 6.5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.drawRect(-0.8f * density, 6f * density, 3f * density, 7.5f * density, jointPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+
+                        // F. Front Arm (Shoulder -> Elbow -> Fist)
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(1f * density, -13f * density)
+                        drawContext.canvas.nativeCanvas.rotate(armAngle1)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 5.5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 5.5f * density, 1.2f * density, jointPaint)
+                        drawContext.canvas.nativeCanvas.translate(0f, 5.5f * density)
+                        drawContext.canvas.nativeCanvas.rotate(45f)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 5f * density, limbPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+
+                        drawContext.canvas.nativeCanvas.restore()
                     }
 
-                    drawContext.canvas.nativeCanvas.restore()
+                    // =======================================================
+                    // 1. SONNY (The Hero NS-5 Leader on Middle Fret)
+                    // =======================================================
+                    // Moves Left -> Right across middle fret over 0ms -> 3800ms
+                    val sonnyU = (currentMs / 3800f).coerceIn(0f, 1f)
+                    val sonnyStartX = -40f * density
+                    val sonnyEndX = canvasW + 45f * density
+                    val sonnyX = sonnyStartX + sonnyU * (sonnyEndX - sonnyStartX)
+
+                    // Parkour High Jump / Vault in the center (u in 0.38 -> 0.68)
+                    val jumpOffset = if (sonnyU in 0.38f..0.68f) {
+                        val ju = (sonnyU - 0.38f) / 0.30f
+                        -kotlin.math.sin(ju * Math.PI.toFloat()) * (24f * density)
+                    } else {
+                        0f
+                    }
+
+                    drawRunningNS5(
+                        robotX = sonnyX,
+                        baseY = fret2Y - 1f * density,
+                        jumpOffset = jumpOffset,
+                        runCycleMs = currentMs,
+                        isVikiRed = false,
+                        scaleFactor = 1.15f,
+                        trailColor = 0x8800D2FF.toInt()
+                    )
+
+                    // =======================================================
+                    // 2. VIKI RED PURSUIT ROBOT #1 (Top Fret: 300ms -> 4100ms)
+                    // =======================================================
+                    if (currentMs > 300f) {
+                        val viki1U = ((currentMs - 300f) / 3700f).coerceIn(0f, 1f)
+                        val viki1X = -45f * density + viki1U * (canvasW + 80f * density)
+                        drawRunningNS5(
+                            robotX = viki1X,
+                            baseY = fret1Y - 1f * density,
+                            jumpOffset = 0f,
+                            runCycleMs = currentMs + 150f,
+                            isVikiRed = true,
+                            scaleFactor = 1.0f,
+                            trailColor = 0x88EF4444.toInt()
+                        )
+                    }
+
+                    // =======================================================
+                    // 3. VIKI RED PURSUIT ROBOT #2 (Bottom Fret: 600ms -> 4400ms)
+                    // =======================================================
+                    if (currentMs > 600f) {
+                        val viki2U = ((currentMs - 600f) / 3600f).coerceIn(0f, 1f)
+                        val viki2X = -50f * density + viki2U * (canvasW + 85f * density)
+                        drawRunningNS5(
+                            robotX = viki2X,
+                            baseY = fret3Y - 1f * density,
+                            jumpOffset = 0f,
+                            runCycleMs = currentMs + 300f,
+                            isVikiRed = true,
+                            scaleFactor = 1.05f,
+                            trailColor = 0x88EF4444.toInt()
+                        )
+                    }
                 }
             }
         }
