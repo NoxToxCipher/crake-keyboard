@@ -19,6 +19,11 @@ fn engine() -> NlpEngine {
         ("my", 255),
         ("mistakes", 180),
         ("deliberately", 160),
+        ("this", 250),
+        ("what", 250),
+        ("hello", 240),
+        ("keyboard", 200),
+        ("privacy", 150),
     ] {
         e.trie.insert(w, f);
     }
@@ -42,6 +47,37 @@ fn recovers_adjacent_key_slips() {
         ("gkudinf", "gliding"),     // 3 slips
         ("nt", "my"),               // 2 slips on a 2-letter word
         ("yui", "you"),             // 2 slips
+    ] {
+        let got = top3(&e, typed);
+        if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
+            failures.push(format!("'{typed}' should offer '{expected}', got {got:?}"));
+        }
+    }
+    assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
+/// Round 2: the fat-finger classes beyond adjacent substitution — swapped
+/// neighbouring letters (transposition), a key registering twice, and a key
+/// not registering at all. Same bar: the intended word must appear top-3.
+#[test]
+fn recovers_transpositions_doubles_and_drops() {
+    let e = engine();
+    let mut failures = Vec::new();
+    for (typed, expected) in [
+        // Transpositions
+        ("yuo", "you"),
+        ("thsi", "this"),
+        ("waht", "what"),
+        ("keybaord", "keyboard"),
+        // Doubled letters
+        ("helllo", "hello"),
+        ("cann", "can"),
+        ("mistakess", "mistakes"),
+        // Dropped letters
+        ("keybord", "keyboard"),
+        ("privcy", "privacy"),
+        ("glidng", "gliding"),
+        ("curently", "currently"),
     ] {
         let got = top3(&e, typed);
         if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
