@@ -829,6 +829,16 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                             val text = data.asString(isForDisplay = false)
                             if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0))) {
                                 nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
+                            } else {
+                                // Smart Auto-Space After Punctuation:
+                                // Automatically inserts a space if typing a letter immediately after punctuation (e.g. "Hello,world" -> "Hello, world")
+                                val before = editorInstance.run { activeContent.getTextBeforeCursor(1) }
+                                if (before.isNotEmpty()) {
+                                    val lastChar = before[0]
+                                    if (lastChar == ',' || lastChar == '.' || lastChar == '!' || lastChar == '?' || lastChar == ';' || lastChar == ':') {
+                                        editorInstance.commitText(" ")
+                                    }
+                                }
                             }
                             editorInstance.commitChar(text)
                         }
