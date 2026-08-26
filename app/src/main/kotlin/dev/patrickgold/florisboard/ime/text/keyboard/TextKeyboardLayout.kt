@@ -425,6 +425,7 @@ fun TextKeyboardLayout(
         var tribalwarsTriggerTime by remember { mutableStateOf(0L) }
         var bawenCatTriggerTime by remember { mutableStateOf(0L) }
         var pubgParachuteTriggerTime by remember { mutableStateOf(0L) }
+        var luciaBobaTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -471,6 +472,10 @@ fun TextKeyboardLayout(
             val pubgKeys = listOf("pubg", "airdrop", "pochinki", "chicken dinner", "winner winner")
             if (pubgKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 pubgParachuteTriggerTime = System.currentTimeMillis()
+            }
+            val luciaKeys = listOf("lucia")
+            if (luciaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                luciaBobaTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -2220,6 +2225,186 @@ fun TextKeyboardLayout(
                     // E. Level 3 Spetsnaz Helmet Head
                     drawContext.canvas.nativeCanvas.drawCircle(0f, -7.5f * density, 3.8f * density, helmetPaint)
                     drawContext.canvas.nativeCanvas.drawRect(-3f * density, -7.8f * density, 1f * density, -6.6f * density, visorSlitPaint) // Visor Face Slit
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Lucia Boba Bubble Tea on Shift Key Easter Egg (10 Seconds Soft Fade & Floating)
+        if (luciaBobaTriggerTime > 0L) {
+            val bobaProgress = remember(luciaBobaTriggerTime) { Animatable(0f) }
+            LaunchedEffect(luciaBobaTriggerTime) {
+                bobaProgress.snapTo(0f)
+                bobaProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 10000, easing = LinearEasing),
+                )
+                luciaBobaTriggerTime = 0L
+            }
+            if (bobaProgress.value in 0.001f..0.999f) {
+                val u = bobaProgress.value
+                val density = LocalDensity.current.density
+
+                // 10s timeline: Fade in (0.0 -> 0.08), Hold (0.08 -> 0.92), Fade out (0.92 -> 1.0)
+                val alpha = (when {
+                    u < 0.08f -> u / 0.08f
+                    u > 0.92f -> (1f - u) / 0.08f
+                    else -> 1f
+                }).coerceIn(0f, 1f)
+
+                val breathe = kotlin.math.sin(u * 14f * Math.PI.toFloat()) * 1.5f * density
+                val scale = 0.92f + 0.08f * (kotlin.math.sin(u * 10f * Math.PI.toFloat()) * 0.5f + 0.5f)
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // Locate Shift key center
+                    var shiftKey: TextKey? = null
+                    for (key in keyboard.keys()) {
+                        if (key is TextKey && key.computedData.code == KeyCode.SHIFT) {
+                            shiftKey = key
+                            break
+                        }
+                    }
+
+                    val keyCenterX = if (shiftKey != null) {
+                        shiftKey.visibleBounds.left + (shiftKey.visibleBounds.width / 2f)
+                    } else {
+                        canvasW * 0.12f
+                    }
+                    val keyCenterY = if (shiftKey != null) {
+                        shiftKey.visibleBounds.top + (shiftKey.visibleBounds.height / 2f)
+                    } else {
+                        canvasH * 0.72f
+                    }
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(keyCenterX, keyCenterY + breathe)
+                    drawContext.canvas.nativeCanvas.scale(scale, scale)
+
+                    // 1. Soft Ambient Kawaii Aura Glow
+                    val auraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 120).toInt().coerceIn(0, 255), 244, 114, 182) // Pink glow
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 18f * density, auraPaint)
+
+                    val cupW = 13f * density
+                    val cupH = 19f * density
+                    val cupTop = -cupH * 0.42f
+                    val cupBottom = cupTop + cupH
+
+                    // 2. Boba Wide Straw (Pastel Pink)
+                    val strawPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 236, 72, 153)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 2.4f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    drawContext.canvas.nativeCanvas.drawLine(2f * density, cupTop + 2f * density, 6.5f * density, cupTop - 8f * density, strawPaint)
+
+                    // 3. Clear Tapered Boba Cup Body & Liquid Fill (Creamy Taro Lavender)
+                    val liquidPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 216, 180, 254) // Lavender Taro Milk Tea
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val cupOutlinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.2f * density
+                    }
+
+                    val cupPath = android.graphics.Path().apply {
+                        moveTo(-cupW * 0.5f, cupTop + 2f * density)
+                        lineTo(-cupW * 0.4f, cupBottom - 2f * density)
+                        quadTo(-cupW * 0.4f, cupBottom, -cupW * 0.25f, cupBottom)
+                        lineTo(cupW * 0.25f, cupBottom)
+                        quadTo(cupW * 0.4f, cupBottom, cupW * 0.4f, cupBottom - 2f * density)
+                        lineTo(cupW * 0.5f, cupTop + 2f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(cupPath, liquidPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(cupPath, cupOutlinePaint)
+
+                    // 4. Chewy Black Tapioca Boba Pearls
+                    val bobaPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 30, 27, 75) // Dark Tapioca
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val bobaShine = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 220).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val pearlOffsets = listOf(
+                        Pair(-3.2f, cupBottom - 2.8f * density),
+                        Pair(0f, cupBottom - 2.5f * density),
+                        Pair(3.2f, cupBottom - 2.8f * density),
+                        Pair(-1.8f, cupBottom - 5.2f * density),
+                        Pair(1.8f, cupBottom - 5.2f * density)
+                    )
+                    for ((px, py) in pearlOffsets) {
+                        drawContext.canvas.nativeCanvas.drawCircle(px * density, py, 1.4f * density, bobaPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle((px - 0.4f) * density, py - 0.4f * density, 0.4f * density, bobaShine)
+                    }
+
+                    // 5. Cup Dome Lid & Rim
+                    val lidPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.2f * density
+                    }
+                    val lidFillPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 160).toInt().coerceIn(0, 255), 241, 245, 249)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    // Dome Arch
+                    drawContext.canvas.nativeCanvas.drawArc(
+                        -cupW * 0.52f, cupTop - 4.5f * density,
+                        cupW * 0.52f, cupTop + 2.5f * density,
+                        180f, 180f, true, lidFillPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawArc(
+                        -cupW * 0.52f, cupTop - 4.5f * density,
+                        cupW * 0.52f, cupTop + 2.5f * density,
+                        180f, 180f, false, lidPaint
+                    )
+                    // Sealing Collar
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -cupW * 0.55f, cupTop + 1f * density,
+                        cupW * 0.55f, cupTop + 3.2f * density,
+                        1f * density, 1f * density, lidPaint
+                    )
+
+                    // 6. Kawaii Cheeks & Closed Eyes on the Cup
+                    val faceY = cupTop + cupH * 0.45f
+                    val blushPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 230).toInt().coerceIn(0, 255), 251, 113, 133)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val eyeLinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 71, 85, 105)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.9f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    // Blushing cheeks
+                    drawContext.canvas.nativeCanvas.drawCircle(-3.2f * density, faceY + 1f * density, 1.1f * density, blushPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(3.2f * density, faceY + 1f * density, 1.1f * density, blushPaint)
+                    // Happy closed eyes (^ ^)
+                    drawContext.canvas.nativeCanvas.drawArc(
+                        -3.6f * density, faceY - 1.5f * density,
+                        -1.4f * density, faceY + 0.5f * density,
+                        180f, 180f, false, eyeLinePaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawArc(
+                        1.4f * density, faceY - 1.5f * density,
+                        3.6f * density, faceY + 0.5f * density,
+                        180f, 180f, false, eyeLinePaint
+                    )
 
                     drawContext.canvas.nativeCanvas.restore()
                 }
