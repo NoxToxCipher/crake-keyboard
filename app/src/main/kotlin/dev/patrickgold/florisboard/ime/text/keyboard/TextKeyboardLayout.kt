@@ -419,6 +419,7 @@ fun TextKeyboardLayout(
         var soccerRollTriggerTime by remember { mutableStateOf(0L) }
         var spaceRainTriggerTime by remember { mutableStateOf(0L) }
         var mangoPulseTriggerTime by remember { mutableStateOf(0L) }
+        var masterChiefRunTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -441,6 +442,10 @@ fun TextKeyboardLayout(
             val mangoKeys = listOf("mango", "mangoes", "mangos")
             if (mangoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 mangoPulseTriggerTime = System.currentTimeMillis()
+            }
+            val chiefKeys = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan")
+            if (chiefKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                masterChiefRunTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1268,6 +1273,139 @@ fun TextKeyboardLayout(
                         style = android.graphics.Paint.Style.FILL
                     }
                     drawContext.canvas.nativeCanvas.drawRect(0f, 0f, canvasW, canvasH, mangoGradientPaint)
+                }
+            }
+        }
+
+        // Mini Master Chief (Spartan-117) Bottom Fret Sprint Easter Egg
+        if (masterChiefRunTriggerTime > 0L) {
+            val chiefProgress = remember(masterChiefRunTriggerTime) { Animatable(0f) }
+            LaunchedEffect(masterChiefRunTriggerTime) {
+                chiefProgress.snapTo(0f)
+                chiefProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 2600, easing = LinearEasing),
+                )
+                masterChiefRunTriggerTime = 0L
+            }
+            if (chiefProgress.value in 0.001f..0.999f) {
+                val t = chiefProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val w = this.size.width
+                    val h = this.size.height
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val bottomFretY = h - (h / rowCount)
+
+                    // Stride physics & vertical running bob
+                    val stridePhase = t * 18f * Math.PI.toFloat()
+                    val bobbing = kotlin.math.abs(kotlin.math.sin(stridePhase)) * 2f * density
+                    val cx = (-35f * density) + t * (w + 70f * density)
+                    val cy = bottomFretY - 14f * density + bobbing
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(cx, cy)
+                    drawContext.canvas.nativeCanvas.rotate(6f) // Tactical sprint lean
+
+                    // Paints for MJOLNIR Mark VI Powered Assault Armor
+                    val armorPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF436B36.toInt() // Spartan Olive Drab
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val armorHighlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF5D8C4E.toInt() // Shoulder/Chest highlights
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val techsuitPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF1C221D.toInt() // Dark slate under-suit
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val visorPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFB300.toInt() // Golden Amber Visor
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val visorShinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFF176.toInt() // Visor reflection glint
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val riflePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF262E35.toInt() // MA40 Assault Rifle
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val ammoCounterPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF00E5FF.toInt() // Cyan ammo readout
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val dustPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0x66B0BEC5.toInt() // Sprint dust puff
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    // 1. Sprint Dust Puffs behind boots
+                    val legSwing = kotlin.math.sin(stridePhase)
+                    if (kotlin.math.abs(legSwing) > 0.6f) {
+                        drawContext.canvas.nativeCanvas.drawCircle(-8f * density, 11f * density, 2f * density, dustPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-12f * density, 12f * density, 1.4f * density, dustPaint)
+                    }
+
+                    // 2. Armored Legs (Dynamic Running Animation)
+                    val leg1Angle = legSwing * 28f
+                    val leg2Angle = -legSwing * 28f
+
+                    // Back Leg
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(0f, 3f * density)
+                    drawContext.canvas.nativeCanvas.rotate(leg2Angle)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.5f * density, 0f, 1.5f * density, 8f * density, 1f * density, 1f * density, techsuitPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.8f * density, 1f * density, 1.8f * density, 5.5f * density, 1f * density, 1f * density, armorPaint) // Thigh armor
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-2f * density, 6f * density, 2.5f * density, 9f * density, 1f * density, 1f * density, armorPaint) // Boot
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // 3. Torso & MJOLNIR Chestplate
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-3.5f * density, -4f * density, 3.5f * density, 4f * density, 2f * density, 2f * density, techsuitPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-4f * density, -5f * density, 4f * density, 1f * density, 1.5f * density, 1.5f * density, armorPaint) // Chestplate
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-3f * density, -4f * density, 3f * density, -0.5f * density, 1f * density, 1f * density, armorHighlightPaint)
+
+                    // 4. Front Leg
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(0f, 3f * density)
+                    drawContext.canvas.nativeCanvas.rotate(leg1Angle)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.5f * density, 0f, 1.5f * density, 8f * density, 1f * density, 1f * density, techsuitPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.8f * density, 1f * density, 1.8f * density, 5.5f * density, 1f * density, 1f * density, armorHighlightPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-2f * density, 6f * density, 2.5f * density, 9f * density, 1f * density, 1f * density, armorPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // 5. MA40 Assault Rifle held in forward tactical carry
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(1f * density, -1f * density)
+                    drawContext.canvas.nativeCanvas.rotate(-10f)
+                    // Rifle Body & Barrel
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-2f * density, -1f * density, 10f * density, 2f * density, 1f * density, 1f * density, riflePaint)
+                    drawContext.canvas.nativeCanvas.drawRect(4f * density, -2f * density, 7f * density, -1f * density, riflePaint) // Scope cowl
+                    drawContext.canvas.nativeCanvas.drawCircle(5.5f * density, -1.5f * density, 0.6f * density, ammoCounterPaint) // Cyan Display
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // 6. Armored Shoulders & Arms gripping rifle
+                    drawContext.canvas.nativeCanvas.drawCircle(-2f * density, -2.5f * density, 2.2f * density, armorPaint) // Shoulder pauldron
+                    drawContext.canvas.nativeCanvas.drawRoundRect(0f, -2f * density, 4.5f * density, 1.5f * density, 1f * density, 1f * density, armorHighlightPaint)
+
+                    // 7. Master Chief Helmet & Golden Visor
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, -8f * density, 3.8f * density, armorPaint) // Helmet Dome
+                    drawContext.canvas.nativeCanvas.drawRect(-3.5f * density, -10.5f * density, 2.5f * density, -8f * density, armorHighlightPaint) // Helmet Crest
+                    // Golden Reflective Visor
+                    val visorPath = android.graphics.Path().apply {
+                        moveTo(0.5f * density, -9.2f * density)
+                        lineTo(3.8f * density, -8.2f * density)
+                        lineTo(3.4f * density, -6.6f * density)
+                        lineTo(0.2f * density, -7.2f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(visorPath, visorPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(1.8f * density, -8f * density, 0.7f * density, visorShinePaint) // Visor reflection
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
