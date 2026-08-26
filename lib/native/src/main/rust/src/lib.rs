@@ -1,5 +1,5 @@
 use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
-use jni::objects::{JClass, JFloatArray, JIntArray, JObjectArray, JString};
+use jni::objects::{JByteArray, JClass, JFloatArray, JIntArray, JObjectArray, JString};
 use jni::sys::{jfloatArray, jint, jintArray, jobjectArray, jstring};
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
@@ -22,6 +22,33 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInse
             let word_str = w.to_str().unwrap_or("");
             engine.trie.insert(word_str, frequency.max(0) as u32);
         }
+    }
+}
+
+/// Bulk dictionary load from the CRKD binary asset: one JNI crossing instead
+/// of one per word. Skips the per-word secret inspection deliberately — the
+/// blob is the static corpus shipped in our APK, and single words cannot trip
+/// the shield's phrase/prefix checks anyway. Returns the entry count, or -1
+/// so the Kotlin side falls back to the JSON path.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoadDictBlob(
+    env: JNIEnv,
+    _class: JClass,
+    data: JByteArray,
+) -> jint {
+    let bytes = match env.convert_byte_array(&data) {
+        Ok(b) => b,
+        Err(_) => return -1,
+    };
+    if let Ok(mut engine) = NLP_ENGINE.write() {
+        match floris_core::parse_dict_blob(&bytes, |word, freq| {
+            engine.trie.insert(word, freq);
+        }) {
+            Ok(count) => count.min(jint::MAX as u32) as jint,
+            Err(_) => -1,
+        }
+    } else {
+        -1
     }
 }
 

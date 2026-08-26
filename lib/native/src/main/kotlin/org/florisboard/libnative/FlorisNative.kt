@@ -56,6 +56,16 @@ object FlorisNative {
 
     fun isAvailable(): Boolean = isLoaded
 
+    /**
+     * Bulk-loads the shipped CRKD dictionary blob into the native trie in a
+     * single JNI call. Returns the number of words loaded, or -1 if the blob
+     * is rejected — callers must then fall back to the JSON path.
+     */
+    fun loadDictionaryBlob(data: ByteArray): Int {
+        if (!isLoaded || data.isEmpty()) return -1
+        return nativeNlpLoadDictBlob(data)
+    }
+
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         // Never learn text if it is detected as a secret/mnemonic or threat
@@ -197,6 +207,8 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
+
+    private external fun nativeNlpLoadDictBlob(data: ByteArray): Int
 
     @JvmStatic
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>
