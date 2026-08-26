@@ -17,6 +17,8 @@
 package dev.patrickgold.florisboard.ime.nlp.latin
 
 import android.content.Context
+import android.os.SystemClock
+import android.util.Log
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
@@ -62,14 +64,25 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         wordData.withLock { words ->
             if (words.isEmpty()) {
                 try {
+                    val tStart = SystemClock.elapsedRealtime()
                     val rawData = appContext.assets.readText("ime/dict/data.json")
+                    val tRead = SystemClock.elapsedRealtime()
                     val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
+                    val tParse = SystemClock.elapsedRealtime()
                     words.putAll(jsonData)
+                    val tMap = SystemClock.elapsedRealtime()
 
                     // Populate native Rust Trie with dictionary words
                     for ((word, freq) in jsonData) {
                         FlorisNative.insertWord(word, freq)
                     }
+                    val tInsert = SystemClock.elapsedRealtime()
+                    Log.i(
+                        "CrakeStartup",
+                        "dict load: assetRead=${tRead - tStart}ms jsonParse=${tParse - tRead}ms " +
+                            "kotlinMap=${tMap - tParse}ms nativeInsert(${jsonData.size} JNI calls)=${tInsert - tMap}ms " +
+                            "total=${tInsert - tStart}ms",
+                    )
                     flogInfo { "Loaded ${jsonData.size} dictionary words into native Rust Trie" }
                 } catch (e: Exception) {
                     flogDebug { "Error loading dictionary: ${e.message}" }
