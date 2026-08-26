@@ -16,8 +16,11 @@
 
 package dev.patrickgold.florisboard.ime.core
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,7 +33,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.keyboardManager
@@ -66,6 +72,43 @@ fun SelectSubtypePanel(modifier: Modifier = Modifier) {
                 text = stringRes(R.string.select_subtype_panel__header),
             )
         }
+
+        // Top Specular Chrome Highlight with Subtle Cyan Core Glow
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0x1500E5FF),
+                            Color(0x60CBD5E1),
+                            Color(0xDDE2E8F0),
+                            Color(0x8000E5FF),
+                            Color(0xDDE2E8F0),
+                            Color(0x60CBD5E1),
+                            Color(0x1500E5FF),
+                        )
+                    )
+                )
+        )
+        // Bottom Deep Ambient Shadow Line
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0x15000000),
+                            Color(0x70000000),
+                            Color(0xA0000000),
+                            Color(0x70000000),
+                            Color(0x15000000),
+                        )
+                    )
+                )
+        )
 
         SnyggBox(FlorisImeUi.SubtypePanelList.elementName) {
             LazyColumn(
