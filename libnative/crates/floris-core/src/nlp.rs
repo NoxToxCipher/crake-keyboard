@@ -1037,6 +1037,77 @@ impl NlpEngine {
             }
         }
 
+        // Valid-word slip rescue: "I an not" -> am (field specimen
+        // 2026-08-27). The typed word is in the dictionary, so the fuzzy
+        // autocorrect path can never fire — yet the context screams a
+        // one-key-slip neighbour. A missing bigram is NOT evidence of a slip
+        // by itself: "a cot" and "the hen" are absent from the table out of
+        // sparsity, not wrongness (the negative oracle is unreliable —
+        // sweep 2026-08-27). Absence only means something where coverage is
+        // near-complete: between top-tier-common words. So flipping a valid
+        // word requires ALL of:
+        //   - typed word AND prev are both top-tier common (unigram >= 200;
+        //     "i" 254 / "an" 254 qualify, "cot" 60 / "hen" 60 / "tine" 141
+        //     never reach here);
+        //   - the typed pair is UNATTESTED after prev ("i an" = 0), which
+        //     in that coverage class is real evidence;
+        //   - EXACTLY ONE adjacent-key single-substitution neighbour is
+        //     strongly attested ("i am" 184 >= 160) and itself common
+        //     (>= 150 — never flip TO a rare word);
+        //   - nothing upstream already claimed the auto-commit slot.
+        // "want an" stays untouched: the typed pair is attested (157).
+        // Rare-word slips ("every tine", "here fir") are a documented limit:
+        // they keep their verified slot-2 suggestion but never auto-flip,
+        // because no unigram/bigram signal separates them from "a cot".
+        // Subject pronouns are exempt as typed words: question inversion
+        // puts any of them after any verb ("must he go?", "shall we?"), so
+        // a missing pair is meaningless there — without this, "must he"
+        // flipped to "must be" (sweep 2026-08-27).
+        // Personal bigrams feed the pair score, so a user who genuinely
+        // types the rare pair and accepts it teaches the rescue to stop.
+        const CONTEXT_SLIP_MIN_SCORE: u8 = 160;
+        const CONTEXT_SLIP_MIN_COMMON: u32 = 200;
+        if !prev_word.is_empty()
+            && !self.bigrams.is_empty()
+            && is_exact
+            && !is_capitalized
+            && !has_internal_uppercase
+            && trimmed_lower.chars().count() >= 2
+            && trimmed_lower.chars().all(|c| c.is_alphabetic())
+            && !candidates.iter().any(|c| c.is_autocorrect)
+            && !matches!(
+                trimmed_lower.as_str(),
+                "he" | "she" | "we" | "they" | "you" | "it"
+            )
+            && self.trie.get_frequency(&trimmed_lower).unwrap_or(0) >= CONTEXT_SLIP_MIN_COMMON
+        {
+            let prev_lower = prev_word.trim().to_lowercase();
+            if self.trie.get_frequency(&prev_lower).unwrap_or(0) >= CONTEXT_SLIP_MIN_COMMON
+                && self.bigram_pair_score(&prev_lower, &trimmed_lower) == 0
+            {
+                const CONTEXT_SLIP_MIN_FREQ: u32 = 150;
+                let attested: Vec<(String, u8)> = self
+                    .trie
+                    .fuzzy_search_weighted(&trimmed_lower, 1, 8, |a, b| self.keys_near(a, b))
+                    .into_iter()
+                    .filter(|fc| fc.distance == 1 && fc.frequency >= CONTEXT_SLIP_MIN_FREQ)
+                    .filter_map(|fc| {
+                        let score = self.bigram_pair_score(&prev_lower, &fc.word);
+                        (score >= CONTEXT_SLIP_MIN_SCORE).then(|| (fc.word, score))
+                    })
+                    .collect();
+                if let [(winner, _)] = attested.as_slice() {
+                    let base: &str = contraction_display(winner).unwrap_or(winner.as_str());
+                    let formatted = Self::apply_casing(trimmed, base);
+                    candidates.retain(|c| !c.word.eq_ignore_ascii_case(&formatted));
+                    candidates.insert(0, RankedCandidate {
+                        word: formatted,
+                        is_autocorrect: true,
+                    });
+                }
+            }
+        }
+
         // Neural context re-rank, ORDERING ONLY. The immovable head — leading
         // auto-commit candidates and the literal typed word — never moves, so
         // the rescorer can surface a context-apt candidate without ever
