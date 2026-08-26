@@ -160,7 +160,7 @@ impl NlpEngine {
     /// Loads the CRKB bigram table, replacing any previous one. Returns the
     /// pair count; on any parse error the previous table is kept.
     pub fn load_bigrams(&mut self, data: &[u8]) -> Result<usize, crate::bigram::BigramError> {
-        let model = crate::bigram::BigramModel::parse(data)?;
+        let model = crate::bigram::BigramModel::parse(data, self.corpus_words.len() as u32)?;
         let count = model.len();
         self.bigrams = model;
         Ok(count)

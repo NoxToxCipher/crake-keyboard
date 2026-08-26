@@ -14,21 +14,27 @@
 //!
 //! Format (little-endian):
 //! ```text
-//! magic   b"CRKB"
-//! version u8 = 1
-//! count   u32
-//! entry*  { id1: u32, id2: u32, score: u8 }   // 9 bytes each
+//! magic       b"CRKB"
+//! version     u8 = 2
+//! count       u32
+//! vocab_count u32   // dictionary size this table was generated against
+//! entry*      { id1: u32, id2: u32, score: u8 }   // 9 bytes each
 //! ```
 //! Scores are quantized log2(pair count) * 8 — comparable only with each
 //! other, which is all re-ranking needs.
+//!
+//! `vocab_count` exists because ids are POSITIONAL into the dictionary
+//! blob's order: a bigram table generated against a different dictionary
+//! would silently score the wrong words. The loader compares it against the
+//! live corpus size and rejects mismatches outright.
 
 pub const BIGRAM_MAGIC: [u8; 4] = *b"CRKB";
-pub const BIGRAM_VERSION: u8 = 1;
+pub const BIGRAM_VERSION: u8 = 2;
 /// Far above the shipped table (~245k), low enough that a corrupt count
 /// cannot drive unbounded allocation.
 pub const MAX_PAIRS: u32 = 4_000_000;
 
-const HEADER_LEN: usize = 4 + 1 + 4;
+const HEADER_LEN: usize = 4 + 1 + 4 + 4;
 const ENTRY_LEN: usize = 9;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -37,6 +43,8 @@ pub enum BigramError {
     CountTooLarge(u32),
     Truncated,
     NotSorted,
+    /// The table was generated against a different dictionary.
+    VocabMismatch { expected: u32, found: u32 },
 }
 
 /// A parsed, lookup-ready bigram table.
@@ -46,13 +54,22 @@ pub struct BigramModel {
 }
 
 impl BigramModel {
-    pub fn parse(data: &[u8]) -> Result<Self, BigramError> {
+    /// `expected_vocab` is the size of the dictionary corpus currently
+    /// loaded; a table generated against any other dictionary is rejected.
+    pub fn parse(data: &[u8], expected_vocab: u32) -> Result<Self, BigramError> {
         if data.len() < HEADER_LEN || data[0..4] != BIGRAM_MAGIC || data[4] != BIGRAM_VERSION {
             return Err(BigramError::NotOurs);
         }
         let count = u32::from_le_bytes([data[5], data[6], data[7], data[8]]);
         if count > MAX_PAIRS {
             return Err(BigramError::CountTooLarge(count));
+        }
+        let vocab = u32::from_le_bytes([data[9], data[10], data[11], data[12]]);
+        if vocab != expected_vocab {
+            return Err(BigramError::VocabMismatch {
+                expected: expected_vocab,
+                found: vocab,
+            });
         }
         let needed = HEADER_LEN + count as usize * ENTRY_LEN;
         if data.len() < needed {
@@ -96,11 +113,14 @@ impl BigramModel {
 mod tests {
     use super::*;
 
-    fn encode(entries: &[(u32, u32, u8)]) -> Vec<u8> {
+    const VOCAB: u32 = 100;
+
+    fn encode(entries: &[(u32, u32, u8)], vocab: u32) -> Vec<u8> {
         let mut out = Vec::new();
         out.extend_from_slice(&BIGRAM_MAGIC);
         out.push(BIGRAM_VERSION);
         out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+        out.extend_from_slice(&vocab.to_le_bytes());
         for &(a, b, s) in entries {
             out.extend_from_slice(&a.to_le_bytes());
             out.extend_from_slice(&b.to_le_bytes());
@@ -111,7 +131,7 @@ mod tests {
 
     #[test]
     fn round_trips_and_looks_up() {
-        let m = BigramModel::parse(&encode(&[(1, 5, 200), (1, 9, 150), (7, 2, 90)])).unwrap();
+        let m = BigramModel::parse(&encode(&[(1, 5, 200), (1, 9, 150), (7, 2, 90)], VOCAB), VOCAB).unwrap();
         assert_eq!(m.len(), 3);
         assert_eq!(m.score(1, 5), Some(200));
         assert_eq!(m.score(1, 9), Some(150));
@@ -122,26 +142,35 @@ mod tests {
 
     #[test]
     fn empty_table_is_valid() {
-        let m = BigramModel::parse(&encode(&[])).unwrap();
+        let m = BigramModel::parse(&encode(&[], VOCAB), VOCAB).unwrap();
         assert!(m.is_empty());
         assert_eq!(m.score(1, 1), None);
     }
 
     #[test]
     fn rejects_wrong_magic_version_and_short_input() {
-        assert_eq!(BigramModel::parse(b"CRKD....."), Err(BigramError::NotOurs));
-        assert_eq!(BigramModel::parse(&[]), Err(BigramError::NotOurs));
-        let mut blob = encode(&[(1, 2, 3)]);
+        assert_eq!(BigramModel::parse(b"CRKD.........", VOCAB), Err(BigramError::NotOurs));
+        assert_eq!(BigramModel::parse(&[], VOCAB), Err(BigramError::NotOurs));
+        let mut blob = encode(&[(1, 2, 3)], VOCAB);
         blob[4] = 9;
-        assert_eq!(BigramModel::parse(&blob), Err(BigramError::NotOurs));
+        assert_eq!(BigramModel::parse(&blob, VOCAB), Err(BigramError::NotOurs));
+    }
+
+    #[test]
+    fn rejects_a_table_from_a_different_dictionary() {
+        let blob = encode(&[(1, 5, 200)], VOCAB);
+        assert_eq!(
+            BigramModel::parse(&blob, VOCAB + 7),
+            Err(BigramError::VocabMismatch { expected: VOCAB + 7, found: VOCAB })
+        );
     }
 
     #[test]
     fn rejects_truncation_at_every_boundary() {
-        let blob = encode(&[(1, 5, 200), (2, 6, 90)]);
+        let blob = encode(&[(1, 5, 200), (2, 6, 90)], VOCAB);
         for cut in HEADER_LEN..blob.len() {
             assert_eq!(
-                BigramModel::parse(&blob[..cut]),
+                BigramModel::parse(&blob[..cut], VOCAB),
                 Err(BigramError::Truncated),
                 "cut={cut}"
             );
@@ -151,21 +180,21 @@ mod tests {
     #[test]
     fn rejects_unsorted_and_duplicate_keys() {
         assert_eq!(
-            BigramModel::parse(&encode(&[(2, 1, 10), (1, 1, 10)])),
+            BigramModel::parse(&encode(&[(2, 1, 10), (1, 1, 10)], VOCAB), VOCAB),
             Err(BigramError::NotSorted)
         );
         assert_eq!(
-            BigramModel::parse(&encode(&[(1, 1, 10), (1, 1, 20)])),
+            BigramModel::parse(&encode(&[(1, 1, 10), (1, 1, 20)], VOCAB), VOCAB),
             Err(BigramError::NotSorted)
         );
     }
 
     #[test]
     fn rejects_absurd_count() {
-        let mut blob = encode(&[]);
+        let mut blob = encode(&[], VOCAB);
         blob[5..9].copy_from_slice(&(MAX_PAIRS + 1).to_le_bytes());
         assert_eq!(
-            BigramModel::parse(&blob),
+            BigramModel::parse(&blob, VOCAB),
             Err(BigramError::CountTooLarge(MAX_PAIRS + 1))
         );
     }

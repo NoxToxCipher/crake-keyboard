@@ -21,8 +21,9 @@ fn blob(engine: &NlpEngine, pairs: &[(&str, &str, u8)]) -> Vec<u8> {
     entries.sort();
     let mut out = Vec::new();
     out.extend_from_slice(b"CRKB");
-    out.push(1);
+    out.push(2);
     out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    out.extend_from_slice(&(engine.corpus_words().len() as u32).to_le_bytes());
     for (a, b, s) in entries {
         out.extend_from_slice(&a.to_le_bytes());
         out.extend_from_slice(&b.to_le_bytes());

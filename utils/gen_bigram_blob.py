@@ -57,7 +57,9 @@ def main() -> None:
             pairs[key] = score
         kept += 1
     out = bytearray(b"CRKB")
-    out += struct.pack("<BI", 1, len(pairs))
+    # v2: vocab_count binds this table to the dictionary it was generated
+    # against — ids are positional, so a stale pairing must be rejected.
+    out += struct.pack("<BII", 2, len(pairs), len(vocab))
     for (i1, i2), score in sorted(pairs.items()):
         out += struct.pack("<IIB", i1, i2, score)
     DST.write_bytes(out)
