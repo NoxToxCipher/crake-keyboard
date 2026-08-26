@@ -270,6 +270,43 @@ impl NlpEngine {
             }
         }
 
+        // 6b. Instant O(1) Transposition & Double-Letter Typo Slip Recovery (Fast-Path)
+        if !is_exact && trimmed_lower.len() >= 3 && candidates.len() < max_candidates {
+            let chars: Vec<char> = trimmed_lower.chars().collect();
+            // Test adjacent transpositions
+            for i in 0..chars.len() - 1 {
+                let mut swapped = chars.clone();
+                swapped.swap(i, i + 1);
+                let swapped_str: String = swapped.into_iter().collect();
+                if self.trie.contains(&swapped_str) {
+                    let formatted = Self::apply_casing(trimmed, &swapped_str);
+                    if !contains_word(&candidates, &formatted) {
+                        candidates.push(RankedCandidate {
+                            word: formatted,
+                            is_autocorrect: candidates.is_empty(),
+                        });
+                        break;
+                    }
+                }
+            }
+            // Test double-letter drop recovery (e.g. tomorow -> tomorrow, adress -> address)
+            for i in 0..chars.len() {
+                let mut doubled = chars.clone();
+                doubled.insert(i, chars[i]);
+                let doubled_str: String = doubled.into_iter().collect();
+                if self.trie.contains(&doubled_str) {
+                    let formatted = Self::apply_casing(trimmed, &doubled_str);
+                    if !contains_word(&candidates, &formatted) {
+                        candidates.push(RankedCandidate {
+                            word: formatted,
+                            is_autocorrect: candidates.is_empty(),
+                        });
+                        break;
+                    }
+                }
+            }
+        }
+
         // 7. Fuzzy search for typo recovery if query is not in dictionary
         let is_capitalized = trimmed.chars().next().map_or(false, |c| c.is_uppercase());
         if candidates.len() < max_candidates {
