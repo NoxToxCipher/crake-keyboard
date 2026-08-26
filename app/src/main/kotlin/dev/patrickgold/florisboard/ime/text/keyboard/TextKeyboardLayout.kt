@@ -2416,30 +2416,38 @@ fun TextKeyboardLayout(
             }
         }
 
-        // Duku Rare Fruit Cluster Easter Egg (Whole Golden Duku + Peeled Translucent Pearl Arils)
+        // Duku Rare Fruit Dynamic Peeling & Blooming Pearl Arils Easter Egg
         if (dukuFruitTriggerTime > 0L) {
             val dukuProgress = remember(dukuFruitTriggerTime) { Animatable(0f) }
             LaunchedEffect(dukuFruitTriggerTime) {
                 dukuProgress.snapTo(0f)
                 dukuProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 6000, easing = LinearEasing),
+                    animationSpec = tween(durationMillis = 6500, easing = LinearEasing),
                 )
                 dukuFruitTriggerTime = 0L
             }
             if (dukuProgress.value in 0.001f..0.999f) {
                 val u = dukuProgress.value
+                val currentMs = u * 6500f
                 val density = LocalDensity.current.density
 
-                // 6s lifecycle: Soft fade-in (0.0 -> 0.1), Hold (0.1 -> 0.9), Soft fade-out (0.9 -> 1.0)
+                // 6.5s lifecycle: Soft fade-in (0.0 -> 0.08), Hold (0.08 -> 0.90), Soft fade-out (0.90 -> 1.0)
                 val alpha = (when {
-                    u < 0.1f -> u / 0.1f
-                    u > 0.9f -> (1f - u) / 0.1f
+                    u < 0.08f -> u / 0.08f
+                    u > 0.90f -> (1f - u) / 0.10f
                     else -> 1f
                 }).coerceIn(0f, 1f)
 
-                val floatOffset = kotlin.math.sin(u * 8f * Math.PI.toFloat()) * 2f * density
-                val scale = 0.94f + 0.06f * (kotlin.math.sin(u * 6f * Math.PI.toFloat()) * 0.5f + 0.5f)
+                // Pendulum swing on entry
+                val swingAngle = if (currentMs < 1400f) {
+                    val sU = (currentMs / 1400f)
+                    kotlin.math.sin(sU * 3f * Math.PI.toFloat()) * 9f * (1f - sU)
+                } else {
+                    kotlin.math.sin(u * 6f * Math.PI.toFloat()) * 1.5f
+                }
+                val floatY = kotlin.math.sin(u * 8f * Math.PI.toFloat()) * 2f * density
+                val scale = 0.95f + 0.05f * (kotlin.math.sin(u * 6f * Math.PI.toFloat()) * 0.5f + 0.5f)
 
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier.fillMaxSize()
@@ -2447,24 +2455,29 @@ fun TextKeyboardLayout(
                     val canvasW = this.size.width
                     val canvasH = this.size.height
 
-                    // Position over center of spacebar row
+                    // Position centered above Spacebar
                     val centerX = canvasW * 0.5f
-                    val centerY = canvasH * 0.72f
+                    val centerY = canvasH * 0.70f
 
                     drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(centerX, centerY + floatOffset)
+                    drawContext.canvas.nativeCanvas.translate(centerX, centerY + floatY)
+                    drawContext.canvas.nativeCanvas.rotate(swingAngle)
                     drawContext.canvas.nativeCanvas.scale(scale, scale)
 
-                    // 1. Warm Tropical Sunlight Aura Glow
+                    // 1. Warm Golden Tropical Aura
                     val auraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 100).toInt().coerceIn(0, 255), 254, 240, 138)
+                        color = android.graphics.Color.argb((alpha * 120).toInt().coerceIn(0, 255), 254, 240, 138)
                         style = android.graphics.Paint.Style.FILL
                     }
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 38f * density, auraPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 42f * density, auraPaint)
 
                     // Paints for Duku Fruit
                     val dukuSkinPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 234, 179, 8) // Sandy Golden-Fawn Buff
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val dukuInnerSkinPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 254, 224, 71) // Pale inner rind
                         style = android.graphics.Paint.Style.FILL
                     }
                     val dukuShadePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -2472,17 +2485,17 @@ fun TextKeyboardLayout(
                         style = android.graphics.Paint.Style.FILL
                     }
                     val dukuSpecklePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 180).toInt().coerceIn(0, 255), 180, 83, 9) // Natural skin speckles
+                        color = android.graphics.Color.argb((alpha * 180).toInt().coerceIn(0, 255), 180, 83, 9)
                         style = android.graphics.Paint.Style.FILL
                     }
                     val twigPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 120, 53, 15) // Woody Stem
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 120, 53, 15) // Woody branch
                         style = android.graphics.Paint.Style.STROKE
                         strokeWidth = 2.5f * density
                         strokeCap = android.graphics.Paint.Cap.ROUND
                     }
                     val leafPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 22, 163, 74) // Emerald Tropical Leaf
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 22, 163, 74) // Emerald Leaf
                         style = android.graphics.Paint.Style.FILL
                     }
                     val leafVeinPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -2491,11 +2504,11 @@ fun TextKeyboardLayout(
                         strokeWidth = 0.8f * density
                     }
                     val translucentArilPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 248, 250, 252) // Pearl-White Translucent Aril
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 248, 250, 252) // Pearl-White Arils
                         style = android.graphics.Paint.Style.FILL
                     }
                     val arilGlowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 190).toInt().coerceIn(0, 255), 254, 243, 199) // Sweet translucent glow
+                        color = android.graphics.Color.argb((alpha * 200).toInt().coerceIn(0, 255), 254, 243, 199) // Sweet translucent glow
                         style = android.graphics.Paint.Style.FILL
                     }
                     val arilOutlinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -2508,11 +2521,15 @@ fun TextKeyboardLayout(
                         style = android.graphics.Paint.Style.FILL
                     }
                     val seedShadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 80).toInt().coerceIn(0, 255), 63, 98, 18) // Greenish seed shadow
+                        color = android.graphics.Color.argb((alpha * 90).toInt().coerceIn(0, 255), 63, 98, 18)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val sparklePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 254, 240, 138)
                         style = android.graphics.Paint.Style.FILL
                     }
 
-                    // 2. Woody Branch & Tropical Leaves
+                    // 2. Woody Twig & Emerald Leaves
                     drawContext.canvas.nativeCanvas.drawLine(-18f * density, -16f * density, 18f * density, -8f * density, twigPaint)
                     drawContext.canvas.nativeCanvas.drawLine(-8f * density, -12f * density, -16f * density, 0f, twigPaint)
                     drawContext.canvas.nativeCanvas.drawLine(6f * density, -10f * density, 14f * density, 2f, twigPaint)
@@ -2527,74 +2544,134 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawPath(leftLeaf, leafPaint)
                     drawContext.canvas.nativeCanvas.drawLine(-14f * density, -15f * density, -34f * density, -20f * density, leafVeinPaint)
 
-                    // 3. Whole Duku Fruit #1 (Left, Golden Round Globe)
-                    val r1 = 11.5f * density
+                    // 3. Sister Duku Fruit #1 (Left Whole Golden Globe)
+                    val r1 = 11f * density
                     val cx1 = -16f * density
                     val cy1 = 2f * density
                     drawContext.canvas.nativeCanvas.drawCircle(cx1, cy1, r1, dukuSkinPaint)
-                    // 3D Shadow crescent
                     drawContext.canvas.nativeCanvas.drawArc(cx1 - r1, cy1 - r1, cx1 + r1, cy1 + r1, 45f, 180f, false, dukuShadePaint)
-                    // Natural Duku Skin Freckles
                     drawContext.canvas.nativeCanvas.drawCircle(cx1 - 3f * density, cy1 - 2f * density, 0.6f * density, dukuSpecklePaint)
                     drawContext.canvas.nativeCanvas.drawCircle(cx1 + 2f * density, cy1 + 3f * density, 0.7f * density, dukuSpecklePaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(cx1 - 1f * density, cy1 + 5f * density, 0.5f * density, dukuSpecklePaint)
-                    // Stem Button
                     drawContext.canvas.nativeCanvas.drawCircle(cx1, cy1 - r1 * 0.85f, 1.4f * density, twigPaint)
 
-                    // 4. Whole Duku Fruit #2 (Top Right, Golden Round Globe)
-                    val r2 = 10f * density
+                    // 4. Sister Duku Fruit #2 (Top Right Whole Golden Globe)
+                    val r2 = 9.5f * density
                     val cx2 = 12f * density
                     val cy2 = -4f * density
                     drawContext.canvas.nativeCanvas.drawCircle(cx2, cy2, r2, dukuSkinPaint)
                     drawContext.canvas.nativeCanvas.drawArc(cx2 - r2, cy2 - r2, cx2 + r2, cy2 + r2, 45f, 180f, false, dukuShadePaint)
                     drawContext.canvas.nativeCanvas.drawCircle(cx2 - 2f * density, cy2 + 2f * density, 0.6f * density, dukuSpecklePaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(cx2 + 3f * density, cy2 - 1f * density, 0.5f * density, dukuSpecklePaint)
                     drawContext.canvas.nativeCanvas.drawCircle(cx2, cy2 - r2 * 0.85f, 1.2f * density, twigPaint)
 
-                    // 5. Peeled Open Duku Fruit (Center Foreground, Revealing 5 Translucent Pearl Arils!)
-                    val r3 = 13f * density
+                    // 5. Dynamic Center Duku: Active Peeling & Blooming Translucent Pearl Arils!
+                    val r3 = 13.5f * density
                     val cx3 = 3f * density
                     val cy3 = 10f * density
 
-                    // Peeled Back Leathery Skin Petals
-                    val skinFlap1 = android.graphics.Path().apply {
-                        moveTo(cx3 - r3 * 0.9f, cy3)
-                        quadTo(cx3 - r3 * 1.4f, cy3 + r3 * 0.7f, cx3 - r3 * 0.5f, cy3 + r3 * 1.2f)
-                        close()
+                    // Peeling Progress (0.0 before 1000ms, peels open 1000ms -> 2400ms, stays open)
+                    val peelProgress = if (currentMs < 1000f) {
+                        0f
+                    } else if (currentMs < 2400f) {
+                        (currentMs - 1000f) / 1400f
+                    } else {
+                        1f
+                    }.coerceIn(0f, 1f)
+
+                    // Aril Bloom Expansion (Expands outward gently 2400ms -> 4800ms)
+                    val bloomExpansion = if (currentMs in 2400f..4800f) {
+                        val bU = (currentMs - 2400f) / 2400f
+                        kotlin.math.sin(bU * Math.PI.toFloat()) * 4.5f * density
+                    } else {
+                        0f
                     }
-                    val skinFlap2 = android.graphics.Path().apply {
-                        moveTo(cx3 + r3 * 0.9f, cy3)
-                        quadTo(cx3 + r3 * 1.4f, cy3 + r3 * 0.7f, cx3 + r3 * 0.5f, cy3 + r3 * 1.2f)
-                        close()
+
+                    // A. Unpeeled Whole Sphere (Fades/shrinks as peel opens)
+                    if (peelProgress < 1f) {
+                        val unpeeledAlpha = ((1f - peelProgress) * 255).toInt()
+                        val unpeeledPaint = android.graphics.Paint(dukuSkinPaint).apply {
+                            color = android.graphics.Color.argb((alpha * unpeeledAlpha / 255f * 255).toInt().coerceIn(0, 255), 234, 179, 8)
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(cx3, cy3, r3, unpeeledPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(cx3 + 1f * density, cy3 - 2f * density, 0.6f * density, dukuSpecklePaint)
                     }
-                    drawContext.canvas.nativeCanvas.drawPath(skinFlap1, dukuSkinPaint)
-                    drawContext.canvas.nativeCanvas.drawPath(skinFlap2, dukuSkinPaint)
 
-                    // 5 Glistening Translucent Pearl-White Aril Segments (Like translucent garlic/mangosteen cloves)
-                    val numSegments = 5
-                    for (i in 0 until numSegments) {
-                        val angle = (i * (2 * Math.PI / numSegments) - Math.PI / 2).toFloat()
-                        val segDist = 4.2f * density
-                        val segX = cx3 + kotlin.math.cos(angle) * segDist
-                        val segY = cy3 + kotlin.math.sin(angle) * segDist
-                        val segR = 4.8f * density
+                    // B. 4 Dynamic Peeling Skin Petals (Curl backwards dynamically)
+                    if (peelProgress > 0.05f) {
+                        val peelSpread = peelProgress * 12f * density
+                        // Left Flap
+                        val leftFlap = android.graphics.Path().apply {
+                            moveTo(cx3 - r3 * 0.4f, cy3)
+                            quadTo(cx3 - r3 - peelSpread, cy3 + r3 * 0.4f, cx3 - r3 * 0.6f - peelSpread * 0.8f, cy3 + r3 * 1.1f)
+                            quadTo(cx3 - r3 * 0.2f, cy3 + r3 * 0.8f, cx3 - r3 * 0.4f, cy3)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(leftFlap, dukuInnerSkinPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(leftFlap, dukuSkinPaint)
 
-                        // Translucent Aril Base
-                        drawContext.canvas.nativeCanvas.drawCircle(segX, segY, segR, arilGlowPaint)
-                        drawContext.canvas.nativeCanvas.drawCircle(segX, segY, segR * 0.92f, translucentArilPaint)
-                        drawContext.canvas.nativeCanvas.drawCircle(segX, segY, segR, arilOutlinePaint)
+                        // Right Flap
+                        val rightFlap = android.graphics.Path().apply {
+                            moveTo(cx3 + r3 * 0.4f, cy3)
+                            quadTo(cx3 + r3 + peelSpread, cy3 + r3 * 0.4f, cx3 + r3 * 0.6f + peelSpread * 0.8f, cy3 + r3 * 1.1f)
+                            quadTo(cx3 + r3 * 0.2f, cy3 + r3 * 0.8f, cx3 + r3 * 0.4f, cy3)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(rightFlap, dukuInnerSkinPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(rightFlap, dukuSkinPaint)
+                    }
 
-                        // Seed shadow visible inside largest segment
-                        if (i == 0 || i == 2) {
-                            drawContext.canvas.nativeCanvas.drawCircle(segX + 0.5f * density, segY + 0.5f * density, 1.8f * density, seedShadowPaint)
+                    // C. 5 Glistening Translucent Pearl-White Arils (Bloom & Expand with Specular Sparkles)
+                    if (peelProgress > 0.15f) {
+                        val arilAlphaMult = ((peelProgress - 0.15f) / 0.85f).coerceIn(0f, 1f)
+                        val numSegments = 5
+                        for (i in 0 until numSegments) {
+                            val angle = (i * (2 * Math.PI / numSegments) - Math.PI / 2).toFloat()
+                            val segDist = 4.2f * density + bloomExpansion
+                            val segX = cx3 + kotlin.math.cos(angle) * segDist
+                            val segY = cy3 + kotlin.math.sin(angle) * segDist
+                            val segR = 4.8f * density
+
+                            // Translucent Aril Base
+                            arilGlowPaint.alpha = (alpha * arilAlphaMult * 200).toInt()
+                            translucentArilPaint.alpha = (alpha * arilAlphaMult * 245).toInt()
+                            arilOutlinePaint.alpha = (alpha * arilAlphaMult * 160).toInt()
+                            glintPaint.alpha = (alpha * arilAlphaMult * 255).toInt()
+
+                            drawContext.canvas.nativeCanvas.drawCircle(segX, segY, segR, arilGlowPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(segX, segY, segR * 0.92f, translucentArilPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(segX, segY, segR, arilOutlinePaint)
+
+                            // Visible seed contour inside
+                            if (i == 0 || i == 2) {
+                                seedShadowPaint.alpha = (alpha * arilAlphaMult * 90).toInt()
+                                drawContext.canvas.nativeCanvas.drawCircle(segX + 0.5f * density, segY + 0.5f * density, 1.8f * density, seedShadowPaint)
+                            }
+
+                            // Specular glint
+                            drawContext.canvas.nativeCanvas.drawCircle(segX - 1.2f * density, segY - 1.2f * density, 1.1f * density, glintPaint)
                         }
 
-                        // Juicy Specular Glint
-                        drawContext.canvas.nativeCanvas.drawCircle(segX - 1.2f * density, segY - 1.2f * density, 1.1f * density, glintPaint)
+                        // Central core
+                        drawContext.canvas.nativeCanvas.drawCircle(cx3, cy3, 1.8f * density, dukuShadePaint)
                     }
 
-                    // Golden central connective core
-                    drawContext.canvas.nativeCanvas.drawCircle(cx3, cy3, 1.8f * density, dukuShadePaint)
+                    // D. Orbiting Sweet Juice Sparkles & Twinkles during bloom (2400ms -> 5000ms)
+                    if (currentMs in 2200f..5400f) {
+                        val spkU = (currentMs - 2200f) / 3200f
+                        val spkAlpha = (kotlin.math.sin(spkU * Math.PI.toFloat())).coerceIn(0f, 1f)
+                        sparklePaint.alpha = (alpha * spkAlpha * 255).toInt()
+
+                        val sparkles = listOf(
+                            Pair(cx3 - 16f * density, cy3 - 12f * density),
+                            Pair(cx3 + 18f * density, cy3 - 10f * density),
+                            Pair(cx3 - 12f * density, cy3 + 16f * density),
+                            Pair(cx3 + 14f * density, cy3 + 15f * density),
+                            Pair(cx3, cy3 - 18f * density)
+                        )
+                        for ((sx, sy) in sparkles) {
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 1.4f * density, sparklePaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 0.7f * density, glintPaint)
+                        }
+                    }
 
                     drawContext.canvas.nativeCanvas.restore()
                 }
