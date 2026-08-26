@@ -132,3 +132,76 @@ fn glide_recall_on_synthetic_traces() {
         misses.join("\n")
     );
 }
+
+/// Sloppy variant: heavier jitter, an offset landing on the first key, and
+/// corner-cutting (interior via-points pulled 35% toward the straight line
+/// between their neighbours — what fast thumbs actually draw). The floor is
+/// lower than the clean pass but must hold: this is the gesture quality the
+/// field complaint was about.
+fn synth_sloppy_trace(engine: &GlideEngine, word: &str, rng: &mut Lcg) -> Option<Vec<Point2D>> {
+    let ideal = engine.build_ideal_keypath(word)?;
+    // Corner-cut interior points toward their neighbours' midpoint.
+    let mut cut = ideal.clone();
+    for i in 1..cut.len().saturating_sub(1) {
+        let mid_x = (ideal[i - 1].x + ideal[i + 1].x) * 0.5;
+        let mid_y = (ideal[i - 1].y + ideal[i + 1].y) * 0.5;
+        cut[i] = Point2D::new(
+            ideal[i].x + (mid_x - ideal[i].x) * 0.35,
+            ideal[i].y + (mid_y - ideal[i].y) * 0.35,
+        );
+    }
+    let mut trace = Vec::new();
+    for pair in cut.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        for s in 0..5 {
+            let t = s as f32 / 5.0;
+            trace.push(Point2D::new(
+                a.x + (b.x - a.x) * t + rng.next_f32() * 30.0,
+                a.y + (b.y - a.y) * t + rng.next_f32() * 30.0,
+            ));
+        }
+    }
+    let first = cut[0];
+    let last = *cut.last()?;
+    trace.insert(0, Point2D::new(first.x + rng.next_f32() * 40.0, first.y + rng.next_f32() * 40.0));
+    trace.push(Point2D::new(last.x + rng.next_f32() * 40.0, last.y + rng.next_f32() * 40.0));
+    Some(trace)
+}
+
+#[test]
+fn glide_recall_on_sloppy_traces() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for &(w, f) in EVAL_WORDS {
+        nlp.trie.insert(w, f);
+    }
+    let mut rng = Lcg(0xDECAF);
+    let (mut top1, mut top3) = (0, 0);
+    let mut misses = Vec::new();
+    for &(word, _) in EVAL_WORDS {
+        let trace = synth_sloppy_trace(&glide, word, &mut rng).expect("layout covers a-z");
+        let results = glide.match_gesture(&trace, &nlp.trie, 8);
+        match results.iter().position(|m| m.word == word) {
+            Some(0) => {
+                top1 += 1;
+                top3 += 1;
+            }
+            Some(1..=2) => top3 += 1,
+            _ => misses.push(format!(
+                "'{}' -> {:?}",
+                word,
+                results.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+            )),
+        }
+    }
+    let n = EVAL_WORDS.len();
+    eprintln!("sloppy glide eval: top1 {top1}/{n}, top3 {top3}/{n}");
+    for m in &misses {
+        eprintln!("  miss: {m}");
+    }
+    assert!(
+        top3 * 100 >= n * 80,
+        "sloppy top-3 recall {top3}/{n} below 80% floor; misses:\n{}",
+        misses.join("\n")
+    );
+}
