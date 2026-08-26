@@ -286,6 +286,51 @@ impl NlpEngine {
                     break;
                 }
             }
+            
+            // 5c. Repeated Letter Burst Normalization (e.g. soooo -> so, yessss -> yes, pleaaase -> please, heyyy -> hey)
+            if candidates.is_empty() {
+                let mut single_collapsed = String::with_capacity(trimmed_lower.len());
+                let mut prev_c = None;
+                for ch in trimmed_lower.chars() {
+                    if Some(ch) != prev_c {
+                        single_collapsed.push(ch);
+                        prev_c = Some(ch);
+                    }
+                }
+                if single_collapsed.len() < trimmed_lower.len() {
+                    if self.trie.contains(&single_collapsed) {
+                        let formatted = Self::apply_casing(trimmed, &single_collapsed);
+                        candidates.push(RankedCandidate {
+                            word: formatted,
+                            is_autocorrect: true,
+                        });
+                    } else {
+                        // Try 2-char max collapsed (e.g. heelllooo -> hello)
+                        let mut double_collapsed = String::with_capacity(trimmed_lower.len());
+                        let mut last_char = None;
+                        let mut repeat_count = 0;
+                        for ch in trimmed_lower.chars() {
+                            if Some(ch) == last_char {
+                                repeat_count += 1;
+                                if repeat_count <= 2 {
+                                    double_collapsed.push(ch);
+                                }
+                            } else {
+                                last_char = Some(ch);
+                                repeat_count = 1;
+                                double_collapsed.push(ch);
+                            }
+                        }
+                        if self.trie.contains(&double_collapsed) {
+                            let formatted = Self::apply_casing(trimmed, &double_collapsed);
+                            candidates.push(RankedCandidate {
+                                word: formatted,
+                                is_autocorrect: true,
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         // 6. Prefix completions (completions must NOT auto-commit on space)
