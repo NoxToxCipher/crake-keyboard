@@ -1264,7 +1264,12 @@ pub fn is_spatial_slip_match(query: &str, candidate: &str) -> bool {
             }
         }
     }
-    slip_count > 0 && slip_count <= 2
+    // Long words tolerate a third fat-finger slip: at 8+ chars the word
+    // shape still identifies the target ("thoriufhky" -> thoroughly,
+    // "xurrenrky" -> currently, field specimens 2026-08-27), while at
+    // short lengths 3 slips is a different word, not a slip chain.
+    let max_slips = if q_chars.len() >= 8 { 3 } else { 2 };
+    slip_count > 0 && slip_count <= max_slips
 }
 
 /// Contextual Bigram Next-Word Transition Map for conversational English.

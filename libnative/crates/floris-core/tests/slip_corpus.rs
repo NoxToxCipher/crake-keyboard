@@ -12,6 +12,8 @@ fn engine() -> NlpEngine {
     // CORE_DICTIONARY (which may or may not contain them).
     for (w, f) in [
         ("currently", 220),
+        ("thoroughly", 200),
+        ("glide", 180),
         ("gliding", 140),
         ("can", 250),
         ("for", 255),
@@ -417,6 +419,30 @@ fn ti_autocommits_to_to_with_literal_reachable() {
     assert!(
         r.candidates.iter().any(|c| c.word == "ti" && !c.is_autocorrect),
         "literal 'ti' must stay tappable: {:?}",
+        r.candidates
+    );
+}
+
+/// Long words tolerate a third adjacent-key slip and AUTO-COMMIT the
+/// recovery: "thoriufhky" (i>o, f>g, k>l) and "xurrenrky" (x>c, r>t, k>l)
+/// are 3-slip chains at 9-10 chars where the word shape is unambiguous
+/// (field specimens 2026-08-27). Short words never get that tolerance:
+/// a 5-char 3-slip blob stays suggestion-only.
+#[test]
+fn three_slip_chains_autocommit_on_long_words_only() {
+    let e = engine();
+    for (typed, expected) in [("thoriufhky", "thoroughly"), ("xurrenrky", "currently")] {
+        let r = e.suggest_with_context(typed, "", 5);
+        let head = r.candidates.first().expect("candidates");
+        assert_eq!(head.word, expected, "'{typed}' head: {:?}", r.candidates);
+        assert!(head.is_autocorrect, "'{typed}' -> '{expected}' must auto-commit");
+    }
+    // "fkidr" is glide at 3 adjacent slips (f>g, k>l, r>e) but only 5 chars:
+    // too short to trust a 3-slip chain.
+    let r = e.suggest_with_context("fkidr", "", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.is_autocorrect),
+        "short 3-slip must stay suggestion-only: {:?}",
         r.candidates
     );
 }
