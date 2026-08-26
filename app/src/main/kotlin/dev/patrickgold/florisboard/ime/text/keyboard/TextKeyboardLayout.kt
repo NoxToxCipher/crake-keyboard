@@ -612,50 +612,36 @@ fun TextKeyboardLayout(
                     modifier = Modifier
                         .requiredSize(
                             width = dynamicWidth.toDp(),
-                            height = 24.dp,
+                            height = 20.dp,
                         )
                         .absoluteOffset {
                             IntOffset(
                                 x = (textKey.visibleBounds.center.x - halfWidth).toInt(),
-                                y = (textKey.visibleBounds.top - 12.dp.toPx()).toInt(),
+                                y = (textKey.visibleBounds.top - 10.dp.toPx()).toInt(),
                             )
                         },
                     contentAlignment = Alignment.Center,
                 ) {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
-                            .shadow(
-                                elevation = 4.dp,
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
-                                ambientColor = themeAccentColor,
-                                spotColor = themeAccentColor,
-                            )
                             .background(
-                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    colors = listOf(
-                                        androidx.compose.ui.graphics.Color(0xF60A1832),
-                                        androidx.compose.ui.graphics.Color(0xF0060E1E),
-                                    )
-                                ),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
+                                color = androidx.compose.ui.graphics.Color(0x30000000),
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(5.dp),
                             )
-                            .border(
-                                width = 1.dp,
-                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    colors = listOf(
-                                        themeAccentColor.copy(alpha = 0.85f),
-                                        themeAccentColor.copy(alpha = 0.25f),
-                                    )
-                                ),
-                                shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
                     ) {
                         androidx.compose.material3.Text(
                             text = flickWord,
-                            fontSize = 12.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = themeAccentColor,
+                            fontSize = 11.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            color = themeAccentColor.copy(alpha = 0.92f),
+                            style = androidx.compose.ui.text.TextStyle(
+                                shadow = androidx.compose.ui.graphics.Shadow(
+                                    color = androidx.compose.ui.graphics.Color(0xE0000000),
+                                    offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                                    blurRadius = 3f,
+                                )
+                            ),
                             maxLines = 1,
                             softWrap = false,
                         )
@@ -728,26 +714,28 @@ fun TextKeyboardLayout(
                 Box(
                     modifier = Modifier
                         .background(
-                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                colors = listOf(
-                                    androidx.compose.ui.graphics.Color(0xEE091428),
-                                    androidx.compose.ui.graphics.Color(0xCC00E5FF),
-                                )
-                            ),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
+                            color = androidx.compose.ui.graphics.Color(0x40000000),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                         )
                         .border(
-                            width = 1.5.dp,
-                            color = themeAccentColor.copy(alpha = alpha),
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
+                            width = 1.dp,
+                            color = themeAccentColor.copy(alpha = alpha * 0.7f),
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
                         )
-                        .padding(horizontal = 10.dp, vertical = 3.dp),
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
                 ) {
                     androidx.compose.material3.Text(
                         text = activeCatapult.word,
-                        fontSize = 13.sp,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                        color = themeAccentColor,
+                        fontSize = 12.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = themeAccentColor.copy(alpha = alpha),
+                        style = androidx.compose.ui.text.TextStyle(
+                            shadow = androidx.compose.ui.graphics.Shadow(
+                                color = androidx.compose.ui.graphics.Color(0xE0000000),
+                                offset = androidx.compose.ui.geometry.Offset(0f, 2f),
+                                blurRadius = 4f,
+                            )
+                        ),
                         maxLines = 1,
                     )
                 }
