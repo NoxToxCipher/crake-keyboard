@@ -38,6 +38,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInCubic
+import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -791,16 +793,37 @@ private fun TextKeyButton(
         }
     }
 
-    var isEasterEggActive by remember { mutableStateOf(false) }
+    var eggTriggerTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    var lastEggSignature by remember { mutableStateOf("") }
+    val eggAlphaAnim = remember { Animatable(0f) }
 
     LaunchedEffect(activeContent) {
         val textBefore = activeContent.textBeforeSelection.toString()
         val composing = activeContent.composingText
-        if (textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
-            textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) {
-            isEasterEggActive = true
-            kotlinx.coroutines.delay(10_000L)
-            isEasterEggActive = false
+        val isEgg = textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
+            textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)
+
+        val signature = "$textBefore::$composing"
+        if (isEgg && signature != lastEggSignature) {
+            lastEggSignature = signature
+            eggTriggerTime = System.currentTimeMillis()
+        }
+    }
+
+    LaunchedEffect(eggTriggerTime) {
+        if (eggTriggerTime > 0L) {
+            // Elegant smooth fade in (350ms)
+            eggAlphaAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 350, easing = EaseOutCubic),
+            )
+            // Hold for 9.3 seconds (total active window = exactly 10.0 seconds)
+            kotlinx.coroutines.delay(9300L)
+            // Elegant smooth fade out (350ms)
+            eggAlphaAnim.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 350, easing = EaseInCubic),
+            )
         }
     }
     val attributes = mapOf(
@@ -879,7 +902,7 @@ private fun TextKeyButton(
                     )
             )
         }
-        if (key.computedData.code == KeyCode.SHIFT && isEasterEggActive) {
+        if (key.computedData.code == KeyCode.SHIFT && eggAlphaAnim.value > 0f) {
             val eggImage = painterResource(id = R.drawable.ic_crake_easter_egg)
             Image(
                 painter = eggImage,
@@ -888,25 +911,31 @@ private fun TextKeyButton(
                     .align(Alignment.Center)
                     .size(24.dp)
                     .graphicsLayer {
-                        if (key.isPressed && key.isEnabled) {
-                            scaleX = 1.25f
-                            scaleY = 1.25f
-                        }
+                        alpha = eggAlphaAnim.value
+                        val baseScale = 0.88f + 0.12f * eggAlphaAnim.value
+                        scaleX = baseScale * (if (key.isPressed && key.isEnabled) 1.25f else 1.0f)
+                        scaleY = baseScale * (if (key.isPressed && key.isEnabled) 1.25f else 1.0f)
                     }
             )
-        } else key.foregroundImageVector?.let { imageVector ->
-            SnyggIcon(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .graphicsLayer {
-                        if (key.isPressed && key.isEnabled) {
-                            scaleX = 1.12f
-                            scaleY = 1.12f
-                        }
-                    },
-                imageVector = imageVector,
-                contentDescription = null,
-            )
+        }
+        if (key.computedData.code != KeyCode.SHIFT || eggAlphaAnim.value < 1f) {
+            key.foregroundImageVector?.let { imageVector ->
+                SnyggIcon(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .graphicsLayer {
+                            if (key.computedData.code == KeyCode.SHIFT) {
+                                alpha = 1f - eggAlphaAnim.value
+                            }
+                            if (key.isPressed && key.isEnabled) {
+                                scaleX = 1.12f
+                                scaleY = 1.12f
+                            }
+                        },
+                    imageVector = imageVector,
+                    contentDescription = null,
+                )
+            }
         }
         if (key.computedData.code == KeyCode.SHIFT) {
             val shiftState = evaluator.state.inputShiftState
