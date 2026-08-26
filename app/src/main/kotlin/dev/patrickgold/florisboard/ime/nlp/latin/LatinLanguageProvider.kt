@@ -25,6 +25,7 @@ import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingResult
+import dev.patrickgold.florisboard.ime.nlp.MergedWordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionProvider
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
@@ -186,7 +187,30 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         if (query.isBlank()) return emptyList()
 
+        // Previous token, for spurious-space repair ("shou kd" -> "should").
+        val prevToken = content.textBeforeSelection
+            .dropLast(query.length)
+            .trimEnd()
+            .takeLastWhile { !it.isWhitespace() }
+
         return buildList {
+            // 0. Spurious mid-word space repair: offered first, never
+            // auto-committed — the user taps it deliberately and BOTH
+            // fragments are replaced (see MergedWordSuggestionCandidate).
+            if (FlorisNative.isAvailable() && prevToken.isNotEmpty()) {
+                val merged = FlorisNative.mergeRepair(prevToken, query)
+                if (merged != null) {
+                    add(
+                        MergedWordSuggestionCandidate(
+                            text = merged,
+                            secondaryText = "$prevToken $query",
+                            confidence = 0.9,
+                            sourceProvider = this@LatinLanguageProvider,
+                        )
+                    )
+                }
+            }
+
             // 1. Check Smart Text Expansion & User Snippets First
             try {
                 val snippetCandidates = DictionaryManager.default().queryUserDictionary(query, subtype.primaryLocale)

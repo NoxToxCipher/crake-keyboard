@@ -56,6 +56,47 @@ fn recovers_adjacent_key_slips() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// Round 3: spurious mid-word spaces, verbatim from live typing. The merge
+/// repair must recover the intended word from the two fragments — and must
+/// refuse to merge legitimate word pairs.
+#[test]
+fn repairs_spurious_space_splits() {
+    let mut e = engine();
+    for (w, f) in [("should", 250), ("start", 240), ("double", 200), ("word", 240), ("often", 220), ("use", 250), ("things", 230), ("improve", 200), ("todo", 60)] {
+        e.trie.insert(w, f);
+    }
+    // The shipped dictionary is polluted with corpus-noise fragments at high
+    // frequency ("ni" 201, "lt" 209, "kd" 180 — measured). Mirror that here:
+    // repair must fire even though the fragments look like "words".
+    for (w, f) in [("ni", 201), ("lt", 209), ("kd", 180), ("shou", 142), ("st", 241), ("att", 168), ("rn", 190), ("eo", 160), ("oft", 167), ("doi", 168), ("ble", 129)] {
+        e.trie.insert(w, f);
+    }
+    let mut failures = Vec::new();
+    for (prev, cur, expected) in [
+        ("shou", "kd", Some("should")),
+        ("st", "att", Some("start")),
+        ("ni", "stakes", Some("mistakes")),
+        ("deliberate", "lt", Some("deliberately")),
+        ("doi", "ble", Some("double")),
+        ("eo", "rd", Some("word")),
+        ("oft", "rn", Some("often")),
+        // Legitimate pairs must never merge.
+        ("to", "do", None),
+        ("in", "the", None),
+        ("can", "for", None),
+    ] {
+        let got = e.merge_repair(prev, cur);
+        let ok = match expected {
+            Some(w) => got.as_deref() == Some(w),
+            None => got.is_none(),
+        };
+        if !ok {
+            failures.push(format!("('{prev}' + '{cur}') expected {expected:?}, got {got:?}"));
+        }
+    }
+    assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
 /// Round 2: the fat-finger classes beyond adjacent substitution — swapped
 /// neighbouring letters (transposition), a key registering twice, and a key
 /// not registering at all. Same bar: the intended word must appear top-3.

@@ -101,6 +101,16 @@ object FlorisNative {
         return nativeHitTest(generation, x, y)
     }
 
+    /**
+     * Two-token spurious-space repair: returns the dictionary word the two
+     * fragments were meant to be ("shou" + "kd" -> "should"), or null when
+     * they should not merge. Legitimate word pairs never merge.
+     */
+    fun mergeRepair(prevWord: String, current: String): String? {
+        if (!isLoaded || prevWord.isEmpty() || current.isEmpty()) return null
+        return nativeNlpMergeRepair(prevWord, current).takeIf { it.isNotEmpty() }
+    }
+
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         // Never learn text if it is detected as a secret/mnemonic or threat
@@ -255,6 +265,8 @@ object FlorisNative {
     private external fun nativeHitSetKeys(rects: FloatArray): Int
 
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
+
+    private external fun nativeNlpMergeRepair(prevWord: String, current: String): String
 
     private external fun nativeNlpCorpusWords(): Array<String>
 

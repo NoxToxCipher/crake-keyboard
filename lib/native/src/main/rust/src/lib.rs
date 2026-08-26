@@ -105,6 +105,38 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitTest
     }
 }
 
+/// Two-token spurious-space repair ("shou kd" -> "should"). Returns the
+/// merged dictionary word, or an empty string when the fragments should not
+/// merge (legitimate pairs never do — see NlpEngine::merge_repair).
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpMergeRepair(
+    mut env: JNIEnv,
+    _class: JClass,
+    prev_word: JString,
+    current: JString,
+) -> jstring {
+    let empty = env
+        .new_string("")
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+    let prev = match env.get_string(&prev_word) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return empty,
+    };
+    let cur = match env.get_string(&current) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return empty,
+    };
+    let merged = match NLP_ENGINE.read() {
+        Ok(engine) => engine.merge_repair(&prev, &cur),
+        Err(_) => None,
+    };
+    match merged {
+        Some(word) => env.new_string(&word).map(|s| s.into_raw()).unwrap_or(empty),
+        None => empty,
+    }
+}
+
 /// The static corpus as loaded from the CRKD blob, in blob order. Serves the
 /// glide classifier's word list now that the JVM no longer keeps its own copy
 /// of the dictionary.
