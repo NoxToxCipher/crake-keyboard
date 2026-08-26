@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.IntOffset
@@ -274,6 +275,7 @@ fun ClipboardInputLayout(
     var showClearAllHistory by remember { mutableStateOf(false) }
 
     // Drag-and-Drop state tracking
+    var rootLayoutOffset by remember { mutableStateOf(Offset.Zero) }
     var draggedItem by remember { mutableStateOf<ClipboardItem?>(null) }
     var dragPosition by remember { mutableStateOf(Offset.Zero) }
     var hoveredCategory by remember { mutableStateOf<ClipCategory?>(null) }
@@ -384,6 +386,13 @@ fun ClipboardInputLayout(
             attributes = attributes,
             modifier = modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    if (isBeingDragged) {
+                        alpha = 0.35f
+                        scaleX = 0.95f
+                        scaleY = 0.95f
+                    }
+                }
                 .onGloballyPositioned { coordinates ->
                     itemTopLeftInRoot = coordinates.boundsInRoot().topLeft
                 }
@@ -736,32 +745,46 @@ fun ClipboardInputLayout(
                 }
             }
 
-            // Floating Drag Ghost Preview
+            // Floating Drag Ghost Preview directly floating under/atop thumb
             if (draggedItem != null && dragPosition != Offset.Zero) {
+                val localX = (dragPosition.x - rootLayoutOffset.x).coerceAtLeast(0f)
+                val localY = (dragPosition.y - rootLayoutOffset.y).coerceAtLeast(0f)
+
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .zIndex(99f)
+                        .zIndex(999f)
                 ) {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .offset {
                                 IntOffset(
-                                    (dragPosition.x - 70).roundToInt().coerceAtLeast(0),
-                                    (dragPosition.y - 40).roundToInt().coerceAtLeast(0)
+                                    (localX - 110).roundToInt().coerceAtLeast(10),
+                                    (localY - 70).roundToInt().coerceAtLeast(5)
                                 )
                             }
-                            .width(140.dp)
-                            .background(Color(0xFF131A29).copy(alpha = 0.92f), RoundedCornerShape(10.dp))
-                            .border(BorderStroke(2.dp, Color(0xFF00E5A3)), RoundedCornerShape(10.dp))
-                            .padding(8.dp)
+                            .width(160.dp)
+                            .shadow(12.dp, RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0F172A).copy(alpha = 0.95f), RoundedCornerShape(12.dp))
+                            .border(BorderStroke(2.dp, Color(0xFF00E5A3)), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Text(
-                            text = draggedItem!!.displayText(),
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            maxLines = 2
-                        )
+                        androidx.compose.foundation.layout.Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = if (draggedItem!!.isPinned) "📌" else "📋",
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = draggedItem!!.displayText(),
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 2
+                            )
+                        }
                     }
                 }
             }
