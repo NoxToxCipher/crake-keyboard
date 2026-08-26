@@ -165,6 +165,15 @@ impl NlpEngine {
     }
 
     /// Records a typed/selected word in the session recency cache (bounded to 64 items).
+    /// Dynamically learns or boosts a user-typed word in the trie and session recency cache.
+    pub fn learn_and_boost_word(&mut self, word: &str) {
+        let trimmed = word.trim().to_ascii_lowercase();
+        if trimmed.len() >= 2 {
+            self.trie.boost_or_insert(&trimmed, 15);
+            self.record_session_word(&trimmed);
+        }
+    }
+
     pub fn record_session_word(&mut self, word: &str) {
         let trimmed = word.trim().to_ascii_lowercase();
         if trimmed.len() >= 2 && !self.session_recency.contains(&trimmed) {

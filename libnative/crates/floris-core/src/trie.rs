@@ -78,6 +78,28 @@ impl RadixTrie {
         }
     }
 
+    pub fn boost_or_insert(&mut self, word: &str, delta_freq: u32) {
+        if word.is_empty() {
+            return;
+        }
+
+        self.bloom.insert(word);
+
+        let mut current = &mut self.root;
+        for ch in word.chars() {
+            current = current.children.entry(ch).or_default();
+        }
+
+        if !current.is_terminal {
+            self.size += 1;
+            current.is_terminal = true;
+            current.frequency = delta_freq.max(150);
+            current.word = Some(word.to_string());
+        } else {
+            current.frequency = current.frequency.saturating_add(delta_freq).min(255);
+        }
+    }
+
     pub fn insert(&mut self, word: &str, frequency: u32) {
         if word.is_empty() {
             return;
