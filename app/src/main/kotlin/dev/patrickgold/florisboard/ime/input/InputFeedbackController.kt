@@ -88,7 +88,7 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
 
     fun gestureMovingSwipe(data: KeyData = TextKeyData.UNSPECIFIED) {
         if (prefs.inputFeedback.audioFeatGestureMovingSwipe.get()) performAudioFeedback(data, 0.4)
-        if (prefs.inputFeedback.hapticFeatGestureMovingSwipe.get()) performHapticFeedback(data, 0.05)
+        if (prefs.inputFeedback.hapticFeatGestureMovingSwipe.get()) performHapticFeedback(data, 0.35)
     }
 
     private fun systemPref(id: String): Boolean {
