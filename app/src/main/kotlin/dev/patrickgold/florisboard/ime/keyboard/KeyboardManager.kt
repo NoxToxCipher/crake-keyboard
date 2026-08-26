@@ -213,9 +213,16 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     fun reevaluateInputShiftState() {
         if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
+            val textBefore = editorInstance.activeContent.textBeforeSelection.toString()
+            val isSentenceStart = textBefore.isEmpty() ||
+                textBefore.endsWith(". ") || textBefore.endsWith("? ") || textBefore.endsWith("! ") ||
+                textBefore.endsWith(".\n") || textBefore.endsWith("?\n") || textBefore.endsWith("!\n") ||
+                textBefore.endsWith("\n") ||
+                Regex(".*[.?!]\\s+$").matches(textBefore)
+
             val shift = prefs.correction.autoCapitalization.get()
                 && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
-                && editorInstance.activeCursorCapsMode != InputAttributes.CapsMode.NONE
+                && (editorInstance.activeCursorCapsMode != InputAttributes.CapsMode.NONE || isSentenceStart)
             activeState.inputShiftState = when {
                 shift -> InputShiftState.SHIFTED_AUTOMATIC
                 else -> InputShiftState.UNSHIFTED
