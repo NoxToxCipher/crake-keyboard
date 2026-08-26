@@ -147,12 +147,16 @@ fun EmojiPaletteView(
     val replaceAll = activeEditorInfo.emojiCompatReplaceAll
     val emojiCompatInstance by FlorisEmojiCompat.getAsFlow(replaceAll).collectAsState()
     val emojiMappings = remember(emojiCompatInstance, fullEmojiMappings, metadataVersion, systemFontPaint) {
-        fullEmojiMappings.byCategory.mapValues { (_, emojiSetList) ->
-            emojiSetList.mapNotNull { emojiSet ->
-                emojiSet.emojis.filter { emoji ->
-                    emojiCompatInstance?.getEmojiMatch(emoji.value, metadataVersion) == EmojiCompat.EMOJI_SUPPORTED ||
-                        systemFontPaint.hasGlyph(emoji.value)
-                }.let { if (it.isEmpty()) null else EmojiSet(it) }
+        fullEmojiMappings.byCategory.mapValues { (category, emojiSetList) ->
+            if (category == EmojiCategory.KAOMOJI || category == EmojiCategory.MATH_LOGIC || category == EmojiCategory.CRYPTO) {
+                emojiSetList
+            } else {
+                emojiSetList.mapNotNull { emojiSet ->
+                    emojiSet.emojis.filter { emoji ->
+                        emojiCompatInstance?.getEmojiMatch(emoji.value, metadataVersion) == EmojiCompat.EMOJI_SUPPORTED ||
+                            systemFontPaint.hasGlyph(emoji.value)
+                    }.let { if (it.isEmpty()) null else EmojiSet(it) }
+                }
             }
         }
     }

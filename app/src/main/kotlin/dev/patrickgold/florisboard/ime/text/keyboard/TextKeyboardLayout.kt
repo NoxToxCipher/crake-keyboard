@@ -330,8 +330,8 @@ fun TextKeyboardLayout(
                 emptyMap()
             }
         }
-        // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows)
-        if (keyboard.mode == KeyboardMode.CHARACTERS) {
+        // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows on all pages)
+        if (keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
             val fretPositions = remember(keyboard) {
                 val rowBounds = keyboard.keys().asSequence()
                     .groupBy { it.touchBounds.top.toInt() }
