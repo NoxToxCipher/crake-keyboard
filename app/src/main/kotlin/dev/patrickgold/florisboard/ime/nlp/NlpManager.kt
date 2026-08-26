@@ -54,12 +54,18 @@ private fun evaluateMathOrMacro(input: String): String? {
     val clean = input.trim()
     val now = java.time.ZonedDateTime.now()
     when (clean.lowercase()) {
-        ".now" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-        ".today" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))
-        ".date" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        ".time" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
-        ".utc" -> return java.time.Instant.now().toString()
-        ".ts" -> return (System.currentTimeMillis() / 1000).toString()
+        ".now", "!now" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        ".today", "!today" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))
+        ".date", "!date" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        ".time", "!time" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+        ".utc", "!utc" -> return java.time.Instant.now().toString()
+        ".ts", "!ts" -> return (System.currentTimeMillis() / 1000).toString()
+        ".eth", "!eth", ":eth", ".ethereum", "!ethereum", "eth" -> return "Ξ"
+        ".btc", "!btc", ":btc", ".bitcoin", "!bitcoin", "btc" -> return "₿"
+        ".sol", "!sol", ":sol", ".solana", "!solana" -> return "◎"
+        ".xmr", "!xmr", ":xmr", ".monero", "!monero" -> return "ɱ"
+        ".doge", "!doge", ":doge" -> return "Ð"
+        ".usdt", "!usdt", ":usdt" -> return "₮"
     }
     if (clean.endsWith("=") && clean.length > 2) {
         val expr = clean.dropLast(1).trim()
@@ -79,6 +85,10 @@ private fun evaluateMathOrMacro(input: String): String? {
             "jpy" -> "¥$num"
             "btc" -> "₿$num"
             "eth" -> "Ξ$num"
+            "sol" -> "◎$num"
+            "xmr" -> "ɱ$num"
+            "doge" -> "Ð$num"
+            "usdt" -> "₮$num"
             "deg" -> "$num°"
             "c" -> "$num°C"
             "f" -> "$num°F"
