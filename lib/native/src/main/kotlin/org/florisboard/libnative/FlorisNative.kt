@@ -123,6 +123,12 @@ object FlorisNative {
         return nativeNlpMergeRepair(preceding, prevWord, current).takeIf { it.isNotEmpty() }
     }
 
+    /** Records that the user wrote [nextWord] after [prevWord] (personal context). */
+    fun recordPersonalBigram(prevWord: String, nextWord: String) {
+        if (!isLoaded || prevWord.isEmpty() || nextWord.isEmpty()) return
+        nativeNlpRecordPersonalBigram(prevWord, nextWord)
+    }
+
     /** Learned state (user words + correction habits) as a CRKL blob. */
     fun exportLearned(): ByteArray? {
         if (!isLoaded) return null
@@ -306,6 +312,8 @@ object FlorisNative {
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 
     private external fun nativeNlpMergeRepair(preceding: String, prevWord: String, current: String): String
+
+    private external fun nativeNlpRecordPersonalBigram(prevWord: String, nextWord: String)
 
     private external fun nativeNlpExportLearned(): ByteArray
 

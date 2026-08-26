@@ -198,6 +198,11 @@ pub struct NlpEngine {
     /// the part of the trie that must survive restarts. Persisted via
     /// [`crate::persist`]; capped there so it can never bloat.
     learned_words: std::collections::HashMap<String, u32>,
+    /// The user's OWN consecutive word pairs with use counts. Layered over
+    /// the shipped CRKB table in [`Self::bigram_pair_score`], so every
+    /// context consumer (rescorer, glide, merge attestation, split-repair
+    /// witnesses) reflects how this user actually writes. Capped and pruned.
+    personal_bigrams: std::collections::HashMap<(String, String), u32>,
 }
 
 impl NlpEngine {
@@ -216,7 +221,40 @@ impl NlpEngine {
             bigrams: crate::bigram::BigramModel::default(),
             word_ids: std::collections::HashMap::new(),
             learned_words: std::collections::HashMap::new(),
+            personal_bigrams: std::collections::HashMap::new(),
         }
+    }
+
+    /// Records that the user wrote `next` after `prev`. At the cap, the
+    /// least-used pair is pruned so the store follows current habits
+    /// instead of freezing on old ones.
+    pub fn record_personal_bigram(&mut self, prev: &str, next: &str) {
+        let prev = prev.trim().to_lowercase();
+        let next = next.trim().to_lowercase();
+        if prev.is_empty()
+            || next.is_empty()
+            || prev.chars().count() > crate::persist::MAX_TOKEN_LEN
+            || next.chars().count() > crate::persist::MAX_TOKEN_LEN
+            || !prev.chars().all(|c| c.is_alphabetic() || c == '\'')
+            || !next.chars().all(|c| c.is_alphabetic() || c == '\'')
+        {
+            return;
+        }
+        let key = (prev, next);
+        if !self.personal_bigrams.contains_key(&key)
+            && self.personal_bigrams.len() >= crate::persist::MAX_PERSONAL_BIGRAMS as usize
+        {
+            if let Some(weakest) = self
+                .personal_bigrams
+                .iter()
+                .min_by_key(|(_, &n)| n)
+                .map(|(k, _)| k.clone())
+            {
+                self.personal_bigrams.remove(&weakest);
+            }
+        }
+        let n = self.personal_bigrams.entry(key).or_insert(0);
+        *n = n.saturating_add(1);
     }
 
     /// Learns a word the user accepted or typed: enters the trie AND the
@@ -253,6 +291,13 @@ impl NlpEngine {
             }
         }
         state.corrections.sort();
+        state.bigrams = self
+            .personal_bigrams
+            .iter()
+            .map(|((a, b), &n)| (a.clone(), b.clone(), n))
+            .collect();
+        // Keep the most-used pairs when over the cap.
+        state.bigrams.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
         state.serialize()
     }
 
@@ -274,6 +319,10 @@ impl NlpEngine {
         for (typo, intended, n) in state.corrections {
             let counter = self.personal_corrections.entry(typo).or_default();
             let slot = counter.entry(intended).or_insert(0);
+            *slot = (*slot).max(n);
+        }
+        for (w1, w2, n) in state.bigrams {
+            let slot = self.personal_bigrams.entry((w1, w2)).or_insert(0);
             *slot = (*slot).max(n);
         }
         Ok(count)
@@ -301,9 +350,20 @@ impl NlpEngine {
     /// Public pair score for other engines (glide context blending):
     /// 0 when either word is unknown or the pair is unseen. Inputs are
     /// lowercased here so callers cannot get casing wrong.
+    ///
+    /// The user's OWN pairs outrank web statistics: a personally used pair
+    /// scores at least 140, rising with use to 255 — so personal phrasing
+    /// wins context decisions even when the web corpus never saw it.
     pub fn bigram_pair_score(&self, prev: &str, next: &str) -> u8 {
-        self.bigram_score_words(&prev.to_lowercase(), &next.to_lowercase())
-            .unwrap_or(0)
+        let prev = prev.to_lowercase();
+        let next = next.to_lowercase();
+        let shipped = self.bigram_score_words(&prev, &next).unwrap_or(0);
+        let personal = self
+            .personal_bigrams
+            .get(&(prev, next))
+            .map(|&n| 140u32.saturating_add(n.saturating_mul(15)).min(255) as u8)
+            .unwrap_or(0);
+        shipped.max(personal)
     }
 
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
@@ -935,7 +995,8 @@ impl NlpEngine {
                         .map(|c| {
                             let cand = c.word.to_lowercase();
                             let freq = self.trie.get_frequency(&cand).unwrap_or(0);
-                            let bigram = self.bigram_score_words(&prev_clean, &cand).unwrap_or(0);
+                            // Personal pairs layered over the shipped table.
+                            let bigram = self.bigram_pair_score(&prev_clean, &cand);
                             let f = crate::rescorer::features(
                                 &trimmed_lower,
                                 &cand,

@@ -29,6 +29,28 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInse
     }
 }
 
+/// Records a personal bigram: the user wrote `next` after `prev`. Feeds the
+/// personal context layer consulted by every bigram consumer.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRecordPersonalBigram(
+    mut env: JNIEnv,
+    _class: JClass,
+    prev_word: JString,
+    next_word: JString,
+) {
+    let prev = env
+        .get_string(&prev_word)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+    let next = env
+        .get_string(&next_word)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+    if let Ok(mut engine) = NLP_ENGINE.write() {
+        engine.record_personal_bigram(&prev, &next);
+    }
+}
+
 /// Serializes the learned state (user words + correction habits) for the
 /// Kotlin side to write to app-private storage.
 #[no_mangle]

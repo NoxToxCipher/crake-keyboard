@@ -17,10 +17,13 @@
 //! ```
 
 pub const LEARNED_MAGIC: [u8; 4] = *b"CRKL";
-pub const LEARNED_VERSION: u8 = 1;
-/// Size discipline (standing directive: no bloat): both sections capped.
+/// v2 appends the personal-bigrams section; v1 blobs (already on devices)
+/// still parse — their bigram section is simply empty.
+pub const LEARNED_VERSION: u8 = 2;
+/// Size discipline (standing directive: no bloat): every section capped.
 pub const MAX_LEARNED_WORDS: u32 = 5_000;
 pub const MAX_CORRECTIONS: u32 = 5_000;
+pub const MAX_PERSONAL_BIGRAMS: u32 = 2_000;
 pub const MAX_TOKEN_LEN: usize = 64;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -35,6 +38,8 @@ pub enum LearnedError {
 pub struct LearnedState {
     pub words: Vec<(String, u32)>,
     pub corrections: Vec<(String, String, u32)>,
+    /// The user's own consecutive word pairs with use counts (v2+).
+    pub bigrams: Vec<(String, String, u32)>,
 }
 
 fn push_token(out: &mut Vec<u8>, token: &str) {
@@ -89,11 +94,22 @@ impl LearnedState {
             push_token(&mut out, intended);
             out.extend_from_slice(&n.to_le_bytes());
         }
+        let bigrams = &self.bigrams[..self.bigrams.len().min(MAX_PERSONAL_BIGRAMS as usize)];
+        out.extend_from_slice(&(bigrams.len() as u32).to_le_bytes());
+        for (w1, w2, n) in bigrams {
+            push_token(&mut out, w1);
+            push_token(&mut out, w2);
+            out.extend_from_slice(&n.to_le_bytes());
+        }
         out
     }
 
     pub fn parse(data: &[u8]) -> Result<Self, LearnedError> {
-        if data.len() < 5 || data[0..4] != LEARNED_MAGIC || data[4] != LEARNED_VERSION {
+        if data.len() < 5 || data[0..4] != LEARNED_MAGIC {
+            return Err(LearnedError::NotOurs);
+        }
+        let version = data[4];
+        if version == 0 || version > LEARNED_VERSION {
             return Err(LearnedError::NotOurs);
         }
         let mut offset = 5;
@@ -118,7 +134,21 @@ impl LearnedState {
             let n = read_u32(data, &mut offset)?;
             corrections.push((typo, intended, n));
         }
-        Ok(Self { words, corrections })
+        let mut bigrams = Vec::new();
+        if version >= 2 {
+            let bigram_count = read_u32(data, &mut offset)?;
+            if bigram_count > MAX_PERSONAL_BIGRAMS {
+                return Err(LearnedError::CountTooLarge(bigram_count));
+            }
+            bigrams.reserve(bigram_count as usize);
+            for _ in 0..bigram_count {
+                let w1 = read_token(data, &mut offset)?.to_string();
+                let w2 = read_token(data, &mut offset)?.to_string();
+                let n = read_u32(data, &mut offset)?;
+                bigrams.push((w1, w2, n));
+            }
+        }
+        Ok(Self { words, corrections, bigrams })
     }
 }
 
@@ -130,6 +160,7 @@ mod tests {
         LearnedState {
             words: vec![("crake".into(), 180), ("roratus".into(), 120)],
             corrections: vec![("thay".into(), "that".into(), 3), ("hte".into(), "the".into(), 7)],
+            bigrams: vec![("glossy".into(), "cockatoo".into(), 2)],
         }
     }
 
@@ -155,6 +186,22 @@ mod tests {
                 "cut={cut} must not parse"
             );
         }
+    }
+
+    #[test]
+    fn v1_blobs_still_parse_with_empty_bigrams() {
+        // Hand-built v1 layout: magic, version 1, two sections only —
+        // exactly what iteration-18 builds wrote to devices.
+        let mut v1 = Vec::new();
+        v1.extend_from_slice(&LEARNED_MAGIC);
+        v1.push(1);
+        v1.extend_from_slice(&1u32.to_le_bytes());
+        push_token(&mut v1, "crake");
+        v1.extend_from_slice(&180u32.to_le_bytes());
+        v1.extend_from_slice(&0u32.to_le_bytes());
+        let parsed = LearnedState::parse(&v1).unwrap();
+        assert_eq!(parsed.words, vec![("crake".to_string(), 180)]);
+        assert!(parsed.bigrams.is_empty());
     }
 
     #[test]

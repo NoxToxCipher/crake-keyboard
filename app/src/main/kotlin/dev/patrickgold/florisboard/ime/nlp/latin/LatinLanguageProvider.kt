@@ -233,6 +233,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             .trimEnd()
             .takeLastWhile { !it.isWhitespace() }
             .toString()
+        lastPrevToken = prevToken.toString()
 
         return buildList {
             // 0. Spurious mid-word space repair: offered first, never
@@ -287,6 +288,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private var lastRevertedWord: String? = null
     private var lastRevertedTimestamp: Long = 0L
 
+    /** Prev token captured during the most recent suggest() call, so an
+     *  acceptance can record the personal bigram (prev, accepted). */
+    @Volatile private var lastPrevToken: String = ""
+
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
         // Never log candidate content: on debug builds flogDebug writes to
         // logcat, and typed words must not leave the app even there.
@@ -300,6 +305,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 lastRevertedWord = null
             }
             FlorisNative.insertWord(acceptedWord, 100)
+            // Personal context: the user wrote acceptedWord after the last
+            // observed previous token. Incognito never reaches this path.
+            if (lastPrevToken.isNotEmpty()) {
+                FlorisNative.recordPersonalBigram(lastPrevToken, acceptedWord)
+            }
             persistLearnedState()
         }
     }
