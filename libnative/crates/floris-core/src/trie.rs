@@ -131,6 +131,18 @@ impl RadixTrie {
     }
 
     /// Prefix completion ordered by frequency descending, then alphabetical.
+    pub fn get_valid_next_chars(&self, prefix: &str) -> Vec<char> {
+        let mut curr = &self.root;
+        for ch in prefix.chars() {
+            if let Some(next) = curr.children.get(&ch) {
+                curr = next;
+            } else {
+                return Vec::new();
+            }
+        }
+        curr.children.keys().copied().collect()
+    }
+
     pub fn prefix_search(&self, prefix: &str, limit: usize) -> Vec<(String, u32)> {
         let mut results = Vec::new();
         if let Some(node) = self.get_terminal_node(prefix) {
