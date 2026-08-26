@@ -5132,8 +5132,13 @@ private fun TextKeyButton(
             val isRainActive = remember(activeContent) {
                 val tb = activeContent.textBeforeSelection.toString().lowercase()
                 val comp = activeContent.composingText.lowercase()
-                val keys = listOf("rain", "rainy", "raining")
-                keys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }
+                val keys = listOf("rain", "rainy", "raining", "rainfall", "rainstorm")
+                keys.any { k ->
+                    val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                    delimiters.any { d ->
+                        tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
+                    }
+                }
             }
             var rainStartTime by remember { mutableStateOf(0L) }
             LaunchedEffect(isRainActive) {
