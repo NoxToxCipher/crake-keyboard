@@ -416,6 +416,7 @@ fun TextKeyboardLayout(
 
         var eclectusFlightTriggerTime by remember { mutableStateOf(0L) }
         var sunConureFlightTriggerTime by remember { mutableStateOf(0L) }
+        var soccerRollTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -426,6 +427,10 @@ fun TextKeyboardLayout(
             val sunConureKeys = listOf("sun conure", "sunconure", "conure")
             if (sunConureKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 sunConureFlightTriggerTime = System.currentTimeMillis()
+            }
+            val soccerKeys = listOf("soccer", "football", "futbol")
+            if (soccerKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                soccerRollTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1052,6 +1057,128 @@ fun TextKeyboardLayout(
 
                     // Draw Slate Beak
                     drawContext.canvas.nativeCanvas.drawPath(beakPath, beakPaint)
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Soccer Ball Fret Roll Easter Egg: Top Fret (L -> R) then Bottom Fret (R -> L)
+        if (soccerRollTriggerTime > 0L) {
+            val soccerProgress = remember(soccerRollTriggerTime) { Animatable(0f) }
+            LaunchedEffect(soccerRollTriggerTime) {
+                soccerProgress.snapTo(0f)
+                soccerProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3800, easing = LinearEasing),
+                )
+                soccerRollTriggerTime = 0L
+            }
+            if (soccerProgress.value in 0.001f..0.999f) {
+                val t = soccerProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val w = size.width
+                    val h = size.height
+                    val ballRadius = 12f * density
+
+                    // Determine top and bottom fret lines
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val topFretY = h / rowCount
+                    val bottomFretY = h - (h / rowCount)
+
+                    val cx: Float
+                    val cy: Float
+                    val rotDeg: Float
+
+                    if (t < 0.5f) {
+                        // Phase 1: Roll across top fret from Left to Right
+                        val p = t * 2.0f
+                        cx = (-ballRadius * 2f) + p * (w + ballRadius * 4f)
+                        cy = topFretY - ballRadius + 1f
+                        rotDeg = p * 720f
+                    } else {
+                        // Phase 2: Roll across bottom fret from Right to Left
+                        val p = (t - 0.5f) * 2.0f
+                        cx = (w + ballRadius * 2f) - p * (w + ballRadius * 4f)
+                        cy = bottomFretY - ballRadius + 1f
+                        rotDeg = -p * 720f
+                    }
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(cx, cy)
+                    drawContext.canvas.nativeCanvas.rotate(rotDeg)
+
+                    // B&W Classic Telstar Soccer Ball Paints
+                    val ballPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFDFDFD.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val ballBorderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF212529.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.4f
+                    }
+                    val blackPatchPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF141414.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val seamPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF495057.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.0f
+                    }
+
+                    // 1. Base White Sphere
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, ballPaint)
+
+                    // 2. Central Black Pentagon
+                    val centerPentagon = android.graphics.Path()
+                    val pentRadius = ballRadius * 0.38f
+                    for (i in 0 until 5) {
+                        val angle = Math.toRadians((i * 72.0 - 90.0))
+                        val px = (pentRadius * kotlin.math.cos(angle)).toFloat()
+                        val py = (pentRadius * kotlin.math.sin(angle)).toFloat()
+                        if (i == 0) centerPentagon.moveTo(px, py) else centerPentagon.lineTo(px, py)
+                    }
+                    centerPentagon.close()
+                    drawContext.canvas.nativeCanvas.drawPath(centerPentagon, blackPatchPaint)
+
+                    // 3. Five Surrounding Outer Patches & Seam Radiating Lines
+                    for (i in 0 until 5) {
+                        val angle1 = Math.toRadians((i * 72.0 - 90.0))
+                        val angle2 = Math.toRadians(((i + 1) * 72.0 - 90.0))
+                        val midAngle = (angle1 + angle2) / 2.0
+
+                        val vx = (pentRadius * kotlin.math.cos(angle1)).toFloat()
+                        val vy = (pentRadius * kotlin.math.sin(angle1)).toFloat()
+                        val ox = (ballRadius * kotlin.math.cos(angle1)).toFloat()
+                        val oy = (ballRadius * kotlin.math.sin(angle1)).toFloat()
+                        drawContext.canvas.nativeCanvas.drawLine(vx, vy, ox, oy, seamPaint)
+
+                        val outerPatch = android.graphics.Path()
+                        val p1x = (ballRadius * kotlin.math.cos(midAngle - 0.28)).toFloat()
+                        val p1y = (ballRadius * kotlin.math.sin(midAngle - 0.28)).toFloat()
+                        val p2x = (ballRadius * kotlin.math.cos(midAngle + 0.28)).toFloat()
+                        val p2y = (ballRadius * kotlin.math.sin(midAngle + 0.28)).toFloat()
+                        val p3x = (ballRadius * 0.65f * kotlin.math.cos(midAngle)).toFloat()
+                        val p3y = (ballRadius * 0.65f * kotlin.math.sin(midAngle)).toFloat()
+                        outerPatch.moveTo(p1x, p1y)
+                        outerPatch.lineTo(p2x, p2y)
+                        outerPatch.lineTo(p3x, p3y)
+                        outerPatch.close()
+                        drawContext.canvas.nativeCanvas.drawPath(outerPatch, blackPatchPaint)
+                    }
+
+                    // 4. Subtle 3D Specular Highlight & Outer Rim
+                    val specularPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0x88FFFFFF.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(-ballRadius * 0.35f, -ballRadius * 0.35f, ballRadius * 0.28f, specularPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, ballBorderPaint)
 
                     drawContext.canvas.nativeCanvas.restore()
                 }
