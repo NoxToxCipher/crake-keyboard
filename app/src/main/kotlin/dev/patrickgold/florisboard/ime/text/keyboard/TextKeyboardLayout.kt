@@ -335,7 +335,7 @@ fun TextKeyboardLayout(
             }
             for (rowTop in rowTops) {
                 if (rowTop > 5) {
-                    // Top Specular Chrome Highlight
+                    // Top Specular Chrome Highlight with Subtle Cyan Core Glow
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -344,11 +344,13 @@ fun TextKeyboardLayout(
                             .background(
                                 brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                     colors = listOf(
-                                        Color(0x2594A3B8),
-                                        Color(0x70CBD5E1),
-                                        Color(0xCCE2E8F0),
-                                        Color(0x70CBD5E1),
-                                        Color(0x2594A3B8),
+                                        Color(0x1500E5FF),
+                                        Color(0x60CBD5E1),
+                                        Color(0xDDE2E8F0),
+                                        Color(0x8000E5FF),
+                                        Color(0xDDE2E8F0),
+                                        Color(0x60CBD5E1),
+                                        Color(0x1500E5FF),
                                     )
                                 )
                             )
@@ -363,9 +365,9 @@ fun TextKeyboardLayout(
                                 brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                     colors = listOf(
                                         Color(0x15000000),
-                                        Color(0x60000000),
-                                        Color(0x90000000),
-                                        Color(0x60000000),
+                                        Color(0x70000000),
+                                        Color(0xA0000000),
+                                        Color(0x70000000),
                                         Color(0x15000000),
                                     )
                                 )
