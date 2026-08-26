@@ -75,6 +75,7 @@ import dev.patrickgold.florisboard.glideTypingManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
 import dev.patrickgold.florisboard.ime.editor.OperationUnit
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
+import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
@@ -630,6 +631,19 @@ private fun TextKeyButton(
                 modifier = Modifier.align(Alignment.Center),
                 imageVector = imageVector,
                 contentDescription = null,
+            )
+        }
+        if (key.computedData.code == KeyCode.SHIFT && evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
+            val isLocked = evaluator.state.inputShiftState == InputShiftState.CAPS_LOCK
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 4.dp)
+                    .requiredSize(width = if (isLocked) 16.dp else 8.dp, height = 2.5.dp)
+                    .background(
+                        color = Color(0xFF00E5FF),
+                        shape = RoundedCornerShape(2.dp),
+                    )
             )
         }
     }
