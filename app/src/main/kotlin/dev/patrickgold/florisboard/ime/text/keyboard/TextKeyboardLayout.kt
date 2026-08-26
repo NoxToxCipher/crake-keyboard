@@ -429,6 +429,7 @@ fun TextKeyboardLayout(
         var dukuFruitTriggerTime by remember { mutableStateOf(0L) }
         var carDriveTriggerTime by remember { mutableStateOf(0L) }
         var cryptoRocketTriggerTime by remember { mutableStateOf(0L) }
+        var murmurFlockTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -496,6 +497,10 @@ fun TextKeyboardLayout(
             )
             if (cryptoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 cryptoRocketTriggerTime = System.currentTimeMillis()
+            }
+            val murmurKeys = listOf("murmur", "flock", "murmuration", "starlings")
+            if (murmurKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                murmurFlockTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -3140,6 +3145,161 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawPath(badge, goldEmblemPaint)
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Murmur App Starling Murmuration & Peregrine Stoop Easter Egg (48 Swirling Boids + Agitation Wave)
+        if (murmurFlockTriggerTime > 0L) {
+            val flockProgress = remember(murmurFlockTriggerTime) { Animatable(0f) }
+            LaunchedEffect(murmurFlockTriggerTime) {
+                flockProgress.snapTo(0f)
+                flockProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4400, easing = LinearEasing),
+                )
+                murmurFlockTriggerTime = 0L
+            }
+            if (flockProgress.value in 0.001f..0.999f) {
+                val u = flockProgress.value
+                val currentMs = u * 4400f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // 1. Twilight Sky Ambient Ribbon Glow
+                    val skyAlpha = (kotlin.math.sin(u * Math.PI.toFloat()) * 0.18f).coerceIn(0f, 1f)
+                    val duskGlowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((skyAlpha * 255).toInt(), 12, 19, 16) // Murmur dusk background
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawRect(0f, 0f, canvasW, canvasH, duskGlowPaint)
+
+                    // Flock center progression from Left to Right with natural S-curve murmuration path
+                    val flockCenterX = -60f * density + u * (canvasW + 120f * density)
+                    val waveY = kotlin.math.sin(u * 2.8f * Math.PI.toFloat()) * (canvasH * 0.22f)
+                    val flockCenterY = (canvasH * 0.50f) + waveY
+
+                    // Predator Stoop State (Hawk dives at center 1400ms -> 2600ms)
+                    val hawkDiving = currentMs in 1200f..2800f
+                    val hawkU = if (hawkDiving) ((currentMs - 1200f) / 1600f) else 0f
+                    val hawkX = canvasW * (0.35f + hawkU * 0.35f)
+                    val hawkY = -30f * density + hawkU * (canvasH + 60f * density)
+
+                    // Draw 46 individual boids with unique spatial offsets and depth
+                    val numBirds = 46
+                    for (i in 0 until numBirds) {
+                        val seed = i * 137.5f // Golden angle distribution
+                        val radiusFactor = kotlin.math.sqrt(i.toFloat() / numBirds.toFloat())
+                        val angle = (seed % 360f) * (Math.PI.toFloat() / 180f)
+
+                        // Cluster dimensions (Ribbon width & height)
+                        val spreadX = kotlin.math.cos(angle) * radiusFactor * 32f * density
+                        val spreadY = kotlin.math.sin(angle) * radiusFactor * 18f * density
+
+                        // Individual bird position
+                        var bx = flockCenterX + spreadX
+                        var by = flockCenterY + spreadY
+
+                        // Split & flee force if hawk is diving nearby
+                        var agitated = 0f
+                        if (hawkDiving) {
+                            val hdx = bx - hawkX
+                            val hdy = by - hawkY
+                            val distSq = hdx * hdx + hdy * hdy
+                            val fleeRadius = 48f * density
+                            if (distSq < fleeRadius * fleeRadius) {
+                                val dist = kotlin.math.sqrt(distSq).coerceAtLeast(1f)
+                                val push = (1f - (dist / fleeRadius)) * 22f * density
+                                val pushDirY = if (spreadY >= 0) 1f else -1f // Flocks split above & below predator
+                                bx += (hdx / dist) * push * 0.6f
+                                by += pushDirY * push * 1.2f
+                                agitated = (1f - (dist / fleeRadius)).coerceIn(0f, 1f)
+                            }
+                        }
+
+                        // Local heading vector
+                        val nextU = (u + 0.015f).coerceIn(0f, 1f)
+                        val nextWaveY = kotlin.math.sin(nextU * 2.8f * Math.PI.toFloat()) * (canvasH * 0.22f)
+                        val vx = (canvasW + 120f * density) * 0.015f
+                        val vy = nextWaveY - waveY + (kotlin.math.sin(currentMs * 0.008f + i) * 1.5f * density)
+                        val speed = kotlin.math.sqrt(vx * vx + vy * vy).coerceAtLeast(0.1f)
+                        val dirX = (vx / speed).toFloat()
+                        val dirY = (vy / speed).toFloat()
+
+                        // Bird scale & wing flap oscillation
+                        val depth = 0.55f + 0.45f * ((i % 7) / 7f)
+                        val wingFlap = kotlin.math.sin(currentMs * 0.022f + i * 0.8f) * 0.8f
+                        val birdScale = (1.8f * density) * (0.8f + depth * 0.4f)
+
+                        // Murmur Palette: Emerald (#43D183), Cobalt (#5B9BFF), Gold (#F4C542 on agitation)
+                        val birdColor = when {
+                            agitated > 0.3f -> 0xFFF4C542.toInt() // Agitation Gold
+                            i % 5 == 0 -> 0xFF5B9BFF.toInt() // Cobalt
+                            i % 7 == 0 -> 0xFFE8EEF0.toInt() // Silver
+                            else -> 0xFF43D183.toInt() // Signature Murmur Emerald
+                        }
+
+                        val birdAlpha = (kotlin.math.sin(u * Math.PI.toFloat()) * (0.55f + depth * 0.45f)).coerceIn(0f, 1f)
+                        val birdPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((birdAlpha * 255).toInt().coerceIn(0, 255), (birdColor shr 16) and 0xFF, (birdColor shr 8) and 0xFF, birdColor and 0xFF)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // Draw streamlined delta-wing starling silhouette (Murmur transform: (lx,ly) -> px + lx*e - ly*f, py + lx*f + ly*e)
+                        val e = dirX * birdScale
+                        val f = dirY * birdScale
+
+                        val birdPath = android.graphics.Path().apply {
+                            // Beak / Head tip
+                            moveTo(bx + 4.5f * e, by + 4.5f * f)
+                            // Left wingtip with wing flap offset
+                            lineTo(bx - 3.2f * e - (2.5f + wingFlap) * f, by - 3.2f * f + (2.5f + wingFlap) * e)
+                            // Tail notch
+                            lineTo(bx - 1.8f * e, by - 1.8f * f)
+                            // Right wingtip with wing flap offset
+                            lineTo(bx - 3.2f * e + (2.5f + wingFlap) * f, by - 3.2f * f - (2.5f + wingFlap) * e)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(birdPath, birdPaint)
+                    }
+
+                    // 2. Peregrine Falcon Stoop Silhouette (when diving)
+                    if (hawkDiving) {
+                        val hawkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0xFF0F172A.toInt() // Dark predator
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val hawkTrailPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = 0x66EF4444.toInt() // Crimson stoop trail
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 2.2f * density
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+
+                        // Stoop vapor trail
+                        drawContext.canvas.nativeCanvas.drawLine(hawkX - 18f * density, hawkY - 26f * density, hawkX, hawkY, hawkTrailPaint)
+
+                        // Peregrine swept-wing stoop shape
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(hawkX, hawkY)
+                        drawContext.canvas.nativeCanvas.rotate(55f) // Diving angle
+
+                        val hr = 5.5f * density
+                        val hawkPath = android.graphics.Path().apply {
+                            moveTo(hr * 2f, 0f) // Beak
+                            lineTo(-hr, -hr * 1.8f) // Swept left wing
+                            lineTo(-hr * 0.6f, 0f) // Tail
+                            lineTo(-hr, hr * 1.8f) // Swept right wing
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(hawkPath, hawkPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
                 }
             }
         }
