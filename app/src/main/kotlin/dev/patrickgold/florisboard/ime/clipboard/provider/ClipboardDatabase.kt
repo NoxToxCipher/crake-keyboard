@@ -200,9 +200,10 @@ data class ClipboardItem @OptIn(ExperimentalSerializationApi::class) constructor
 
     infix fun isEqualTo(other: ClipData?): Boolean {
         if (other == null) return false
+        val otherItem = other.getItemAt(0) ?: return false
         return when (type) {
-            ItemType.TEXT -> text == other.getItemAt(0).text
-            ItemType.IMAGE, ItemType.VIDEO -> uri == other.getItemAt(0).uri
+            ItemType.TEXT -> (text ?: "").trim() == (otherItem.text?.toString() ?: "").trim()
+            ItemType.IMAGE, ItemType.VIDEO -> uri?.toString() == otherItem.uri?.toString()
         }
     }
 

@@ -241,18 +241,36 @@ class ClipboardManager(
     /**
      * Adds a new item to the clipboard history (if enabled).
      */
+    fun moveToTop(item: ClipboardItem) {
+        ioScope.launch {
+            val updated = item.copy(
+                isPinned = true,
+                creationTimestampMs = System.currentTimeMillis()
+            )
+            clipHistoryDao?.update(updated)
+        }
+    }
+
+    /**
+     * Adds a new item to the clipboard history (if enabled) with robust deduplication.
+     */
     private fun insertOrMoveBeginning(newItem: ClipboardItem) {
         if (prefs.clipboard.historyEnabled.get()) {
             val historyElement = currentHistory.all.firstOrNull { item ->
-                item.type == ItemType.TEXT && item.text == newItem.text && item.isSensitive == newItem.isSensitive
+                if (item.type != newItem.type) return@firstOrNull false
+                if (item.type == ItemType.TEXT) {
+                    (item.text ?: "").trim() == (newItem.text ?: "").trim()
+                } else {
+                    item.uri?.toString() == newItem.uri?.toString()
+                }
             }
             if (historyElement != null) {
                 moveToTheBeginning(
                     oldItem = historyElement,
                     newItem = if (historyElement.isPinned) {
-                        newItem.copy(isPinned = true)
+                        newItem.copy(isPinned = true, id = historyElement.id)
                     } else {
-                        newItem
+                        newItem.copy(id = historyElement.id)
                     }
                 )
             } else {
