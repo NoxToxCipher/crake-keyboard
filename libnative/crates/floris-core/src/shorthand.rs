@@ -9,9 +9,23 @@ pub struct ShorthandEntry {
 }
 
 pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
+    ShorthandEntry { code: "!=", expansion: "≠", is_autocorrect: true },
+    ShorthandEntry { code: "(c)", expansion: "©", is_autocorrect: true },
+    ShorthandEntry { code: "(r)", expansion: "®", is_autocorrect: true },
+    ShorthandEntry { code: "(tm)", expansion: "™", is_autocorrect: true },
+    ShorthandEntry { code: "+-", expansion: "±", is_autocorrect: true },
+    ShorthandEntry { code: "--", expansion: "—", is_autocorrect: true },
+    ShorthandEntry { code: "-->", expansion: "→", is_autocorrect: true },
+    ShorthandEntry { code: "->", expansion: "→", is_autocorrect: true },
     ShorthandEntry { code: "2", expansion: "to", is_autocorrect: false },
     ShorthandEntry { code: "4", expansion: "for", is_autocorrect: false },
     ShorthandEntry { code: "8", expansion: "ate", is_autocorrect: false },
+    ShorthandEntry { code: "<-", expansion: "←", is_autocorrect: true },
+    ShorthandEntry { code: "<--", expansion: "←", is_autocorrect: true },
+    ShorthandEntry { code: "<=", expansion: "≤", is_autocorrect: true },
+    ShorthandEntry { code: "==>", expansion: "⇒", is_autocorrect: true },
+    ShorthandEntry { code: "=>", expansion: "⇒", is_autocorrect: true },
+    ShorthandEntry { code: ">=", expansion: "≥", is_autocorrect: true },
     ShorthandEntry { code: "afaik", expansion: "as far as I know", is_autocorrect: true },
     ShorthandEntry { code: "afk", expansion: "away from keyboard", is_autocorrect: true },
     ShorthandEntry { code: "aka", expansion: "also known as", is_autocorrect: true },
@@ -35,6 +49,7 @@ pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
     ShorthandEntry { code: "cuz", expansion: "because", is_autocorrect: true },
     ShorthandEntry { code: "cya", expansion: "see ya", is_autocorrect: true },
     ShorthandEntry { code: "dae", expansion: "does anyone else", is_autocorrect: true },
+    ShorthandEntry { code: "deg", expansion: "°", is_autocorrect: false },
     ShorthandEntry { code: "diy", expansion: "do it yourself", is_autocorrect: true },
     ShorthandEntry { code: "dm", expansion: "direct message", is_autocorrect: true },
     ShorthandEntry { code: "dnd", expansion: "do not disturb", is_autocorrect: true },
@@ -172,6 +187,7 @@ pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
     ShorthandEntry { code: "yolo", expansion: "you only live once", is_autocorrect: true },
     ShorthandEntry { code: "yt", expansion: "youtube", is_autocorrect: true },
     ShorthandEntry { code: "yw", expansion: "you're welcome", is_autocorrect: true },
+    ShorthandEntry { code: "~=", expansion: "≈", is_autocorrect: true },
 ];
 
 /// Looks up an SMS/slang shorthand code in O(log N) binary search time.
