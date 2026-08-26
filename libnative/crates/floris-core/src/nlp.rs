@@ -585,7 +585,19 @@ impl NlpEngine {
                 let formatted = Self::apply_casing(trimmed, &fc.word);
                 if !contains_word(&candidates, &formatted) {
                     let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
-                    let should_autocorrect = !is_exact && !is_capitalized && (fc.distance <= 2 || is_neighbor) && candidates.is_empty();
+                    // Edge apostrophes are deliberate punctuation (quotes sit
+                    // behind long-press — they are not fat-fingered): a token
+                    // like 'word or word' must never be "repaired" by
+                    // auto-commit, which used to eat opening quotes and turn
+                    // trailing quotes into possessives (field report
+                    // 2026-08-27: 'word' -> word's).
+                    let has_edge_apostrophe =
+                        trimmed_lower.starts_with('\'') || trimmed_lower.ends_with('\'');
+                    let should_autocorrect = !is_exact
+                        && !is_capitalized
+                        && !has_edge_apostrophe
+                        && (fc.distance <= 2 || is_neighbor)
+                        && candidates.is_empty();
                     candidates.push(RankedCandidate {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
@@ -619,7 +631,10 @@ impl NlpEngine {
         // 8. CRITICAL: The literal raw typed word MUST ALWAYS be in the candidate list
         // so the user can always tap their exact text (e.g. custom names, passphrases, codes)
         if !contains_word(&candidates, trimmed) {
-            if is_capitalized || candidates.is_empty() {
+            // Quoted tokens keep their quotes in front: the literal leads so
+            // tapping a suggestion is a choice, not a quote-stripping trap.
+            let edge_apostrophe = trimmed.starts_with('\'') || trimmed.ends_with('\'');
+            if is_capitalized || edge_apostrophe || candidates.is_empty() {
                 // For capitalized names/proper nouns, prioritize the literal typed word in slot 0
                 candidates.insert(0, RankedCandidate {
                     word: trimmed.to_string(),
