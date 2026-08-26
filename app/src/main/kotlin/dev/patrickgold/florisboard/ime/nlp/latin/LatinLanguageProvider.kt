@@ -19,6 +19,7 @@ package dev.patrickgold.florisboard.ime.nlp.latin
 import android.content.Context
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.ime.core.Subtype
+import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingResult
@@ -52,6 +53,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     override suspend fun create() {
         ensureLoaded()
+    }
+
+    override suspend fun destroy() {
     }
 
     private suspend fun ensureLoaded() = withContext(Dispatchers.IO) {
@@ -111,21 +115,41 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val query = when {
             content.composingText.isNotBlank() -> content.composingText
             content.currentWordText.isNotBlank() -> content.currentWordText
-            else -> content.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
+            else -> content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
         }.trim()
 
         if (query.isBlank()) return emptyList()
-        if (!FlorisNative.isAvailable()) return emptyList()
 
-        val candidates = FlorisNative.suggest(query, maxCandidateCount)
-        return candidates.mapIndexed { index, candidate ->
-            WordSuggestionCandidate(
-                text = candidate.text,
-                secondaryText = null,
-                confidence = 1.0 - (index * 0.1),
-                isEligibleForAutoCommit = candidate.isAutocorrect,
-                sourceProvider = this@LatinLanguageProvider,
-            )
+        return buildList {
+            // 1. Check Smart Text Expansion & User Snippets First
+            try {
+                val snippetCandidates = DictionaryManager.default().queryUserDictionary(query, subtype.primaryLocale)
+                addAll(snippetCandidates)
+            } catch (e: Exception) {
+                // Ignore
+            }
+
+            // 2. Native Safe Rust Trie Word Predictions
+            if (FlorisNative.isAvailable()) {
+                val cleanWordQuery = query.takeLastWhile { it.isLetter() || it == '\'' }
+                if (cleanWordQuery.isNotBlank()) {
+                    val candidates = FlorisNative.suggest(cleanWordQuery, maxCandidateCount)
+                    for ((index, candidate) in candidates.withIndex()) {
+                        // Avoid duplicates if snippet already added
+                        if (none { it.text.toString().equals(candidate.text, ignoreCase = true) }) {
+                            add(
+                                WordSuggestionCandidate(
+                                    text = candidate.text,
+                                    secondaryText = null,
+                                    confidence = 0.9 - (index * 0.1),
+                                    isEligibleForAutoCommit = candidate.isAutocorrect,
+                                    sourceProvider = this@LatinLanguageProvider,
+                                )
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -152,9 +176,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
         ensureLoaded()
-        return wordData.withLock { it.getOrDefault(word, 0) / 255.0 }
-    }
-
-    override suspend fun destroy() {
+        return (wordData.withLock { it[word] } ?: 0) / 255.0
     }
 }

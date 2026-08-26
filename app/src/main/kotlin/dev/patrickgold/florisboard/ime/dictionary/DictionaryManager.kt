@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2025 The FlorisBoard Contributors
+ * Copyright (C) 2021-2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,10 +23,10 @@ import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.lib.FlorisLocale
 import java.lang.ref.WeakReference
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * TODO: document
- */
 class DictionaryManager private constructor(context: Context) {
     private val applicationContext: WeakReference<Context> = WeakReference(context.applicationContext ?: context)
     private val prefs by FlorisPreferenceStore
@@ -40,6 +40,7 @@ class DictionaryManager private constructor(context: Context) {
         fun init(applicationContext: Context): DictionaryManager {
             val instance = DictionaryManager(applicationContext)
             defaultInstance = instance
+            instance.loadUserDictionariesIfNecessary()
             return instance
         }
 
@@ -55,46 +56,57 @@ class DictionaryManager private constructor(context: Context) {
         }
     }
 
-    fun queryUserDictionary(word: String, locale: FlorisLocale): List<SuggestionCandidate> {
+    fun queryUserDictionary(word: String, locale: FlorisLocale? = null): List<SuggestionCandidate> {
         val florisDao = florisUserDictionaryDao()
         val systemDao = systemUserDictionaryDao()
-        if (florisDao == null && systemDao == null && !word.startsWith("!")) {
-            return emptyList()
-        }
+        val trimmed = word.trim()
+        if (trimmed.isEmpty()) return emptyList()
+
         return buildList {
-            val lowerWord = word.lowercase().trim()
+            val lowerWord = trimmed.lowercase()
+
+            // 1. Dynamic Timestamp / Date Macros
             if (lowerWord == "!time" || lowerWord == "!t") {
-                val formattedTime = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date())
+                val formattedTime = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
                 add(WordSuggestionCandidate(formattedTime, secondaryText = "Snippet • Time", confidence = 1.0, isEligibleForAutoCommit = true))
             } else if (lowerWord == "!date" || lowerWord == "!d") {
-                val formattedDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
                 add(WordSuggestionCandidate(formattedDate, secondaryText = "Snippet • Date", confidence = 1.0, isEligibleForAutoCommit = true))
             } else if (lowerWord == "!now" || lowerWord == "!datetime") {
-                val formattedDateTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                val formattedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
                 add(WordSuggestionCandidate(formattedDateTime, secondaryText = "Snippet • Now", confidence = 1.0, isEligibleForAutoCommit = true))
             }
 
-            if (prefs.dictionary.enableFlorisUserDictionary.get()) {
-                florisDao?.queryShortcut(word, locale)?.let {
-                    for (entry in it) {
-                        add(0, WordSuggestionCandidate(entry.word, secondaryText = "Snippet", confidence = 1.0, isEligibleForAutoCommit = true))
-                    }
+            // 2. Custom User Defined Shortcuts / Snippets
+            florisDao?.let { dao ->
+                val matches = try {
+                    val direct = dao.queryShortcut(trimmed)
+                    val lower = if (trimmed != lowerWord) dao.queryShortcut(lowerWord) else emptyList()
+                    (direct + lower).distinctBy { it.id }
+                } catch (e: Exception) {
+                    emptyList()
                 }
-                florisDao?.query(word, locale)?.let {
-                    for (entry in it) {
-                        add(WordSuggestionCandidate(entry.word, confidence = entry.freq / 255.0))
-                    }
+
+                for (entry in matches) {
+                    add(0, WordSuggestionCandidate(
+                        text = entry.word,
+                        secondaryText = "Snippet • " + (entry.shortcut ?: "!"),
+                        confidence = 1.0,
+                        isEligibleForAutoCommit = true,
+                    ))
                 }
             }
+
+            // 3. System User Dictionary Shortcuts
             if (prefs.dictionary.enableSystemUserDictionary.get()) {
-                systemDao?.queryShortcut(word, locale)?.let {
-                    for (entry in it) {
-                        add(0, WordSuggestionCandidate(entry.word, secondaryText = "Snippet", confidence = 1.0, isEligibleForAutoCommit = true))
-                    }
-                }
-                systemDao?.query(word, locale)?.let {
-                    for (entry in it) {
-                        add(WordSuggestionCandidate(entry.word, confidence = entry.freq / 255.0))
+                systemDao?.queryShortcut(trimmed, locale)?.let { entries ->
+                    for (entry in entries) {
+                        add(0, WordSuggestionCandidate(
+                            text = entry.word,
+                            secondaryText = "Snippet",
+                            confidence = 1.0,
+                            isEligibleForAutoCommit = true,
+                        ))
                     }
                 }
             }
@@ -108,42 +120,46 @@ class DictionaryManager private constructor(context: Context) {
             return false
         }
         var ret = false
-        if (prefs.dictionary.enableFlorisUserDictionary.get()) {
-            ret = ret || florisDao?.queryExactFuzzyLocale(word, locale)?.isNotEmpty() ?: false
-            ret = ret || florisDao?.queryShortcut(word, locale)?.isNotEmpty() ?: false
-        }
+        ret = ret || (florisDao?.queryExactFuzzyLocale(word, locale)?.isNotEmpty() ?: false)
+        ret = ret || (florisDao?.queryShortcut(word, locale)?.isNotEmpty() ?: false)
         if (prefs.dictionary.enableSystemUserDictionary.get()) {
-            ret = ret || systemDao?.queryExactFuzzyLocale(word, locale)?.isNotEmpty() ?: false
-            ret = ret || systemDao?.queryShortcut(word, locale)?.isNotEmpty() ?: false
+            ret = ret || (systemDao?.queryExactFuzzyLocale(word, locale)?.isNotEmpty() ?: false)
+            ret = ret || (systemDao?.queryShortcut(word, locale)?.isNotEmpty() ?: false)
         }
         return ret
     }
 
     @Synchronized
     fun florisUserDictionaryDao(): UserDictionaryDao? {
-        return if (prefs.dictionary.enableFlorisUserDictionary.get()) {
-            florisUserDictionaryDatabase?.userDictionaryDao()
-        } else {
-            null
+        if (florisUserDictionaryDatabase == null) {
+            val context = applicationContext.get() ?: return null
+            florisUserDictionaryDatabase = Room.databaseBuilder(
+                context,
+                FlorisUserDictionaryDatabase::class.java,
+                FlorisUserDictionaryDatabase.DB_FILE_NAME
+            ).allowMainThreadQueries().build()
         }
+        return florisUserDictionaryDatabase?.userDictionaryDao()
     }
 
     @Synchronized
     fun florisUserDictionaryDatabase(): FlorisUserDictionaryDatabase? {
-        return if (prefs.dictionary.enableFlorisUserDictionary.get()) {
-            florisUserDictionaryDatabase
-        } else {
-            null
+        if (florisUserDictionaryDatabase == null) {
+            florisUserDictionaryDao()
         }
+        return florisUserDictionaryDatabase
     }
 
     @Synchronized
     fun systemUserDictionaryDao(): UserDictionaryDao? {
-        return if (prefs.dictionary.enableSystemUserDictionary.get()) {
-            systemUserDictionaryDatabase?.userDictionaryDao()
-        } else {
-            null
+        if (prefs.dictionary.enableSystemUserDictionary.get()) {
+            if (systemUserDictionaryDatabase == null) {
+                val context = applicationContext.get() ?: return null
+                systemUserDictionaryDatabase = SystemUserDictionaryDatabase(context)
+            }
+            return systemUserDictionaryDatabase?.userDictionaryDao()
         }
+        return null
     }
 
     @Synchronized
@@ -158,8 +174,7 @@ class DictionaryManager private constructor(context: Context) {
     @Synchronized
     fun loadUserDictionariesIfNecessary() {
         val context = applicationContext.get() ?: return
-
-        if (florisUserDictionaryDatabase == null && prefs.dictionary.enableFlorisUserDictionary.get()) {
+        if (florisUserDictionaryDatabase == null) {
             florisUserDictionaryDatabase = Room.databaseBuilder(
                 context,
                 FlorisUserDictionaryDatabase::class.java,

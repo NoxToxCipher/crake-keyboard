@@ -37,12 +37,17 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,12 +65,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.UserDictionaryEntry
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
-import dev.patrickgold.jetpref.material.ui.JetPrefTextField
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -91,14 +95,15 @@ fun SnippetsScreen() = FlorisScreen {
     val scope = rememberCoroutineScope()
 
     var snippetList by remember { mutableStateOf(emptyList<UserDictionaryEntry>()) }
-    var snippetForDialog by remember { mutableStateOf<UserDictionaryEntry?>(null) }
-    var isNewSnippet by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var editingEntry by remember { mutableStateOf<UserDictionaryEntry?>(null) }
+    var inputTrigger by remember { mutableStateOf("") }
+    var inputExpansion by remember { mutableStateOf("") }
 
     fun refreshSnippets() {
         scope.launch(Dispatchers.IO) {
             val dao = dictionaryManager.florisUserDictionaryDao()
             val entries = dao?.queryAll() ?: emptyList()
-            // Filter entries that have a shortcut defined
             val shortcutsOnly = entries.filter { !it.shortcut.isNullOrBlank() }
             withContext(Dispatchers.Main) {
                 snippetList = shortcutsOnly
@@ -116,14 +121,10 @@ fun SnippetsScreen() = FlorisScreen {
             text = { Text("Add Snippet", fontWeight = FontWeight.Bold, color = Color.Black) },
             containerColor = ElectricCyan,
             onClick = {
-                snippetForDialog = UserDictionaryEntry(
-                    id = 0,
-                    word = "",
-                    freq = 255,
-                    locale = null,
-                    shortcut = "!",
-                )
-                isNewSnippet = true
+                editingEntry = null
+                inputTrigger = "!"
+                inputExpansion = ""
+                showDialog = true
             },
         )
     }
@@ -149,7 +150,7 @@ fun SnippetsScreen() = FlorisScreen {
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(ElectricCyan.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -163,101 +164,100 @@ fun SnippetsScreen() = FlorisScreen {
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "DYNAMIC EXPANSION CORE",
-                                    fontSize = 13.sp,
+                                    text = "Smart Snippets & Expansions",
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 15.sp,
                                     color = Color.White,
                                 )
                                 Text(
-                                    text = "Type short triggers to expand phrases, addresses, & macros",
-                                    fontSize = 11.5.sp,
+                                    text = "Type shortcut prefix to instantly expand phrases",
+                                    fontSize = 12.sp,
                                     color = TextMuted,
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                         HorizontalDivider(color = CardBorder, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        // Quick Macro Info
+                        Text(
+                            text = "BUILT-IN DYNAMIC MACROS",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = ElectricCyan,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Dynamic Macros Row
+                        val now = remember { Date() }
+                        val timeStr = remember { SimpleDateFormat("h:mm a", Locale.getDefault()).format(now) }
+                        val dateStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(now) }
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text(text = "Built-in Macro: !time", fontSize = 11.5.sp, color = TextMuted)
-                            Text(
-                                text = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date()),
-                                fontSize = 11.5.sp,
-                                color = CyberEmerald,
-                                fontFamily = FontFamily.Monospace,
-                            )
+                            MacroPill("!time", timeStr, Modifier.weight(1f))
+                            MacroPill("!date", dateStr, Modifier.weight(1f))
+                            MacroPill("!now", "Full ISO", Modifier.weight(1f))
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "PRESET TEMPLATES (TAP TO ADD)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = CyberEmerald,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            Text(text = "Built-in Macro: !date", fontSize = 11.5.sp, color = TextMuted)
-                            Text(
-                                text = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                                fontSize = 11.5.sp,
-                                color = CyberEmerald,
-                                fontFamily = FontFamily.Monospace,
-                            )
+                            PresetBadge("!email", "name@example.com") { t, e ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = e
+                                showDialog = true
+                            }
+                            PresetBadge("!addr", "123 Cyber St, Suite 404") { t, e ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = e
+                                showDialog = true
+                            }
+                            PresetBadge("!shrug", "¯\\_(ツ)_/¯") { t, e ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = e
+                                showDialog = true
+                            }
                         }
                     }
                 }
             }
 
-            // Quick Preset Templates
+            // Custom Snippets Section Title
             item {
-                Text(
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
-                    text = "Quick Presets",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextMuted,
-                )
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    PresetBadge("!shrug", "¯\\_(ツ)_/¯") { shortcut, word ->
-                        scope.launch(Dispatchers.IO) {
-                            dictionaryManager.florisUserDictionaryDao()?.insert(
-                                UserDictionaryEntry(0, word, 255, null, shortcut)
-                            )
-                            refreshSnippets()
-                        }
-                    }
-                    PresetBadge("!flip", "(╯°□°)╯︵ ┻━┻") { shortcut, word ->
-                        scope.launch(Dispatchers.IO) {
-                            dictionaryManager.florisUserDictionaryDao()?.insert(
-                                UserDictionaryEntry(0, word, 255, null, shortcut)
-                            )
-                            refreshSnippets()
-                        }
-                    }
-                    PresetBadge("!email", "user@example.com") { shortcut, word ->
-                        snippetForDialog = UserDictionaryEntry(0, word, 255, null, shortcut)
-                        isNewSnippet = true
-                    }
+                    Text(
+                        text = "CUSTOM SHORTCUTS (${snippetList.size})",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = TextMuted,
+                    )
                 }
-            }
-
-            // Snippet List Header
-            item {
-                Text(
-                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-                    text = "Custom Snippets (${snippetList.size})",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextMuted,
-                )
             }
 
             if (snippetList.isEmpty()) {
@@ -267,7 +267,7 @@ fun SnippetsScreen() = FlorisScreen {
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = CardSurface.copy(alpha = 0.5f)),
+                        colors = CardDefaults.cardColors(containerColor = CardSurface),
                         border = BorderStroke(1.dp, CardBorder),
                     ) {
                         Column(
@@ -284,15 +284,16 @@ fun SnippetsScreen() = FlorisScreen {
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "No custom snippets created yet",
-                                fontSize = 13.sp,
-                                color = Color.White,
+                                text = "No custom snippets yet",
                                 fontWeight = FontWeight.SemiBold,
+                                color = Color.White,
+                                fontSize = 14.sp,
                             )
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tap '+ Add Snippet' below or select a quick preset above",
-                                fontSize = 11.5.sp,
+                                text = "Tap '+ Add Snippet' below or pick a preset template above",
                                 color = TextMuted,
+                                fontSize = 12.sp,
                             )
                         }
                     }
@@ -339,8 +340,10 @@ fun SnippetsScreen() = FlorisScreen {
                             }
                             IconButton(
                                 onClick = {
-                                    snippetForDialog = entry
-                                    isNewSnippet = false
+                                    editingEntry = entry
+                                    inputTrigger = entry.shortcut ?: "!"
+                                    inputExpansion = entry.word
+                                    showDialog = true
                                 }
                             ) {
                                 Icon(
@@ -371,65 +374,175 @@ fun SnippetsScreen() = FlorisScreen {
             }
         }
 
-        // Add / Edit Snippet Dialog
-        snippetForDialog?.let { entry ->
-            var triggerText by remember { mutableStateOf(entry.shortcut ?: "!") }
-            var expansionText by remember { mutableStateOf(entry.word) }
-
-            JetPrefAlertDialog(
-                title = if (isNewSnippet) "Add Smart Snippet" else "Edit Smart Snippet",
-                confirmLabel = "Save",
-                dismissLabel = "Cancel",
-                onDismiss = { snippetForDialog = null },
-                onConfirm = {
-                    if (triggerText.isNotBlank() && expansionText.isNotBlank()) {
-                        scope.launch(Dispatchers.IO) {
-                            val dao = dictionaryManager.florisUserDictionaryDao()
-                            val updatedEntry = entry.copy(
-                                word = expansionText.trim(),
-                                shortcut = triggerText.trim(),
-                                freq = 255,
-                                locale = null,
-                            )
-                            if (isNewSnippet) {
-                                dao?.insert(updatedEntry)
-                            } else {
-                                dao?.update(updatedEntry)
+        // Custom Add / Edit Snippet Modal Dialog
+        if (showDialog) {
+            Dialog(onDismissRequest = { showDialog = false }) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    border = BorderStroke(1.dp, CardBorder),
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(ElectricCyan.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.FlashOn,
+                                    contentDescription = null,
+                                    tint = ElectricCyan,
+                                    modifier = Modifier.size(18.dp),
+                                )
                             }
-                            refreshSnippets()
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = if (editingEntry == null) "NEW SMART SNIPPET" else "EDIT SMART SNIPPET",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color.White,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "Shortcut Trigger",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ElectricCyan,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = inputTrigger,
+                            onValueChange = { inputTrigger = it },
+                            placeholder = { Text("e.g. !addr, !email, omw", color = TextMuted, fontSize = 13.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = ElectricCyan,
+                                unfocusedBorderColor = CardBorder,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                            ),
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Text(
+                            text = "Expanded Phrase or Template",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = CyberEmerald,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = inputExpansion,
+                            onValueChange = { inputExpansion = it },
+                            placeholder = { Text("e.g. 742 Evergreen Terrace, Springfield", color = TextMuted, fontSize = 13.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 2,
+                            maxLines = 4,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = CyberEmerald,
+                                unfocusedBorderColor = CardBorder,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                            ),
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            OutlinedButton(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, CardBorder),
+                                onClick = { showDialog = false },
+                            ) {
+                                Text("Cancel", color = TextMuted, fontSize = 13.sp)
+                            }
+                            Button(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan),
+                                onClick = {
+                                    if (inputTrigger.isNotBlank() && inputExpansion.isNotBlank()) {
+                                        scope.launch(Dispatchers.IO) {
+                                            val dao = dictionaryManager.florisUserDictionaryDao()
+                                            val entryToSave = if (editingEntry != null) {
+                                                editingEntry!!.copy(
+                                                    word = inputExpansion.trim(),
+                                                    shortcut = inputTrigger.trim(),
+                                                    freq = 255,
+                                                    locale = null,
+                                                )
+                                            } else {
+                                                UserDictionaryEntry(
+                                                    id = 0L,
+                                                    word = inputExpansion.trim(),
+                                                    shortcut = inputTrigger.trim(),
+                                                    freq = 255,
+                                                    locale = null,
+                                                )
+                                            }
+
+                                            if (editingEntry != null) {
+                                                dao?.update(entryToSave)
+                                            } else {
+                                                dao?.insert(entryToSave)
+                                            }
+                                            refreshSnippets()
+                                        }
+                                    }
+                                    showDialog = false
+                                },
+                            ) {
+                                Text("Save Snippet", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp)
+                            }
                         }
                     }
-                    snippetForDialog = null
-                },
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-                    Text(
-                        text = "Shortcut Trigger (e.g. !addr, !email)",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ElectricCyan,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    JetPrefTextField(
-                        value = triggerText,
-                        onValueChange = { triggerText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Expanded Phrase or Template",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ElectricCyan,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    JetPrefTextField(
-                        value = expansionText,
-                        onValueChange = { expansionText = it },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MacroPill(macro: String, preview: String, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0E131F)),
+        border = BorderStroke(1.dp, CardBorder),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = macro,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = ElectricCyan,
+                fontFamily = FontFamily.Monospace,
+            )
+            Text(
+                text = preview,
+                fontSize = 10.sp,
+                color = TextMuted,
+                maxLines = 1,
+            )
         }
     }
 }
