@@ -1,0 +1,31 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+  <!-- Egg Base Silhouette -->
+  <path
+      android:pathData="M 12,2 C 7.5,2 4,8.5 4,14.5 C 4,19.2 7.6,22 12,22 C 16.4,22 20,19.2 20,14.5 C 20,8.5 16.5,2 12,2 Z"
+      android:fillColor="#1E293B"
+      android:strokeWidth="1.5"
+      android:strokeColor="#00E5FF" />
+
+  <!-- Cyber Neon Zig-Zag Stripe -->
+  <path
+      android:pathData="M 5,12 L 8,10 L 12,13 L 16,10 L 19,12"
+      android:strokeWidth="1.6"
+      android:strokeColor="#FF00E5A3"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round" />
+
+  <!-- Cyber Neon Center Star / Diamond -->
+  <path
+      android:pathData="M 12,6 L 13.5,8 L 12,10 L 10.5,8 Z"
+      android:fillColor="#FFA855F7" />
+
+  <!-- Cyber Accent Dots -->
+  <path
+      android:pathData="M 8,16 A 1,1 0 1,1 8,16.01 Z M 12,17 A 1,1 0 1,1 12,17.01 Z M 16,16 A 1,1 0 1,1 16,16.01 Z"
+      android:fillColor="#FFF59E0B" />
+</vector>
