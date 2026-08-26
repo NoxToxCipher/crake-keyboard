@@ -69,6 +69,13 @@ private fun evaluateMathOrMacro(input: String): String? {
         ".wallet", "!wallet", ".myeth", "!myeth", ".ethaddress", "!ethaddress", ".address", "!address", "0x=" -> {
             return "0x71C8401344CD24C836015b67272719299478f7B7"
         }
+        ".pgpkey", "!pgpkey", ".mykey", "!mykey", ".pubkey", "!pubkey" -> {
+            return org.florisboard.libnative.FlorisNative.pgponyGenerateKeypair()?.second ?: "crake-pk1-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+        ".pgpgen", "!pgpgen" -> {
+            val kp = org.florisboard.libnative.FlorisNative.pgponyGenerateKeypair()
+            return kp?.let { "Public: ${it.second}" } ?: "Failed to generate keypair"
+        }
     }
     if (clean.endsWith("=") && clean.length > 2) {
         val expr = clean.dropLast(1).trim()
