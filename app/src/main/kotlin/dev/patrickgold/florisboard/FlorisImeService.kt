@@ -82,6 +82,11 @@ import java.lang.ref.WeakReference
  */
 private var FlorisImeServiceReference = WeakReference<FlorisImeService?>(null)
 
+/// Set when this class first loads, which is within a few ms of process
+/// start — the zero point for the CrakeStartup first-show timeline
+/// (onCreate -> onCreateInputView -> onStartInputView -> onWindowShown).
+private val PROCESS_START = android.os.SystemClock.elapsedRealtime()
+
 /**
  * Core class responsible for linking together all managers and UI composables to provide an IME service. Sets
  * up the window and context to be lifecycle-aware, so LiveData and Jetpack Compose can be used without issues.
@@ -288,6 +293,7 @@ class FlorisImeService : LifecycleInputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        android.util.Log.i("CrakeStartup", "ime onCreate at +${android.os.SystemClock.elapsedRealtime() - PROCESS_START}ms")
         FlorisImeServiceReference = WeakReference(this)
         systemLocalesFlow.value = resources.configuration.locales
 
@@ -324,6 +330,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onCreateInputView(): View? {
+        android.util.Log.i("CrakeStartup", "ime onCreateInputView at +${android.os.SystemClock.elapsedRealtime() - PROCESS_START}ms")
         super.installViewTreeOwners()
         val content = window.window!!.findViewById<ViewGroup>(android.R.id.content)
         content.addView(ImeRootView(this))
@@ -376,6 +383,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        android.util.Log.i("CrakeStartup", "ime onStartInputView at +${android.os.SystemClock.elapsedRealtime() - PROCESS_START}ms restarting=$restarting")
         flogInfo { "restarting=$restarting info=${info?.debugSummarize()}" }
         super.onStartInputView(info, restarting)
         if (info == null) return
@@ -430,6 +438,7 @@ class FlorisImeService : LifecycleInputMethodService() {
     }
 
     override fun onWindowShown() {
+        android.util.Log.i("CrakeStartup", "ime onWindowShown at +${android.os.SystemClock.elapsedRealtime() - PROCESS_START}ms")
         super.onWindowShown()
         if (windowController.onWindowShown()) {
             flogInfo(LogTopic.IMS_EVENTS)
