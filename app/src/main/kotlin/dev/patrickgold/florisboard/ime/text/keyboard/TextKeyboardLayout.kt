@@ -4529,19 +4529,19 @@ fun TextKeyboardLayout(
             }
         }
 
-        // Android Little Green Dude (Bugdroid Pop-up, Antennae Wiggle, Wave, 360 Backflip & Thumbs Up)
+        // Android Little Green Dude (Canonical Google Bugdroid: Skitter Waddle, Multi-Fret Parkour Leaps, 360 Spin & Joy Dance)
         if (androidBugdroidTriggerTime > 0L) {
             val bugdroidProgress = remember(androidBugdroidTriggerTime) { Animatable(0f) }
             LaunchedEffect(androidBugdroidTriggerTime) {
                 bugdroidProgress.snapTo(0f)
                 bugdroidProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 4500, easing = LinearEasing),
+                    animationSpec = tween(durationMillis = 5400, easing = LinearEasing),
                 )
                 androidBugdroidTriggerTime = 0L
             }
             if (bugdroidProgress.value in 0.001f..0.999f) {
-                val totalMs = 4500f
+                val totalMs = 5400f
                 val currentMs = bugdroidProgress.value * totalMs
                 val density = LocalDensity.current.density
 
@@ -4551,183 +4551,222 @@ fun TextKeyboardLayout(
                     val canvasW = this.size.width
                     val canvasH = this.size.height
 
-                    val baseCenterX = canvasW * 0.50f
-                    val baseCenterY = canvasH * 0.65f
+                    val rowCount = (keyboard.rowCount).coerceAtLeast(4)
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+                    val fret1Y = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
+                    val fret2Y = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
+                    val fret3Y = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
 
-                    // Master Alpha: Pop in (0-300ms), Hold, Fade out (3900-4500ms)
+                    // Master Alpha: Pop in (0-300ms), Active (300-4800ms), Melt out (4800-5400ms)
                     val alpha = when {
                         currentMs < 300f -> (currentMs / 300f).coerceIn(0f, 1f)
-                        currentMs > 3900f -> ((4500f - currentMs) / 600f).coerceIn(0f, 1f)
+                        currentMs > 4800f -> ((totalMs - currentMs) / 600f).coerceIn(0f, 1f)
                         else -> 1f
                     }
 
-                    // Act 1 (0ms -> 1400ms): Pop up & Hand Wave
-                    // Act 2 (1400ms -> 2800ms): 360° Joy Backflip with Neon Sparkles
-                    // Act 3 (2800ms -> 4500ms): Double Thumbs Up & Happy Dance
-                    val isFlipping = currentMs in 1400f..2800f
-                    val flipU = if (isFlipping) (currentMs - 1400f) / 1400f else 0f
+                    // -------------------------------------------------------------
+                    // Multi-Fret Dynamic Choreography & Movement Trajectory
+                    // -------------------------------------------------------------
+                    // Act 1 (0ms -> 1800ms): Skitter-waddle along Bottom Fret (Left -> Center-Right)
+                    // Act 2 (1800ms -> 3400ms): Trampoline High Jump up to Middle & Top Frets with 360° Spin
+                    // Act 3 (3400ms -> 5400ms): Land on Center Stage, Joyful Wiggle Dance & Double-Arm Wave
+                    var bugdroidX = canvasW * 0.5f
+                    var bugdroidY = fret3Y - 8f * density
+                    var rotationAngle = 0f
+                    var isAirborne = false
+                    var waddlePhase = 0f
 
-                    val jumpY = if (isFlipping) {
-                        -kotlin.math.sin(flipU * Math.PI.toFloat()) * (36f * density)
-                    } else if (currentMs < 400f) {
-                        // Elastic entry spring
-                        val su = currentMs / 400f
-                        -(1f - su) * 20f * density
-                    } else {
-                        // Gentle idle breathing bob
-                        kotlin.math.sin(currentMs * 0.006f) * (2f * density)
-                    }
-
-                    val rotationAngle = if (isFlipping) {
-                        flipU * 360f
-                    } else {
-                        0f
-                    }
-
-                    // Squash & stretch on jump/landing
-                    val scaleX = when {
-                        isFlipping && (flipU < 0.15f || flipU > 0.85f) -> 1.18f
-                        isFlipping -> 0.90f
-                        currentMs in 2800f..3000f -> 1.15f
-                        else -> 1.0f
-                    }
-                    val scaleY = when {
-                        isFlipping && (flipU < 0.15f || flipU > 0.85f) -> 0.82f
-                        isFlipping -> 1.12f
-                        currentMs in 2800f..3000f -> 0.88f
-                        else -> 1.0f
+                    when {
+                        currentMs < 1800f -> {
+                            val u1 = (currentMs / 1800f).coerceIn(0f, 1f)
+                            bugdroidX = (canvasW * 0.15f) + u1 * (canvasW * 0.40f)
+                            waddlePhase = currentMs * 0.024f
+                            val waddleBob = kotlin.math.abs(kotlin.math.sin(waddlePhase)) * (3.5f * density)
+                            bugdroidY = fret3Y - (7f * density) - waddleBob
+                            rotationAngle = kotlin.math.sin(waddlePhase) * 6f
+                        }
+                        currentMs < 3400f -> {
+                            val u2 = ((currentMs - 1800f) / 1600f).coerceIn(0f, 1f)
+                            isAirborne = true
+                            // S-curve trajectory: from (0.55W, fret3Y) -> (0.80W, fret1Y) -> (0.50W, fret2Y)
+                            bugdroidX = (canvasW * 0.55f) + kotlin.math.sin(u2 * Math.PI.toFloat()) * (canvasW * 0.25f)
+                            val parabolicJump = -kotlin.math.sin(u2 * Math.PI.toFloat()) * (canvasH * 0.38f)
+                            val fretTransitionY = fret3Y + u2 * (fret2Y - fret3Y)
+                            bugdroidY = fretTransitionY + parabolicJump
+                            rotationAngle = u2 * 360f // Joyous 360 backflip
+                        }
+                        else -> {
+                            val u3 = ((currentMs - 3400f) / 2000f).coerceIn(0f, 1f)
+                            bugdroidX = canvasW * 0.50f
+                            val danceBob = kotlin.math.sin(u3 * 16f) * (2f * density)
+                            bugdroidY = (fret2Y + 8f * density) + danceBob
+                            rotationAngle = kotlin.math.sin(u3 * 12f) * 4f
+                        }
                     }
 
                     drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(baseCenterX, baseCenterY + jumpY)
+                    drawContext.canvas.nativeCanvas.translate(bugdroidX, bugdroidY)
                     drawContext.canvas.nativeCanvas.rotate(rotationAngle)
-                    drawContext.canvas.nativeCanvas.scale(scaleX, scaleY)
 
-                    val br = 12f * density // Bugdroid base radius unit
+                    val R = 8.5f * density // Canonical Bugdroid Head Radius Unit
 
-                    // 1. Neon Green Aura Glow & Stardust Sparkles during Backflip
+                    // 1. Neon Green Android Aura & Stardust Sparkles during Jump
                     val auraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 90).toInt().coerceIn(0, 255), 61, 220, 132)
+                        color = android.graphics.Color.argb((alpha * 85).toInt().coerceIn(0, 255), 61, 220, 132)
                         style = android.graphics.Paint.Style.FILL
                     }
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, br * 2.2f, auraPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, R * 2.6f, auraPaint)
 
-                    if (isFlipping) {
+                    if (isAirborne) {
                         val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 254, 240, 138)
                             style = android.graphics.Paint.Style.FILL
                         }
                         for (spIdx in 0 until 8) {
-                            val ang = spIdx * (Math.PI.toFloat() / 4f) + (flipU * 6.28f)
-                            val dist = br * (1.8f + (spIdx % 3) * 0.4f)
+                            val ang = spIdx * (Math.PI.toFloat() / 4f) + (currentMs * 0.01f)
+                            val dist = R * (2.2f + (spIdx % 3) * 0.4f)
                             val sx = kotlin.math.cos(ang) * dist
                             val sy = kotlin.math.sin(ang) * dist
-                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 1.4f * density, sparkPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 1.3f * density, sparkPaint)
                         }
                     }
 
-                    // 2. Official Android Green Paints
-                    val androidGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 61, 220, 132) // #3DDC84
+                    // 2. Canonical Android Green Paints (#3DDC84)
+                    val bugdroidGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 61, 220, 132) // Official Android #3DDC84
                         style = android.graphics.Paint.Style.FILL
                     }
-                    val eyePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    val eyeWhitePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
                         style = android.graphics.Paint.Style.FILL
                     }
-                    val antennaPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    val antennaLinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 61, 220, 132)
                         style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 1.8f * density
+                        strokeWidth = 1.6f * density
                         strokeCap = android.graphics.Paint.Cap.ROUND
                     }
 
-                    // A. Barrel Torso (Centered from Y: -2dp to Y: +16dp)
-                    drawContext.canvas.nativeCanvas.drawRoundRect(
-                        -br * 1.0f, -br * 0.15f, br * 1.0f, br * 1.35f,
-                        br * 0.25f, br * 0.25f, androidGreenPaint
-                    )
-
-                    // B. Semicircular Dome Head (Y: -3dp to Y: -16dp)
-                    val headW = br * 1.0f
-                    val headH = br * 0.95f
-                    val headGap = -br * 0.35f
-                    val headTop = headGap - headH
-
-                    drawContext.canvas.nativeCanvas.drawArc(
-                        -headW, headTop - headH, headW, headTop + headH,
-                        180f, 180f, true, androidGreenPaint
-                    )
-
-                    // C. 2 Wiggling Antennae
-                    val antennaWiggle = kotlin.math.sin(currentMs * 0.015f) * 6f
-                    // Left Antenna
-                    drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(-headW * 0.45f, headTop + 1f * density)
-                    drawContext.canvas.nativeCanvas.rotate(-28f + antennaWiggle)
-                    drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, -br * 0.55f, antennaPaint)
-                    drawContext.canvas.nativeCanvas.restore()
-
-                    // Right Antenna
-                    drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(headW * 0.45f, headTop + 1f * density)
-                    drawContext.canvas.nativeCanvas.rotate(28f - antennaWiggle)
-                    drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, -br * 0.55f, antennaPaint)
-                    drawContext.canvas.nativeCanvas.restore()
-
-                    // D. 2 Bright White Round Eyes
-                    val eyeY = headTop + headH * 0.45f
-                    drawContext.canvas.nativeCanvas.drawCircle(-headW * 0.42f, eyeY, 1.6f * density, eyePaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(headW * 0.42f, eyeY, 1.6f * density, eyePaint)
-
-                    // E. Pill Legs (2 short rounded legs at bottom)
-                    val legW = br * 0.24f
-                    val legH = br * 0.50f
-                    val legY = br * 1.35f
-                    drawContext.canvas.nativeCanvas.drawRoundRect(
-                        -br * 0.65f, legY, -br * 0.65f + legW * 2f, legY + legH,
-                        legW, legW, androidGreenPaint
-                    )
-                    drawContext.canvas.nativeCanvas.drawRoundRect(
-                        br * 0.65f - legW * 2f, legY, br * 0.65f, legY + legH,
-                        legW, legW, androidGreenPaint
-                    )
-
-                    // F. Left Arm & Right Arm (Waving or Thumbs Up!)
-                    val armW = br * 0.24f
-                    val armH = br * 0.90f
-                    val armY = -br * 0.10f
-
-                    // Left Arm:
-                    val leftArmAngle = if (currentMs > 2800f) {
-                        // Thumbs up / Cheer pose in Act 3
-                        -45f + kotlin.math.sin(currentMs * 0.01f) * 8f
-                    } else {
-                        kotlin.math.sin(currentMs * 0.005f) * 6f
+                    // ==============================================================
+                    // A. CANONICAL BUGDROID HEAD (Exact Semi-Circle + Collar Gap)
+                    // ==============================================================
+                    // Semi-circular dome from -R to +R with flat base at Y = 0
+                    val headPath = android.graphics.Path().apply {
+                        moveTo(-R, 0f)
+                        arcTo(-R, -R, R, R, 180f, 180f, false)
+                        close()
                     }
+                    drawContext.canvas.nativeCanvas.drawPath(headPath, bugdroidGreenPaint)
+
+                    // 2 White Round Eyes placed symmetrically at (+/- 0.42*R, -0.45*R)
+                    val eyeRadius = 1.0f * density
+                    drawContext.canvas.nativeCanvas.drawCircle(-R * 0.42f, -R * 0.45f, eyeRadius, eyeWhitePaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(R * 0.42f, -R * 0.45f, eyeRadius, eyeWhitePaint)
+
+                    // 2 Symmetrical Antennae tilted at exact 30° with dynamic wiggle
+                    val antennaWiggle = kotlin.math.sin(currentMs * 0.018f) * 5f
+                    // Left Antenna (at -0.45*R on skull curve, tilted -30°)
                     drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(-br * 1.30f, armY)
+                    drawContext.canvas.nativeCanvas.translate(-R * 0.45f, -R * 0.82f)
+                    drawContext.canvas.nativeCanvas.rotate(-30f + antennaWiggle)
+                    drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, -R * 0.45f, antennaLinePaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Right Antenna (at +0.45*R on skull curve, tilted +30°)
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(R * 0.45f, -R * 0.82f)
+                    drawContext.canvas.nativeCanvas.rotate(30f - antennaWiggle)
+                    drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, -R * 0.45f, antennaLinePaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // ==============================================================
+                    // B. CANONICAL TORSO (Flat Top Shoulders + Rounded Bottom Corners)
+                    // ==============================================================
+                    // Clear horizontal collar gap between head base (Y=0) and torso top (Y=collarGap)
+                    val collarGap = 1.4f * density
+                    val torsoTop = collarGap
+                    val torsoH = R * 1.55f
+                    val torsoBottom = torsoTop + torsoH
+                    val cornerR = 2.8f * density
+
+                    val torsoPath = android.graphics.Path().apply {
+                        moveTo(-R, torsoTop)
+                        lineTo(R, torsoTop) // Flat sharp top shoulders
+                        lineTo(R, torsoBottom - cornerR)
+                        quadTo(R, torsoBottom, R - cornerR, torsoBottom)
+                        lineTo(-R + cornerR, torsoBottom)
+                        quadTo(-R, torsoBottom, -R, torsoBottom - cornerR)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(torsoPath, bugdroidGreenPaint)
+
+                    // ==============================================================
+                    // C. CANONICAL PILL ARMS (Standalone Rounded Capsules on Left & Right)
+                    // ==============================================================
+                    val armW = 1.8f * density
+                    val armH = R * 1.25f
+                    val armGapX = R * 1.35f
+
+                    // Dynamic arm angles based on current action (skitter, jump, or double wave)
+                    val leftArmAngle = when {
+                        currentMs > 3400f -> -60f + kotlin.math.sin(currentMs * 0.015f) * 20f // Double wave cheer
+                        isAirborne -> -40f
+                        else -> kotlin.math.sin(waddlePhase) * 28f // Waddle swing
+                    }
+                    val rightArmAngle = when {
+                        currentMs > 3400f -> 60f - kotlin.math.sin(currentMs * 0.015f) * 20f // Double wave cheer
+                        isAirborne -> 40f
+                        else -> -kotlin.math.sin(waddlePhase) * 28f // Waddle swing
+                    }
+
+                    // Left Pill Arm
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(-armGapX, torsoTop + armW)
                     drawContext.canvas.nativeCanvas.rotate(leftArmAngle)
                     drawContext.canvas.nativeCanvas.drawRoundRect(
-                        -armW, 0f, armW, armH, armW, armW, androidGreenPaint
+                        -armW, -armW, armW, armH,
+                        armW, armW, bugdroidGreenPaint
                     )
                     drawContext.canvas.nativeCanvas.restore()
 
-                    // Right Arm (Waving in Act 1, Cheering in Act 3):
-                    val rightArmAngle = if (currentMs < 1400f) {
-                        // Enthusiastic 3-stroke wave in Act 1
-                        -120f + kotlin.math.sin(currentMs * 0.02f) * 35f
-                    } else if (currentMs > 2800f) {
-                        // Thumbs up cheer in Act 3
-                        45f - kotlin.math.sin(currentMs * 0.01f) * 8f
-                    } else {
-                        kotlin.math.sin(currentMs * 0.005f) * 6f
-                    }
+                    // Right Pill Arm
                     drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(br * 1.30f, armY)
+                    drawContext.canvas.nativeCanvas.translate(armGapX, torsoTop + armW)
                     drawContext.canvas.nativeCanvas.rotate(rightArmAngle)
                     drawContext.canvas.nativeCanvas.drawRoundRect(
-                        -armW, 0f, armW, armH, armW, armW, androidGreenPaint
+                        -armW, -armW, armW, armH,
+                        armW, armW, bugdroidGreenPaint
+                    )
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // ==============================================================
+                    // D. CANONICAL PILL LEGS (2 Standalone Rounded Capsules under Torso)
+                    // ==============================================================
+                    val legW = 1.8f * density
+                    val legH = R * 0.70f
+                    val legGapX = R * 0.45f
+                    val legTop = torsoBottom - 1f * density
+
+                    val leftLegAngle = if (!isAirborne) -kotlin.math.sin(waddlePhase) * 20f else -15f
+                    val rightLegAngle = if (!isAirborne) kotlin.math.sin(waddlePhase) * 20f else 15f
+
+                    // Left Pill Leg
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(-legGapX, legTop)
+                    drawContext.canvas.nativeCanvas.rotate(leftLegAngle)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -legW, 0f, legW, legH,
+                        legW, legW, bugdroidGreenPaint
+                    )
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Right Pill Leg
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(legGapX, legTop)
+                    drawContext.canvas.nativeCanvas.rotate(rightLegAngle)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -legW, 0f, legW, legH,
+                        legW, legW, bugdroidGreenPaint
                     )
                     drawContext.canvas.nativeCanvas.restore()
 
