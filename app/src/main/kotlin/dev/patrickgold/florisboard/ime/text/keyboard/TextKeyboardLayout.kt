@@ -666,6 +666,38 @@ private fun TextKeyButton(
                     )
             )
         }
+        if (key.computedData.code == KeyCode.ENTER) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .border(
+                        width = 1.dp,
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFF00E5FF).copy(alpha = 0.85f),
+                                Color(0xFF00B4D8).copy(alpha = 0.35f),
+                            )
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                    )
+            )
+        }
+        if (key.computedData.code == KeyCode.DELETE && key.isPressed) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                            colors = listOf(
+                                Color(0x45FF1744),
+                                Color(0x15FF1744),
+                                Color.Transparent,
+                            )
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                    )
+            )
+        }
     }
     if (debugShowTouchBoundaries) {
         Box(
