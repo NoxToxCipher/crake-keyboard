@@ -33,6 +33,7 @@ import dev.patrickgold.florisboard.ime.clipboard.provider.ItemType
 import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
+import dev.patrickgold.florisboard.ime.nlp.MergedWordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.text.composing.Appender
 import dev.patrickgold.florisboard.ime.text.composing.Composer
@@ -255,7 +256,14 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         val content = activeContent
 
         // Delete whatever token or shortcut trigger was typed before cursor (e.g. "!addr", "!time", "omw")
-        val tokenBeforeCursor = content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        // A merged-word candidate repairs a spurious mid-word space, so its
+        // deletion span is BOTH fragments plus the whitespace between them
+        // ("shou kd" -> "should" replaces all seven characters).
+        val tokenBeforeCursor = if (candidate is MergedWordSuggestionCandidate) {
+            content.textBeforeSelection.takeLast(mergedTokenSpan(content.textBeforeSelection))
+        } else {
+            content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        }
         if (tokenBeforeCursor.isNotEmpty()) {
             runBlocking {
                 deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = tokenBeforeCursor.length)
@@ -687,4 +695,18 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             state.set(0)
         }
     }
+}
+
+/**
+ * Length of the two-token span a merged-word candidate replaces: the current
+ * token, the whitespace gap, and the previous token ("shou kd" -> 7). Pure so
+ * it is unit-testable; the merge candidate is only offered when both tokens
+ * exist, but a missing previous token degrades to the current-token span.
+ */
+internal fun mergedTokenSpan(before: CharSequence): Int {
+    val current = before.takeLastWhile { !it.isWhitespace() }
+    val afterPrev = before.dropLast(current.length)
+    val gap = afterPrev.takeLastWhile { it.isWhitespace() }
+    val prev = afterPrev.dropLast(gap.length).takeLastWhile { !it.isWhitespace() }
+    return if (prev.isEmpty()) current.length else current.length + gap.length + prev.length
 }

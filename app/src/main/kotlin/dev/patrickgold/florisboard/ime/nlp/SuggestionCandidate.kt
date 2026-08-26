@@ -116,6 +116,26 @@ data class WordSuggestionCandidate(
 }
 
 /**
+ * A word candidate that repairs a spurious mid-word space: committing it must
+ * replace BOTH the current token and the token before it (plus the whitespace
+ * between), e.g. "shou kd" -> "should". The editor commit logic keys on this
+ * type to widen its deletion span; everything else treats it as a normal word
+ * candidate.
+ *
+ * @see EditorInstance.commitCompletion
+ */
+data class MergedWordSuggestionCandidate(
+    override val text: CharSequence,
+    override val secondaryText: CharSequence? = null,
+    override val confidence: Double = 0.0,
+    override val isEligibleForAutoCommit: Boolean = false,
+    override val isEligibleForUserRemoval: Boolean = false,
+    override val sourceProvider: SuggestionProvider? = null,
+) : SuggestionCandidate {
+    override val icon: ImageVector? = null
+}
+
+/**
  * Default implementation for a clipboard candidate. Should generally not be used by a suggestion provider, except by
  * the clipboard suggestion provider.
  *

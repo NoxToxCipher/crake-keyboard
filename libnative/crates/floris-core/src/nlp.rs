@@ -261,6 +261,53 @@ impl NlpEngine {
         self.suggest_with_context(query, "", max_candidates)
     }
 
+    /// Two-token spurious-space repair: "shou kd" -> "should", "ni stakes" ->
+    /// "mistakes", "deliberate lt" -> "deliberately" (all captured verbatim
+    /// from live typing, 2026-08-26 — mid-word space slips are the dominant
+    /// real-world error class). Joins the previous token with the current one
+    /// and accepts a dictionary word that is an exact join, or a same-length
+    /// join within 2 weighted units (one full edit, or two adjacent-key
+    /// slips). Fires only when at least one fragment is NOT a dictionary
+    /// word, so legitimate pairs ("to do", "in the") are never merged.
+    pub fn merge_repair(&self, prev_word: &str, current: &str) -> Option<String> {
+        let prev = prev_word.trim().to_lowercase();
+        let cur = current.trim().to_lowercase();
+        if prev.is_empty() || cur.is_empty() {
+            return None;
+        }
+        if !prev.chars().all(|c| c.is_alphabetic() || c == '\'')
+            || !cur.chars().all(|c| c.is_alphabetic() || c == '\'')
+        {
+            return None;
+        }
+        // NOTE: fragment validity is deliberately NOT consulted. The shipped
+        // frequency table is polluted with corpus-noise tokens ("ni" 201,
+        // "lt" 209, "kd" 180 — measured 2026-08-26), so "is the fragment a
+        // word?" cannot separate junk from real pairs. Instead the MERGED
+        // word must be strong: at least 4 chars and frequency >= 150. That
+        // admits every captured field specimen while keeping rare joins
+        // ("to"+"do" -> "todo") from pestering legitimate pairs — and the
+        // candidate is only ever offered, never auto-committed.
+        let joined = format!("{prev}{cur}");
+        let joined_len = joined.chars().count();
+        if !(4..=24).contains(&joined_len) {
+            return None;
+        }
+        const MIN_MERGED_FREQ: u32 = 150;
+        if let Some(freq) = self.trie.get_frequency(&joined) {
+            return (freq >= MIN_MERGED_FREQ).then_some(joined);
+        }
+        // One adjacent slip at most: every captured specimen joins within a
+        // single neighbour substitution, and the wider 2-unit budget produced
+        // a false merge ("can"+"for" -> "cancer") because the adjacency graph
+        // unions QWERTY and Dvorak neighbourhoods.
+        self.trie
+            .fuzzy_search_weighted(&joined, 1, 4, Self::is_spatial_keyboard_neighbor)
+            .into_iter()
+            .find(|fc| fc.word.chars().count() == joined_len && fc.frequency >= MIN_MERGED_FREQ)
+            .map(|fc| fc.word)
+    }
+
     pub fn suggest_with_context(&self, query: &str, prev_word: &str, max_candidates: usize) -> SuggestionResult {
         let trimmed = query.trim();
         let trimmed_lower = trimmed.to_lowercase();
