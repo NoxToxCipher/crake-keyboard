@@ -4308,22 +4308,22 @@ fun TextKeyboardLayout(
                         val runBobY = if (!isAirborne) -kotlin.math.abs(sinP) * (3.8f * density) else 0f
                         val robotY = baseY + jumpOffset + runBobY
 
-                        // Aggressive aerodynamic sprint lean (forward tilt)
-                        val leanAngle = if (isAirborne) -16f else (-28f + sinP * 3.5f)
+                        // Natural Olympic Athlete Forward Sprint Lean (head & chest tilt forward into +X direction)
+                        val leanAngle = if (isAirborne) 8f else (12f + sinP * 2.0f)
 
-                        // Fluid multi-harmonic kinematic angles
-                        val hip1 = if (isAirborne) -48f else (sinP * 54f)
-                        val hip2 = if (isAirborne) 36f else (-sinP * 54f)
-                        val knee1 = if (isAirborne) 60f else (sinP.coerceAtLeast(0f) * 78f + cosP * 14f).coerceAtLeast(0f)
-                        val knee2 = if (isAirborne) 72f else ((-sinP).coerceAtLeast(0f) * 78f - cosP * 14f).coerceAtLeast(0f)
-                        val ankle1 = if (isAirborne) 15f else (-sinP * 24f)
-                        val ankle2 = if (isAirborne) -10f else (sinP * 24f)
+                        // Authentic Olympic athlete stride kinematics (smooth high-knee drive & rear leg extension)
+                        val hip1 = if (isAirborne) 32f else (sinP * 44f)
+                        val hip2 = if (isAirborne) -36f else (-sinP * 44f)
+                        val knee1 = if (isAirborne) 55f else (sinP.coerceAtLeast(0f) * 65f + cosP * 12f).coerceAtLeast(0f)
+                        val knee2 = if (isAirborne) 45f else ((-sinP).coerceAtLeast(0f) * 65f - cosP * 12f).coerceAtLeast(0f)
+                        val ankle1 = if (isAirborne) -10f else (-sinP * 18f)
+                        val ankle2 = if (isAirborne) 15f else (sinP * 18f)
 
-                        // Powerful sprinting arm drive
-                        val arm1 = if (isAirborne) -42f else (-sinP * 58f)
-                        val arm2 = if (isAirborne) 45f else (sinP * 58f)
-                        val elbow1 = if (isAirborne) 50f else (42f + cosP * 28f)
-                        val elbow2 = if (isAirborne) 65f else (42f - cosP * 28f)
+                        // Dynamic runner arm drive (opposite to leg phase, bent at elbow)
+                        val arm1 = if (isAirborne) -36f else (-sinP * 46f)
+                        val arm2 = if (isAirborne) 36f else (sinP * 46f)
+                        val elbow1 = if (isAirborne) 45f else (48f + cosP * 20f)
+                        val elbow2 = if (isAirborne) 55f else (48f - cosP * 20f)
 
                         drawContext.canvas.nativeCanvas.save()
                         drawContext.canvas.nativeCanvas.translate(robotX, robotY)
