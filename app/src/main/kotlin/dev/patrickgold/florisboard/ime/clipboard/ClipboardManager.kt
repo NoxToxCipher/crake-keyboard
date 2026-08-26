@@ -59,6 +59,14 @@ class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
+    private fun isLikelyOtpOrSensitive(text: String): Boolean {
+        val clean = text.trim()
+        // 4 to 8 digit numeric OTP or alphanumeric verification code
+        if (clean.matches(Regex("^[0-9]{4,8}$"))) return true
+        if (clean.matches(Regex("^[A-Za-z0-9]{3,4}-[A-Za-z0-9]{3,4}$"))) return true
+        if (clean.contains("otp", ignoreCase = true) || clean.contains("passcode", ignoreCase = true) || clean.contains("verification code", ignoreCase = true)) return true
+        return false
+    }
         // Ephemeral Auto-Destruct polling interval (2 seconds high resolution)
         private const val INTERVAL = 2 * 1000L
 
@@ -209,7 +217,7 @@ class ClipboardManager(
                     if (item.type == ItemType.TEXT && item.text != null) {
                         val scrubbed = FlorisNative.metascrubText(item.text!!)
                         val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
-                        val isSensitive = item.isSensitive || shield.isSecretDetected
+                        val isSensitive = item.isSensitive || shield.isSecretDetected || isLikelyOtpOrSensitive(scrubbed.cleanedText)
                         item = item.copy(text = scrubbed.cleanedText, isSensitive = isSensitive)
                     }
                     primaryClip = item
@@ -233,7 +241,7 @@ class ClipboardManager(
     fun addNewPlaintext(newText: String) {
         val scrubbed = FlorisNative.metascrubText(newText)
         val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
-        val isSensitive = shield.isSecretDetected
+        val isSensitive = shield.isSecretDetected || isLikelyOtpOrSensitive(scrubbed.cleanedText)
         val newData = ClipboardItem.text(scrubbed.cleanedText).copy(isSensitive = isSensitive)
         addNewClip(newData)
     }

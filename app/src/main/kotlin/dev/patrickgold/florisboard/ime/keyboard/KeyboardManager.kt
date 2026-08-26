@@ -572,7 +572,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
         }
         if (prefs.correction.doubleSpacePeriod.get()) {
-            if (inputEventDispatcher.isConsecutiveUp(data)) {
+            // BB10 Double-Tap Space Cadence (550ms window with auto-punctuation suppression)
+            if (inputEventDispatcher.isConsecutiveUp(data, customTimeoutMs = 550L)) {
                 val text = editorInstance.run { activeContent.getTextBeforeCursor(2) }
                 if (text.length == 2 && DoubleSpacePeriodMatcher.matches(text)) {
                     editorInstance.deleteBackwards(OperationUnit.CHARACTERS)

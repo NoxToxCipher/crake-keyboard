@@ -198,9 +198,9 @@ class InputEventDispatcher private constructor(private val repeatableKeyCodes: I
         return event.data.code == data.code && (SystemClock.uptimeMillis() - event.time) < DoubleTapTimeout
     }
 
-    fun isConsecutiveUp(data: KeyData): Boolean {
+    fun isConsecutiveUp(data: KeyData, customTimeoutMs: Long = DoubleTapTimeout): Boolean {
         val event = lastKeyEventUp
-        return event.data.code == data.code && (SystemClock.uptimeMillis() - event.time) < DoubleTapTimeout
+        return event.data.code == data.code && (SystemClock.uptimeMillis() - event.time) < customTimeoutMs
     }
 
     fun isUninterruptedEventSequence(data: KeyData): Boolean {
