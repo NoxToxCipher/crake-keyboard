@@ -124,6 +124,30 @@ fn merge_repair_follows_the_active_layout_model() {
     assert_eq!(e.merge_repair("shou", "kd"), None, "k/l are not neighbours on Dvorak");
 }
 
+/// Round 4: transposition COMBINED with another slip. A swap must cost one
+/// edit (2 units), not two substitutions (4) — otherwise swap+slip chains
+/// ("gildinf" for gliding) overflow the budget and become unfindable.
+#[test]
+fn recovers_transposition_plus_slip_combos() {
+    let mut e = engine();
+    for (w, f) in [("thanks", 244), ("testing", 227)] {
+        e.trie.insert(w, f);
+    }
+    let mut failures = Vec::new();
+    for (typed, expected) in [
+        ("tesitnf", "testing"),  // it-swap + f/g slip
+        ("gildinf", "gliding"),  // il-swap + f/g slip
+        ("keybaodr", "keyboard"), // two swaps (ao, rd)
+        ("thnaks", "thanks"),    // single swap, must now rank as one edit
+    ] {
+        let got = top3(&e, typed);
+        if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
+            failures.push(format!("'{typed}' should offer '{expected}', got {got:?}"));
+        }
+    }
+    assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
 /// Round 2: the fat-finger classes beyond adjacent substitution — swapped
 /// neighbouring letters (transposition), a key registering twice, and a key
 /// not registering at all. Same bar: the intended word must appear top-3.

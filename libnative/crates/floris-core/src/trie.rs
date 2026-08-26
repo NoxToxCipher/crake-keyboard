@@ -268,6 +268,8 @@ impl RadixTrie {
                     ch,
                     &query_chars,
                     &initial_row,
+                    None,
+                    None,
                     query_len + 1,
                     max_units,
                     &is_adjacent,
@@ -295,6 +297,8 @@ impl RadixTrie {
         ch: char,
         query: &[char],
         prev_row: &[usize; MAX_QUERY_STACK_LEN],
+        prev_prev_row: Option<&[usize; MAX_QUERY_STACK_LEN]>,
+        prev_ch: Option<char>,
         cols: usize,
         max_units: usize,
         is_adjacent: &F,
@@ -317,7 +321,19 @@ impl RadixTrie {
             let insertion = current_row[j - 1] + 2;
             let substitution = prev_row[j - 1] + sub_cost;
 
-            let val = std::cmp::min(std::cmp::min(deletion, insertion), substitution);
+            let mut val = std::cmp::min(std::cmp::min(deletion, insertion), substitution);
+
+            // Damerau transposition: swapping two adjacent keys is ONE slip
+            // (2 units), not two substitutions (4) — "thnaks", and combined
+            // with an adjacent slip "gildinf" -> gliding stays in budget.
+            if j >= 2 {
+                if let (Some(pp_row), Some(p_ch)) = (prev_prev_row, prev_ch) {
+                    if query[j - 1] == p_ch && query[j - 2] == ch {
+                        val = val.min(pp_row[j - 2] + 2);
+                    }
+                }
+            }
+
             current_row[j] = val;
             if val < min_val {
                 min_val = val;
@@ -342,6 +358,8 @@ impl RadixTrie {
                     next_ch,
                     query,
                     &current_row,
+                    Some(prev_row),
+                    Some(ch),
                     cols,
                     max_units,
                     is_adjacent,
