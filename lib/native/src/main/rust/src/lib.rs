@@ -22,8 +22,48 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInse
     if let Ok(w) = env.get_string(&word) {
         if let Ok(mut engine) = NLP_ENGINE.write() {
             let word_str = w.to_str().unwrap_or("");
-            engine.trie.insert(word_str, frequency.max(0) as u32);
+            // learn_word records the entry in the persisted learned set as
+            // well as the trie, so user vocabulary survives restarts.
+            engine.learn_word(word_str, frequency.max(0) as u32);
         }
+    }
+}
+
+/// Serializes the learned state (user words + correction habits) for the
+/// Kotlin side to write to app-private storage.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpExportLearned(
+    env: JNIEnv,
+    _class: JClass,
+) -> jni::sys::jbyteArray {
+    let data = match NLP_ENGINE.read() {
+        Ok(engine) => engine.export_learned(),
+        Err(_) => Vec::new(),
+    };
+    env.byte_array_from_slice(&data)
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// Restores learned state from a previously exported blob. Returns the
+/// number of learned words restored, or -1 for a corrupt blob (which
+/// restores nothing).
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpImportLearned(
+    env: JNIEnv,
+    _class: JClass,
+    data: JByteArray,
+) -> jint {
+    let bytes = match env.convert_byte_array(&data) {
+        Ok(b) => b,
+        Err(_) => return -1,
+    };
+    match NLP_ENGINE.write() {
+        Ok(mut engine) => match engine.import_learned(&bytes) {
+            Ok(count) => count.min(jint::MAX as usize) as jint,
+            Err(_) => -1,
+        },
+        Err(_) => -1,
     }
 }
 

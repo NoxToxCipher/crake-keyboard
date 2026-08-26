@@ -14,6 +14,7 @@ pub mod blob;
 pub mod british_spelling;
 pub mod core_dict;
 pub mod hit_test;
+pub mod persist;
 pub mod rescorer;
 pub mod rescorer_weights;
 pub mod touch_model;

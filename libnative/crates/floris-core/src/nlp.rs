@@ -194,6 +194,10 @@ pub struct NlpEngine {
     /// Word -> CRKD-blob-order id, built as the corpus loads. The bigram
     /// table's ids index this same order.
     word_ids: std::collections::HashMap<String, u32>,
+    /// Words the USER taught this keyboard (accepted suggestions, boosts) —
+    /// the part of the trie that must survive restarts. Persisted via
+    /// [`crate::persist`]; capped there so it can never bloat.
+    learned_words: std::collections::HashMap<String, u32>,
 }
 
 impl NlpEngine {
@@ -211,7 +215,51 @@ impl NlpEngine {
             touch_model: None,
             bigrams: crate::bigram::BigramModel::default(),
             word_ids: std::collections::HashMap::new(),
+            learned_words: std::collections::HashMap::new(),
         }
+    }
+
+    /// Learns a word the user accepted or typed: enters the trie AND the
+    /// persisted learned set.
+    pub fn learn_word(&mut self, word: &str, freq: u32) {
+        let trimmed = word.trim().to_ascii_lowercase();
+        if trimmed.len() < 2 || trimmed.chars().count() > crate::persist::MAX_TOKEN_LEN {
+            return;
+        }
+        self.trie.insert(&trimmed, freq);
+        self.learned_words.insert(trimmed, freq);
+    }
+
+    /// Serializes learned words + personal corrections for persistence.
+    pub fn export_learned(&self) -> Vec<u8> {
+        let mut state = crate::persist::LearnedState::default();
+        state.words = self.learned_words.iter().map(|(w, &f)| (w.clone(), f)).collect();
+        state.words.sort();
+        for (typo, targets) in &self.personal_corrections {
+            for (intended, &n) in targets {
+                state.corrections.push((typo.clone(), intended.clone(), n));
+            }
+        }
+        state.corrections.sort();
+        state.serialize()
+    }
+
+    /// Restores learned state from a CRKL blob: learned words re-enter the
+    /// trie and correction habits their counters. Returns how many words
+    /// were restored; a corrupt blob restores nothing and errors.
+    pub fn import_learned(&mut self, data: &[u8]) -> Result<usize, crate::persist::LearnedError> {
+        let state = crate::persist::LearnedState::parse(data)?;
+        let count = state.words.len();
+        for (word, freq) in state.words {
+            self.trie.insert(&word, freq);
+            self.learned_words.insert(word, freq);
+        }
+        for (typo, intended, n) in state.corrections {
+            let counter = self.personal_corrections.entry(typo).or_default();
+            let slot = counter.entry(intended).or_insert(0);
+            *slot = (*slot).max(n);
+        }
+        Ok(count)
     }
 
     /// Loads the CRKB bigram table, replacing any previous one. Returns the
@@ -327,6 +375,10 @@ impl NlpEngine {
         let trimmed = word.trim().to_ascii_lowercase();
         if trimmed.len() >= 2 {
             self.trie.boost_or_insert(&trimmed, 15);
+            // Boosts are part of what the user taught us — persist them.
+            if let Some(freq) = self.trie.get_frequency(&trimmed) {
+                self.learned_words.insert(trimmed.clone(), freq);
+            }
             self.record_session_word(&trimmed);
         }
     }

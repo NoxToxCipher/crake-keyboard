@@ -111,6 +111,18 @@ object FlorisNative {
         return nativeNlpMergeRepair(preceding, prevWord, current).takeIf { it.isNotEmpty() }
     }
 
+    /** Learned state (user words + correction habits) as a CRKL blob. */
+    fun exportLearned(): ByteArray? {
+        if (!isLoaded) return null
+        return nativeNlpExportLearned().takeIf { it.isNotEmpty() }
+    }
+
+    /** Restores a CRKL blob; returns learned-word count or -1 on rejection. */
+    fun importLearned(data: ByteArray): Int {
+        if (!isLoaded || data.isEmpty()) return -1
+        return nativeNlpImportLearned(data)
+    }
+
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         // Never learn text if it is detected as a secret/mnemonic or threat
@@ -278,6 +290,10 @@ object FlorisNative {
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 
     private external fun nativeNlpMergeRepair(preceding: String, prevWord: String, current: String): String
+
+    private external fun nativeNlpExportLearned(): ByteArray
+
+    private external fun nativeNlpImportLearned(data: ByteArray): Int
 
     private external fun nativeNlpLoadBigramBlob(data: ByteArray): Int
 

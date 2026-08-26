@@ -126,6 +126,17 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             } catch (e: Exception) {
                 flogDebug { "CRKB bigram load failed (context re-ranking off): ${e.message}" }
             }
+            // Restore what the user has taught this keyboard (learned words
+            // + correction habits). App-private file; absent on first run.
+            try {
+                val learnedFile = java.io.File(appContext.filesDir, "crake_learned.crkl")
+                if (learnedFile.exists()) {
+                    val restored = FlorisNative.importLearned(learnedFile.readBytes())
+                    Log.i("CrakeStartup", "learned state restored: $restored words")
+                }
+            } catch (e: Exception) {
+                flogDebug { "learned state restore failed: ${e.message}" }
+            }
             true
         } catch (e: Exception) {
             words.clear()
@@ -284,6 +295,22 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 lastRevertedWord = null
             }
             FlorisNative.insertWord(acceptedWord, 100)
+            persistLearnedState()
+        }
+    }
+
+    /**
+     * Writes the learned state to app-private storage so it survives
+     * restarts. Called after learn events (rare, tap-driven); the blob is
+     * KB-scale, capped in the native layer. Incognito sessions never reach
+     * this path — acceptance callbacks are gated upstream.
+     */
+    private fun persistLearnedState() {
+        try {
+            val data = FlorisNative.exportLearned() ?: return
+            java.io.File(appContext.filesDir, "crake_learned.crkl").writeBytes(data)
+        } catch (e: Exception) {
+            flogDebug { "learned state persist failed: ${e.message}" }
         }
     }
 
