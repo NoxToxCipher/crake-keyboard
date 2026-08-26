@@ -105,6 +105,86 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitTest
     }
 }
 
+/// Loads the CRKB bigram language model for context re-ranking. Returns the
+/// pair count, or -1 on any parse error (in which case a previously loaded
+/// table, if any, stays in effect).
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoadBigramBlob(
+    env: JNIEnv,
+    _class: JClass,
+    data: JByteArray,
+) -> jint {
+    let bytes = match env.convert_byte_array(&data) {
+        Ok(b) => b,
+        Err(_) => return -1,
+    };
+    match NLP_ENGINE.write() {
+        Ok(mut engine) => match engine.load_bigrams(&bytes) {
+            Ok(count) => count.min(jint::MAX as usize) as jint,
+            Err(_) => -1,
+        },
+        Err(_) => -1,
+    }
+}
+
+/// Context-aware suggest: identical to nativeNlpSuggest plus the previous
+/// word, which feeds homophone disambiguation and the bigram re-ranker.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpSuggestCtx(
+    mut env: JNIEnv,
+    _class: JClass,
+    query: JString,
+    prev_word: JString,
+    limit: jint,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let query_str = match env.get_string(&query) {
+        Ok(s) => match s.to_str() {
+            Ok(valid) => valid.to_string(),
+            Err(_) => return empty_array,
+        },
+        Err(_) => return empty_array,
+    };
+    let prev_str = env
+        .get_string(&prev_word)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+
+    let candidates = {
+        if let Ok(engine) = NLP_ENGINE.read() {
+            engine
+                .suggest_with_context(&query_str, &prev_str, limit.max(1) as usize)
+                .candidates
+        } else {
+            Vec::new()
+        }
+    };
+
+    let string_class = match env.find_class("java/lang/String") {
+        Ok(cls) => cls,
+        Err(_) => return empty_array,
+    };
+    let result_array = match env.new_object_array(
+        candidates.len() as jint,
+        string_class,
+        JString::default(),
+    ) {
+        Ok(arr) => arr,
+        Err(_) => return empty_array,
+    };
+    for (i, cand) in candidates.iter().enumerate() {
+        let serialized = format!("{}:{}", cand.word, if cand.is_autocorrect { 1 } else { 0 });
+        if let Ok(jstr) = env.new_string(&serialized) {
+            let _ = env.set_object_array_element(&result_array, i as jint, jstr);
+        }
+    }
+    result_array.into_raw()
+}
+
 /// Two-token spurious-space repair ("shou kd" -> "should"). Returns the
 /// merged dictionary word, or an empty string when the fragments should not
 /// merge (legitimate pairs never do — see NlpEngine::merge_repair).
@@ -583,6 +663,17 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideSe
             width: w_buf[i],
             height: h_buf[i],
         });
+    }
+
+    // The same geometry feeds the Gaussian touch model, so autocorrect slip
+    // costs always describe the layout the user is actually typing on
+    // (Dvorak gets Dvorak neighbours, not a hardcoded union table).
+    let model_keys: Vec<(char, f32, f32)> = keys
+        .iter()
+        .map(|k| (k.character, k.center.x, k.center.y))
+        .collect();
+    if let Ok(mut engine) = NLP_ENGINE.write() {
+        engine.set_touch_model(floris_core::TouchModel::from_layout(&model_keys));
     }
 
     if let Ok(mut engine) = GLIDE_ENGINE.write() {

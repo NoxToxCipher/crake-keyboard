@@ -97,6 +97,33 @@ fn repairs_spurious_space_splits() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// The Gaussian touch model makes slip costs layout-true: the same fragments
+/// merge on the layout where the slip is physically plausible and refuse on
+/// one where it is not. "kd" for "ld" is a k/l neighbour slip on QWERTY;
+/// on Dvorak k and l live on opposite corners.
+#[test]
+fn merge_repair_follows_the_active_layout_model() {
+    use floris_core::TouchModel;
+    fn grid(rows: &[&str], offsets: &[f32]) -> TouchModel {
+        let mut keys = Vec::new();
+        for (r, row) in rows.iter().enumerate() {
+            for (i, ch) in row.chars().enumerate() {
+                keys.push((ch, (i as f32 + offsets[r] + 0.5) * 100.0, (r as f32 + 0.5) * 140.0));
+            }
+        }
+        TouchModel::from_layout(&keys).expect("valid grid")
+    }
+    let mut e = engine();
+    e.trie.insert("should", 250);
+
+    e.set_touch_model(Some(grid(&["qwertyuiop", "asdfghjkl", "zxcvbnm"], &[0.0, 0.5, 1.5])));
+    assert_eq!(e.merge_repair("shou", "kd").as_deref(), Some("should"));
+    assert_eq!(e.merge_repair("can", "for"), None);
+
+    e.set_touch_model(Some(grid(&["pyfgcrl", "aoeuidhtns", "qjkxbmwvz"], &[3.0, 0.0, 1.5])));
+    assert_eq!(e.merge_repair("shou", "kd"), None, "k/l are not neighbours on Dvorak");
+}
+
 /// Round 2: the fat-finger classes beyond adjacent substitution — swapped
 /// neighbouring letters (transposition), a key registering twice, and a key
 /// not registering at all. Same bar: the intended word must appear top-3.

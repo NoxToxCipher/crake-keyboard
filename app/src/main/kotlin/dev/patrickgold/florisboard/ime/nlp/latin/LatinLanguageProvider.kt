@@ -110,6 +110,22 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     "total=${tNative - tStart}ms words=$nativeCount",
             )
             flogInfo { "Loaded $nativeCount dictionary words from CRKD blob" }
+            // Bigram LM rides the same load: ids in the CRKB table index the
+            // dictionary blob's entry order, so it must load after the
+            // dictionary. Optional — on any failure suggestions simply run
+            // without context re-ranking.
+            try {
+                val bgBytes = appContext.assets.open("ime/dict/bigrams.crkb").use { it.readBytes() }
+                val tBigram = SystemClock.elapsedRealtime()
+                val pairs = FlorisNative.loadBigramBlob(bgBytes)
+                Log.i(
+                    "CrakeStartup",
+                    "bigram load: read+parse=${SystemClock.elapsedRealtime() - tNative}ms " +
+                        "(native=${SystemClock.elapsedRealtime() - tBigram}ms) pairs=$pairs",
+                )
+            } catch (e: Exception) {
+                flogDebug { "CRKB bigram load failed (context re-ranking off): ${e.message}" }
+            }
             true
         } catch (e: Exception) {
             words.clear()
@@ -223,7 +239,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             if (FlorisNative.isAvailable()) {
                 val cleanWordQuery = query.takeLastWhile { it.isLetter() || it == '\'' }
                 if (cleanWordQuery.isNotBlank()) {
-                    val candidates = FlorisNative.suggest(cleanWordQuery, maxCandidateCount)
+                    val candidates = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
                     for ((index, candidate) in candidates.withIndex()) {
                         // Avoid duplicates if snippet already added
                         if (none { it.text.toString().equals(candidate.text, ignoreCase = true) }) {
