@@ -10,6 +10,10 @@ pub struct ShorthandEntry {
 
 pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
     ShorthandEntry { code: "!=", expansion: "≠", is_autocorrect: true },
+    ShorthandEntry { code: "!btc", expansion: "₿", is_autocorrect: true },
+    ShorthandEntry { code: "!eth", expansion: "Ξ", is_autocorrect: true },
+    ShorthandEntry { code: "!sol", expansion: "◎", is_autocorrect: true },
+    ShorthandEntry { code: "!xmr", expansion: "ɱ", is_autocorrect: true },
     ShorthandEntry { code: "(c)", expansion: "©", is_autocorrect: true },
     ShorthandEntry { code: "(r)", expansion: "®", is_autocorrect: true },
     ShorthandEntry { code: "(tm)", expansion: "™", is_autocorrect: true },
@@ -17,6 +21,10 @@ pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
     ShorthandEntry { code: "--", expansion: "—", is_autocorrect: true },
     ShorthandEntry { code: "-->", expansion: "→", is_autocorrect: true },
     ShorthandEntry { code: "->", expansion: "→", is_autocorrect: true },
+    ShorthandEntry { code: ".btc", expansion: "₿", is_autocorrect: true },
+    ShorthandEntry { code: ".eth", expansion: "Ξ", is_autocorrect: true },
+    ShorthandEntry { code: ".sol", expansion: "◎", is_autocorrect: true },
+    ShorthandEntry { code: ".xmr", expansion: "ɱ", is_autocorrect: true },
     ShorthandEntry { code: "2", expansion: "to", is_autocorrect: false },
     ShorthandEntry { code: "4", expansion: "for", is_autocorrect: false },
     ShorthandEntry { code: "8", expansion: "ate", is_autocorrect: false },
