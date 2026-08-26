@@ -1463,26 +1463,31 @@ private fun TextKeyButton(
                     val canvasH = this.size.height
                     val cornerR = 6f * densityScale
 
-                    // 1. Wet Glass / Storm Sky Tint with Dark Cyan Reflection
+                    fun makeArgb(r: Int, g: Int, b: Int, alpha: Float): Int {
+                        val a = (alpha.coerceIn(0f, 1f) * 255f).toInt()
+                        return (a shl 24) or ((r and 0xFF) shl 16) or ((g and 0xFF) shl 8) or (b and 0xFF)
+                    }
+
+                    // 1. Wet Glass / Storm Sky Tint (Deep Slate Blue, never green)
                     val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x550B1B2B * rainAlpha).toInt() // Deep stormy wet slate
+                        color = makeArgb(15, 23, 42, 0.45f * rainAlpha) // Deep slate storm
                         style = android.graphics.Paint.Style.FILL
                     }
                     drawContext.canvas.nativeCanvas.drawRoundRect(0f, 0f, canvasW, canvasH, cornerR, cornerR, bgPaint)
 
                     val glassGlintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x2238BDF8 * rainAlpha).toInt() // Soft light blue water sheen
+                        color = makeArgb(255, 255, 255, 0.12f * rainAlpha) // Pure translucent light sheen
                         style = android.graphics.Paint.Style.FILL
                     }
-                    drawContext.canvas.nativeCanvas.drawRoundRect(1f * densityScale, 1f * densityScale, canvasW - 1f * densityScale, canvasH * 0.4f, cornerR, cornerR, glassGlintPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(1f * densityScale, 1f * densityScale, canvasW - 1f * densityScale, canvasH * 0.38f, cornerR, cornerR, glassGlintPaint)
 
-                    // 2. Stationary Surface Condensation Water Beads (Glossy dewdrops on spacebar)
+                    // 2. Stationary Surface Condensation Water Beads (Pure crystal water dewdrops)
                     val beadPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x8894A3B8 * rainAlpha).toInt()
+                        color = makeArgb(148, 163, 184, 0.55f * rainAlpha) // Glassy water refraction
                         style = android.graphics.Paint.Style.FILL
                     }
                     val beadHighlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0xCCFFFFFF * rainAlpha).toInt()
+                        color = makeArgb(255, 255, 255, 0.85f * rainAlpha) // Pure white glint
                         style = android.graphics.Paint.Style.FILL
                     }
                     val fixedBeadCount = 8
@@ -1494,9 +1499,9 @@ private fun TextKeyButton(
                         drawContext.canvas.nativeCanvas.drawCircle(bx - br * 0.35f, by - br * 0.35f, br * 0.45f, beadHighlightPaint)
                     }
 
-                    // 3. Layer 1: Background Fine Drizzle (Fast & Faint)
+                    // 3. Layer 1: Background Fine Drizzle (Pure Ice White / Silver streaks)
                     val drizzlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x4493C5FD * rainAlpha).toInt()
+                        color = makeArgb(224, 242, 254, 0.38f * rainAlpha) // Silver drizzle
                         strokeWidth = 0.8f * densityScale
                         style = android.graphics.Paint.Style.STROKE
                     }
@@ -1516,23 +1521,21 @@ private fun TextKeyButton(
                         }
                     }
 
-                    // 4. Layer 2: Foreground Crisp Raindrops with Splashes and Concentric Ripples
+                    // 4. Layer 2: Foreground Crisp Raindrops with Pure White Tips & Concentric Ripples
                     val dropPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0xCCBAE6FD * rainAlpha).toInt() // Bright sky water streak
+                        color = makeArgb(240, 249, 255, 0.75f * rainAlpha) // Translucent crisp rain
                         strokeWidth = 1.4f * densityScale
                         style = android.graphics.Paint.Style.STROKE
                     }
                     val dropHeadPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0xEEFFFFFF * rainAlpha).toInt() // Pure white glowing droplet head
+                        color = makeArgb(255, 255, 255, 0.95f * rainAlpha) // Pure white droplet bead
                         style = android.graphics.Paint.Style.FILL
                     }
                     val ripplePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x7738BDF8 * rainAlpha).toInt()
                         strokeWidth = 1.1f * densityScale
                         style = android.graphics.Paint.Style.STROKE
                     }
                     val splashParticlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0xDDFFFFFF * rainAlpha).toInt()
                         style = android.graphics.Paint.Style.FILL
                     }
 
@@ -1551,7 +1554,6 @@ private fun TextKeyButton(
                         // Rain Streak & Leading Droplet Head
                         if (endY > 0f && startY < bottomImpactY) {
                             drawContext.canvas.nativeCanvas.drawLine(startX, startY, endX, endY, dropPaint)
-                            // White droplet head at the falling tip
                             drawContext.canvas.nativeCanvas.drawCircle(endX, endY, 0.9f * densityScale, dropHeadPaint)
                         }
 
@@ -1560,8 +1562,8 @@ private fun TextKeyButton(
                             val splashProgress = (phase - 0.65f) / 0.35f
                             val ripRadius1 = splashProgress * 9f * densityScale
                             val ripRadius2 = splashProgress * 5f * densityScale
-                            val ripAlpha = ((1f - splashProgress) * rainAlpha * 180f).toInt()
-                            ripplePaint.alpha = ripAlpha
+                            val ripAlpha = (1f - splashProgress) * rainAlpha * 0.70f
+                            ripplePaint.color = makeArgb(186, 230, 253, ripAlpha)
 
                             // Concentric Puddle Ellipses
                             drawContext.canvas.nativeCanvas.drawOval(
@@ -1580,7 +1582,8 @@ private fun TextKeyButton(
                             // Microscopic Splash Droplets bouncing upward
                             if (splashProgress < 0.6f) {
                                 val splashRise = (1f - (splashProgress / 0.6f)) * 4.5f * densityScale
-                                splashParticlePaint.alpha = ((1f - splashProgress) * rainAlpha * 220f).toInt()
+                                val partAlpha = (1f - splashProgress) * rainAlpha * 0.90f
+                                splashParticlePaint.color = makeArgb(255, 255, 255, partAlpha)
                                 drawContext.canvas.nativeCanvas.drawCircle(seedX - 2.5f * densityScale, bottomImpactY - splashRise, 0.8f * densityScale, splashParticlePaint)
                                 drawContext.canvas.nativeCanvas.drawCircle(seedX + 3.0f * densityScale, bottomImpactY - splashRise * 0.8f, 0.7f * densityScale, splashParticlePaint)
                             }
