@@ -185,6 +185,10 @@ impl NlpEngine {
     }
 
     pub fn suggest(&self, query: &str, max_candidates: usize) -> SuggestionResult {
+        self.suggest_with_context(query, "", max_candidates)
+    }
+
+    pub fn suggest_with_context(&self, query: &str, prev_word: &str, max_candidates: usize) -> SuggestionResult {
         let trimmed = query.trim();
         let trimmed_lower = trimmed.to_lowercase();
         if trimmed_lower.is_empty() {
@@ -349,6 +353,17 @@ impl NlpEngine {
                 candidates.push(RankedCandidate {
                     word: trimmed.to_string(),
                     is_autocorrect: false,
+                });
+            }
+        }
+
+        // Apply contextual homophone resolution if prev_word is provided
+        if !prev_word.is_empty() && !candidates.is_empty() {
+            if let Some(correct_homophone) = Self::disambiguate_homophone(prev_word, &candidates[0].word) {
+                let formatted = Self::apply_casing(trimmed, correct_homophone);
+                candidates.insert(0, RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: true,
                 });
             }
         }
