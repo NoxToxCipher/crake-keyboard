@@ -408,9 +408,18 @@ fun TextKeyboardLayout(
                 }
             }
         }
-        val flickPredictions = remember(currentWord, flickPredictionsEnabled) {
-            if (flickPredictionsEnabled && currentWord.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
-                org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord)
+        val textBefore = activeContent.textBeforeSelection.toString()
+        val prevWord = remember(textBefore, currentWord) {
+            val beforeCurrent = if (currentWord.isNotEmpty()) {
+                textBefore.dropLast(currentWord.length).trimEnd()
+            } else {
+                textBefore.trimEnd()
+            }
+            beforeCurrent.takeLastWhile { it.isLetter() || it == '\'' }
+        }
+        val flickPredictions = remember(currentWord, prevWord, flickPredictionsEnabled) {
+            if (flickPredictionsEnabled && org.florisboard.libnative.FlorisNative.isAvailable()) {
+                org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord, prevWord)
             } else {
                 emptyMap()
             }
@@ -1405,13 +1414,21 @@ private class TextKeyboardLayoutController(
                             if (event.direction == SwipeGesture.Direction.UP && prefs.glide.flickPredictionsEnabled.get()) {
                                 val charCode = initialKey.computedData.code.toChar().lowercaseChar()
                                 val activeContent = editorInstance.activeContent
+                                val textBefore = activeContent.textBeforeSelection.toString()
+                                val composing = activeContent.composingText
                                 val prefix = when {
-                                    activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> activeContent.composingText
+                                    activeContent.composing.isValid && composing.isNotBlank() -> composing
                                     activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> activeContent.currentWordText
-                                    else -> activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                                    else -> textBefore.takeLastWhile { it.isLetter() || it == '\'' }.toString()
                                 }
-                                val predictions = if (prefix.isNotBlank() && org.florisboard.libnative.FlorisNative.isAvailable()) {
-                                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix)
+                                val beforePrefix = if (prefix.isNotEmpty()) {
+                                    textBefore.dropLast(prefix.length).trimEnd()
+                                } else {
+                                    textBefore.trimEnd()
+                                }
+                                val prevWord = beforePrefix.takeLastWhile { it.isLetter() || it == '\'' }
+                                val predictions = if (org.florisboard.libnative.FlorisNative.isAvailable()) {
+                                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix, prevWord)
                                 } else {
                                     emptyMap()
                                 }
