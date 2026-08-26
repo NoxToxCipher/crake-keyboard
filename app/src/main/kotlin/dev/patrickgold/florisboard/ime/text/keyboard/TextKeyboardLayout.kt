@@ -330,52 +330,67 @@ fun TextKeyboardLayout(
                 emptyMap()
             }
         }
-        // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Specular Highlight & Ambient Shadow)
+        // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows)
         if (keyboard.mode == KeyboardMode.CHARACTERS) {
-            val rowTops = remember(keyboard) {
-                keyboard.keys().asSequence().map { it.visibleBounds.top.toInt() }.distinct().sorted().toList()
-            }
-            for (rowTop in rowTops) {
-                if (rowTop > 5) {
-                    // Top Specular Chrome Highlight with Subtle Cyan Core Glow
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .absoluteOffset { IntOffset(0, rowTop - 1) }
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color(0x1500E5FF),
-                                        Color(0x60CBD5E1),
-                                        Color(0xDDE2E8F0),
-                                        Color(0x8000E5FF),
-                                        Color(0xDDE2E8F0),
-                                        Color(0x60CBD5E1),
-                                        Color(0x1500E5FF),
-                                    )
-                                )
-                            )
-                    )
-                    // Bottom Deep Ambient Shadow Line
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .absoluteOffset { IntOffset(0, rowTop) }
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                    colors = listOf(
-                                        Color(0x15000000),
-                                        Color(0x70000000),
-                                        Color(0xA0000000),
-                                        Color(0x70000000),
-                                        Color(0x15000000),
-                                    )
-                                )
-                            )
-                    )
+            val fretPositions = remember(keyboard) {
+                val rowBounds = keyboard.keys().asSequence()
+                    .groupBy { it.touchBounds.top.toInt() }
+                    .values
+                    .map { keysInRow ->
+                        val top = keysInRow.minOf { it.visibleBounds.top }
+                        val bottom = keysInRow.maxOf { it.visibleBounds.bottom }
+                        top to bottom
+                    }
+                    .sortedBy { it.first }
+
+                val positions = mutableListOf<Int>()
+                for (i in 1 until rowBounds.size) {
+                    val prevBottom = rowBounds[i - 1].second
+                    val currentTop = rowBounds[i].first
+                    val centerBetweenRows = ((prevBottom + currentTop) / 2f).toInt()
+                    positions.add(centerBetweenRows)
                 }
+                positions
+            }
+            for (fretY in fretPositions) {
+                // Top Specular Chrome Highlight with Subtle Cyan Core Glow
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .absoluteOffset { IntOffset(0, fretY - 1) }
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0x1500E5FF),
+                                    Color(0x60CBD5E1),
+                                    Color(0xDDE2E8F0),
+                                    Color(0x8000E5FF),
+                                    Color(0xDDE2E8F0),
+                                    Color(0x60CBD5E1),
+                                    Color(0x1500E5FF),
+                                )
+                            )
+                        )
+                )
+                // Bottom Deep Ambient Shadow Line
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .absoluteOffset { IntOffset(0, fretY) }
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0x15000000),
+                                    Color(0x70000000),
+                                    Color(0xA0000000),
+                                    Color(0x70000000),
+                                    Color(0x15000000),
+                                )
+                            )
+                        )
+                )
             }
         }
 
