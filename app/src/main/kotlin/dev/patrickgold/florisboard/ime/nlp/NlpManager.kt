@@ -563,4 +563,13 @@ class NlpManager(context: Context) {
                     && !blankStrRegex.matches(currentItem.text)
             }
     }
+
+    suspend fun preloadProviders() {
+        try {
+            providers.withLock { map ->
+                map.values.forEach { it.createIfNecessary() }
+            }
+        } catch (_: Throwable) {}
+    }
+
 }

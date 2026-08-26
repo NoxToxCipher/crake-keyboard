@@ -117,40 +117,50 @@ class FlorisApplication : Application() {
 
     fun init() {
         val tStart = SystemClock.elapsedRealtime()
-        cacheDir?.deleteContentsRecursively()
-        val tCache = SystemClock.elapsedRealtime()
-        scope.launch {
+
+        // 1. Initialize Datastore preferences immediately
+        scope.launch(Dispatchers.IO) {
             val result = FlorisPreferenceStore.initAndroid(
                 context = this@FlorisApplication,
                 datastoreName = FlorisPreferenceModel.NAME,
             )
-            Log.i("PREFS", result.toString())
             preferenceStoreLoaded.value = true
         }
-        extensionManager.value.init()
-        val tExt = SystemClock.elapsedRealtime()
-        clipboardManager.value.initializeForContext(this)
-        val tClip = SystemClock.elapsedRealtime()
-        DictionaryManager.init(this)
-        val tDict = SystemClock.elapsedRealtime()
-        Log.i(
-            "CrakeStartup",
-            "app init (main thread): cacheClear=${tCache - tStart}ms " +
-                "extensions=${tExt - tCache}ms clipboard=${tClip - tExt}ms " +
-                "dictMgrInit=${tDict - tClip}ms total=${tDict - tStart}ms",
-        )
 
-        // Pre-warm critical keyboard engines asynchronously for instant zero-delay cold-start pop-up
-        scope.launch(Dispatchers.Default) {
-            keyboardManager.value
-            themeManager.value
-            nlpManager.value
-            subtypeManager.value
-            glideTypingManager.value
+        // 2. Asynchronous background cache cleanup (never blocks UI thread)
+        scope.launch(Dispatchers.IO) {
             try {
+                cacheDir?.deleteContentsRecursively()
+            } catch (_: Throwable) {}
+        }
+
+        // 3. Extension and Clipboard initialization
+        extensionManager.value.init()
+        clipboardManager.value.initializeForContext(this)
+
+        // 4. Asynchronous dictionary database warming
+        scope.launch(Dispatchers.IO) {
+            try {
+                DictionaryManager.init(this@FlorisApplication)
+            } catch (_: Throwable) {}
+        }
+
+        // 5. Pre-warm critical keyboard engines and dictionary blobs immediately in parallel
+        scope.launch(Dispatchers.IO) {
+            try {
+                keyboardManager.value
+                themeManager.value
+                val nlp = nlpManager.value
+                subtypeManager.value
+                glideTypingManager.value
+                // Pre-load native CRKD dictionary and CRKB bigram blobs
+                nlp.preloadProviders()
                 EmojiData.get(this@FlorisApplication, FlorisLocale.default())
             } catch (_: Throwable) {}
         }
+
+        val tTotal = SystemClock.elapsedRealtime() - tStart
+        Log.i("CrakeStartup", "Optimized cold-start main thread app init completed in ${tTotal}ms")
     }
 
     private inner class BootComplete : BroadcastReceiver() {
