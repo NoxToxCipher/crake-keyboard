@@ -1444,80 +1444,152 @@ private fun TextKeyButton(
 
             if (rainAlphaAnim.value > 0f) {
                 val infiniteRainTransition = rememberInfiniteTransition(label = "SpaceRainInfinite")
-                val rainTime by infiniteRainTransition.animateFloat(
+                val rainTimeFast by infiniteRainTransition.animateFloat(
                     initialValue = 0f,
                     targetValue = 1f,
                     animationSpec = infiniteRepeatable(
-                        animation = tween(1200, easing = LinearEasing),
+                        animation = tween(420, easing = LinearEasing),
                         repeatMode = RepeatMode.Restart,
                     ),
-                    label = "RainCycle",
+                    label = "RainCycleFast",
                 )
                 val rainAlpha = rainAlphaAnim.value
-                val density = LocalDensity.current.density
+                val densityScale = density
 
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier.matchParentSize()
                 ) {
                     val canvasW = this.size.width
                     val canvasH = this.size.height
-                    val densityScale = density
                     val cornerR = 6f * densityScale
-                    val strokeW = 1.4f * densityScale
-                    val splashStrokeW = 1.0f * densityScale
-                    val dx = 2.5f * densityScale
-                    val bottomY = canvasH - 2f * densityScale
 
-                    // 1. Ambient Raindrop Sky Tint
+                    // 1. Wet Glass / Storm Sky Tint with Dark Cyan Reflection
                     val bgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x3300B4D8 * rainAlpha).toInt()
+                        color = (0x550B1B2B * rainAlpha).toInt() // Deep stormy wet slate
                         style = android.graphics.Paint.Style.FILL
                     }
                     drawContext.canvas.nativeCanvas.drawRoundRect(0f, 0f, canvasW, canvasH, cornerR, cornerR, bgPaint)
 
-                    // 2. Falling Angled Raindrop Streaks & Splashes
-                    val dropPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x9900F0FF * rainAlpha).toInt()
-                        strokeWidth = strokeW
-                        style = android.graphics.Paint.Style.STROKE
+                    val glassGlintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0x2238BDF8 * rainAlpha).toInt() // Soft light blue water sheen
+                        style = android.graphics.Paint.Style.FILL
                     }
-                    val splashPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = (0x5500F0FF * rainAlpha).toInt()
-                        strokeWidth = splashStrokeW
-                        style = android.graphics.Paint.Style.STROKE
+                    drawContext.canvas.nativeCanvas.drawRoundRect(1f * densityScale, 1f * densityScale, canvasW - 1f * densityScale, canvasH * 0.4f, cornerR, cornerR, glassGlintPaint)
+
+                    // 2. Stationary Surface Condensation Water Beads (Glossy dewdrops on spacebar)
+                    val beadPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0x8894A3B8 * rainAlpha).toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val beadHighlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0xCCFFFFFF * rainAlpha).toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val fixedBeadCount = 8
+                    for (b in 0 until fixedBeadCount) {
+                        val bx = (canvasW / (fixedBeadCount + 1).toFloat()) * (b + 1).toFloat() + ((b * 23) % 13 - 6).toFloat() * densityScale
+                        val by = canvasH * (0.25f + ((b * 31) % 50) / 100f)
+                        val br = (1.5f + (b % 3) * 0.6f) * densityScale
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, by, br, beadPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx - br * 0.35f, by - br * 0.35f, br * 0.45f, beadHighlightPaint)
                     }
 
-                    val dropCount = 14
-                    for (i in 0 until dropCount) {
-                        val seedOffset = ((i * 17) % 11 - 5).toFloat() * densityScale
-                        val seedX = (canvasW / (dropCount + 1).toFloat()) * (i + 1).toFloat() + seedOffset
-                        val dropPhase = ((rainTime + (i.toFloat() * 0.17f)) % 1.0f)
-                        val dropLen = (5f + ((i % 4) * 2).toFloat()) * densityScale
-                        val startY = dropPhase * (canvasH + dropLen) - dropLen
+                    // 3. Layer 1: Background Fine Drizzle (Fast & Faint)
+                    val drizzlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0x4493C5FD * rainAlpha).toInt()
+                        strokeWidth = 0.8f * densityScale
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+                    val drizzleCount = 18
+                    for (i in 0 until drizzleCount) {
+                        val dx = 1.6f * densityScale
+                        val seedX = (canvasW / (drizzleCount + 1).toFloat()) * (i + 1).toFloat() + ((i * 19) % 9 - 4).toFloat() * densityScale
+                        val phase = ((rainTimeFast * 1.3f + (i.toFloat() * 0.13f)) % 1.0f)
+                        val dropLen = (8f + ((i % 3) * 3).toFloat()) * densityScale
+                        val startY = phase * (canvasH + dropLen * 2f) - dropLen
                         val endY = startY + dropLen
-                        val startX = seedX - (dropPhase * dx * 2f)
+                        val startX = seedX - (phase * dx)
                         val endX = startX + dx
 
                         if (endY > 0f && startY < canvasH) {
+                            drawContext.canvas.nativeCanvas.drawLine(startX, startY, endX, endY, drizzlePaint)
+                        }
+                    }
+
+                    // 4. Layer 2: Foreground Crisp Raindrops with Splashes and Concentric Ripples
+                    val dropPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0xCCBAE6FD * rainAlpha).toInt() // Bright sky water streak
+                        strokeWidth = 1.4f * densityScale
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+                    val dropHeadPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0xEEFFFFFF * rainAlpha).toInt() // Pure white glowing droplet head
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val ripplePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0x7738BDF8 * rainAlpha).toInt()
+                        strokeWidth = 1.1f * densityScale
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+                    val splashParticlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = (0xDDFFFFFF * rainAlpha).toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    val mainDropCount = 10
+                    for (i in 0 until mainDropCount) {
+                        val dx = 2.2f * densityScale
+                        val seedX = (canvasW / (mainDropCount + 1).toFloat()) * (i + 1).toFloat() + ((i * 37) % 15 - 7).toFloat() * densityScale
+                        val phase = ((rainTimeFast + (i.toFloat() * 0.23f)) % 1.0f)
+                        val dropLen = (12f + ((i % 4) * 4).toFloat()) * densityScale
+                        val startY = phase * (canvasH + dropLen * 1.5f) - dropLen
+                        val endY = startY + dropLen
+                        val startX = seedX - (phase * dx)
+                        val endX = startX + dx
+                        val bottomImpactY = canvasH - 2f * densityScale
+
+                        // Rain Streak & Leading Droplet Head
+                        if (endY > 0f && startY < bottomImpactY) {
                             drawContext.canvas.nativeCanvas.drawLine(startX, startY, endX, endY, dropPaint)
+                            // White droplet head at the falling tip
+                            drawContext.canvas.nativeCanvas.drawCircle(endX, endY, 0.9f * densityScale, dropHeadPaint)
                         }
 
-                        // Ripple splash at bottom impact
-                        if (dropPhase > 0.70f) {
-                            val splashProgress = (dropPhase - 0.70f) / 0.30f
-                            val radius = splashProgress * 7f * densityScale
-                            val alphaMult = (1f - splashProgress) * rainAlpha
-                            splashPaint.alpha = (alphaMult * 140f).toInt()
+                        // Surface Impact: Double Ripple & Splash Micro-droplets
+                        if (phase > 0.65f) {
+                            val splashProgress = (phase - 0.65f) / 0.35f
+                            val ripRadius1 = splashProgress * 9f * densityScale
+                            val ripRadius2 = splashProgress * 5f * densityScale
+                            val ripAlpha = ((1f - splashProgress) * rainAlpha * 180f).toInt()
+                            ripplePaint.alpha = ripAlpha
+
+                            // Concentric Puddle Ellipses
                             drawContext.canvas.nativeCanvas.drawOval(
-                                seedX - radius, bottomY - radius * 0.4f,
-                                seedX + radius, bottomY + radius * 0.4f,
-                                splashPaint
+                                seedX - ripRadius1, bottomImpactY - ripRadius1 * 0.32f,
+                                seedX + ripRadius1, bottomImpactY + ripRadius1 * 0.32f,
+                                ripplePaint
                             )
+                            if (splashProgress > 0.15f) {
+                                drawContext.canvas.nativeCanvas.drawOval(
+                                    seedX - ripRadius2, bottomImpactY - ripRadius2 * 0.32f,
+                                    seedX + ripRadius2, bottomImpactY + ripRadius2 * 0.32f,
+                                    ripplePaint
+                                )
+                            }
+
+                            // Microscopic Splash Droplets bouncing upward
+                            if (splashProgress < 0.6f) {
+                                val splashRise = (1f - (splashProgress / 0.6f)) * 4.5f * densityScale
+                                splashParticlePaint.alpha = ((1f - splashProgress) * rainAlpha * 220f).toInt()
+                                drawContext.canvas.nativeCanvas.drawCircle(seedX - 2.5f * densityScale, bottomImpactY - splashRise, 0.8f * densityScale, splashParticlePaint)
+                                drawContext.canvas.nativeCanvas.drawCircle(seedX + 3.0f * densityScale, bottomImpactY - splashRise * 0.8f, 0.7f * densityScale, splashParticlePaint)
+                            }
                         }
                     }
                 }
             }
         }
+
         if (key.computedData.code == KeyCode.SHIFT && eggAlphaAnim.value > 0f) {
             val eggImage = painterResource(id = R.drawable.ic_crake_easter_egg)
             Image(
