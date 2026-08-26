@@ -121,6 +121,13 @@ pub struct SuggestionResult {
 #[derive(Debug, Clone, Default)]
 pub struct NlpEngine {
     pub trie: RadixTrie,
+    /// The shipped dictionary exactly as the CRKD blob delivered it, in blob
+    /// order. Deliberately separate from the trie: the trie also accumulates
+    /// user-learned words, and the glide classifier's word list must keep
+    /// meaning "the static corpus" — the same contents the JVM-side word map
+    /// held before this store replaced it.
+    corpus_words: Vec<String>,
+    corpus_freqs: std::collections::HashMap<String, u32>,
 }
 
 impl NlpEngine {
@@ -129,13 +136,35 @@ impl NlpEngine {
         for &(word, freq) in crate::core_dict::CORE_DICTIONARY {
             trie.insert(word, freq);
         }
-        Self { trie }
+        Self {
+            trie,
+            corpus_words: Vec::new(),
+            corpus_freqs: std::collections::HashMap::new(),
+        }
     }
 
     pub fn load_dictionary(&mut self, words: &[(&str, u32)]) {
         for &(word, freq) in words {
             self.trie.insert(word, freq);
         }
+    }
+
+    /// Adds one corpus entry (blob load only). A word seen twice keeps its
+    /// last frequency and its first position, matching JVM map semantics.
+    pub fn corpus_insert(&mut self, word: &str, freq: u32) {
+        if self.corpus_freqs.insert(word.to_string(), freq).is_none() {
+            self.corpus_words.push(word.to_string());
+        }
+    }
+
+    pub fn corpus_words(&self) -> &[String] {
+        &self.corpus_words
+    }
+
+    /// Frequency of a corpus word, 0 when absent — the same contract as a
+    /// map lookup defaulting to 0 on the JVM side.
+    pub fn corpus_freq(&self, word: &str) -> u32 {
+        self.corpus_freqs.get(word).copied().unwrap_or(0)
     }
 
     pub fn apply_casing(query: &str, candidate: &str) -> String {
@@ -502,5 +531,28 @@ mod tests {
             assert_eq!(res.candidates[0].word, expected, "Failed for input: {}", input);
             assert_eq!(res.candidates[0].is_autocorrect, should_auto, "Auto-flag wrong for: {}", input);
         }
+    }
+
+    #[test]
+    fn corpus_matches_jvm_map_semantics() {
+        let mut engine = NlpEngine::new();
+        engine.corpus_insert("the", 255);
+        engine.corpus_insert("quick", 200);
+        // Duplicate keeps last frequency, first position — like Map::put.
+        engine.corpus_insert("the", 100);
+        assert_eq!(engine.corpus_words(), &["the".to_string(), "quick".to_string()]);
+        assert_eq!(engine.corpus_freq("the"), 100);
+        assert_eq!(engine.corpus_freq("quick"), 200);
+        assert_eq!(engine.corpus_freq("absent"), 0);
+    }
+
+    #[test]
+    fn corpus_stays_separate_from_learned_trie_words() {
+        let mut engine = NlpEngine::new();
+        engine.corpus_insert("hello", 255);
+        // A learned word enters the trie but must never leak into the corpus.
+        engine.trie.insert("zzzcustom", 100);
+        assert_eq!(engine.corpus_words().len(), 1);
+        assert_eq!(engine.corpus_freq("zzzcustom"), 0);
     }
 }

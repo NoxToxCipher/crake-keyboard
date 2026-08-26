@@ -43,12 +43,61 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoad
     if let Ok(mut engine) = NLP_ENGINE.write() {
         match floris_core::parse_dict_blob(&bytes, |word, freq| {
             engine.trie.insert(word, freq);
+            engine.corpus_insert(word, freq);
         }) {
             Ok(count) => count.min(jint::MAX as u32) as jint,
             Err(_) => -1,
         }
     } else {
         -1
+    }
+}
+
+/// The static corpus as loaded from the CRKD blob, in blob order. Serves the
+/// glide classifier's word list now that the JVM no longer keeps its own copy
+/// of the dictionary.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpCorpusWords(
+    mut env: JNIEnv,
+    _class: JClass,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let Ok(engine) = NLP_ENGINE.read() else {
+        return empty_array;
+    };
+    let words = engine.corpus_words();
+    let Ok(array) = env.new_object_array(words.len() as i32, "java/lang/String", JString::default()) else {
+        return empty_array;
+    };
+    for (i, word) in words.iter().enumerate() {
+        let Ok(jword) = env.new_string(word) else {
+            return empty_array;
+        };
+        if env.set_object_array_element(&array, i as i32, jword).is_err() {
+            return empty_array;
+        }
+    }
+    array.into_raw()
+}
+
+/// Frequency of a corpus word, 0 when absent — the JVM map's lookup contract.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpCorpusFreq(
+    mut env: JNIEnv,
+    _class: JClass,
+    word: JString,
+) -> jint {
+    let Ok(w) = env.get_string(&word) else {
+        return 0;
+    };
+    let word_str = w.to_str().unwrap_or("");
+    match NLP_ENGINE.read() {
+        Ok(engine) => engine.corpus_freq(word_str).min(jint::MAX as u32) as jint,
+        Err(_) => 0,
     }
 }
 
