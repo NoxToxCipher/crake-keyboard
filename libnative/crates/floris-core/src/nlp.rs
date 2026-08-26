@@ -502,7 +502,17 @@ impl NlpEngine {
             }
         }
 
-        // 6. Prefix completions (completions must NOT auto-commit on space)
+        // Candidate POOL is wider than the display cut: stages fill up to
+        // pool_cap so the context rescorer can promote a candidate from
+        // below the cut; the final truncate() applies max_candidates after
+        // re-ranking. Without context the first max_candidates entries are
+        // assembled in the same order as before, so behaviour is unchanged.
+        let pool_cap = max_candidates + 4;
+
+        // 6. Prefix completions (completions must NOT auto-commit on space).
+        // Completions keep the old display-sized budget: the pool headroom
+        // beyond it is reserved for CORRECTION candidates, which are the ones
+        // context can meaningfully rescue from below the cut.
         let prefix_matches = self.trie.prefix_search(&trimmed_lower, max_candidates + 4);
         for (w, _) in prefix_matches {
             let formatted = Self::apply_casing(trimmed, &w);
@@ -518,7 +528,7 @@ impl NlpEngine {
         }
 
         // 6b. Instant O(1) Transposition & Double-Letter Typo Slip Recovery (Fast-Path)
-        if !is_exact && trimmed_lower.len() >= 3 && candidates.len() < max_candidates {
+        if !is_exact && trimmed_lower.len() >= 3 && candidates.len() < pool_cap {
             let chars: Vec<char> = trimmed_lower.chars().collect();
             // Test adjacent transpositions
             for i in 0..chars.len() - 1 {
@@ -577,9 +587,8 @@ impl NlpEngine {
                 (score, fc.distance, std::cmp::Reverse(fc.frequency))
             });
 
-            let mut pushed_any = false;
             for fc in &sorted_fuzzy {
-                if candidates.len() >= max_candidates {
+                if candidates.len() >= pool_cap {
                     break;
                 }
                 let formatted = Self::apply_casing(trimmed, &fc.word);
@@ -602,26 +611,39 @@ impl NlpEngine {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
                     });
-                    pushed_any = true;
                 }
             }
 
-            // Reserved slot: a same-shape adjacent-slip correction must not be
-            // crowded out by prefix completions ("fir" -> first/fire/firm
-            // burying "for"). If nothing fuzzy fit and the best match is a
-            // pure neighbor slip, it replaces the last non-autocorrect filler.
-            if !pushed_any && candidates.len() >= max_candidates {
-                let best = sorted_fuzzy.iter().find(|fc| {
-                    Self::is_spatial_slip_match(&trimmed_lower, &fc.word)
-                        && !contains_word(&candidates, &fc.word)
-                });
-                if let Some(fc) = best {
-                    if let Some(last) = candidates.last_mut() {
-                        if !last.is_autocorrect {
-                            *last = RankedCandidate {
-                                word: Self::apply_casing(trimmed, &fc.word),
-                                is_autocorrect: false,
-                            };
+            // Visibility guarantee: the best same-shape adjacent-slip
+            // correction must survive the display cut even without context
+            // ("fir" -> first/fire/firm burying "for"). With the wider pool
+            // it usually IS in candidates, just below the cut — move it to
+            // the last visible slot; if the pool was already full without
+            // it, replace the last visible non-autocorrect filler.
+            if candidates.len() >= max_candidates {
+                if let Some(fc) = sorted_fuzzy
+                    .iter()
+                    .find(|fc| Self::is_spatial_slip_match(&trimmed_lower, &fc.word))
+                {
+                    let formatted = Self::apply_casing(trimmed, &fc.word);
+                    let pos = candidates
+                        .iter()
+                        .position(|c| c.word.eq_ignore_ascii_case(&formatted));
+                    match pos {
+                        Some(p) if p < max_candidates => {}
+                        Some(p) => {
+                            let c = candidates.remove(p);
+                            candidates.insert(max_candidates - 1, c);
+                        }
+                        None => {
+                            if let Some(slot) = candidates.get_mut(max_candidates - 1) {
+                                if !slot.is_autocorrect {
+                                    *slot = RankedCandidate {
+                                        word: formatted,
+                                        is_autocorrect: false,
+                                    };
+                                }
+                            }
                         }
                     }
                 }

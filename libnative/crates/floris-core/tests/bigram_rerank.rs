@@ -89,6 +89,30 @@ fn context_reorders_the_tail_by_pair_score() {
     assert!(p_and < p_any, "without context 'and' (freq 250) leads, got {plain_tail:?}");
 }
 
+/// The pool-starvation fix: a context-apt word that misses the display cut
+/// on raw frequency must be rescued by the rescorer. "am" is below five
+/// stronger prefix/fuzzy candidates for the typo "an" at width 4 — with
+/// "i" as context it must appear in the final list anyway.
+#[test]
+fn context_rescues_a_candidate_from_below_the_display_cut() {
+    let mut e = engine();
+    let blob = blob(&e, &[("i", "am", 230)]);
+    e.load_bigrams(&blob).unwrap();
+
+    let no_ctx = e.suggest("an", 4);
+    assert!(
+        !no_ctx.candidates.iter().any(|c| c.word == "am"),
+        "precondition: without context 'am' misses the cut, got {:?}",
+        no_ctx.candidates.iter().map(|c| c.word.as_str()).collect::<Vec<_>>()
+    );
+    let with_ctx = e.suggest_with_context("an", "i", 4);
+    assert!(
+        with_ctx.candidates.iter().any(|c| c.word == "am"),
+        "'i am' (230) must be rescued into view, got {:?}",
+        with_ctx.candidates.iter().map(|c| c.word.as_str()).collect::<Vec<_>>()
+    );
+}
+
 #[test]
 fn no_table_means_no_change() {
     let e = engine();

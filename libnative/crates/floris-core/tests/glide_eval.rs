@@ -168,6 +168,30 @@ fn synth_sloppy_trace(engine: &GlideEngine, word: &str, rng: &mut Lcg) -> Option
     Some(trace)
 }
 
+/// Regression armor for the "israeli for testing" field report (2026-08-26):
+/// a clean glide can never surface a word whose first letter is nowhere near
+/// where the finger landed — the start-anchor filter and penalty must hold
+/// regardless of any frequency skew in the dictionary.
+#[test]
+fn wrong_start_letter_words_never_win_a_clean_trace() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for (w, f) in [("testing", 227), ("israeli", 255), ("test", 240), ("resting", 200)] {
+        nlp.trie.insert(w, f);
+    }
+    let mut rng = Lcg(0xBEEF);
+    for _ in 0..5 {
+        let trace = synth_trace(&glide, "testing", &mut rng).unwrap();
+        let results = glide.match_gesture(&trace, &nlp.trie, 3);
+        assert!(
+            !results.iter().any(|m| m.word == "israeli"),
+            "'israeli' (start i, far from t) must never match a 'testing' trace: {:?}",
+            results.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+        );
+        assert_eq!(results.first().map(|m| m.word.as_str()), Some("testing"));
+    }
+}
+
 #[test]
 fn glide_recall_on_sloppy_traces() {
     let glide = qwerty_engine();
