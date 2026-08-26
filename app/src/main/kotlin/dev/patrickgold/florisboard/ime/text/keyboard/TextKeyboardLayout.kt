@@ -3593,7 +3593,7 @@ fun TextKeyboardLayout(
             }
         }
 
-        // Sundae Ice Cream in Several Places Easter Egg (Artisanal Sundae Coupes on Keys S, U, N, D, A, E)
+        // Sundae Ice Cream in Several Places Easter Egg (Artisanal Sundaes on Keys S, U, N, D, A, E)
         if (sundaeTriggerTime > 0L) {
             val sundaeProgress = remember(sundaeTriggerTime) { Animatable(0f) }
             LaunchedEffect(sundaeTriggerTime) {
@@ -3615,7 +3615,7 @@ fun TextKeyboardLayout(
                     val canvasW = this.size.width
                     val canvasH = this.size.height
 
-                    // 1. Locate precise keycap centers for S, U, N, D, A, E
+                    // 1. Locate pixel-perfect keycap centers for S, U, N, D, A, E
                     val targetChars = listOf('s', 'u', 'n', 'd', 'a', 'e')
                     val sundaePositions = mutableListOf<androidx.compose.ui.geometry.Offset>()
 
