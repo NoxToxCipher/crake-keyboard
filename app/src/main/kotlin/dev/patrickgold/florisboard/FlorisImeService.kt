@@ -104,12 +104,22 @@ class FlorisImeService : LifecycleInputMethodService() {
          */
         fun launchSettings() {
             val ims = FlorisImeServiceReference.get() ?: return
-            ims.requestHideSelf(0)
-            ims.launchActivity(FlorisAppActivity::class) {
-                it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+            val intent = Intent(ims, FlorisAppActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
+            val options = android.app.ActivityOptions.makeCustomAnimation(
+                ims,
+                android.R.anim.fade_in,
+                android.R.anim.fade_out,
+            )
+            try {
+                ims.startActivity(intent, options.toBundle())
+            } catch (_: Throwable) {
+                ims.startActivity(intent)
+            }
+            ims.requestHideSelf(0)
         }
 
         fun showUi() {
