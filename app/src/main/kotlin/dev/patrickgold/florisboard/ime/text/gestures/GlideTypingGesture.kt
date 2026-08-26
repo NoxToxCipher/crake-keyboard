@@ -89,7 +89,14 @@ class GlideTypingGesture {
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
                             val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
-                            if (dist > triggerSlop && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS) && !isUpwardFlick) {
+                            // Glide may only START from a real character key:
+                            // a null initial key (missed tap near delete) or
+                            // a functional key must never grow into a glide —
+                            // that coupling made backward delete-word swipes
+                            // type letters (field report 2026-08-27).
+                            val isCharacterStart = (initialKey?.computedData?.code ?: 0) >
+                                dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE
+                            if (dist > triggerSlop && isCharacterStart && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS) && !isUpwardFlick) {
                                 pointerData.isActuallyGesture = true
                                 // Let listener know all those points need to be added.
                                 pointerData.positions.take(pointerData.positions.size - 1).forEach { point ->

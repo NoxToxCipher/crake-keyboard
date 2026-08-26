@@ -84,6 +84,8 @@ fn repairs_spurious_space_splits() {
         ("doi", "ble", Some("double")),
         ("eo", "rd", Some("word")),
         ("oft", "rn", Some("often")),
+        // Field specimen 2026-08-27: "Please fem ember that".
+        ("fem", "ember", Some("remember")),
         // Legitimate pairs must never merge. ("can","for" moved to the
         // attestation test — blocking it is the bigram guard's job now.)
         ("to", "do", None),

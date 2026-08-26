@@ -74,6 +74,31 @@ class TextKeyboard(
             return exactKey
         }
 
+        // A MISS whose nearest key is functional must stay a miss: pulling a
+        // tap at the delete key's edge onto a predicted letter made the
+        // backward delete-word swipe type letters (field report 2026-08-27).
+        // Functional keys never join the letter-catchment competition, so
+        // check plain proximity to them explicitly before expanding.
+        if (exactKey == null) {
+            var nearest: TextKey? = null
+            var nearestDist = Float.MAX_VALUE
+            for (key in keys()) {
+                if (!key.isEnabled) continue
+                val center = key.visibleBounds.center
+                val dx = pointerX - center.x
+                val dy = pointerY - center.y
+                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                if (dist < nearestDist) {
+                    nearestDist = dist
+                    nearest = key
+                }
+            }
+            val nearestCode = nearest?.computedData?.code ?: 0
+            if (nearestCode <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
+                return null
+            }
+        }
+
         if (predictedNextLetters.isEmpty()) {
             return exactKey
         }
