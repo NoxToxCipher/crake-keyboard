@@ -415,12 +415,17 @@ fun TextKeyboardLayout(
         }
 
         var eclectusFlightTriggerTime by remember { mutableStateOf(0L) }
+        var sunConureFlightTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
-            val keys = listOf("eclectus", "ecky", "eckies", "roratus")
-            if (keys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            val eclectusKeys = listOf("eclectus", "ecky", "eckies", "roratus")
+            if (eclectusKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 eclectusFlightTriggerTime = System.currentTimeMillis()
+            }
+            val sunConureKeys = listOf("sun conure", "sunconure", "conure")
+            if (sunConureKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                sunConureFlightTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -915,6 +920,133 @@ fun TextKeyboardLayout(
                     val femaleX = cx - (48f * density * kotlin.math.cos(rad).toFloat()) + (20f * density * kotlin.math.sin(rad).toFloat())
                     val femaleY = cy - (48f * density * kotlin.math.sin(rad).toFloat()) - (20f * density * kotlin.math.cos(rad).toFloat())
                     drawParrot(femaleX, femaleY, isMale = false, scale = 0.80f)
+                }
+            }
+        }
+
+        // Solstice Easter Egg: Fast Golden Sun Conure Flight (Right to Left)
+        if (sunConureFlightTriggerTime > 0L) {
+            val conureProgress = remember(sunConureFlightTriggerTime) { Animatable(0f) }
+            LaunchedEffect(sunConureFlightTriggerTime) {
+                conureProgress.snapTo(0f)
+                conureProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 2100, easing = LinearEasing),
+                )
+                sunConureFlightTriggerTime = 0L
+            }
+            if (conureProgress.value in 0.001f..0.999f) {
+                val t = conureProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val w = size.width
+                    val h = size.height
+
+                    // Quick Energetic Right-to-Left Swoop across keyboard
+                    val startX = w + 100f * density
+                    val endX = -120f * density
+                    val u = 1f - t
+                    val cx = u * u * startX + 2 * u * t * (w * 0.48f) + t * t * endX
+                    val cy = u * u * (h * 0.35f) + 2 * u * t * (h * 0.75f) + t * t * (h * 0.25f)
+
+                    // Velocity Heading pointing in direction of flight
+                    val vx = 2 * u * (w * 0.48f - startX) + 2 * t * (endX - w * 0.48f)
+                    val vy = 2 * u * (h * 0.75f - h * 0.35f) + 2 * t * (h * 0.25f - h * 0.75f)
+                    val angleDeg = Math.toDegrees(Math.atan2(vy.toDouble(), vx.toDouble())).toFloat()
+
+                    val flapSin = kotlin.math.sin(t * 44f) // Rapid wing beats
+                    val wingSpanFactor = 0.55f + 0.45f * flapSin
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(cx, cy)
+                    drawContext.canvas.nativeCanvas.rotate(angleDeg)
+                    val scale = 0.90f
+                    drawContext.canvas.nativeCanvas.scale(scale * density, scale * density)
+
+                    // Radiant Sun Conure Color Palette
+                    val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFD600.toInt() // Radiant Golden Yellow
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val maskPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFF5722.toInt() // Fiery Orange-Red Facial Mask & Belly
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val wingGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF00C853.toInt() // Emerald Green wing coverts
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val wingBluePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF1E88E5.toInt() // Deep Cobalt Blue primaries
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.6f
+                    }
+                    val beakPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF263238.toInt() // Slate/Charcoal hooked beak
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    val bodyPath = android.graphics.Path().apply {
+                        moveTo(18f, 0f)
+                        lineTo(6f, 4f)
+                        lineTo(-12f, 3f)
+                        lineTo(-24f, 1.5f) // Conure tapered tail
+                        lineTo(-24f, -1.5f)
+                        lineTo(-12f, -3f)
+                        lineTo(6f, -4f)
+                        close()
+                    }
+
+                    val maskPath = android.graphics.Path().apply {
+                        moveTo(16f, 0f)
+                        lineTo(7f, 3.5f)
+                        lineTo(1f, 2.5f)
+                        lineTo(1f, -2.5f)
+                        lineTo(7f, -3.5f)
+                        close()
+                    }
+
+                    val wingSpread = 22f * wingSpanFactor
+                    val leftWing = android.graphics.Path().apply {
+                        moveTo(4f, -2f)
+                        lineTo(-6f, -wingSpread)
+                        lineTo(-14f, -wingSpread * 0.85f)
+                        lineTo(-10f, -2f)
+                        close()
+                    }
+                    val rightWing = android.graphics.Path().apply {
+                        moveTo(4f, 2f)
+                        lineTo(-6f, wingSpread)
+                        lineTo(-14f, wingSpread * 0.85f)
+                        lineTo(-10f, 2f)
+                        close()
+                    }
+
+                    val beakPath = android.graphics.Path().apply {
+                        moveTo(18f, 0f)
+                        lineTo(8f, 3.5f)
+                        lineTo(8f, -3.5f)
+                        close()
+                    }
+
+                    // Draw Conure Wings (Green with Cobalt blue primary accents)
+                    drawContext.canvas.nativeCanvas.drawPath(leftWing, wingGreenPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(rightWing, wingGreenPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(leftWing, wingBluePaint)
+                    drawContext.canvas.nativeCanvas.drawPath(rightWing, wingBluePaint)
+
+                    // Draw Golden Yellow Body
+                    drawContext.canvas.nativeCanvas.drawPath(bodyPath, bodyPaint)
+
+                    // Draw Fiery Orange Mask & Cheeks
+                    drawContext.canvas.nativeCanvas.drawPath(maskPath, maskPaint)
+
+                    // Draw Slate Beak
+                    drawContext.canvas.nativeCanvas.drawPath(beakPath, beakPaint)
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
