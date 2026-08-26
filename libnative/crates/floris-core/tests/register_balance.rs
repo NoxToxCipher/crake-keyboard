@@ -26,6 +26,36 @@ const NEWS_REGISTER: &[&str] = &[
     "referendum", "sanctions",
 ];
 
+/// Two-letter tokens the dictionary may legitimately contain. The shipped
+/// table originally held 599 two-letter entries — nearly every letter pair,
+/// n-gram corpus noise like "hj" and "kd" at word-level frequencies. Junk
+/// entries block autocorrect entirely (an "exact match" is never corrected),
+/// which is how split fragments like "kd" survived on screen. Purged
+/// 2026-08-27; this guard keeps regenerated tables clean.
+const TWO_LETTER_WHITELIST: &[&str] = &[
+    "am", "an", "as", "at", "ax", "be", "by", "do", "go", "he", "hi", "id",
+    "if", "in", "is", "it", "me", "my", "no", "of", "oh", "ok", "on", "or",
+    "ox", "so", "to", "up", "us", "we", "ah", "aw", "eh", "em", "er", "ha",
+    "hm", "ho", "la", "lo", "ma", "pa", "uh", "um", "ya", "yo", "ye", "im",
+    "ur", "tv", "pc", "uk", "eu", "un", "ai", "io", "os", "ip", "cd", "dj",
+    "dr", "mr", "ms", "st", "pm", "km", "kg", "cm", "mm", "ml", "mg", "gb",
+    "mb", "kb", "hz", "hp", "ac", "dc", "ft", "mt", "pt", "oz", "lb", "ie",
+    "eg",
+];
+
+#[test]
+fn two_letter_entries_are_words_not_ngram_noise() {
+    let violations: Vec<&str> = CORE_DICTIONARY
+        .iter()
+        .filter(|(w, _)| w.chars().count() == 2 && !TWO_LETTER_WHITELIST.contains(w))
+        .map(|(w, _)| *w)
+        .collect();
+    assert!(
+        violations.is_empty(),
+        "two-letter n-gram noise in CORE_DICTIONARY: {violations:?}"
+    );
+}
+
 #[test]
 fn news_register_words_do_not_outrank_everyday_typing() {
     let mut violations = Vec::new();
