@@ -420,6 +420,7 @@ fun TextKeyboardLayout(
         var spaceRainTriggerTime by remember { mutableStateOf(0L) }
         var mangoPulseTriggerTime by remember { mutableStateOf(0L) }
         var masterChiefRunTriggerTime by remember { mutableStateOf(0L) }
+        var iceSkateSwirlTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -446,6 +447,10 @@ fun TextKeyboardLayout(
             val chiefKeys = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan")
             if (chiefKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 masterChiefRunTriggerTime = System.currentTimeMillis()
+            }
+            val skateKeys = listOf("rink", "skating", "iceskating", "ice skating", "skate", "figure skating")
+            if (skateKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                iceSkateSwirlTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1406,6 +1411,112 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawCircle(1.8f * density, -8f * density, 0.7f * density, visorShinePaint) // Visor reflection
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Ice Skating Rink Swirl & Blade Sparkle Easter Egg: Quick, fleeting, elegant ice carve
+        if (iceSkateSwirlTriggerTime > 0L) {
+            val skateProgress = remember(iceSkateSwirlTriggerTime) { Animatable(0f) }
+            LaunchedEffect(iceSkateSwirlTriggerTime) {
+                skateProgress.snapTo(0f)
+                skateProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
+                )
+                iceSkateSwirlTriggerTime = 0L
+            }
+            if (skateProgress.value in 0.001f..0.999f) {
+                val t = skateProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val cy = canvasH * 0.52f
+
+                    // Function to sample the elegant swirl path
+                    fun getSwirlPoint(u: Float): Pair<Float, Float> {
+                        val px = (-20f * density) + u * (canvasW + 40f * density)
+                        val angle1 = u * 2.8f * Math.PI.toFloat()
+                        val angle2 = u * 5.6f * Math.PI.toFloat()
+                        val py = cy + (kotlin.math.sin(angle1) * canvasH * 0.28f) + (kotlin.math.sin(angle2) * canvasH * 0.12f)
+                        return Pair(px, py)
+                    }
+
+                    // 1. Carved Ice Blade Groove (Glowing silver-cyan ribbon)
+                    val steps = 60
+                    val currentStep = (t * steps).toInt().coerceIn(2, steps)
+                    val carvePath = android.graphics.Path()
+                    val (startX, startY) = getSwirlPoint(0f)
+                    carvePath.moveTo(startX, startY)
+
+                    for (i in 1..currentStep) {
+                        val u = i.toFloat() / steps
+                        val (px, py) = getSwirlPoint(u)
+                        carvePath.lineTo(px, py)
+                    }
+
+                    // Fade tail smoothly as animation progresses
+                    val globalAlpha = if (t > 0.7f) (1f - (t - 0.7f) / 0.3f) else 1f
+
+                    // Ice Glow Under-ribbon
+                    val glowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((globalAlpha * 120).toInt().coerceIn(0, 255), 186, 230, 253) // Sky-100 ice glow
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 3.8f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(carvePath, glowPaint)
+
+                    // Sharp Silver Razor Ice Blade Center Line
+                    val bladeCutPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((globalAlpha * 240).toInt().coerceIn(0, 255), 255, 255, 255) // Pure White Razor
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.2f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(carvePath, bladeCutPaint)
+
+                    // 2. Leading Blade Sparkle & Ice Shaving Crystals
+                    val (headX, headY) = getSwirlPoint(t)
+
+                    // Blade tip glint
+                    val bladeTipPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((globalAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(headX, headY, 2.5f * density, bladeTipPaint)
+
+                    // Ice Dust Sparkle Particles spraying outward along the carve
+                    val sparklePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((globalAlpha * 200).toInt().coerceIn(0, 255), 224, 242, 254)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val sparkOffsets = listOf(
+                        Pair(-4f, -5f), Pair(-6f, 4f), Pair(-9f, -3f),
+                        Pair(-13f, 6f), Pair(-16f, -6f), Pair(-20f, 3f),
+                        Pair(-24f, -4f), Pair(-28f, 5f)
+                    )
+                    for ((ox, oy) in sparkOffsets) {
+                        val spX = headX + ox * density
+                        val spY = headY + oy * density
+                        val spRadius = (1.0f + (kotlin.math.sin(t * 15f + ox).toFloat() * 0.5f)) * density
+                        drawContext.canvas.nativeCanvas.drawCircle(spX, spY, spRadius, sparklePaint)
+                    }
+
+                    // 4-Point Diamond Sparkle Glint at the leading blade
+                    val starPath = android.graphics.Path().apply {
+                        val s = 4.5f * density
+                        moveTo(headX, headY - s)
+                        quadTo(headX, headY, headX + s, headY)
+                        quadTo(headX, headY, headX, headY + s)
+                        quadTo(headX, headY, headX - s, headY)
+                        quadTo(headX, headY, headX, headY - s)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(starPath, bladeTipPaint)
                 }
             }
         }
