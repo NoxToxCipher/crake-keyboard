@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +54,7 @@ import dev.patrickgold.florisboard.lib.compose.LocalPreviewFieldController
 import dev.patrickgold.florisboard.lib.compose.PreviewKeyboardField
 import dev.patrickgold.florisboard.lib.compose.rememberPreviewFieldController
 import dev.patrickgold.florisboard.lib.util.AppVersionUtils
+import dev.patrickgold.florisboard.lib.util.InputMethodUtils
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.ProvideDefaultDialogPrefStrings
 import java.util.concurrent.atomic.AtomicBoolean
@@ -112,12 +114,9 @@ class FlorisAppActivity : ComponentActivity() {
         val isModelLoaded = AtomicBoolean(false)
         appContext.preferenceStoreLoaded.collectIn(lifecycleScope) { loaded ->
             if (!loaded || isModelLoaded.getAndSet(true)) return@collectIn
-            // Check if android 13+ is running and the NotificationPermission is not set
-            if (AndroidVersion.ATLEAST_API33_T &&
-                prefs.internal.notificationPermissionState.get() == NotificationPermissionState.NOT_SET
-            ) {
-                // update pref value to show the setup screen again
-                prefs.internal.isImeSetUp.set(false)
+            // If IME is already selected and active in system, ensure isImeSetUp is true
+            if (InputMethodUtils.isFlorisboardSelected(this@FlorisAppActivity)) {
+                prefs.internal.isImeSetUp.set(true)
             }
             AppVersionUtils.updateVersionOnInstallAndLastUse(this, prefs)
             setContent {
@@ -194,10 +193,11 @@ class FlorisAppActivity : ComponentActivity() {
                         }
                         .imePadding(),
                 ) {
+                    val isSelected = remember { InputMethodUtils.isFlorisboardSelected(resourcesContext) }
                     Routes.AppNavHost(
                         modifier = Modifier.weight(1.0f),
                         navController = navController,
-                        startDestination = if (isImeSetUp) Routes.Settings.Home::class else Routes.Setup.Screen::class,
+                        startDestination = if (isImeSetUp || isSelected) Routes.Settings.Home::class else Routes.Setup.Screen::class,
                     )
                     PreviewKeyboardField(previewFieldController)
                 }
