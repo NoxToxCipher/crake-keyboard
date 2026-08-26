@@ -29,18 +29,18 @@ import org.florisboard.lib.snygg.SnyggStylesheet
 
 val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     defines {
-        "--primary" to rgbaColor(76, 175, 80)
-        "--primary-variant" to rgbaColor(56, 142, 60)
-        "--secondary" to rgbaColor(245, 124, 0)
-        "--secondary-variant" to rgbaColor(230, 81, 0)
-        "--background" to rgbaColor(33, 33, 33)
-        "--background-variant" to rgbaColor(44, 44, 44)
-        "--surface" to rgbaColor(66, 66, 66)
-        "--surface-variant" to rgbaColor(97, 97, 97)
+        "--primary" to rgbaColor(0, 229, 255)
+        "--primary-variant" to rgbaColor(0, 180, 216)
+        "--secondary" to rgbaColor(0, 229, 255)
+        "--secondary-variant" to rgbaColor(0, 180, 216)
+        "--background" to rgbaColor(10, 12, 18)
+        "--background-variant" to rgbaColor(16, 20, 28)
+        "--surface" to rgbaColor(22, 27, 38)
+        "--surface-variant" to rgbaColor(35, 42, 58)
 
-        "--on-primary" to rgbaColor(240, 240, 240)
+        "--on-primary" to rgbaColor(10, 12, 18)
         "--on-background" to rgbaColor(255, 255, 255)
-        "--on-background-disabled" to rgbaColor(80, 80, 80)
+        "--on-background-disabled" to rgbaColor(80, 90, 105)
         "--on-surface" to rgbaColor(255, 255, 255)
 
         "--shape" to roundedCornerShape(8.dp)
@@ -66,11 +66,11 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.ENTER)) {
         background = `var`("--primary")
-        foreground = `var`("--on-surface")
+        foreground = `var`("--on-primary")
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.ENTER), selector = SnyggSelector.PRESSED) {
         background = `var`("--primary-variant")
-        foreground = `var`("--on-surface")
+        foreground = `var`("--on-primary")
     }
     FlorisImeUi.Key.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.SPACE)) {
         background = `var`("--surface")
