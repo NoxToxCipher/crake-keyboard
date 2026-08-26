@@ -3154,20 +3154,20 @@ fun TextKeyboardLayout(
             }
         }
 
-        // Murmur App Starling Murmuration & Peregrine Stoop Easter Egg (48 Swirling Boids + Agitation Wave)
+        // Murmur App Starling Murmuration & Majestic Eagle Swoop Easter Egg
         if (murmurFlockTriggerTime > 0L) {
             val flockProgress = remember(murmurFlockTriggerTime) { Animatable(0f) }
             LaunchedEffect(murmurFlockTriggerTime) {
                 flockProgress.snapTo(0f)
                 flockProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 4400, easing = LinearEasing),
+                    animationSpec = tween(durationMillis = 4800, easing = LinearEasing),
                 )
                 murmurFlockTriggerTime = 0L
             }
             if (flockProgress.value in 0.001f..0.999f) {
                 val u = flockProgress.value
-                val currentMs = u * 4400f
+                val currentMs = u * 4800f
                 val density = LocalDensity.current.density
 
                 androidx.compose.foundation.Canvas(
@@ -3177,7 +3177,7 @@ fun TextKeyboardLayout(
                     val canvasH = this.size.height
 
                     // 1. Twilight Sky Ambient Ribbon Glow
-                    val skyAlpha = (kotlin.math.sin(u * Math.PI.toFloat()) * 0.18f).coerceIn(0f, 1f)
+                    val skyAlpha = (kotlin.math.sin(u * Math.PI.toFloat()) * 0.16f).coerceIn(0f, 1f)
                     val duskGlowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((skyAlpha * 255).toInt(), 12, 19, 16) // Murmur dusk background
                         style = android.graphics.Paint.Style.FILL
@@ -3189,40 +3189,47 @@ fun TextKeyboardLayout(
                     val waveY = kotlin.math.sin(u * 2.8f * Math.PI.toFloat()) * (canvasH * 0.22f)
                     val flockCenterY = (canvasH * 0.50f) + waveY
 
-                    // Predator Stoop State (Hawk dives at center 1400ms -> 2600ms)
-                    val hawkDiving = currentMs in 1200f..2800f
-                    val hawkU = if (hawkDiving) ((currentMs - 1200f) / 1600f) else 0f
-                    val hawkX = canvasW * (0.35f + hawkU * 0.35f)
-                    val hawkY = -30f * density + hawkU * (canvasH + 60f * density)
+                    // Majestic Eagle Parabolic Swoop Arc (1000ms -> 3200ms)
+                    val eagleActive = currentMs in 1000f..3200f
+                    val eagleU = if (eagleActive) ((currentMs - 1000f) / 2200f) else 0f
+                    // Smooth curved swoop down from top-left, banking through the flock, and soaring up to the top-right
+                    val eagleX = canvasW * (0.15f + eagleU * 0.70f)
+                    val eagleY = (canvasH * 0.15f) + kotlin.math.sin(eagleU * Math.PI.toFloat()) * (canvasH * 0.62f)
 
-                    // Draw 46 individual boids with unique spatial offsets and depth
-                    val numBirds = 46
+                    // Eagle flight angle (tangent to the swoop curve)
+                    val nextEagleU = (eagleU + 0.02f).coerceIn(0f, 1f)
+                    val nextEagleX = canvasW * (0.15f + nextEagleU * 0.70f)
+                    val nextEagleY = (canvasH * 0.15f) + kotlin.math.sin(nextEagleU * Math.PI.toFloat()) * (canvasH * 0.62f)
+                    val eagleAngle = (kotlin.math.atan2((nextEagleY - eagleY).toDouble(), (nextEagleX - eagleX).toDouble()) * 180.0 / Math.PI).toFloat()
+
+                    // Draw 48 individual boids with unique spatial offsets and depth
+                    val numBirds = 48
                     for (i in 0 until numBirds) {
                         val seed = i * 137.5f // Golden angle distribution
                         val radiusFactor = kotlin.math.sqrt(i.toFloat() / numBirds.toFloat())
                         val angle = (seed % 360f) * (Math.PI.toFloat() / 180f)
 
                         // Cluster dimensions (Ribbon width & height)
-                        val spreadX = kotlin.math.cos(angle) * radiusFactor * 32f * density
-                        val spreadY = kotlin.math.sin(angle) * radiusFactor * 18f * density
+                        val spreadX = kotlin.math.cos(angle) * radiusFactor * 34f * density
+                        val spreadY = kotlin.math.sin(angle) * radiusFactor * 20f * density
 
                         // Individual bird position
                         var bx = flockCenterX + spreadX
                         var by = flockCenterY + spreadY
 
-                        // Split & flee force if hawk is diving nearby
+                        // Biological reaction when Eagle banks nearby
                         var agitated = 0f
-                        if (hawkDiving) {
-                            val hdx = bx - hawkX
-                            val hdy = by - hawkY
-                            val distSq = hdx * hdx + hdy * hdy
-                            val fleeRadius = 48f * density
+                        if (eagleActive) {
+                            val edx = bx - eagleX
+                            val edy = by - eagleY
+                            val distSq = edx * edx + edy * edy
+                            val fleeRadius = 55f * density
                             if (distSq < fleeRadius * fleeRadius) {
                                 val dist = kotlin.math.sqrt(distSq).coerceAtLeast(1f)
-                                val push = (1f - (dist / fleeRadius)) * 22f * density
-                                val pushDirY = if (spreadY >= 0) 1f else -1f // Flocks split above & below predator
-                                bx += (hdx / dist) * push * 0.6f
-                                by += pushDirY * push * 1.2f
+                                val push = (1f - (dist / fleeRadius)) * 26f * density
+                                val pushDirY = if (spreadY >= 0) 1f else -1f // Flocks split gracefully above & below the eagle
+                                bx += (edx / dist) * push * 0.7f
+                                by += pushDirY * push * 1.3f
                                 agitated = (1f - (dist / fleeRadius)).coerceIn(0f, 1f)
                             }
                         }
@@ -3241,9 +3248,9 @@ fun TextKeyboardLayout(
                         val wingFlap = kotlin.math.sin(currentMs * 0.022f + i * 0.8f) * 0.8f
                         val birdScale = (1.8f * density) * (0.8f + depth * 0.4f)
 
-                        // Murmur Palette: Emerald (#43D183), Cobalt (#5B9BFF), Gold (#F4C542 on agitation)
+                        // Murmur Palette: Emerald (#43D183), Cobalt (#5B9BFF), Gold (#F4C542 on agitation), Silver (#E8EEF0)
                         val birdColor = when {
-                            agitated > 0.3f -> 0xFFF4C542.toInt() // Agitation Gold
+                            agitated > 0.25f -> 0xFFF4C542.toInt() // Agitation Gold
                             i % 5 == 0 -> 0xFF5B9BFF.toInt() // Cobalt
                             i % 7 == 0 -> 0xFFE8EEF0.toInt() // Silver
                             else -> 0xFF43D183.toInt() // Signature Murmur Emerald
@@ -3255,54 +3262,123 @@ fun TextKeyboardLayout(
                             style = android.graphics.Paint.Style.FILL
                         }
 
-                        // Draw streamlined delta-wing starling silhouette (Murmur transform: (lx,ly) -> px + lx*e - ly*f, py + lx*f + ly*e)
+                        // Draw streamlined delta-wing starling silhouette
                         val e = dirX * birdScale
                         val f = dirY * birdScale
 
                         val birdPath = android.graphics.Path().apply {
-                            // Beak / Head tip
                             moveTo(bx + 4.5f * e, by + 4.5f * f)
-                            // Left wingtip with wing flap offset
                             lineTo(bx - 3.2f * e - (2.5f + wingFlap) * f, by - 3.2f * f + (2.5f + wingFlap) * e)
-                            // Tail notch
                             lineTo(bx - 1.8f * e, by - 1.8f * f)
-                            // Right wingtip with wing flap offset
                             lineTo(bx - 3.2f * e + (2.5f + wingFlap) * f, by - 3.2f * f - (2.5f + wingFlap) * e)
                             close()
                         }
                         drawContext.canvas.nativeCanvas.drawPath(birdPath, birdPaint)
                     }
 
-                    // 2. Peregrine Falcon Stoop Silhouette (when diving)
-                    if (hawkDiving) {
-                        val hawkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = 0xFF0F172A.toInt() // Dark predator
+                    // 2. Magnificent Vector Golden Eagle (Swooping with fingered wingtips & realistic raptor anatomy)
+                    if (eagleActive) {
+                        val eagleAlpha = (kotlin.math.sin(eagleU * Math.PI.toFloat())).coerceIn(0f, 1f)
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(eagleX, eagleY)
+                        drawContext.canvas.nativeCanvas.rotate(eagleAngle)
+
+                        val er = 12f * density // Majestic Eagle scale (3x bigger than starlings)
+                        val wingBeat = kotlin.math.sin(currentMs * 0.016f) * 2.8f * density
+
+                        // Eagle Paints
+                        val eagleBodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((eagleAlpha * 255).toInt().coerceIn(0, 255), 38, 30, 24) // Deep Espresso / Dark Raptor Plumage
                             style = android.graphics.Paint.Style.FILL
                         }
-                        val hawkTrailPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = 0x66EF4444.toInt() // Crimson stoop trail
-                            style = android.graphics.Paint.Style.STROKE
-                            strokeWidth = 2.2f * density
-                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        val eagleMantlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((eagleAlpha * 255).toInt().coerceIn(0, 255), 217, 119, 6) // Golden Eagle Nape Feathers
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val eagleTailPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((eagleAlpha * 255).toInt().coerceIn(0, 255), 68, 64, 60)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val beakPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((eagleAlpha * 255).toInt().coerceIn(0, 255), 250, 204, 21) // Hooked Gold Beak
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val eyePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((eagleAlpha * 255).toInt().coerceIn(0, 255), 254, 240, 138) // Piercing Amber Eye
+                            style = android.graphics.Paint.Style.FILL
                         }
 
-                        // Stoop vapor trail
-                        drawContext.canvas.nativeCanvas.drawLine(hawkX - 18f * density, hawkY - 26f * density, hawkX, hawkY, hawkTrailPaint)
-
-                        // Peregrine swept-wing stoop shape
-                        drawContext.canvas.nativeCanvas.save()
-                        drawContext.canvas.nativeCanvas.translate(hawkX, hawkY)
-                        drawContext.canvas.nativeCanvas.rotate(55f) // Diving angle
-
-                        val hr = 5.5f * density
-                        val hawkPath = android.graphics.Path().apply {
-                            moveTo(hr * 2f, 0f) // Beak
-                            lineTo(-hr, -hr * 1.8f) // Swept left wing
-                            lineTo(-hr * 0.6f, 0f) // Tail
-                            lineTo(-hr, hr * 1.8f) // Swept right wing
+                        // A. Broad Wedge/Fan Tail
+                        val tail = android.graphics.Path().apply {
+                            moveTo(-er * 0.4f, 0f)
+                            lineTo(-er * 1.3f, -er * 0.45f)
+                            lineTo(-er * 1.6f, 0f)
+                            lineTo(-er * 1.3f, er * 0.45f)
                             close()
                         }
-                        drawContext.canvas.nativeCanvas.drawPath(hawkPath, hawkPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(tail, eagleTailPaint)
+
+                        // B. Curved Swept Raptor Wings with Emarginated Fingered Primaries
+                        // Left Wing
+                        val leftWing = android.graphics.Path().apply {
+                            moveTo(-er * 0.2f, 0f)
+                            quadTo(er * 0.1f, -er * 0.8f, er * 0.2f, -er * 1.4f - wingBeat) // Leading wing edge
+                            lineTo(-er * 0.1f, -er * 1.55f - wingBeat) // Primary feather 1
+                            lineTo(-er * 0.25f, -er * 1.4f - wingBeat)
+                            lineTo(-er * 0.4f, -er * 1.5f - wingBeat) // Primary feather 2
+                            lineTo(-er * 0.5f, -er * 1.3f - wingBeat)
+                            lineTo(-er * 0.65f, -er * 1.4f - wingBeat) // Primary feather 3
+                            quadTo(-er * 0.7f, -er * 0.6f, -er * 0.4f, 0f) // Trailing edge
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(leftWing, eagleBodyPaint)
+
+                        // Right Wing
+                        val rightWing = android.graphics.Path().apply {
+                            moveTo(-er * 0.2f, 0f)
+                            quadTo(er * 0.1f, er * 0.8f, er * 0.2f, er * 1.4f + wingBeat)
+                            lineTo(-er * 0.1f, er * 1.55f + wingBeat)
+                            lineTo(-er * 0.25f, er * 1.4f + wingBeat)
+                            lineTo(-er * 0.4f, er * 1.5f + wingBeat)
+                            lineTo(-er * 0.5f, er * 1.3f + wingBeat)
+                            lineTo(-er * 0.65f, er * 1.4f + wingBeat)
+                            quadTo(-er * 0.7f, er * 0.6f, -er * 0.4f, 0f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(rightWing, eagleBodyPaint)
+
+                        // C. Main Raptor Torso & Golden Mantle
+                        val body = android.graphics.Path().apply {
+                            moveTo(-er * 0.8f, 0f)
+                            quadTo(-er * 0.2f, -er * 0.35f, er * 0.6f, -er * 0.22f)
+                            lineTo(er * 1.1f, 0f)
+                            lineTo(er * 0.6f, er * 0.22f)
+                            quadTo(-er * 0.2f, er * 0.35f, -er * 0.8f, 0f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(body, eagleBodyPaint)
+
+                        // Golden Mantle / Nape Crest
+                        val mantle = android.graphics.Path().apply {
+                            moveTo(0f, -er * 0.22f)
+                            lineTo(er * 0.85f, 0f)
+                            lineTo(0f, er * 0.22f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(mantle, eagleMantlePaint)
+
+                        // D. Hooked Golden Beak & Amber Eye
+                        val beak = android.graphics.Path().apply {
+                            moveTo(er * 0.85f, -er * 0.12f)
+                            lineTo(er * 1.45f, 0f)
+                            lineTo(er * 1.25f, er * 0.18f) // Curved hook
+                            lineTo(er * 0.85f, er * 0.12f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(beak, beakPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(er * 0.65f, -er * 0.08f, 0.9f * density, eyePaint)
+
                         drawContext.canvas.nativeCanvas.restore()
                     }
                 }
