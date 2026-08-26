@@ -66,6 +66,31 @@ private fun evaluateMathOrMacro(input: String): String? {
         val mathResult = evalSimpleMath(expr)
         if (mathResult != null) return mathResult
     }
+
+    // Number & Currency / Unit macro formatting (e.g. 100usd -> $100, 50eur -> €50, 32deg -> 32°, 100c -> 100°C)
+    val numUnitMatch = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE).matchEntire(clean)
+    if (numUnitMatch != null) {
+        val num = numUnitMatch.groupValues[1]
+        val unit = numUnitMatch.groupValues[2].lowercase()
+        return when (unit) {
+            "usd", "aud", "cad" -> "\$$num"
+            "eur" -> "€$num"
+            "gbp" -> "£$num"
+            "jpy" -> "¥$num"
+            "btc" -> "₿$num"
+            "eth" -> "Ξ$num"
+            "deg" -> "$num°"
+            "c" -> "$num°C"
+            "f" -> "$num°F"
+            "km" -> "$num km"
+            "mph" -> "$num mph"
+            "kph" -> "$num km/h"
+            "mb" -> "$num MB"
+            "gb" -> "$num GB"
+            "tb" -> "$num TB"
+            else -> null
+        }
+    }
     return null
 }
 
