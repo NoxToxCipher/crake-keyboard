@@ -58,36 +58,47 @@ class DictionaryManager private constructor(context: Context) {
     fun queryUserDictionary(word: String, locale: FlorisLocale): List<SuggestionCandidate> {
         val florisDao = florisUserDictionaryDao()
         val systemDao = systemUserDictionaryDao()
-        if (florisDao == null && systemDao == null) {
+        if (florisDao == null && systemDao == null && !word.startsWith("!")) {
             return emptyList()
         }
         return buildList {
+            val lowerWord = word.lowercase().trim()
+            if (lowerWord == "!time" || lowerWord == "!t") {
+                val formattedTime = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date())
+                add(WordSuggestionCandidate(formattedTime, secondaryText = "Snippet • Time", confidence = 1.0, isEligibleForAutoCommit = true))
+            } else if (lowerWord == "!date" || lowerWord == "!d") {
+                val formattedDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+                add(WordSuggestionCandidate(formattedDate, secondaryText = "Snippet • Date", confidence = 1.0, isEligibleForAutoCommit = true))
+            } else if (lowerWord == "!now" || lowerWord == "!datetime") {
+                val formattedDateTime = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                add(WordSuggestionCandidate(formattedDateTime, secondaryText = "Snippet • Now", confidence = 1.0, isEligibleForAutoCommit = true))
+            }
+
             if (prefs.dictionary.enableFlorisUserDictionary.get()) {
-                florisDao?.query(word, locale)?.let {
+                florisDao?.queryShortcut(word, locale)?.let {
                     for (entry in it) {
-                        add(WordSuggestionCandidate(entry.word, confidence = entry.freq / 255.0))
+                        add(0, WordSuggestionCandidate(entry.word, secondaryText = "Snippet", confidence = 1.0, isEligibleForAutoCommit = true))
                     }
                 }
-                florisDao?.queryShortcut(word, locale)?.let {
+                florisDao?.query(word, locale)?.let {
                     for (entry in it) {
                         add(WordSuggestionCandidate(entry.word, confidence = entry.freq / 255.0))
                     }
                 }
             }
             if (prefs.dictionary.enableSystemUserDictionary.get()) {
-                systemDao?.query(word, locale)?.let {
+                systemDao?.queryShortcut(word, locale)?.let {
                     for (entry in it) {
-                        add(WordSuggestionCandidate(entry.word, confidence = entry.freq / 255.0))
+                        add(0, WordSuggestionCandidate(entry.word, secondaryText = "Snippet", confidence = 1.0, isEligibleForAutoCommit = true))
                     }
                 }
-                systemDao?.queryShortcut(word, locale)?.let {
+                systemDao?.query(word, locale)?.let {
                     for (entry in it) {
                         add(WordSuggestionCandidate(entry.word, confidence = entry.freq / 255.0))
                     }
                 }
             }
         }
-
     }
 
     fun spell(word: String, locale: FlorisLocale): Boolean {

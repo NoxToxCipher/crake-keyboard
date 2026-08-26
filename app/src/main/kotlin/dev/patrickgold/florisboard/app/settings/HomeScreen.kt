@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.QrCode2
@@ -240,6 +241,14 @@ fun HomeScreen() = FlorisScreen {
             badgeText = "SAFE RUST",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Typing) },
+        )
+        CrakeNavTile(
+            icon = Icons.Default.FlashOn,
+            title = "Smart Text Expansion & Snippets",
+            summary = "Custom triggers (!addr, !email, macros) & fast expansion",
+            badgeText = "SNIPPETS",
+            accentColor = ElectricCyan,
+            onClick = { navController.navigate(Routes.Settings.Snippets) },
         )
         CrakeNavTile(
             icon = Icons.Default.Security,
