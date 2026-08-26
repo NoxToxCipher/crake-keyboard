@@ -121,13 +121,9 @@ pub struct SuggestionResult {
 #[derive(Debug, Clone, Default)]
 pub struct NlpEngine {
     pub trie: RadixTrie,
-    /// The shipped dictionary exactly as the CRKD blob delivered it, in blob
-    /// order. Deliberately separate from the trie: the trie also accumulates
-    /// user-learned words, and the glide classifier's word list must keep
-    /// meaning "the static corpus" — the same contents the JVM-side word map
-    /// held before this store replaced it.
     corpus_words: Vec<String>,
     corpus_freqs: std::collections::HashMap<String, u32>,
+    session_recency: std::collections::VecDeque<String>,
 }
 
 impl NlpEngine {
@@ -140,6 +136,7 @@ impl NlpEngine {
             trie,
             corpus_words: Vec::new(),
             corpus_freqs: std::collections::HashMap::new(),
+            session_recency: std::collections::VecDeque::new(),
         }
     }
 
@@ -165,6 +162,23 @@ impl NlpEngine {
     /// map lookup defaulting to 0 on the JVM side.
     pub fn corpus_freq(&self, word: &str) -> u32 {
         self.corpus_freqs.get(word).copied().unwrap_or(0)
+    }
+
+    /// Records a typed/selected word in the session recency cache (bounded to 64 items).
+    pub fn record_session_word(&mut self, word: &str) {
+        let trimmed = word.trim().to_ascii_lowercase();
+        if trimmed.len() >= 2 && !self.session_recency.contains(&trimmed) {
+            if self.session_recency.len() >= 64 {
+                self.session_recency.pop_back();
+            }
+            self.session_recency.push_front(trimmed);
+        }
+    }
+
+    /// Checks if a word was recently used in the current typing session.
+    pub fn is_session_recent(&self, word: &str) -> bool {
+        let trimmed = word.trim().to_ascii_lowercase();
+        self.session_recency.contains(&trimmed)
     }
 
     pub fn apply_casing(query: &str, candidate: &str) -> String {
