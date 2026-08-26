@@ -3615,43 +3615,26 @@ fun TextKeyboardLayout(
                     val canvasW = this.size.width
                     val canvasH = this.size.height
 
-                    // 1. Locate positions on keys S, U, N, D, A, E
+                    // 1. Locate precise keycap centers for S, U, N, D, A, E
                     val targetChars = listOf('s', 'u', 'n', 'd', 'a', 'e')
                     val sundaePositions = mutableListOf<androidx.compose.ui.geometry.Offset>()
 
-                    for (char in targetChars) {
-                        var found = false
+                    for (targetChar in targetChars) {
+                        var matchedKey: TextKey? = null
                         for (key in keyboard.keys()) {
                             if (key is TextKey) {
-                                val s = key.computedData.asString(true).lowercase()
-                                if (s == char.toString()) {
-                                    val kx = (key.visibleBounds.left + key.visibleBounds.width / 2f) * density
-                                    val ky = (key.visibleBounds.top + key.visibleBounds.height / 2f) * density
-                                    sundaePositions.add(androidx.compose.ui.geometry.Offset(kx, ky))
-                                    found = true
+                                val code = key.computedData.code
+                                val ch = code.toChar().lowercaseChar()
+                                if (ch == targetChar || key.computedData.asString(true).equals(targetChar.toString(), ignoreCase = true)) {
+                                    matchedKey = key
                                     break
                                 }
                             }
                         }
-                        if (!found) {
-                            // Fallback default distributed positions
-                            val fallbackX = when (char) {
-                                's' -> canvasW * 0.20f
-                                'u' -> canvasW * 0.68f
-                                'n' -> canvasW * 0.58f
-                                'd' -> canvasW * 0.32f
-                                'a' -> canvasW * 0.12f
-                                else -> canvasW * 0.28f
-                            }
-                            val fallbackY = when (char) {
-                                's' -> canvasH * 0.48f
-                                'u' -> canvasH * 0.25f
-                                'n' -> canvasH * 0.72f
-                                'd' -> canvasH * 0.48f
-                                'a' -> canvasH * 0.48f
-                                else -> canvasH * 0.25f
-                            }
-                            sundaePositions.add(androidx.compose.ui.geometry.Offset(fallbackX, fallbackY))
+                        if (matchedKey != null) {
+                            val kx = matchedKey.visibleBounds.left + (matchedKey.visibleBounds.width / 2f)
+                            val ky = matchedKey.visibleBounds.top + (matchedKey.visibleBounds.height / 2f)
+                            sundaePositions.add(androidx.compose.ui.geometry.Offset(kx, ky))
                         }
                     }
 
@@ -3687,7 +3670,7 @@ fun TextKeyboardLayout(
                         drawContext.canvas.nativeCanvas.translate(pos.x, pos.y + bobY)
                         drawContext.canvas.nativeCanvas.scale(bounceScale, bounceScale)
 
-                        val sr = 11f * density // Sundae scale radius
+                        val sr = 9.5f * density // Sundae scale radius to fit keycap perfectly
 
                         // Paints
                         val glassPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
