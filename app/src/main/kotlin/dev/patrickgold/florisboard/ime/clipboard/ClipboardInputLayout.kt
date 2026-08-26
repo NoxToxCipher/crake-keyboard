@@ -16,6 +16,13 @@
 
 package dev.patrickgold.florisboard.ime.clipboard
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
 import android.content.ContentUris
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -135,6 +142,52 @@ private val DialogWidth = 240.dp
 
 const val CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO: Int = 0
 
+enum class ClipCategory(val displayName: String, val badgeColor: Color) {
+    ALL("All", Color(0xFF00D2FF)),
+    PINNED("📌 Pinned", Color(0xFF00E5A3)),
+    CRYPTO("🪙 Crypto", Color(0xFFF59E0B)),
+    CODE("💻 Code", Color(0xFFA78BFA)),
+    WORK("💼 Work", Color(0xFF60A5FA)),
+    SOCIAL("💬 Social", Color(0xFFF43F5E)),
+    MEDIA("🖼️ Media", Color(0xFF10B981));
+}
+
+private fun ClipboardItem.matchesCategory(category: ClipCategory): Boolean {
+    if (type == ItemType.IMAGE || type == ItemType.VIDEO) {
+        return category == ClipCategory.MEDIA || category == ClipCategory.ALL || (category == ClipCategory.PINNED && isPinned)
+    }
+    val text = stringRepresentation().lowercase()
+    return when (category) {
+        ClipCategory.ALL -> true
+        ClipCategory.PINNED -> isPinned
+        ClipCategory.CRYPTO -> {
+            text.contains("0x") || text.contains("bc1") || text.contains("btc") ||
+            text.contains("eth") || text.contains("sol") || text.contains("usdt") ||
+            text.contains("crypto") || text.contains("wallet") || text.contains("token") ||
+            text.contains("bitcoin") || text.contains("ethereum") || text.contains("swap")
+        }
+        ClipCategory.CODE -> {
+            text.contains("{") || text.contains("}") || text.contains("def ") ||
+            text.contains("fun ") || text.contains("class ") || text.contains("import ") ||
+            text.contains("const ") || text.contains("val ") || text.contains("var ") ||
+            text.contains("git ") || text.contains("docker") || text.contains("curl ") ||
+            text.contains("select ") || text.contains("insert ") || text.contains("update ") ||
+            text.contains("//") || text.contains("/*") || text.contains("=>") || text.contains("->")
+        }
+        ClipCategory.WORK -> {
+            text.contains("@") || text.contains("http://") || text.contains("https://") ||
+            text.contains("meet") || text.contains("agenda") || text.contains("report") ||
+            text.contains("invoice") || text.contains("project") || text.contains("jira") ||
+            text.contains("slack") || text.contains("zoom") || text.contains("doc")
+        }
+        ClipCategory.SOCIAL -> {
+            text.contains("#") || text.contains("ツ") || text.contains("◕") ||
+            text.contains("♥") || text.contains("http") || text.length < 60
+        }
+        ClipCategory.MEDIA -> false
+    }
+}
+
 @Composable
 fun ClipboardInputLayout(
     modifier: Modifier = Modifier,
@@ -153,14 +206,26 @@ fun ClipboardInputLayout(
     val activeFilterTypes = remember { mutableStateSetOf<ItemType>() }
 
     val unfilteredHistory by clipboardManager.historyFlow.collectAsState()
-    val filteredHistory = remember(unfilteredHistory, activeFilterTypes.toSet()) {
-        if (activeFilterTypes.isEmpty()) {
-            unfilteredHistory
-        } else {
+    var activeCategory by remember { mutableStateOf(ClipCategory.ALL) }
+
+    val filteredHistory = remember(unfilteredHistory, activeCategory, activeFilterTypes.toSet()) {
+        val baseList = if (activeFilterTypes.isEmpty()) {
             unfilteredHistory.all
-                .filter { activeFilterTypes.contains(it.type) }
-                .let { ClipboardHistory(it) }
+        } else {
+            unfilteredHistory.all.filter { activeFilterTypes.contains(it.type) }
         }
+
+        val categoryFiltered = when (activeCategory) {
+            ClipCategory.ALL -> baseList
+            ClipCategory.PINNED -> baseList.filter { it.isPinned }
+            ClipCategory.WORK -> baseList.filter { it.matchesCategory(ClipCategory.WORK) }
+            ClipCategory.CRYPTO -> baseList.filter { it.matchesCategory(ClipCategory.CRYPTO) }
+            ClipCategory.CODE -> baseList.filter { it.matchesCategory(ClipCategory.CODE) }
+            ClipCategory.SOCIAL -> baseList.filter { it.matchesCategory(ClipCategory.SOCIAL) }
+            ClipCategory.MEDIA -> baseList.filter { it.type == ItemType.IMAGE || it.type == ItemType.VIDEO }
+        }
+
+        ClipboardHistory(categoryFiltered)
     }
 
     val gridState = rememberLazyStaggeredGridState()
@@ -436,6 +501,40 @@ fun ClipboardInputLayout(
                     .matchParentSize()
                     .alpha(historyAlpha),
             ) {
+                // Multi-Clipboard Category Folders & Quick Filters
+                if (!deviceLocked && historyEnabled && unfilteredHistory.all.isNotEmpty()) {
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .florisHorizontalScroll(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        for (cat in ClipCategory.values()) {
+                            val isSelected = activeCategory == cat
+                            val bgColor = if (isSelected) cat.badgeColor.copy(alpha = 0.22f) else Color(0xFF161E2E)
+                            val borderColor = if (isSelected) cat.badgeColor else Color(0xFF263248)
+                            val textColor = if (isSelected) cat.badgeColor else Color(0xFF94A3B8)
+
+                            androidx.compose.foundation.layout.Row(
+                                modifier = Modifier
+                                    .background(bgColor, RoundedCornerShape(8.dp))
+                                    .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(8.dp))
+                                    .rippleClickable { activeCategory = cat }
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = cat.displayName,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = textColor,
+                                )
+                            }
+                        }
+                    }
+                }
                 AnimatedVisibility(
                     visible = isFilterRowShown,
                     enter = VerticalEnterTransition,
