@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.outlined.ContentPasteGo
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -358,6 +359,38 @@ fun ClipboardInputLayout(
                             .fillMaxWidth()
                             .run { if (contentScrollInsteadOfClip) this.florisVerticalScroll() else this },
                         text = item.displayText(),
+                    )
+                }
+            }
+
+            // Direct Pin / Unpin Action Button in top-right corner
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 4.dp, end = 4.dp)
+                    .sizeIn(minWidth = 26.dp, minHeight = 26.dp)
+                    .rippleClickable {
+                        if (item.isPinned) {
+                            clipboardManager.unpinClip(item)
+                        } else {
+                            clipboardManager.pinClip(item)
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                if (item.isPinned) {
+                    Icon(
+                        imageVector = Icons.Filled.PushPin,
+                        contentDescription = "Pinned item",
+                        tint = Color(0xFF00E5A3),
+                        modifier = Modifier.sizeIn(maxWidth = 16.dp, maxHeight = 16.dp),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.PushPin,
+                        contentDescription = "Pin item",
+                        tint = Color(0x6094A3B8),
+                        modifier = Modifier.sizeIn(maxWidth = 15.dp, maxHeight = 15.dp),
                     )
                 }
             }
