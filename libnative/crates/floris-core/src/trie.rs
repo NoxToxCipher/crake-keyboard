@@ -240,6 +240,117 @@ impl RadixTrie {
         results
     }
 
+    /// Fuzzy search in weighted half-units: a substitution between physically
+    /// adjacent keys costs 1, every other edit (substitution, insertion,
+    /// deletion) costs 2. `max_units` therefore admits fat-finger chains that
+    /// a flat edit distance cannot: 4 units is three adjacent slips
+    /// ("xurrenrky" -> "currently") but still only two arbitrary edits.
+    /// Returned `FuzzyCandidate.distance` is in these units, NOT edits.
+    pub fn fuzzy_search_weighted<F: Fn(char, char) -> bool>(
+        &self,
+        query: &str,
+        max_units: usize,
+        limit: usize,
+        is_adjacent: F,
+    ) -> Vec<FuzzyCandidate> {
+        let query_chars: Vec<char> = query.chars().collect();
+        let query_len = query_chars.len();
+        let mut results = Vec::new();
+
+        if query_len < MAX_QUERY_STACK_LEN {
+            let mut initial_row = [0usize; MAX_QUERY_STACK_LEN];
+            for (i, val) in initial_row.iter_mut().enumerate().take(query_len + 1) {
+                *val = i * 2;
+            }
+            for (&ch, child) in &self.root.children {
+                self.fuzzy_search_weighted_stack(
+                    child,
+                    ch,
+                    &query_chars,
+                    &initial_row,
+                    query_len + 1,
+                    max_units,
+                    &is_adjacent,
+                    &mut results,
+                );
+            }
+        }
+        // Queries longer than the stack scratchpad (31 chars) are not real
+        // typing; weighted recovery quietly yields nothing for them.
+
+        results.sort_by(|a, b| {
+            a.distance
+                .cmp(&b.distance)
+                .then_with(|| b.frequency.cmp(&a.frequency))
+                .then_with(|| a.word.cmp(&b.word))
+        });
+        results.truncate(limit);
+        results
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn fuzzy_search_weighted_stack<F: Fn(char, char) -> bool>(
+        &self,
+        node: &TrieNode,
+        ch: char,
+        query: &[char],
+        prev_row: &[usize; MAX_QUERY_STACK_LEN],
+        cols: usize,
+        max_units: usize,
+        is_adjacent: &F,
+        out: &mut Vec<FuzzyCandidate>,
+    ) {
+        let mut current_row = [0usize; MAX_QUERY_STACK_LEN];
+        current_row[0] = prev_row[0] + 2;
+        let mut min_val = current_row[0];
+
+        for j in 1..cols {
+            let q = query[j - 1];
+            let sub_cost = if q == ch {
+                0
+            } else if is_adjacent(q, ch) {
+                1
+            } else {
+                2
+            };
+            let deletion = prev_row[j] + 2;
+            let insertion = current_row[j - 1] + 2;
+            let substitution = prev_row[j - 1] + sub_cost;
+
+            let val = std::cmp::min(std::cmp::min(deletion, insertion), substitution);
+            current_row[j] = val;
+            if val < min_val {
+                min_val = val;
+            }
+        }
+
+        let final_units = current_row[cols - 1];
+        if node.is_terminal && final_units <= max_units {
+            if let Some(ref word) = node.word {
+                out.push(FuzzyCandidate {
+                    word: word.clone(),
+                    distance: final_units,
+                    frequency: node.frequency,
+                });
+            }
+        }
+
+        if min_val <= max_units {
+            for (&next_ch, child) in &node.children {
+                self.fuzzy_search_weighted_stack(
+                    child,
+                    next_ch,
+                    query,
+                    &current_row,
+                    cols,
+                    max_units,
+                    is_adjacent,
+                    out,
+                );
+            }
+        }
+    }
+
     fn fuzzy_search_stack(
         &self,
         node: &TrieNode,

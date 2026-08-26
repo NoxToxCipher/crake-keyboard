@@ -452,31 +452,64 @@ impl NlpEngine {
             }
         }
 
-        // 7. Fuzzy search for typo recovery if query is not in dictionary
-        let is_capitalized = trimmed.chars().next().map_or(false, |c| c.is_uppercase());
-        if candidates.len() < max_candidates {
-            let max_dist = if trimmed_lower.len() <= 4 { 1 } else { 2 };
-            let fuzzy = self.trie.fuzzy_search(&trimmed_lower, max_dist, max_candidates + 4);
+        // 7. Fuzzy search for typo recovery. Weighted half-units: an
+        // adjacent-key substitution costs 1, any other edit 2, so the old
+        // caps (1 edit short / 2 edits long = 2/4 units) widen just enough to
+        // admit fat-finger chains — "nt" -> "my" (2 units), "xurrenrky" ->
+        // "currently" (3 adjacent slips, 3 units) — while arbitrary-edit
+        // budgets stay as they were.
+        let is_capitalized = trimmed.chars().next().is_some_and(|c| c.is_uppercase());
+        {
+            let max_units = if trimmed_lower.len() <= 4 { 3 } else { 4 };
+            let fuzzy = self.trie.fuzzy_search_weighted(
+                &trimmed_lower,
+                max_units,
+                max_candidates + 4,
+                Self::is_spatial_keyboard_neighbor,
+            );
             // Partition fuzzy matches: spatial keyboard neighbor slips get top priority
             let mut sorted_fuzzy = fuzzy;
             sorted_fuzzy.sort_by_key(|fc| {
                 let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
                 let score = if is_neighbor { 0 } else { 1 };
-                (score, fc.distance)
+                (score, fc.distance, std::cmp::Reverse(fc.frequency))
             });
 
-            for fc in sorted_fuzzy {
+            let mut pushed_any = false;
+            for fc in &sorted_fuzzy {
+                if candidates.len() >= max_candidates {
+                    break;
+                }
                 let formatted = Self::apply_casing(trimmed, &fc.word);
                 if !contains_word(&candidates, &formatted) {
                     let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
-                    let should_autocorrect = !is_exact && !is_capitalized && (fc.distance == 1 || is_neighbor) && candidates.is_empty();
+                    let should_autocorrect = !is_exact && !is_capitalized && (fc.distance <= 2 || is_neighbor) && candidates.is_empty();
                     candidates.push(RankedCandidate {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
                     });
+                    pushed_any = true;
                 }
-                if candidates.len() >= max_candidates {
-                    break;
+            }
+
+            // Reserved slot: a same-shape adjacent-slip correction must not be
+            // crowded out by prefix completions ("fir" -> first/fire/firm
+            // burying "for"). If nothing fuzzy fit and the best match is a
+            // pure neighbor slip, it replaces the last non-autocorrect filler.
+            if !pushed_any && candidates.len() >= max_candidates {
+                let best = sorted_fuzzy.iter().find(|fc| {
+                    Self::is_spatial_slip_match(&trimmed_lower, &fc.word)
+                        && !contains_word(&candidates, &fc.word)
+                });
+                if let Some(fc) = best {
+                    if let Some(last) = candidates.last_mut() {
+                        if !last.is_autocorrect {
+                            *last = RankedCandidate {
+                                word: Self::apply_casing(trimmed, &fc.word),
+                                is_autocorrect: false,
+                            };
+                        }
+                    }
                 }
             }
         }
