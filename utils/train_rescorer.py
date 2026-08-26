@@ -75,16 +75,21 @@ def neighbours(ch: str):
 
 
 def edit_units(a: str, b: str) -> int:
+    """Weighted Damerau-Levenshtein — MUST match rescorer.rs exactly."""
     la, lb = len(a), len(b)
     if la == 0 or lb == 0:
         return 2 * max(la, lb)
+    prev_prev = [0] * (lb + 1)
     prev = [j * 2 for j in range(lb + 1)]
     for i in range(1, la + 1):
         cur = [i * 2] + [0] * lb
         for j in range(1, lb + 1):
             sub = 0 if a[i - 1] == b[j - 1] else (1 if near(a[i - 1], b[j - 1]) else 2)
-            cur[j] = min(prev[j] + 2, cur[j - 1] + 2, prev[j - 1] + sub)
-        prev = cur
+            v = min(prev[j] + 2, cur[j - 1] + 2, prev[j - 1] + sub)
+            if i >= 2 and j >= 2 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                v = min(v, prev_prev[j - 2] + 2)
+            cur[j] = v
+        prev_prev, prev = prev, cur
     return prev[lb]
 
 
@@ -131,10 +136,12 @@ def main():
     rev = list(vocab)
 
     raw = BIGRAMS.read_bytes()
-    (count,) = struct.unpack_from("<I", raw, 5)
+    assert raw[4] == 2, "CRKB v2 expected"
+    count, blob_vocab = struct.unpack_from("<II", raw, 5)
+    assert blob_vocab == len(vocab), f"bigram table vocab {blob_vocab} != dict {len(vocab)}"
     pair_score = {}
     by_next = {}
-    off = 9
+    off = 13
     for _ in range(count):
         i1, i2, s = struct.unpack_from("<IIB", raw, off)
         off += 9

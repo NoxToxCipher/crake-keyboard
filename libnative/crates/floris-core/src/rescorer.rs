@@ -17,10 +17,10 @@
 
 use crate::rescorer_weights::{B1, B2, HIDDEN, W1, W2};
 
-/// Plain weighted Levenshtein in half-units: substitution 0 same / 1 near /
-/// 2 otherwise, insertion and deletion 2 — the same cost table as the trie's
-/// weighted fuzzy search, over whatever `near` relation the engine currently
-/// uses (live Gaussian model or static fallback).
+/// Weighted Damerau-Levenshtein in half-units: substitution 0 same / 1 near
+/// / 2 otherwise, insertion, deletion and adjacent transposition 2 — the
+/// same cost table as the trie's weighted fuzzy search, over whatever `near`
+/// relation the engine currently uses (live Gaussian model or fallback).
 pub fn weighted_edit_units(a: &str, b: &str, near: impl Fn(char, char) -> bool) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
@@ -31,6 +31,7 @@ pub fn weighted_edit_units(a: &str, b: &str, near: impl Fn(char, char) -> bool) 
         return 2 * a.len().max(b.len());
     }
     let cols = b.len() + 1;
+    let mut prev_prev: Vec<usize> = vec![0; cols];
     let mut prev: Vec<usize> = (0..cols).map(|j| j * 2).collect();
     let mut cur = vec![0usize; cols];
     for i in 1..=a.len() {
@@ -43,8 +44,13 @@ pub fn weighted_edit_units(a: &str, b: &str, near: impl Fn(char, char) -> bool) 
             } else {
                 2
             };
-            cur[j] = (prev[j] + 2).min(cur[j - 1] + 2).min(prev[j - 1] + sub);
+            let mut v = (prev[j] + 2).min(cur[j - 1] + 2).min(prev[j - 1] + sub);
+            if i >= 2 && j >= 2 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+                v = v.min(prev_prev[j - 2] + 2);
+            }
+            cur[j] = v;
         }
+        std::mem::swap(&mut prev_prev, &mut prev);
         std::mem::swap(&mut prev, &mut cur);
     }
     prev[b.len()]
@@ -126,5 +132,9 @@ mod tests {
         assert_eq!(weighted_edit_units("xan", "can", all_near), 1); // near sub
         assert_eq!(weighted_edit_units("xan", "can", no_near), 2); // far sub
         assert_eq!(weighted_edit_units("", "abc", no_near), 6);
+        // Adjacent transposition is a single edit (2 units), matching the
+        // trie's Damerau-weighted search.
+        assert_eq!(weighted_edit_units("thnaks", "thanks", no_near), 2);
+        assert_eq!(weighted_edit_units("tesitng", "testing", no_near), 2);
     }
 }
