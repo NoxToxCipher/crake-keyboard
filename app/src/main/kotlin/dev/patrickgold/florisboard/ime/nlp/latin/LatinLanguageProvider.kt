@@ -38,6 +38,8 @@ import kotlinx.serialization.json.Json
 import org.florisboard.lib.android.readText
 import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.libnative.FlorisNative
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider {
     companion object {
@@ -63,31 +65,76 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private suspend fun ensureLoaded() = withContext(Dispatchers.IO) {
         wordData.withLock { words ->
             if (words.isEmpty()) {
-                try {
-                    val tStart = SystemClock.elapsedRealtime()
-                    val rawData = appContext.assets.readText("ime/dict/data.json")
-                    val tRead = SystemClock.elapsedRealtime()
-                    val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
-                    val tParse = SystemClock.elapsedRealtime()
-                    words.putAll(jsonData)
-                    val tMap = SystemClock.elapsedRealtime()
-
-                    // Populate native Rust Trie with dictionary words
-                    for ((word, freq) in jsonData) {
-                        FlorisNative.insertWord(word, freq)
-                    }
-                    val tInsert = SystemClock.elapsedRealtime()
-                    Log.i(
-                        "CrakeStartup",
-                        "dict load: assetRead=${tRead - tStart}ms jsonParse=${tParse - tRead}ms " +
-                            "kotlinMap=${tMap - tParse}ms nativeInsert(${jsonData.size} JNI calls)=${tInsert - tMap}ms " +
-                            "total=${tInsert - tStart}ms",
-                    )
-                    flogInfo { "Loaded ${jsonData.size} dictionary words into native Rust Trie" }
-                } catch (e: Exception) {
-                    flogDebug { "Error loading dictionary: ${e.message}" }
+                if (!loadFromBlob(words)) {
+                    loadFromJson(words)
                 }
             }
+        }
+    }
+
+    /**
+     * Fast path: the CRKD binary blob (built by utils/gen_dict_blob.py). The
+     * native trie fills from ONE JNI call; the Kotlin map (still consumed by
+     * the legacy glide classifier) fills from a ByteBuffer scan of the same
+     * bytes. Returns false on any failure so the JSON path takes over —
+     * partial native inserts before a failure are harmless, inserts are
+     * idempotent and the JSON path re-covers them.
+     */
+    private fun loadFromBlob(words: MutableMap<String, Int>): Boolean {
+        if (!FlorisNative.isAvailable()) return false
+        return try {
+            val tStart = SystemClock.elapsedRealtime()
+            val bytes = appContext.assets.open("ime/dict/data.crkd").use { it.readBytes() }
+            val tRead = SystemClock.elapsedRealtime()
+            val nativeCount = FlorisNative.loadDictionaryBlob(bytes)
+            if (nativeCount < 0) return false
+            val tNative = SystemClock.elapsedRealtime()
+            val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            buf.position(9) // magic(4) + version(1) + count(4), validated natively
+            repeat(nativeCount) {
+                val wordBytes = ByteArray(buf.short.toInt() and 0xFFFF)
+                buf.get(wordBytes)
+                words[String(wordBytes, Charsets.UTF_8)] = buf.int
+            }
+            val tMap = SystemClock.elapsedRealtime()
+            Log.i(
+                "CrakeStartup",
+                "dict load (blob): assetRead=${tRead - tStart}ms nativeLoad(1 JNI call)=${tNative - tRead}ms " +
+                    "kotlinMap=${tMap - tNative}ms total=${tMap - tStart}ms words=$nativeCount",
+            )
+            flogInfo { "Loaded $nativeCount dictionary words from CRKD blob" }
+            true
+        } catch (e: Exception) {
+            words.clear()
+            flogDebug { "CRKD blob load failed, falling back to JSON: ${e.message}" }
+            false
+        }
+    }
+
+    private fun loadFromJson(words: MutableMap<String, Int>) {
+        try {
+            val tStart = SystemClock.elapsedRealtime()
+            val rawData = appContext.assets.readText("ime/dict/data.json")
+            val tRead = SystemClock.elapsedRealtime()
+            val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
+            val tParse = SystemClock.elapsedRealtime()
+            words.putAll(jsonData)
+            val tMap = SystemClock.elapsedRealtime()
+
+            // Populate native Rust Trie with dictionary words
+            for ((word, freq) in jsonData) {
+                FlorisNative.insertWord(word, freq)
+            }
+            val tInsert = SystemClock.elapsedRealtime()
+            Log.i(
+                "CrakeStartup",
+                "dict load: assetRead=${tRead - tStart}ms jsonParse=${tParse - tRead}ms " +
+                    "kotlinMap=${tMap - tParse}ms nativeInsert(${jsonData.size} JNI calls)=${tInsert - tMap}ms " +
+                    "total=${tInsert - tStart}ms",
+            )
+            flogInfo { "Loaded ${jsonData.size} dictionary words into native Rust Trie" }
+        } catch (e: Exception) {
+            flogDebug { "Error loading dictionary: ${e.message}" }
         }
     }
 
