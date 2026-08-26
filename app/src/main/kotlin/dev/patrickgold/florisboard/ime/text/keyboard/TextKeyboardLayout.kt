@@ -428,6 +428,7 @@ fun TextKeyboardLayout(
         var luciaBobaTriggerTime by remember { mutableStateOf(0L) }
         var dukuFruitTriggerTime by remember { mutableStateOf(0L) }
         var carDriveTriggerTime by remember { mutableStateOf(0L) }
+        var cryptoRocketTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -486,6 +487,15 @@ fun TextKeyboardLayout(
             val carKeys = listOf("drive", "car", "driving", "cars", "aston martin", "aston")
             if (carKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 carDriveTriggerTime = System.currentTimeMillis()
+            }
+            val cryptoKeys = listOf(
+                "btc", "bitcoin", "eth", "ethereum", "sol", "solana",
+                "arb", "arbitrum", "atom", "cosmos hub", "cosmos",
+                "rune", "thorchain", "xmr", "monero", "ltc", "litecoin",
+                "to the moon", "crypto"
+            )
+            if (cryptoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                cryptoRocketTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -2934,6 +2944,202 @@ fun TextKeyboardLayout(
 
                         drawContext.canvas.nativeCanvas.restore()
                     }
+                }
+            }
+        }
+
+        // Crypto Moon Rocket Easter Egg (Bottom-Left to Top-Right Blastoff)
+        if (cryptoRocketTriggerTime > 0L) {
+            val rocketProgress = remember(cryptoRocketTriggerTime) { Animatable(0f) }
+            LaunchedEffect(cryptoRocketTriggerTime) {
+                rocketProgress.snapTo(0f)
+                rocketProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+                )
+                cryptoRocketTriggerTime = 0L
+            }
+            if (rocketProgress.value in 0.001f..0.999f) {
+                val t = rocketProgress.value
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // Diagonal path: Bottom-Left (-40dp, canvasH + 40dp) -> Top-Right (canvasW + 50dp, -50dp)
+                    val startX = -40f * density
+                    val startY = canvasH + 40f * density
+                    val endX = canvasW + 50f * density
+                    val endY = -50f * density
+
+                    val posX = startX + t * (endX - startX)
+                    val posY = startY + t * (endY - startY)
+
+                    // Rocket pointing towards top-right (~ -36 degrees)
+                    val baseAngle = -36f
+                    val engineVibe = kotlin.math.sin(t * 30f * Math.PI.toFloat()) * 1.5f
+                    val totalAngle = baseAngle + engineVibe
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(posX, posY)
+                    drawContext.canvas.nativeCanvas.rotate(totalAngle)
+
+                    // 1. Trail of Stardust Smoke & Golden Sparks
+                    val stardustPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0x55CBD5E1.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFDE047.toInt() // Golden moon spark
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val glintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFFFFF.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    val sparkDist = (t * 20f * density)
+                    drawContext.canvas.nativeCanvas.drawCircle(-25f * density, 0f, 4f * density, stardustPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-38f * density, -2f * density, 6f * density, stardustPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-52f * density, 3f * density, 8f * density, stardustPaint)
+
+                    // Golden Sparkles
+                    drawContext.canvas.nativeCanvas.drawCircle(-28f * density, -4f * density, 1.4f * density, sparkPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-35f * density, 5f * density, 1.6f * density, sparkPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-48f * density, -3f * density, 1.2f * density, sparkPaint)
+
+                    // 2. Multilayered Roaring Thruster Flame
+                    val flameOuterPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFEF4444.toInt() // Crimson plasma
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val flameMidPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFF97316.toInt() // Orange flame
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val flameCorePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFEF08A.toInt() // Bright yellow core
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val flameWhitePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFFFFF.toInt() // White hot jet
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    val flameLen = (16f + kotlin.math.sin(t * 40f) * 4f) * density
+                    // Outer flame cone
+                    val outerFlame = android.graphics.Path().apply {
+                        moveTo(-11f * density, -3.5f * density)
+                        lineTo(-11f * density - flameLen, 0f)
+                        lineTo(-11f * density, 3.5f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(outerFlame, flameOuterPaint)
+                    // Mid flame
+                    val midFlame = android.graphics.Path().apply {
+                        moveTo(-11f * density, -2.5f * density)
+                        lineTo(-11f * density - flameLen * 0.72f, 0f)
+                        lineTo(-11f * density, 2.5f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(midFlame, flameMidPaint)
+                    // Core flame
+                    val coreFlame = android.graphics.Path().apply {
+                        moveTo(-11f * density, -1.5f * density)
+                        lineTo(-11f * density - flameLen * 0.45f, 0f)
+                        lineTo(-11f * density, 1.5f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(coreFlame, flameCorePaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-11f * density, 0f, 1.8f * density, flameWhitePaint)
+
+                    // 3. Rocket Fuselage & Wings
+                    val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFF8FAFC.toInt() // Pearl white spacecraft hull
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val shadePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFE2E8F0.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val nosePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF06B6D4.toInt() // Cosmic Cyan Nosecone
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val finPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0891B2.toInt() // Cyan Stabilizer Fins
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val windowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0284C7.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val windowRimPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF94A3B8.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.8f * density
+                    }
+                    val goldEmblemPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFF59E0B.toInt() // Golden Crypto Diamond
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    // A. Rear Stabilizer Fins
+                    val topFin = android.graphics.Path().apply {
+                        moveTo(-6f * density, -3.5f * density)
+                        lineTo(-12f * density, -8f * density)
+                        lineTo(-10f * density, -3.5f * density)
+                        close()
+                    }
+                    val bottomFin = android.graphics.Path().apply {
+                        moveTo(-6f * density, 3.5f * density)
+                        lineTo(-12f * density, 8f * density)
+                        lineTo(-10f * density, 3.5f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(topFin, finPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(bottomFin, finPaint)
+
+                    // B. Main Fuselage Hull
+                    val hull = android.graphics.Path().apply {
+                        moveTo(-11f * density, -3.8f * density)
+                        lineTo(4f * density, -3.8f * density)
+                        quadTo(12f * density, -3.5f * density, 18f * density, 0f)
+                        quadTo(12f * density, 3.5f * density, 4f * density, 3.8f * density)
+                        lineTo(-11f * density, 3.8f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(hull, bodyPaint)
+                    drawContext.canvas.nativeCanvas.drawRect(-11f * density, 0f, 4f * density, 3.8f * density, shadePaint) // 3D Bottom shade
+
+                    // C. Aerodynamic Nosecone
+                    val nosecone = android.graphics.Path().apply {
+                        moveTo(7f * density, -3.2f * density)
+                        quadTo(13f * density, -2.8f * density, 18f * density, 0f)
+                        quadTo(13f * density, 2.8f * density, 7f * density, 3.2f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(nosecone, nosePaint)
+
+                    // D. Observation Porthole Window
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 2.5f * density, windowPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 2.5f * density, windowRimPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-0.7f * density, -0.7f * density, 0.7f * density, glintPaint)
+
+                    // E. Golden Crypto Diamond Badge on Fuselage
+                    val badge = android.graphics.Path().apply {
+                        moveTo(-5.5f * density, -1.8f * density)
+                        lineTo(-4f * density, -3f * density)
+                        lineTo(-2.5f * density, -1.8f * density)
+                        lineTo(-4f * density, -0.6f * density)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(badge, goldEmblemPaint)
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
