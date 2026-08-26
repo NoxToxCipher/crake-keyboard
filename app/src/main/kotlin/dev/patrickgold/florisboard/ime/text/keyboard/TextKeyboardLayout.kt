@@ -422,6 +422,7 @@ fun TextKeyboardLayout(
         var masterChiefRunTriggerTime by remember { mutableStateOf(0L) }
         var iceSkateSwirlTriggerTime by remember { mutableStateOf(0L) }
         var berriesFlowTriggerTime by remember { mutableStateOf(0L) }
+        var tribalwarsTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -456,6 +457,10 @@ fun TextKeyboardLayout(
             val berryKeys = listOf("berry", "berries", "strawberry", "blueberry", "raspberry", "blackberry")
             if (berryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 berriesFlowTriggerTime = System.currentTimeMillis()
+            }
+            val twKeys = listOf("tw", "tribalwars", "tribal wars", "tribal_wars")
+            if (twKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                tribalwarsTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1714,6 +1719,105 @@ fun TextKeyboardLayout(
                                 else -> drawBlackberry(leftX, fretY, scale, globalAlpha)
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Tribalwars Multi-Fret Phased Quotes Easter Egg
+        if (tribalwarsTriggerTime > 0L) {
+            val twProgress = remember(tribalwarsTriggerTime) { Animatable(0f) }
+            LaunchedEffect(tribalwarsTriggerTime) {
+                twProgress.snapTo(0f)
+                twProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 12000, easing = LinearEasing),
+                )
+                tribalwarsTriggerTime = 0L
+            }
+            if (twProgress.value in 0.001f..0.999f) {
+                val currentMs = twProgress.value * 12000f
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+
+                    val fret1Y = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
+                    val fret2Y = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
+                    val fret3Y = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
+
+                    // Small, crisp medieval parchment gold text paint
+                    val textPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFEF08A.toInt() // Warm parchment gold
+                        textSize = 9.8f * density
+                        typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                        setShadowLayer(4f * density, 0f, 1f * density, 0xEE000000.toInt())
+                    }
+
+                    val finalPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFDE047.toInt() // Gleaming gold
+                        textSize = 10.2f * density
+                        typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD_ITALIC)
+                        setShadowLayer(5f * density, 0f, 1f * density, 0xFF000000.toInt())
+                    }
+
+                    // Fret 1: "Cat all their farms to level 0." (0ms -> 3800ms)
+                    if (currentMs in 0f..3800f) {
+                        val text = "Cat all their farms to level 0."
+                        val textW = textPaint.measureText(text)
+                        val u = (currentMs / 3800f).coerceIn(0f, 1f)
+                        val alpha = (if (u < 0.15f) (u / 0.15f) else if (u > 0.85f) ((1f - u) / 0.15f) else 1f).coerceIn(0f, 1f)
+                        val px = canvasW - u * (canvasW + textW + 30f * density)
+                        val py = fret1Y - ((textPaint.descent() + textPaint.ascent()) / 2f)
+                        textPaint.alpha = (alpha * 255).toInt()
+                        drawContext.canvas.nativeCanvas.drawText(text, px, py, textPaint)
+                    }
+
+                    // Fret 2: "7 villages before beginner protection is over." (2000ms -> 5800ms)
+                    if (currentMs in 2000f..5800f) {
+                        val text = "7 villages before beginner protection is over."
+                        val textW = textPaint.measureText(text)
+                        val u = ((currentMs - 2000f) / 3800f).coerceIn(0f, 1f)
+                        val alpha = (if (u < 0.15f) (u / 0.15f) else if (u > 0.85f) ((1f - u) / 0.15f) else 1f).coerceIn(0f, 1f)
+                        val px = canvasW - u * (canvasW + textW + 30f * density)
+                        val py = fret2Y - ((textPaint.descent() + textPaint.ascent()) / 2f)
+                        textPaint.alpha = (alpha * 255).toInt()
+                        drawContext.canvas.nativeCanvas.drawText(text, px, py, textPaint)
+                    }
+
+                    // Fret 3: "Sniping trains while at the urinal." (4000ms -> 7800ms)
+                    if (currentMs in 4000f..7800f) {
+                        val text = "Sniping trains while at the urinal."
+                        val textW = textPaint.measureText(text)
+                        val u = ((currentMs - 4000f) / 3800f).coerceIn(0f, 1f)
+                        val alpha = (if (u < 0.15f) (u / 0.15f) else if (u > 0.85f) ((1f - u) / 0.15f) else 1f).coerceIn(0f, 1f)
+                        val px = canvasW - u * (canvasW + textW + 30f * density)
+                        val py = fret3Y - ((textPaint.descent() + textPaint.ascent()) / 2f)
+                        textPaint.alpha = (alpha * 255).toInt()
+                        drawContext.canvas.nativeCanvas.drawText(text, px, py, textPaint)
+                    }
+
+                    // All Three Frets: "No one understands ... Tribalwars is a way of life." (8000ms -> 12000ms)
+                    if (currentMs in 8000f..12000f) {
+                        val text = "No one understands ... Tribalwars is a way of life."
+                        val textW = finalPaint.measureText(text)
+                        val u = ((currentMs - 8000f) / 4000f).coerceIn(0f, 1f)
+                        val alpha = (if (u < 0.12f) (u / 0.12f) else if (u > 0.88f) ((1f - u) / 0.12f) else 1f).coerceIn(0f, 1f)
+                        val px = canvasW - u * (canvasW + textW + 30f * density)
+                        finalPaint.alpha = (alpha * 255).toInt()
+
+                        // Passes across all three frets simultaneously
+                        val py1 = fret1Y - ((finalPaint.descent() + finalPaint.ascent()) / 2f)
+                        val py2 = fret2Y - ((finalPaint.descent() + finalPaint.ascent()) / 2f)
+                        val py3 = fret3Y - ((finalPaint.descent() + finalPaint.ascent()) / 2f)
+
+                        drawContext.canvas.nativeCanvas.drawText(text, px, py1, finalPaint)
+                        drawContext.canvas.nativeCanvas.drawText(text, px, py2, finalPaint)
+                        drawContext.canvas.nativeCanvas.drawText(text, px, py3, finalPaint)
                     }
                 }
             }
