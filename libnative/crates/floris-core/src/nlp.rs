@@ -425,8 +425,16 @@ impl NlpEngine {
             return None;
         }
         const MIN_MERGED_FREQ: u32 = 150;
+        // Merged results surface through the same contraction mapping as
+        // every other suggestion path: "do nt" repairs to don't, never to
+        // the bare non-word "dont".
+        let display = |word: String| {
+            contraction_display(&word)
+                .map(str::to_string)
+                .unwrap_or(word)
+        };
         if let Some(freq) = self.trie.get_frequency(&joined) {
-            return (freq >= MIN_MERGED_FREQ).then_some(joined);
+            return (freq >= MIN_MERGED_FREQ).then(|| display(joined));
         }
         // One adjacent slip at most: every captured specimen joins within a
         // single neighbour substitution, and the wider 2-unit budget produced
@@ -436,7 +444,7 @@ impl NlpEngine {
             .fuzzy_search_weighted(&joined, 1, 4, |a, b| self.keys_near(a, b))
             .into_iter()
             .find(|fc| fc.word.chars().count() == joined_len && fc.frequency >= MIN_MERGED_FREQ)
-            .map(|fc| fc.word)
+            .map(|fc| display(fc.word))
     }
 
     pub fn suggest_with_context(&self, query: &str, prev_word: &str, max_candidates: usize) -> SuggestionResult {

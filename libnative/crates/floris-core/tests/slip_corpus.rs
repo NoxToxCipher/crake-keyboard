@@ -97,6 +97,15 @@ fn repairs_spurious_space_splits() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// Merge repair surfaces contractions apostrophized too: the split "do nt"
+/// welds to the dictionary's bare "dont" but must display as "don't".
+#[test]
+fn merged_bare_contractions_display_apostrophized() {
+    let mut e = engine();
+    e.trie.insert("dont", 228);
+    assert_eq!(e.merge_repair("do", "nt").as_deref(), Some("don't"));
+}
+
 /// Bare contraction forms are never surfaced: a slip near "dont" suggests
 /// "don't"; but ambiguous bares that are real words ("were") stay untouched.
 #[test]
