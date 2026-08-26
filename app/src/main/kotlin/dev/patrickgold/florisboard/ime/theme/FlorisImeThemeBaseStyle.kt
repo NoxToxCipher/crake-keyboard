@@ -321,6 +321,25 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         foreground = `var`("--on-surface")
     }
 
+    FlorisImeUi.MediaEmojiTab.elementName {
+        foreground = rgbaColor(150, 165, 185)
+    }
+    FlorisImeUi.MediaEmojiTab.elementName(selector = SnyggSelector.FOCUS) {
+        foreground = rgbaColor(0, 229, 255)
+    }
+    FlorisImeUi.MediaBottomRow.elementName {
+        background = `var`("--background")
+    }
+    FlorisImeUi.MediaBottomRowButton.elementName {
+        background = `var`("--surface")
+        foreground = `var`("--on-surface")
+        shape = `var`("--shape")
+    }
+    FlorisImeUi.MediaBottomRowButton.elementName(selector = SnyggSelector.PRESSED) {
+        background = `var`("--surface-variant")
+        foreground = rgbaColor(0, 229, 255)
+    }
+
     FlorisImeUi.GlideTrail.elementName {
         foreground = `var`("--primary")
     }
@@ -335,7 +354,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
 
     FlorisImeUi.OneHandedPanel.elementName {
-        background = rgbaColor(27, 94, 32)
+        background = rgbaColor(0, 54, 58)
         foreground = rgbaColor(238, 238, 238)
     }
 
