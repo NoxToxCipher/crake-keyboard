@@ -51,14 +51,19 @@ object ShadowHitTest {
         if (!enabled) return -1
         return try {
             val flat = FloatArray(keyboard.keyCount * 4)
+            // Per-key labels so the native side can learn per-key touch
+            // offsets; non-letter keys get a placeholder and are ignored.
+            val labels = StringBuilder(keyboard.keyCount)
             var i = 0
             for (key in keyboard.keys()) {
                 flat[i++] = key.touchBounds.left
                 flat[i++] = key.touchBounds.top
                 flat[i++] = key.touchBounds.right
                 flat[i++] = key.touchBounds.bottom
+                val code = key.computedData.code
+                labels.append(if (code in 32..0xFFFF) code.toChar() else ' ')
             }
-            FlorisNative.hitSetKeys(flat)
+            FlorisNative.hitSetKeys(flat, labels.toString())
         } catch (e: Throwable) {
             Log.w(TAG, "layout upload failed: $e")
             -1

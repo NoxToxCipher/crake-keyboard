@@ -27,13 +27,31 @@ impl KeyRect {
     }
 }
 
+/// EMA smoothing per tap: slow enough that one wild tap cannot move a key,
+/// fast enough that a real bias shows within a few hundred taps.
+const OFFSET_EMA_ALPHA: f32 = 0.02;
+/// Learned offsets are clamped to this fraction of the key's smaller side —
+/// personalization may nudge a key, never relocate it.
+const OFFSET_CLAMP_FRACTION: f32 = 0.4;
+
+pub const OFFSETS_MAGIC: [u8; 4] = *b"CRKT";
+pub const OFFSETS_VERSION: u8 = 1;
+pub const MAX_OFFSET_KEYS: u32 = 256;
+
 /// Holds the most recently uploaded keyboard layout. Uploads are stamped with
 /// a generation so a comparison against a stale layout (another keyboard page
 /// was laid out since) can be detected and skipped rather than miscounted.
+///
+/// Also the accumulation point for PER-KEY TOUCH OFFSETS: every in-bounds
+/// hit updates an exponential moving average of where the user's finger
+/// lands relative to that key's centre. Keyed by the key's character (not
+/// its index), so the bias survives layout rebuilds and pages.
 #[derive(Debug, Default)]
 pub struct HitTester {
     keys: Vec<KeyRect>,
+    chars: Vec<char>,
     generation: u32,
+    offsets: std::collections::HashMap<char, (f32, f32)>,
 }
 
 impl HitTester {
@@ -43,8 +61,11 @@ impl HitTester {
 
     /// Replaces the layout from a flat `[l, t, r, b] * n` array and returns
     /// the new generation. A ragged array (length not a multiple of 4) is
-    /// refused, keeping whatever layout was valid before.
-    pub fn set_keys(&mut self, flat: &[f32]) -> Option<u32> {
+    /// refused, keeping whatever layout was valid before. `chars` labels
+    /// each key for offset learning; when its length disagrees with the
+    /// rect count the labels are dropped (learning pauses, hit-testing
+    /// continues).
+    pub fn set_keys(&mut self, flat: &[f32], chars: &[char]) -> Option<u32> {
         if !flat.len().is_multiple_of(4) {
             return None;
         }
@@ -57,8 +78,89 @@ impl HitTester {
                 bottom: quad[3],
             });
         }
+        self.chars = if chars.len() == self.keys.len() {
+            chars.iter().map(|c| c.to_ascii_lowercase()).collect()
+        } else {
+            Vec::new()
+        };
         self.generation = self.generation.wrapping_add(1);
         Some(self.generation)
+    }
+
+    /// Records an in-bounds hit for offset learning: EMA of the touch's
+    /// delta from the key centre, clamped so a bias can nudge but never
+    /// relocate a key.
+    pub fn record_hit(&mut self, index: usize, x: f32, y: f32) {
+        let (Some(rect), Some(&ch)) = (self.keys.get(index), self.chars.get(index)) else {
+            return;
+        };
+        if !ch.is_alphabetic() {
+            return;
+        }
+        let cx = (rect.left + rect.right) * 0.5;
+        let cy = (rect.top + rect.bottom) * 0.5;
+        let max_dx = (rect.right - rect.left) * OFFSET_CLAMP_FRACTION;
+        let max_dy = (rect.bottom - rect.top) * OFFSET_CLAMP_FRACTION;
+        let entry = self.offsets.entry(ch).or_insert((0.0, 0.0));
+        entry.0 = (entry.0 * (1.0 - OFFSET_EMA_ALPHA) + (x - cx) * OFFSET_EMA_ALPHA)
+            .clamp(-max_dx, max_dx);
+        entry.1 = (entry.1 * (1.0 - OFFSET_EMA_ALPHA) + (y - cy) * OFFSET_EMA_ALPHA)
+            .clamp(-max_dy, max_dy);
+    }
+
+    /// The learned per-key bias for a character, (0, 0) when unknown.
+    pub fn offset_for(&self, ch: char) -> (f32, f32) {
+        self.offsets
+            .get(&ch.to_ascii_lowercase())
+            .copied()
+            .unwrap_or((0.0, 0.0))
+    }
+
+    /// Serializes learned offsets (CRKT v1: char u32, dx f32, dy f32 each).
+    pub fn export_offsets(&self) -> Vec<u8> {
+        let mut entries: Vec<(char, (f32, f32))> =
+            self.offsets.iter().map(|(&c, &o)| (c, o)).collect();
+        entries.sort_by_key(|&(c, _)| c);
+        entries.truncate(MAX_OFFSET_KEYS as usize);
+        let mut out = Vec::new();
+        out.extend_from_slice(&OFFSETS_MAGIC);
+        out.push(OFFSETS_VERSION);
+        out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+        for (c, (dx, dy)) in entries {
+            out.extend_from_slice(&(c as u32).to_le_bytes());
+            out.extend_from_slice(&dx.to_le_bytes());
+            out.extend_from_slice(&dy.to_le_bytes());
+        }
+        out
+    }
+
+    /// Restores offsets from a CRKT blob; a corrupt blob restores nothing.
+    /// Non-finite values are rejected entry-wise (hostile-input posture).
+    pub fn import_offsets(&mut self, data: &[u8]) -> Result<usize, ()> {
+        if data.len() < 9 || data[0..4] != OFFSETS_MAGIC || data[4] != OFFSETS_VERSION {
+            return Err(());
+        }
+        let count = u32::from_le_bytes([data[5], data[6], data[7], data[8]]);
+        if count > MAX_OFFSET_KEYS {
+            return Err(());
+        }
+        let needed = 9 + count as usize * 12;
+        if data.len() < needed {
+            return Err(());
+        }
+        let mut restored = 0;
+        for chunk in data[9..needed].chunks_exact(12) {
+            let code = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            let dx = f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+            let dy = f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]);
+            let (Some(ch), true) = (char::from_u32(code), dx.is_finite() && dy.is_finite())
+            else {
+                continue;
+            };
+            self.offsets.insert(ch.to_ascii_lowercase(), (dx, dy));
+            restored += 1;
+        }
+        Ok(restored)
     }
 
     pub fn generation(&self) -> u32 {
@@ -79,8 +181,41 @@ mod tests {
     fn tester(rects: &[[f32; 4]]) -> HitTester {
         let mut t = HitTester::new();
         let flat: Vec<f32> = rects.iter().flatten().copied().collect();
-        t.set_keys(&flat).unwrap();
+        t.set_keys(&flat, &[]).unwrap();
         t
+    }
+
+    #[test]
+    fn offsets_learn_a_bias_clamp_and_round_trip() {
+        let mut t = HitTester::new();
+        t.set_keys(&[0.0, 0.0, 100.0, 140.0], &['e']).unwrap();
+        // Consistent low-right taps: EMA converges toward (+20, +30)...
+        for _ in 0..600 {
+            t.record_hit(0, 70.0, 100.0); // centre is (50, 70)
+        }
+        let (dx, dy) = t.offset_for('e');
+        assert!(dx > 15.0 && dx <= 40.0, "dx converges within clamp: {dx}");
+        assert!(dy > 22.0 && dy <= 56.0, "dy converges within clamp: {dy}");
+        // ...and an extreme tap barrage cannot exceed the clamp.
+        for _ in 0..600 {
+            t.record_hit(0, 99.9, 139.9);
+        }
+        let (dx, dy) = t.offset_for('e');
+        assert!(dx <= 40.0 + 1e-3 && dy <= 56.0 + 1e-3, "clamped: {dx},{dy}");
+
+        let blob = t.export_offsets();
+        let mut fresh = HitTester::new();
+        assert!(fresh.import_offsets(&blob).unwrap() >= 1);
+        assert_eq!(fresh.offset_for('e'), t.offset_for('e'));
+        assert!(fresh.import_offsets(b"junk").is_err());
+    }
+
+    #[test]
+    fn unlabeled_layouts_learn_nothing() {
+        let mut t = tester(&[[0.0, 0.0, 10.0, 10.0]]);
+        t.record_hit(0, 9.0, 9.0);
+        assert_eq!(t.offset_for('a'), (0.0, 0.0));
+        assert!(t.export_offsets().len() == 9, "no entries serialized");
     }
 
     #[test]
@@ -118,10 +253,10 @@ mod tests {
     fn empty_layout_hits_nothing_and_ragged_upload_is_refused() {
         let mut t = HitTester::new();
         assert_eq!(t.hit(5.0, 5.0), None);
-        assert_eq!(t.set_keys(&[1.0, 2.0, 3.0]), None);
-        let g1 = t.set_keys(&[0.0, 0.0, 10.0, 10.0]).unwrap();
+        assert_eq!(t.set_keys(&[1.0, 2.0, 3.0], &[]), None);
+        let g1 = t.set_keys(&[0.0, 0.0, 10.0, 10.0], &[]).unwrap();
         // Refused upload must not have consumed a generation or the layout.
-        assert_eq!(t.set_keys(&[1.0]), None);
+        assert_eq!(t.set_keys(&[1.0], &[]), None);
         assert_eq!(t.generation(), g1);
         assert_eq!(t.hit(5.0, 5.0), Some(0));
     }
@@ -129,8 +264,8 @@ mod tests {
     #[test]
     fn generation_increments_per_upload() {
         let mut t = HitTester::new();
-        let g1 = t.set_keys(&[0.0, 0.0, 10.0, 10.0]).unwrap();
-        let g2 = t.set_keys(&[0.0, 0.0, 20.0, 20.0]).unwrap();
+        let g1 = t.set_keys(&[0.0, 0.0, 10.0, 10.0], &[]).unwrap();
+        let g2 = t.set_keys(&[0.0, 0.0, 20.0, 20.0], &[]).unwrap();
         assert_ne!(g1, g2);
         assert_eq!(t.generation(), g2);
     }

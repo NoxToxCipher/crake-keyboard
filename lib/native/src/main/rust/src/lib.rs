@@ -99,9 +99,10 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoad
 /// shadow hit-testing. Returns the layout generation (>= 1), or -1 on error.
 #[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitSetKeys(
-    env: JNIEnv,
+    mut env: JNIEnv,
     _class: JClass,
     rects: JFloatArray,
+    chars: JString,
 ) -> jint {
     let len = match env.get_array_length(&rects) {
         Ok(l) if l >= 0 => l as usize,
@@ -111,8 +112,12 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitSetK
     if env.get_float_array_region(&rects, 0, &mut buf).is_err() {
         return -1;
     }
+    let labels: Vec<char> = env
+        .get_string(&chars)
+        .map(|s| s.to_str().unwrap_or("").chars().collect())
+        .unwrap_or_default();
     match HIT_TESTER.write() {
-        Ok(mut tester) => match tester.set_keys(&buf) {
+        Ok(mut tester) => match tester.set_keys(&buf, &labels) {
             Some(generation) => generation.min(jint::MAX as u32) as jint,
             None => -1,
         },
@@ -133,15 +138,54 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitTest
     x: jfloat,
     y: jfloat,
 ) -> jint {
-    let Ok(tester) = HIT_TESTER.read() else {
+    let Ok(mut tester) = HIT_TESTER.write() else {
         return -2;
     };
     if generation < 0 || tester.generation() != generation as u32 {
         return -2;
     }
     match tester.hit(x, y) {
-        Some(index) => index.min(jint::MAX as usize) as jint,
+        Some(index) => {
+            // In-bounds hits feed per-key offset learning (EMA, clamped).
+            tester.record_hit(index, x, y);
+            index.min(jint::MAX as usize) as jint
+        }
         None => -1,
+    }
+}
+
+/// Learned per-key touch offsets as a CRKT blob, for persistence.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitExportOffsets(
+    env: JNIEnv,
+    _class: JClass,
+) -> jni::sys::jbyteArray {
+    let data = match HIT_TESTER.read() {
+        Ok(tester) => tester.export_offsets(),
+        Err(_) => Vec::new(),
+    };
+    env.byte_array_from_slice(&data)
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// Restores per-key touch offsets; returns entries restored or -1.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitImportOffsets(
+    env: JNIEnv,
+    _class: JClass,
+    data: JByteArray,
+) -> jint {
+    let bytes = match env.convert_byte_array(&data) {
+        Ok(b) => b,
+        Err(_) => return -1,
+    };
+    match HIT_TESTER.write() {
+        Ok(mut tester) => match tester.import_offsets(&bytes) {
+            Ok(count) => count.min(jint::MAX as usize) as jint,
+            Err(()) => -1,
+        },
+        Err(_) => -1,
     }
 }
 
@@ -712,10 +756,23 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideSe
 
     // The same geometry feeds the Gaussian touch model, so autocorrect slip
     // costs always describe the layout the user is actually typing on
-    // (Dvorak gets Dvorak neighbours, not a hardcoded union table).
+    // (Dvorak gets Dvorak neighbours, not a hardcoded union table). Learned
+    // per-key touch offsets shift each centre to where THIS user actually
+    // taps. Locks here are taken strictly SEQUENTIALLY (each guard dropped
+    // before the next is acquired) — no nesting, no ordering hazard.
+    let offsets: std::collections::HashMap<char, (f32, f32)> = match HIT_TESTER.read() {
+        Ok(tester) => keys
+            .iter()
+            .map(|k| (k.character, tester.offset_for(k.character)))
+            .collect(),
+        Err(_) => Default::default(),
+    };
     let model_keys: Vec<(char, f32, f32)> = keys
         .iter()
-        .map(|k| (k.character, k.center.x, k.center.y))
+        .map(|k| {
+            let (dx, dy) = offsets.get(&k.character).copied().unwrap_or((0.0, 0.0));
+            (k.character, k.center.x + dx, k.center.y + dy)
+        })
         .collect();
     if let Ok(mut engine) = NLP_ENGINE.write() {
         engine.set_touch_model(floris_core::TouchModel::from_layout(&model_keys));

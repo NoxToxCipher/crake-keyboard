@@ -87,9 +87,21 @@ object FlorisNative {
      * Uploads a keyboard layout's touch bounds (flat [l,t,r,b] per key) for
      * shadow hit-testing. Returns the layout generation, or -1 on failure.
      */
-    fun hitSetKeys(rects: FloatArray): Int {
+    fun hitSetKeys(rects: FloatArray, chars: String = ""): Int {
         if (!isLoaded || rects.isEmpty()) return -1
-        return nativeHitSetKeys(rects)
+        return nativeHitSetKeys(rects, chars)
+    }
+
+    /** Learned per-key touch offsets (CRKT blob) for persistence. */
+    fun exportTouchOffsets(): ByteArray? {
+        if (!isLoaded) return null
+        return nativeHitExportOffsets().takeIf { it.size > 9 }
+    }
+
+    /** Restores per-key touch offsets; entries restored, or -1 on rejection. */
+    fun importTouchOffsets(data: ByteArray): Int {
+        if (!isLoaded || data.isEmpty()) return -1
+        return nativeHitImportOffsets(data)
     }
 
     /**
@@ -285,7 +297,11 @@ object FlorisNative {
 
     private external fun nativeNlpLoadDictBlob(data: ByteArray): Int
 
-    private external fun nativeHitSetKeys(rects: FloatArray): Int
+    private external fun nativeHitSetKeys(rects: FloatArray, chars: String): Int
+
+    private external fun nativeHitExportOffsets(): ByteArray
+
+    private external fun nativeHitImportOffsets(data: ByteArray): Int
 
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 

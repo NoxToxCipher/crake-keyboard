@@ -134,6 +134,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     val restored = FlorisNative.importLearned(learnedFile.readBytes())
                     Log.i("CrakeStartup", "learned state restored: $restored words")
                 }
+                val offsetsFile = java.io.File(appContext.filesDir, "crake_touch.crkt")
+                if (offsetsFile.exists()) {
+                    val keys = FlorisNative.importTouchOffsets(offsetsFile.readBytes())
+                    Log.i("CrakeStartup", "touch offsets restored: $keys keys")
+                }
             } catch (e: Exception) {
                 flogDebug { "learned state restore failed: ${e.message}" }
             }
@@ -309,6 +314,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         try {
             val data = FlorisNative.exportLearned() ?: return
             java.io.File(appContext.filesDir, "crake_learned.crkl").writeBytes(data)
+            FlorisNative.exportTouchOffsets()?.let {
+                java.io.File(appContext.filesDir, "crake_touch.crkt").writeBytes(it)
+            }
         } catch (e: Exception) {
             flogDebug { "learned state persist failed: ${e.message}" }
         }
