@@ -449,8 +449,14 @@ fun TextKeyboardLayout(
             if (soccerKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 soccerRollTriggerTime = System.currentTimeMillis()
             }
-            val rainKeys = listOf("rain", "rainy", "raining")
-            if (rainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            val rainKeys = listOf("rain", "rainy", "raining", "rainfall", "rainstorm")
+            val isRainMatch = rainKeys.any { k ->
+                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isRainMatch) {
                 spaceRainTriggerTime = System.currentTimeMillis()
             }
             val mangoKeys = listOf("mango", "mangoes", "mangos")
