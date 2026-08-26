@@ -34,13 +34,26 @@ class TextKeyboard(
     val keyCount: Int
         get() = arrangement.sumOf { it.size }
 
+    /**
+     * Generation of this keyboard's layout in the native shadow hit tester,
+     * -1 while never uploaded. Only the most recently laid-out keyboard owns
+     * the native slot; stale generations are skipped native-side.
+     */
+    private var shadowGeneration = -1
+
     override fun getKeyForPos(pointerX: Float, pointerY: Float): TextKey? {
+        var index = 0
+        var result: TextKey? = null
         for (key in keys()) {
             if (key.touchBounds.contains(pointerX, pointerY)) {
-                return key
+                result = key
+                break
             }
+            index++
         }
-        return null
+        // Shadow only: Kotlin's answer above is returned regardless.
+        ShadowHitTest.compare(shadowGeneration, pointerX, pointerY, if (result != null) index else -1)
+        return result
     }
 
     override fun layout(
@@ -149,6 +162,7 @@ class TextKeyboard(
                 }
             }
         }
+        shadowGeneration = ShadowHitTest.uploadLayout(this)
     }
 
     override fun keys(): Iterator<TextKey> {

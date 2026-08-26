@@ -83,6 +83,24 @@ object FlorisNative {
         return nativeNlpCorpusFreq(word)
     }
 
+    /**
+     * Uploads a keyboard layout's touch bounds (flat [l,t,r,b] per key) for
+     * shadow hit-testing. Returns the layout generation, or -1 on failure.
+     */
+    fun hitSetKeys(rects: FloatArray): Int {
+        if (!isLoaded || rects.isEmpty()) return -1
+        return nativeHitSetKeys(rects)
+    }
+
+    /**
+     * Shadow hit test against the uploaded layout: key index, -1 for no key,
+     * -2 when [generation] is no longer the current layout (skip, don't count).
+     */
+    fun hitTest(generation: Int, x: Float, y: Float): Int {
+        if (!isLoaded) return -2
+        return nativeHitTest(generation, x, y)
+    }
+
     fun insertWord(word: String, frequency: Int) {
         if (!isLoaded) return
         // Never learn text if it is detected as a secret/mnemonic or threat
@@ -226,6 +244,10 @@ object FlorisNative {
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
     private external fun nativeNlpLoadDictBlob(data: ByteArray): Int
+
+    private external fun nativeHitSetKeys(rects: FloatArray): Int
+
+    private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 
     private external fun nativeNlpCorpusWords(): Array<String>
 
