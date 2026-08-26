@@ -1438,7 +1438,10 @@ private class TextKeyboardLayoutController(
                 initialKey.computedData.code > KeyCode.SPACE && !popupUiController.isShowingExtendedPopup -> when {
                     !pointer.hasTriggeredGestureMove -> when (event.type) {
                         SwipeGesture.Type.TOUCH_UP -> {
-                            if (event.direction == SwipeGesture.Direction.UP && prefs.glide.flickPredictionsEnabled.get()) {
+                            val isUpwardFlick = event.direction == SwipeGesture.Direction.UP ||
+                                                event.direction == SwipeGesture.Direction.UP_LEFT ||
+                                                event.direction == SwipeGesture.Direction.UP_RIGHT
+                            if (isUpwardFlick && prefs.glide.flickPredictionsEnabled.get()) {
                                 val charCode = initialKey.computedData.code.toChar().lowercaseChar()
                                 val activeContent = editorInstance.activeContent
                                 val textBefore = activeContent.textBeforeSelection.toString()
