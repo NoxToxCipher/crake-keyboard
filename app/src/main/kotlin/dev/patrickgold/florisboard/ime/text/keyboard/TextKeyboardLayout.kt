@@ -424,6 +424,7 @@ fun TextKeyboardLayout(
         var berriesFlowTriggerTime by remember { mutableStateOf(0L) }
         var tribalwarsTriggerTime by remember { mutableStateOf(0L) }
         var bawenCatTriggerTime by remember { mutableStateOf(0L) }
+        var pubgParachuteTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -466,6 +467,10 @@ fun TextKeyboardLayout(
             val bawenKeys = listOf("bawen")
             if (bawenKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 bawenCatTriggerTime = System.currentTimeMillis()
+            }
+            val pubgKeys = listOf("pubg", "airdrop", "pochinki", "chicken dinner", "winner winner")
+            if (pubgKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                pubgParachuteTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -2043,6 +2048,178 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawLine(r * 0.4f, r * 0.22f, r * 1.25f, r * 0.08f, whiskerPaint)
                     drawContext.canvas.nativeCanvas.drawLine(r * 0.4f, r * 0.32f, r * 1.30f, r * 0.32f, whiskerPaint)
                     drawContext.canvas.nativeCanvas.drawLine(r * 0.4f, r * 0.42f, r * 1.22f, r * 0.54f, whiskerPaint)
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // PUBG Paratrooper Flying Down Top-Right to Bottom-Left Easter Egg
+        if (pubgParachuteTriggerTime > 0L) {
+            val pubgProgress = remember(pubgParachuteTriggerTime) { Animatable(0f) }
+            LaunchedEffect(pubgParachuteTriggerTime) {
+                pubgProgress.snapTo(0f)
+                pubgProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3200, easing = LinearEasing),
+                )
+                pubgParachuteTriggerTime = 0L
+            }
+            if (pubgProgress.value in 0.001f..0.999f) {
+                val t = pubgProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // Diagonal path: Top-Right (canvasW + 35dp, -35dp) -> Bottom-Left (-45dp, canvasH + 45dp)
+                    val startX = canvasW + 35f * density
+                    val startY = -35f * density
+                    val endX = -45f * density
+                    val endY = canvasH + 45f * density
+
+                    val posX = startX + t * (endX - startX)
+                    val posY = startY + t * (endY - startY)
+
+                    // Aerodynamic wind sway
+                    val swayAngle = (kotlin.math.sin(t * 6f * Math.PI.toFloat()) * 9f) - 6f // Tilts naturally facing movement direction
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(posX, posY)
+                    drawContext.canvas.nativeCanvas.rotate(swayAngle)
+
+                    // 1. Red Airdrop Flare Smoke Puffs trailing behind canopy
+                    val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0x55EF4444.toInt() // Red smoke flare
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val smokeOffsets = listOf(
+                        Pair(12f * density, -16f * density),
+                        Pair(20f * density, -24f * density),
+                        Pair(28f * density, -32f * density)
+                    )
+                    for ((sx, sy) in smokeOffsets) {
+                        drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 4f * density, smokePaint)
+                    }
+
+                    // 2. Parachute Canopy (Military Camo Green & Yellow Warning Stripe)
+                    val canopyGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF15803D.toInt() // Military Olive
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val canopyDarkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF166534.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val canopyYellowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFEAB308.toInt() // Warning Yellow Stripe
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val canopyLinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0F172A.toInt() // Rib lines
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1f * density
+                    }
+
+                    val cW = 20f * density
+                    val cH = 12f * density
+                    val cTopY = -22f * density
+
+                    // Parachute Dome
+                    val canopyPath = android.graphics.Path().apply {
+                        moveTo(-cW, cTopY + cH)
+                        cubicTo(-cW, cTopY - cH * 0.4f, cW, cTopY - cH * 0.4f, cW, cTopY + cH)
+                        cubicTo(cW * 0.6f, cTopY + cH * 0.7f, -cW * 0.6f, cTopY + cH * 0.7f, -cW, cTopY + cH)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(canopyPath, canopyGreenPaint)
+                    drawContext.canvas.nativeCanvas.drawRect(-cW * 0.28f, cTopY, cW * 0.28f, cTopY + cH * 0.85f, canopyYellowPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(canopyPath, canopyLinePaint)
+
+                    // 3. Parachute Suspension Cord Lines
+                    val cordPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFCBD5E1.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.8f * density
+                    }
+                    val harnessX = 0f
+                    val harnessY = -4f * density
+                    drawContext.canvas.nativeCanvas.drawLine(-cW * 0.95f, cTopY + cH, harnessX, harnessY, cordPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(-cW * 0.35f, cTopY + cH * 0.8f, harnessX, harnessY, cordPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(cW * 0.35f, cTopY + cH * 0.8f, harnessX, harnessY, cordPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(cW * 0.95f, cTopY + cH, harnessX, harnessY, cordPaint)
+
+                    // 4. Survivor Dude (Level 3 Spetsnaz Helmet + White Shirt & Tie + Pan)
+                    val shirtPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFFFFF.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val tiePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0F172A.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val jeansPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF1D4ED8.toInt() // Blue Denim
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val bootPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF334155.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val panPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0F172A.toInt() // Cast Iron Frying Pan
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val panRimPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF94A3B8.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.8f * density
+                    }
+                    val helmetPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF1E293B.toInt() // Level 3 Helmet
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val visorSlitPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF64748B.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    // A. Torso (White Shirt) & Harness
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-2.8f * density, -4f * density, 2.8f * density, 4f * density, 1.2f * density, 1.2f * density, shirtPaint)
+                    drawContext.canvas.nativeCanvas.drawRect(-0.6f * density, -3.5f * density, 0.6f * density, 1f * density, tiePaint) // Black Tie
+
+                    // B. Cast Iron Frying Pan on Back / Buttocks
+                    drawContext.canvas.nativeCanvas.drawCircle(3.2f * density, 2f * density, 3f * density, panPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(3.2f * density, 2f * density, 3f * density, panRimPaint)
+                    drawContext.canvas.nativeCanvas.drawRect(5.5f * density, 1.2f * density, 7.8f * density, 2.8f * density, panPaint) // Pan handle
+
+                    // C. Dangling Legs (Blue Jeans & Combat Boots)
+                    val legFlutter = (kotlin.math.sin(t * 12f * Math.PI.toFloat()) * 3f)
+                    // Left Leg
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(-1.4f * density, 3.5f * density)
+                    drawContext.canvas.nativeCanvas.rotate(-6f + legFlutter)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.2f * density, 0f, 1.2f * density, 6.5f * density, 1f * density, 1f * density, jeansPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.4f * density, 5.5f * density, 1.8f * density, 8f * density, 1f * density, 1f * density, bootPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Right Leg
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(1.4f * density, 3.5f * density)
+                    drawContext.canvas.nativeCanvas.rotate(8f - legFlutter)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.2f * density, 0f, 1.2f * density, 6.5f * density, 1f * density, 1f * density, jeansPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-1.4f * density, 5.5f * density, 1.8f * density, 8f * density, 1f * density, 1f * density, bootPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // D. Arms gripping harness cords
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-3.5f * density, -3.5f * density, -1.8f * density, 1f * density, 1f * density, 1f * density, shirtPaint)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(1.8f * density, -3.5f * density, 3.5f * density, 1f * density, 1f * density, 1f * density, shirtPaint)
+
+                    // E. Level 3 Spetsnaz Helmet Head
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, -7.5f * density, 3.8f * density, helmetPaint)
+                    drawContext.canvas.nativeCanvas.drawRect(-3f * density, -7.8f * density, 1f * density, -6.6f * density, visorSlitPaint) // Visor Face Slit
 
                     drawContext.canvas.nativeCanvas.restore()
                 }
