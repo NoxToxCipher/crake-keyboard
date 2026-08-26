@@ -1664,6 +1664,11 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("throughout", "throughout"),
     ("thru", "through"),
     ("thsi", "this"),
+    // "ti" is a 1-adjacent-slip of "to" (i<->o) and is essentially never a
+    // deliberate English token; prefix completions (time, till) were
+    // blocking the fuzzy path's auto-commit for it ("swipe backwards ti
+    // delete", field specimen 2026-08-27).
+    ("ti", "to"),
     ("timeline", "timeline"),
     ("tobacco", "tobacco"),
     ("today", "today"),

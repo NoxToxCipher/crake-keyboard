@@ -1158,6 +1158,43 @@ impl NlpEngine {
         }
 
         if candidates.len() > max_candidates {
+            // The literal typed word must survive the display cut (the
+            // stage-8 contract): completion-rich tokens ("ti" -> time,
+            // times, title...) pushed it below the truncation line, which
+            // made an auto-commit impossible to opt out of. Pull it into
+            // the last visible slot before cutting.
+            if let Some(p) = candidates
+                .iter()
+                .position(|c| c.word.eq_ignore_ascii_case(trimmed))
+            {
+                if p >= max_candidates {
+                    let literal = candidates.remove(p);
+                    // Make room by evicting the least valuable visible
+                    // candidate — never the visibility-guaranteed slip
+                    // correction (a spatial-slip match of the typed word)
+                    // and never an auto-commit: scanning from the back,
+                    // that leaves the weakest prefix completion.
+                    let victim = (0..max_candidates.min(candidates.len()))
+                        .rev()
+                        .find(|&i| {
+                            // Compare against the bare form: contraction
+                            // display ("don't" for the slip "donr") hides
+                            // the spatial match behind the apostrophe.
+                            let bare: String = candidates[i]
+                                .word
+                                .to_lowercase()
+                                .chars()
+                                .filter(|c| *c != '\'')
+                                .collect();
+                            !candidates[i].is_autocorrect
+                                && !Self::is_spatial_slip_match(&trimmed_lower, &bare)
+                        });
+                    if let Some(v) = victim {
+                        candidates.remove(v);
+                    }
+                    candidates.insert(max_candidates - 1, literal);
+                }
+            }
             candidates.truncate(max_candidates);
         }
 

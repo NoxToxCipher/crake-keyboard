@@ -402,3 +402,21 @@ fn recovers_transpositions_doubles_and_drops() {
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
+
+/// "ti" must auto-commit to "to" ("swipe backwards ti delete", field
+/// specimen 2026-08-27): the fuzzy path's auto-commit was starved because
+/// "ti" prefixes real words (time, till), so the typo corpus carries it.
+/// The literal stays reachable for the rare deliberate "ti".
+#[test]
+fn ti_autocommits_to_to_with_literal_reachable() {
+    let e = engine();
+    let r = e.suggest_with_context("ti", "backwards", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "to", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect, "'ti' -> 'to' must auto-commit");
+    assert!(
+        r.candidates.iter().any(|c| c.word == "ti" && !c.is_autocorrect),
+        "literal 'ti' must stay tappable: {:?}",
+        r.candidates
+    );
+}
