@@ -1013,6 +1013,21 @@ private fun TextKeyButton(
                 )
             }
         }
+        // Tactile Homing Fret Indicators for Dvorak (U, H) & QWERTY (F, J)
+        val lowerLabel = (evaluator.computeLabel(key.computedData) ?: "").lowercase()
+        val isHomingKey = lowerLabel == "u" || lowerLabel == "h" || lowerLabel == "f" || lowerLabel == "j"
+        if (isHomingKey && key.isEnabled && evaluator.keyboard.mode == KeyboardMode.CHARACTERS) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 3.dp)
+                    .requiredSize(width = 6.dp, height = 1.5.dp)
+                    .background(
+                        color = themeAccentColor.copy(alpha = 0.65f),
+                        shape = RoundedCornerShape(1.dp),
+                    )
+            )
+        }
         if (key.computedData.code == KeyCode.SPACE) {
             Box(
                 modifier = Modifier

@@ -655,6 +655,24 @@
           "victorbnl"
         ],
         "direction": "ltr"
+      },
+      {
+        "id": "dvorak_programmer",
+        "label": "Programmer Dvorak",
+        "authors": [
+          "Roland Kaufmann",
+          "Crake Team"
+        ],
+        "direction": "ltr"
+      },
+      {
+        "id": "dvorak_left_handed",
+        "label": "Left-Handed Dvorak",
+        "authors": [
+          "August Dvorak",
+          "Crake Team"
+        ],
+        "direction": "ltr"
       }
     ],
     "charactersMod": [
