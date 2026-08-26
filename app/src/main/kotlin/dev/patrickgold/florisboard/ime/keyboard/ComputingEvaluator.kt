@@ -270,8 +270,8 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
-                true -> Icons.Default.KeyboardCapslock
-                else -> Icons.Default.KeyboardArrowUp
+                true -> context()?.vectorResource(id = R.drawable.ic_crake_shift_filled) ?: Icons.Default.KeyboardCapslock
+                else -> context()?.vectorResource(id = R.drawable.ic_crake_shift_outline) ?: Icons.Default.KeyboardArrowUp
             }
         }
         KeyCode.SPACE, KeyCode.CJK_SPACE -> {

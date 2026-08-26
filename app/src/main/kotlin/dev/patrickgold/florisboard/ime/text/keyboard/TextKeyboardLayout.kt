@@ -712,18 +712,51 @@ private fun TextKeyButton(
                 contentDescription = null,
             )
         }
-        if (key.computedData.code == KeyCode.SHIFT && evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {
-            val isLocked = evaluator.state.inputShiftState == InputShiftState.CAPS_LOCK
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .requiredSize(width = if (isLocked) 16.dp else 8.dp, height = 2.5.dp)
-                    .background(
-                        color = Color(0xFF00E5FF),
-                        shape = RoundedCornerShape(2.dp),
-                    )
-            )
+        if (key.computedData.code == KeyCode.SHIFT) {
+            val shiftState = evaluator.state.inputShiftState
+            val isShifted = shiftState != InputShiftState.UNSHIFTED
+            val isLocked = shiftState == InputShiftState.CAPS_LOCK
+
+            if (isLocked) {
+                // Inward Glowing Border Halo for CAPS LOCK
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .border(
+                            width = 1.5.dp,
+                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF00E5FF).copy(alpha = 0.95f),
+                                    Color(0xFF00D2FF).copy(alpha = 0.5f),
+                                    Color.Transparent,
+                                ),
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0x3500E5FF),
+                                    Color.Transparent,
+                                ),
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                )
+            }
+
+            if (isShifted) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 4.dp)
+                        .requiredSize(width = if (isLocked) 18.dp else 8.dp, height = 2.5.dp)
+                        .background(
+                            color = Color(0xFF00E5FF),
+                            shape = RoundedCornerShape(2.dp),
+                        )
+                )
+            }
         }
         if (key.computedData.code == KeyCode.SPACE) {
             Box(
