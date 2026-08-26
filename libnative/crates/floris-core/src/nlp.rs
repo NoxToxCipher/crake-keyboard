@@ -361,10 +361,12 @@ impl NlpEngine {
     /// "mistakes", "deliberate lt" -> "deliberately" (all captured verbatim
     /// from live typing, 2026-08-26 — mid-word space slips are the dominant
     /// real-world error class). Joins the previous token with the current one
-    /// and accepts a dictionary word that is an exact join, or a same-length
-    /// join within 2 weighted units (one full edit, or two adjacent-key
-    /// slips). Fires only when at least one fragment is NOT a dictionary
-    /// word, so legitimate pairs ("to do", "in the") are never merged.
+    /// and accepts a strong dictionary word (freq >= 150, len >= 4) that is
+    /// an exact join or one adjacent-key slip away. Legitimacy of the pair is
+    /// decided by ATTESTATION, not fragment validity (the dictionary is too
+    /// polluted for that): a pair the bigram table has seen is real language
+    /// and never merges; spurious-space fragments are exactly the pairs no
+    /// corpus ever saw.
     pub fn merge_repair(&self, prev_word: &str, current: &str) -> Option<String> {
         let prev = prev_word.trim().to_lowercase();
         let cur = current.trim().to_lowercase();
@@ -384,6 +386,15 @@ impl NlpEngine {
         // admits every captured field specimen while keeping rare joins
         // ("to"+"do" -> "todo") from pestering legitimate pairs — and the
         // candidate is only ever offered, never auto-committed.
+        // A pair the bigram table has SEEN is real language ("of the",
+        // "can not", "are a") — never offer to weld it, no matter how strong
+        // the joined word is. Audit 2026-08-27: without this, 837 attested
+        // pairs produced merge suggestions ("are a" -> "area" on every
+        // mid-sentence article). Spurious-space fragments are precisely the
+        // pairs no corpus ever saw.
+        if self.bigram_pair_score(&prev, &cur) > 0 {
+            return None;
+        }
         let joined = format!("{prev}{cur}");
         let joined_len = joined.chars().count();
         if !(4..=24).contains(&joined_len) {

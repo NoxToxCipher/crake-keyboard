@@ -97,6 +97,47 @@ fn repairs_spurious_space_splits() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// Bigram attestation is the legitimacy oracle: a pair the corpus has seen
+/// is real language and must never be welded, even when the joined form is
+/// a strong dictionary word ("can not" -> cannot, "are a" -> area). Fragments
+/// from spurious spaces are exactly the pairs no corpus ever saw, so they
+/// keep merging.
+#[test]
+fn attested_pairs_never_merge_even_when_the_joined_word_is_strong() {
+    let mut e = engine();
+    for (w, f) in [("cannot", 238), ("area", 246), ("can", 250), ("not", 250), ("are", 250), ("a", 250), ("should", 250)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    // Without attestation these WOULD merge (strong joined words):
+    assert_eq!(e.merge_repair("can", "not").as_deref(), Some("cannot"));
+    assert_eq!(e.merge_repair("are", "a").as_deref(), Some("area"));
+
+    // Attest the pairs in a tiny bigram table -> merges must stop.
+    let id = |eng: &NlpEngine, w: &str| eng.corpus_words().iter().position(|c| c == w).unwrap() as u32;
+    let mut entries = vec![
+        (id(&e, "can"), id(&e, "not"), 219u8),
+        (id(&e, "are"), id(&e, "a"), 204u8),
+    ];
+    entries.sort();
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"CRKB");
+    blob.push(2);
+    blob.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    blob.extend_from_slice(&(e.corpus_words().len() as u32).to_le_bytes());
+    for (a, b, s) in entries {
+        blob.extend_from_slice(&a.to_le_bytes());
+        blob.extend_from_slice(&b.to_le_bytes());
+        blob.push(s);
+    }
+    e.load_bigrams(&blob).unwrap();
+
+    assert_eq!(e.merge_repair("can", "not"), None, "attested pair must not merge");
+    assert_eq!(e.merge_repair("are", "a"), None, "attested pair must not merge");
+    // Unattested spurious fragments still repair.
+    assert_eq!(e.merge_repair("shou", "kd").as_deref(), Some("should"));
+}
+
 /// The Gaussian touch model makes slip costs layout-true: the same fragments
 /// merge on the layout where the slip is physically plausible and refuse on
 /// one where it is not. "kd" for "ld" is a k/l neighbour slip on QWERTY;
