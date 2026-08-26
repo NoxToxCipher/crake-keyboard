@@ -228,29 +228,47 @@ impl GlideEngine {
 
         for &start_ch in &start_chars {
             let prefix = start_ch.to_string();
-            let candidates = trie.prefix_search(&prefix, 250);
+            // Pull a deep, frequency-sorted pool and keep only words whose
+            // LAST letter is reachable from where the finger lifted, THEN cap.
+            // Filtering after a 250-word frequency cut starved recall: any
+            // word outside its start letter's frequency top-250 could never
+            // be glided at all, and most of that 250 had unreachable endings.
+            let pool = trie.prefix_search(&prefix, 1500);
+            let viable = pool
+                .into_iter()
+                .filter(|(word, _)| {
+                    word.len() >= 2
+                        && word
+                            .chars()
+                            .last()
+                            .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
+                })
+                .take(300);
 
-            for (word, freq) in candidates {
-                if word.len() < 2 {
-                    continue;
-                }
-
-                // Check if last letter matches candidate end regions
-                let last_ch = word.chars().last().unwrap().to_ascii_lowercase();
-                if !end_chars.contains(&last_ch) {
-                    continue;
-                }
-
+            for (word, freq) in viable {
                 // Build ideal keypath for the word
                 if let Some(ideal_path) = self.build_ideal_keypath(&word) {
                     let dtw_dist = compute_dtw(&simplified_gesture, &ideal_path);
-                    
+
                     // Normalize distance by gesture length
                     let normalized_dist = dtw_dist / (simplified_gesture.len() + ideal_path.len()) as f32;
 
+                    // Anchor accuracy: glides start deliberately (the user is
+                    // looking at the first key), so distance from the trace's
+                    // endpoints to the word's first/last key centers carries
+                    // real signal that plain DTW dilutes across the path.
+                    let anchor_penalty = match (ideal_path.first(), ideal_path.last()) {
+                        (Some(first), Some(last)) => {
+                            (start_pt.distance(first) + end_pt.distance(last))
+                                / self.average_key_radius.max(1.0)
+                                * 6.0
+                        }
+                        _ => 0.0,
+                    };
+
                     // Combine DTW geometric closeness with word frequency bonus
                     let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
-                    let total_score = normalized_dist - freq_bonus;
+                    let total_score = normalized_dist + anchor_penalty - freq_bonus;
 
                     matches.push(GlideMatch {
                         word,
