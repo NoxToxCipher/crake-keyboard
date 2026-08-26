@@ -20,6 +20,8 @@ import dev.patrickgold.florisboard.R
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
@@ -853,12 +855,18 @@ private fun TextKeyButton(
 
     LaunchedEffect(sunConureTriggerTime) {
         if (sunConureTriggerTime > 0L) {
-            val startTime = System.currentTimeMillis()
-            while (System.currentTimeMillis() - startTime < 10_000L) {
-                sunConurePulseAlpha.animateTo(1f, animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing))
-                sunConurePulseAlpha.animateTo(0.20f, animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing))
-            }
-            sunConurePulseAlpha.animateTo(0f, animationSpec = tween(durationMillis = 350, easing = EaseInCubic))
+            // Elegant smooth fade in once (450ms)
+            sunConurePulseAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 450, easing = EaseOutCubic),
+            )
+            // Sits majestically on the Shift key for 9.1 seconds
+            kotlinx.coroutines.delay(9100L)
+            // Elegant smooth fade out once (450ms)
+            sunConurePulseAlpha.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 450, easing = EaseInCubic),
+            )
         }
     }
 
@@ -971,22 +979,21 @@ private fun TextKeyButton(
             )
         }
         if (key.computedData.code == KeyCode.SHIFT && sunConurePulseAlpha.value > 0f) {
-            Box(
+            val sunConureImage = painterResource(id = R.drawable.ic_sun_conure)
+            Image(
+                painter = sunConureImage,
+                contentDescription = "Sun Conure",
                 modifier = Modifier
                     .align(Alignment.Center)
+                    .size(26.dp)
+                    .clip(CircleShape)
                     .graphicsLayer {
                         alpha = sunConurePulseAlpha.value
-                        val baseScale = 0.92f + 0.16f * sunConurePulseAlpha.value
+                        val baseScale = 0.90f + 0.10f * sunConurePulseAlpha.value
                         scaleX = baseScale * (if (key.isPressed && key.isEnabled) 1.25f else 1.0f)
                         scaleY = baseScale * (if (key.isPressed && key.isEnabled) 1.25f else 1.0f)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.material3.Text(
-                    text = "🦜",
-                    fontSize = 20.sp,
-                )
-            }
+                    }
+            )
         }
         if (key.computedData.code != KeyCode.SHIFT || (eggAlphaAnim.value < 1f && sunConurePulseAlpha.value < 1f)) {
             key.foregroundImageVector?.let { imageVector ->
