@@ -21,6 +21,8 @@ fn engine() -> NlpEngine {
         ("deliberately", 160),
         ("this", 250),
         ("what", 250),
+        ("that", 255),
+        ("accuracy", 210),
         ("hello", 240),
         ("keyboard", 200),
         ("privacy", 150),
@@ -47,6 +49,8 @@ fn recovers_adjacent_key_slips() {
         ("gkudinf", "gliding"),     // 3 slips
         ("nt", "my"),               // 2 slips on a 2-letter word
         ("yui", "you"),             // 2 slips
+        ("thar", "that"),           // 1 slip (r<->t adjacent key slip from live typing 2026-08-27)
+        ("accuracu", "accuracy"),   // 1 slip (u<->y adjacent key slip from live typing 2026-08-27)
     ] {
         let got = top3(&e, typed);
         if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
