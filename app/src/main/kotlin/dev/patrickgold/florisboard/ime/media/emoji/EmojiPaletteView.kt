@@ -320,21 +320,27 @@ fun EmojiPaletteView(
             }
         }
 
+        val gridStates = remember {
+            List(EmojiCategoryValues.size + 1) { androidx.compose.foundation.lazy.grid.LazyGridState() }
+        }
+
         // Reset the pager to the first page when emojiHistory is enabled
         LaunchedEffect(emojiHistoryEnabled) {
-            pagerState.animateScrollToPage(0)
+            pagerState.scrollToPage(0)
         }
 
         EmojiCategoriesTabRow(
             activeCategory = activeCategory,
             onCategoryChange = { category ->
                 activeCategory = category
-                scope.launch { pagerState.animateScrollToPage(categoryToPageNumber(activeCategory)) }
+                val targetPage = categoryToPageNumber(category)
+                scope.launch {
+                    pagerState.scrollToPage(targetPage)
+                }
             },
         )
         HorizontalPager(pagerState, beyondViewportPageCount = 1) { page ->
-            // Every page needs its own lazyGridState in order to scroll correctly
-            val lazyGridState = rememberLazyGridState()
+            val lazyGridState = gridStates.getOrElse(page) { gridStates[0] }
 
             val category = pageNumberToCategory(page)
             val emojiMapping = if (category == EmojiCategory.RECENTLY_USED) {
