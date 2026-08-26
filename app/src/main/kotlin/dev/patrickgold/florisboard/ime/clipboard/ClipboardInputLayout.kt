@@ -22,6 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 
 import android.content.ContentUris
 import android.graphics.BitmapFactory
@@ -47,6 +57,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
@@ -262,6 +273,12 @@ fun ClipboardInputLayout(
     var popupItem by remember(filteredHistory) { mutableStateOf<ClipboardItem?>(null) }
     var showClearAllHistory by remember { mutableStateOf(false) }
 
+    // Drag-and-Drop state tracking
+    var draggedItem by remember { mutableStateOf<ClipboardItem?>(null) }
+    var dragPosition by remember { mutableStateOf(Offset.Zero) }
+    var hoveredCategory by remember { mutableStateOf<ClipCategory?>(null) }
+    val categoryBounds = remember { androidx.compose.runtime.mutableStateMapOf<ClipCategory, Rect>() }
+
     fun isPopupSurfaceActive() = popupItem != null || showClearAllHistory
 
     LaunchedEffect(isFilterRowShown) {
@@ -359,14 +376,56 @@ fun ClipboardInputLayout(
         val attributes = remember(item) {
             mapOf("type" to item.type.toString().lowercase())
         }
+        var itemTopLeftInRoot by remember { mutableStateOf(Offset.Zero) }
+        val isBeingDragged = draggedItem?.id == item.id && draggedItem != null
+
         SnyggBox(
             elementName = elementName,
             attributes = attributes,
-            modifier = modifier.fillMaxWidth(),
+            modifier = modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    itemTopLeftInRoot = coordinates.boundsInRoot().topLeft
+                }
+                .pointerInput(item) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { offset ->
+                            draggedItem = item
+                            dragPosition = itemTopLeftInRoot + offset
+                        },
+                        onDrag = { change, dragAmount ->
+                            change.consume()
+                            dragPosition += dragAmount
+                            hoveredCategory = categoryBounds.entries.firstOrNull { (_, rect) ->
+                                rect.contains(dragPosition)
+                            }?.key
+                        },
+                        onDragEnd = {
+                            val targetCat = hoveredCategory
+                            if (targetCat != null && targetCat != ClipCategory.ALL) {
+                                if (targetCat == ClipCategory.PINNED) {
+                                    clipboardManager.pinClip(item)
+                                } else {
+                                    val itemToMove = item
+                                    scope.launch { assignClipCategory(itemToMove, targetCat, prefs) }
+                                }
+                                context.showShortToastSync("Moved to " + targetCat.displayName)
+                            }
+                            draggedItem = null
+                            hoveredCategory = null
+                            dragPosition = Offset.Zero
+                        },
+                        onDragCancel = {
+                            draggedItem = null
+                            hoveredCategory = null
+                            dragPosition = Offset.Zero
+                        }
+                    )
+                },
             clickAndSemanticsModifier = Modifier.combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(),
-                enabled = popupItem == null,
+                enabled = popupItem == null && draggedItem == null,
                 onLongClick = {
                     popupItem = item
                 },
@@ -531,36 +590,66 @@ fun ClipboardInputLayout(
                     .matchParentSize()
                     .alpha(historyAlpha),
             ) {
-                // Multi-Clipboard Category Folders & Quick Filters
+                // Multi-Clipboard Category Folders & Drag-Drop Target Bar
                 if (!deviceLocked && historyEnabled && unfilteredHistory.all.isNotEmpty()) {
-                    androidx.compose.foundation.layout.Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                            .florisHorizontalScroll(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        for (cat in ClipCategory.values()) {
-                            val isSelected = activeCategory == cat
-                            val bgColor = if (isSelected) cat.badgeColor.copy(alpha = 0.22f) else Color(0xFF161E2E)
-                            val borderColor = if (isSelected) cat.badgeColor else Color(0xFF263248)
-                            val textColor = if (isSelected) cat.badgeColor else Color(0xFF94A3B8)
+                    androidx.compose.foundation.layout.Column(modifier = Modifier.fillMaxWidth()) {
+                        if (draggedItem != null) {
+                            Text(
+                                text = "✨ DRAG & DROP INTO ANY FOLDER BELOW",
+                                color = Color(0xFF00E5A3),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 1.dp)
+                            )
+                        }
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .florisHorizontalScroll(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            for (cat in ClipCategory.values()) {
+                                val isSelected = activeCategory == cat
+                                val isHovered = hoveredCategory == cat
+                                val scale = if (isHovered) 1.15f else 1.0f
+                                val bgColor = when {
+                                    isHovered -> cat.badgeColor.copy(alpha = 0.45f)
+                                    isSelected -> cat.badgeColor.copy(alpha = 0.22f)
+                                    else -> Color(0xFF161E2E)
+                                }
+                                val borderColor = when {
+                                    isHovered -> Color.White
+                                    isSelected -> cat.badgeColor
+                                    draggedItem != null -> cat.badgeColor.copy(alpha = 0.6f)
+                                    else -> Color(0xFF263248)
+                                }
+                                val textColor = when {
+                                    isHovered -> Color.White
+                                    isSelected -> cat.badgeColor
+                                    else -> Color(0xFF94A3B8)
+                                }
 
-                            androidx.compose.foundation.layout.Row(
-                                modifier = Modifier
-                                    .background(bgColor, RoundedCornerShape(8.dp))
-                                    .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(8.dp))
-                                    .rippleClickable { activeCategory = cat }
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = cat.displayName,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    color = textColor,
-                                )
+                                androidx.compose.foundation.layout.Row(
+                                    modifier = Modifier
+                                        .scale(scale)
+                                        .onGloballyPositioned { coordinates ->
+                                            categoryBounds[cat] = coordinates.boundsInRoot()
+                                        }
+                                        .background(bgColor, RoundedCornerShape(8.dp))
+                                        .border(BorderStroke(if (isHovered) 2.dp else 1.dp, borderColor), RoundedCornerShape(8.dp))
+                                        .rippleClickable { activeCategory = cat }
+                                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = if (isHovered) "✓ " + cat.displayName else cat.displayName,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (isSelected || isHovered) FontWeight.Bold else FontWeight.Normal,
+                                        color = textColor,
+                                    )
+                                }
                             }
                         }
                     }
@@ -647,6 +736,36 @@ fun ClipboardInputLayout(
                 }
             }
 
+            // Floating Drag Ghost Preview
+            if (draggedItem != null && dragPosition != Offset.Zero) {
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .zIndex(99f)
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(
+                                    (dragPosition.x - 70).roundToInt().coerceAtLeast(0),
+                                    (dragPosition.y - 40).roundToInt().coerceAtLeast(0)
+                                )
+                            }
+                            .width(140.dp)
+                            .background(Color(0xFF131A29).copy(alpha = 0.92f), RoundedCornerShape(10.dp))
+                            .border(BorderStroke(2.dp, Color(0xFF00E5A3)), RoundedCornerShape(10.dp))
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = draggedItem!!.displayText(),
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            maxLines = 2
+                        )
+                    }
+                }
+            }
+
             if (popupItem != null) {
                 SnyggRow(
                     modifier = Modifier
@@ -698,21 +817,32 @@ fun ClipboardInputLayout(
                                 clipboardManager.moveToTop(popupItem!!)
                                 popupItem = null
                             }
-                            PopupAction(
-                                icon = Icons.Default.Folder,
-                                text = "Move to Next Folder",
+                            Text(
+                                text = "MOVE TO FOLDER:",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8),
+                                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                            )
+                            androidx.compose.foundation.layout.Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.fillMaxWidth().florisHorizontalScroll()
                             ) {
-                                val currentCat = getClipCategory(popupItem!!, prefs.clipboard.customCategoriesJson.get())
-                                val nextCat = when (currentCat) {
-                                    ClipCategory.WORK -> ClipCategory.CRYPTO
-                                    ClipCategory.CRYPTO -> ClipCategory.CODE
-                                    ClipCategory.CODE -> ClipCategory.SOCIAL
-                                    ClipCategory.SOCIAL -> ClipCategory.WORK
-                                    else -> ClipCategory.WORK
+                                for (folderCat in listOf(ClipCategory.WORK, ClipCategory.CRYPTO, ClipCategory.CODE, ClipCategory.SOCIAL)) {
+                                    androidx.compose.foundation.layout.Box(
+                                        modifier = Modifier
+                                            .background(folderCat.badgeColor.copy(alpha = 0.2f), RoundedCornerShape(6.dp))
+                                            .border(BorderStroke(1.dp, folderCat.badgeColor), RoundedCornerShape(6.dp))
+                                            .rippleClickable {
+                                                val itemToMove = popupItem!!
+                                                scope.launch { assignClipCategory(itemToMove, folderCat, prefs) }
+                                                popupItem = null
+                                            }
+                                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                                    ) {
+                                        Text(text = folderCat.displayName, fontSize = 10.sp, color = folderCat.badgeColor, fontWeight = FontWeight.SemiBold)
+                                    }
                                 }
-                                val itemToMove = popupItem!!
-                                scope.launch { assignClipCategory(itemToMove, nextCat, prefs) }
-                                popupItem = null
                             }
                             PopupAction(
                                 icon = Icons.Default.Delete,
