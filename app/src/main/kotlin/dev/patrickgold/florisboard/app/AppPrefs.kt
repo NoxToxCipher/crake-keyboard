@@ -723,6 +723,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "theme__show_frets_on_borderless",
             default = true,
         )
+        val chameleonAppAccentMatcher = boolean(
+            key = "theme__chameleon_app_accent_matcher",
+            default = false,
+        )
+        val oledZeroBlackPowerSaver = boolean(
+            key = "theme__oled_zero_black_power_saver",
+            default = false,
+        )
         val mode = enum(
             key = "theme__mode",
             default = ThemeMode.FOLLOW_SYSTEM,
