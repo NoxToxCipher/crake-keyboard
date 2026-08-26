@@ -514,14 +514,13 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
             let trimmed_lower = trimmed.to_ascii_lowercase();
             let mut candidates: Vec<(char, String, u32)> = Vec::with_capacity(26);
 
-            for ch in 'a'..='z' {
+            let valid_next = self.trie.get_valid_next_chars(&trimmed_lower);
+            for ch in valid_next {
                 let candidate_prefix = format!("{}{}", trimmed_lower, ch);
                 let matches = self.trie.prefix_search(&candidate_prefix, 1);
                 if let Some((word, freq)) = matches.first() {
-                    if word.len() > trimmed_lower.len() && *freq >= 120 {
-                        let formatted = Self::apply_casing(trimmed, word);
-                        candidates.push((ch, formatted, *freq));
-                    }
+                    let formatted = Self::apply_casing(trimmed, word);
+                    candidates.push((ch, formatted, *freq));
                 }
             }
 

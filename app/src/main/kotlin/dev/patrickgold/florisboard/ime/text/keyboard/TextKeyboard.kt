@@ -71,25 +71,30 @@ class TextKeyboard(
             return exactKey
         }
 
+        // Thumb contact center compensation:
+        // Human thumb pads strike slightly below the optical key center (~4px).
+        val compensatedY = pointerY - 4.0f
+
         var bestKey: TextKey? = exactKey
         var minWeightedDist = Float.MAX_VALUE
 
         for (key in keys()) {
             if (!key.isEnabled) continue
+            if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
             val center = key.visibleBounds.center
             val dx = pointerX - center.x
-            val dy = pointerY - center.y
+            val dy = compensatedY - center.y
             val dist = kotlin.math.sqrt(dx * dx + dy * dy)
 
-            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * 1.5f
+            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * 1.6f
             if (dist > maxReach) continue
 
             val charCode = key.computedData.code.toChar().lowercaseChar()
             val isHighProbability = predictedNextLetters.contains(charCode)
 
             // Bayesian probability distance weighting:
-            // High-probability next letters get a 35% distance reduction bonus (expanding their effective catchment area)
-            val weightFactor = if (isHighProbability) 0.65f else 1.0f
+            // High-probability next letters get a 40% distance reduction bonus (expanding their effective catchment area)
+            val weightFactor = if (isHighProbability) 0.60f else 1.0f
             val weightedDist = dist * weightFactor
 
             if (weightedDist < minWeightedDist) {
