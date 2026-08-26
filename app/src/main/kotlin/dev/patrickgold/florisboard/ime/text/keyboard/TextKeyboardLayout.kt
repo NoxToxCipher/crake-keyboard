@@ -418,6 +418,7 @@ fun TextKeyboardLayout(
         var sunConureFlightTriggerTime by remember { mutableStateOf(0L) }
         var soccerRollTriggerTime by remember { mutableStateOf(0L) }
         var spaceRainTriggerTime by remember { mutableStateOf(0L) }
+        var mangoPulseTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -436,6 +437,10 @@ fun TextKeyboardLayout(
             val rainKeys = listOf("rain", "rainy", "raining")
             if (rainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 spaceRainTriggerTime = System.currentTimeMillis()
+            }
+            val mangoKeys = listOf("mango", "mangoes", "mangos")
+            if (mangoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                mangoPulseTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1217,6 +1222,65 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, ballOutlinePaint)
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Mango Dual Elegant Pulse Easter Egg: Pulses twice softly in rich honey mango gold
+        if (mangoPulseTriggerTime > 0L) {
+            val mangoProgress = remember(mangoPulseTriggerTime) { Animatable(0f) }
+            LaunchedEffect(mangoPulseTriggerTime) {
+                mangoProgress.snapTo(0f)
+                mangoProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 2200, easing = LinearEasing),
+                )
+                mangoPulseTriggerTime = 0L
+            }
+            if (mangoProgress.value in 0.001f..0.999f) {
+                val t = mangoProgress.value
+                val cycleProgress = if (t < 0.5f) t * 2.0f else (t - 0.5f) * 2.0f
+                val sineWave = (kotlin.math.sin(cycleProgress * Math.PI)).toFloat()
+                val pulseAlpha = sineWave * 0.38f
+                val densityScale = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val cx = canvasW / 2f
+                    val cy = canvasH / 2f
+
+                    // 1. Soft Luscious Mango Radial Gradient (Australian Kensington Pride & Honey Gold Mango)
+                    val mangoGradientPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        shader = android.graphics.RadialGradient(
+                            cx, cy, kotlin.math.max(canvasW, canvasH) * 0.75f,
+                            intArrayOf(
+                                android.graphics.Color.argb((pulseAlpha * 255).toInt().coerceIn(0, 255), 255, 179, 0),  // Ripe Honey Mango Gold
+                                android.graphics.Color.argb((pulseAlpha * 210).toInt().coerceIn(0, 255), 255, 112, 67),  // Soft Blushing Mango Peach
+                                android.graphics.Color.argb((pulseAlpha * 140).toInt().coerceIn(0, 255), 255, 143, 0),  // Warm Golden Amber
+                                android.graphics.Color.argb(0, 255, 112, 67)
+                            ),
+                            floatArrayOf(0.0f, 0.45f, 0.80f, 1.0f),
+                            android.graphics.Shader.TileMode.CLAMP
+                        )
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawRoundRect(0f, 0f, canvasW, canvasH, 12f * densityScale, 12f * densityScale, mangoGradientPaint)
+
+                    // 2. Soft Ambient Perimeter Rim Aura
+                    val perimeterAuraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((pulseAlpha * 180).toInt().coerceIn(0, 255), 255, 193, 7)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 2.5f * densityScale
+                    }
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        1.5f * densityScale, 1.5f * densityScale,
+                        canvasW - 1.5f * densityScale, canvasH - 1.5f * densityScale,
+                        12f * densityScale, 12f * densityScale,
+                        perimeterAuraPaint
+                    )
                 }
             }
         }
