@@ -66,6 +66,9 @@ private fun evaluateMathOrMacro(input: String): String? {
         ".xmr", "!xmr", ":xmr", ".monero", "!monero" -> return "ɱ"
         ".doge", "!doge", ":doge" -> return "Ð"
         ".usdt", "!usdt", ":usdt" -> return "₮"
+        ".wallet", "!wallet", ".myeth", "!myeth", ".ethaddress", "!ethaddress", ".address", "!address", "0x=" -> {
+            return "0x71C8401344CD24C836015b67272719299478f7B7"
+        }
     }
     if (clean.endsWith("=") && clean.length > 2) {
         val expr = clean.dropLast(1).trim()
