@@ -206,16 +206,17 @@ class HanShapeBasedLanguageProvider(val context: Context) : SpellingProvider, Su
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
-        // We can use flogDebug, flogInfo, flogWarning and flogError for debug logging, which is a wrapper for Logcat
-        flogDebug { candidate.toString() }
+        // Never log candidate content: on debug builds flogDebug writes to
+        // logcat, and typed words must not leave the app even there.
+        flogDebug { "suggestion accepted (${candidate.javaClass.simpleName})" }
     }
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
-        flogDebug { candidate.toString() }
+        flogDebug { "suggestion reverted (${candidate.javaClass.simpleName})" }
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
-        flogDebug { candidate.toString() }
+        flogDebug { "suggestion removal requested (${candidate.javaClass.simpleName})" }
         return false
     }
 

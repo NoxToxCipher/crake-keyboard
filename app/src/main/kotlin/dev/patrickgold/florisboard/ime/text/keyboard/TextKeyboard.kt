@@ -22,6 +22,13 @@ import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.popup.PopupMapping
 import kotlin.math.abs
 
+
+private val LETTER_FREQUENCY_PRIORS = mapOf(
+    'e' to 0.88f, 't' to 0.90f, 'a' to 0.91f, 'o' to 0.92f, 'i' to 0.93f, 'n' to 0.93f, 's' to 0.94f, 'h' to 0.94f, 'r' to 0.94f,
+    'd' to 0.96f, 'l' to 0.96f, 'c' to 0.97f, 'u' to 0.97f, 'm' to 0.97f, 'w' to 0.98f, 'f' to 0.98f, 'g' to 0.98f, 'y' to 0.98f,
+    'p' to 0.98f, 'b' to 0.99f, 'v' to 0.99f, 'k' to 0.99f, 'j' to 1.05f, 'x' to 1.05f, 'q' to 1.06f, 'z' to 1.06f
+)
+
 class TextKeyboard(
     val arrangement: Array<Array<TextKey>>,
     override val mode: KeyboardMode,
@@ -93,9 +100,10 @@ class TextKeyboard(
             val isHighProbability = predictedNextLetters.contains(charCode)
 
             // Bayesian probability distance weighting:
-            // High-probability next letters get a 40% distance reduction bonus (expanding their effective catchment area)
-            val weightFactor = if (isHighProbability) 0.60f else 1.0f
-            val weightedDist = dist * weightFactor
+            // High-probability next letters get a 40% distance reduction bonus combined with language letter-frequency priors
+            val priorFactor = LETTER_FREQUENCY_PRIORS[charCode] ?: 1.0f
+            val probFactor = if (isHighProbability) 0.60f else 1.0f
+            val weightedDist = dist * probFactor * priorFactor
 
             if (weightedDist < minWeightedDist) {
                 minWeightedDist = weightedDist

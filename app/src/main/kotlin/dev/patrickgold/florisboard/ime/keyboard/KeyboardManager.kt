@@ -283,8 +283,15 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun commitCandidate(candidate: SuggestionCandidate, withSpace: Boolean = false) {
-        scope.launch {
-            candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
+        // In incognito mode nothing may be learned from what the user types:
+        // word acceptance feeds the native trie and emoji acceptance persists
+        // usage history, so both are skipped. Clipboard candidates still
+        // notify — their callback only dismisses the chip (transient state,
+        // no record survives the session).
+        if (!activeState.isIncognitoMode || candidate is ClipboardSuggestionCandidate) {
+            scope.launch {
+                candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
+            }
         }
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
