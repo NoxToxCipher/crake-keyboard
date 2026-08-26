@@ -1,6 +1,6 @@
 use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
 use jni::objects::{JByteArray, JClass, JFloatArray, JIntArray, JObjectArray, JString};
-use jni::sys::{jfloat, jfloatArray, jint, jintArray, jobjectArray, jstring};
+use jni::sys::{jboolean, jfloat, jint, jobjectArray, jstring};
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
@@ -641,5 +641,97 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpReco
             let intended_str = i.to_str().unwrap_or("");
             engine.record_personal_correction(typo_str, intended_str);
         }
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePgponyGenerateKeypair(
+    mut env: JNIEnv,
+    _class: JClass,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let keypair = crake_privacy::generate_keypair();
+    let string_class = match env.find_class("java/lang/String") {
+        Ok(cls) => cls,
+        Err(_) => return empty_array,
+    };
+
+    let result_array = match env.new_object_array(2, string_class, JString::default()) {
+        Ok(arr) => arr,
+        Err(_) => return empty_array,
+    };
+
+    if let Ok(j_priv) = env.new_string(&keypair.private_key_hex) {
+        let _ = env.set_object_array_element(&result_array, 0, j_priv);
+    }
+    if let Ok(j_pub) = env.new_string(&keypair.public_key_bech) {
+        let _ = env.set_object_array_element(&result_array, 1, j_pub);
+    }
+
+    result_array.into_raw()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePgponyEncrypt(
+    mut env: JNIEnv,
+    _class: JClass,
+    plaintext: JString,
+    recipient_pubkey: JString,
+) -> jstring {
+    let plain_str = match env.get_string(&plaintext) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let pub_str = match env.get_string(&recipient_pubkey) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    match crake_privacy::pgpony_encrypt(&plain_str, &pub_str) {
+        Ok(armored) => env.new_string(&armored).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut()),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePgponyDecrypt(
+    mut env: JNIEnv,
+    _class: JClass,
+    armored_text: JString,
+    private_key_hex: JString,
+) -> jstring {
+    let arm_str = match env.get_string(&armored_text) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let priv_str = match env.get_string(&private_key_hex) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+
+    match crake_privacy::pgpony_decrypt(&arm_str, &priv_str) {
+        Ok(decrypted) => env.new_string(&decrypted).map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut()),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePgponyIsArmored(
+    mut env: JNIEnv,
+    _class: JClass,
+    text: JString,
+) -> jboolean {
+    let str_val = match env.get_string(&text) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return 0,
+    };
+    if crake_privacy::is_pgpony_message(&str_val) {
+        1
+    } else {
+        0
     }
 }

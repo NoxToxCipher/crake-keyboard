@@ -184,6 +184,27 @@ impl GlideEngine {
         }
     }
 
+    /// Pulls a template's interior via-points toward the straight line
+    /// between their neighbours. Real glides cut corners — thumbs never fully
+    /// visit interior keys — so comparing the gesture against an equally
+    /// corner-cut template removes a deformation DTW would otherwise charge
+    /// the honest gesture for. Endpoints stay exact (they anchor the score).
+    fn soften_corners(path: Vec<Point2D>) -> Vec<Point2D> {
+        if path.len() < 3 {
+            return path;
+        }
+        let mut softened = path.clone();
+        for i in 1..path.len() - 1 {
+            let mid_x = (path[i - 1].x + path[i + 1].x) * 0.5;
+            let mid_y = (path[i - 1].y + path[i + 1].y) * 0.5;
+            softened[i] = Point2D::new(
+                path[i].x + (mid_x - path[i].x) * 0.25,
+                path[i].y + (mid_y - path[i].y) * 0.25,
+            );
+        }
+        softened
+    }
+
     /// Matches a raw touch gesture against candidate words in the Radix Trie.
     pub fn match_gesture(
         &self,
@@ -247,7 +268,7 @@ impl GlideEngine {
 
             for (word, freq) in viable {
                 // Build ideal keypath for the word
-                if let Some(ideal_path) = self.build_ideal_keypath(&word) {
+                if let Some(ideal_path) = self.build_ideal_keypath(&word).map(Self::soften_corners) {
                     let dtw_dist = compute_dtw(&simplified_gesture, &ideal_path);
 
                     // Normalize distance by gesture length

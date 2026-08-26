@@ -20,6 +20,7 @@ pub mod sanitizer;
 pub mod secret_shield;
 pub mod sync_bundle;
 pub mod zeroize_buffer;
+pub mod pgpony;
 
 pub use boreal_guard::{BorealScanner, ThreatMatch, DEFAULT_YARA_RULES};
 pub use ephemeral_clipboard::{EphemeralClip, EphemeralClipboardSentry};
@@ -34,6 +35,7 @@ pub use sync_bundle::{
     open_encrypted_sync_bundle, reassemble_qr_frames, QrFrame,
 };
 pub use zeroize_buffer::EphemeralBuffer;
+pub use pgpony::{generate_keypair, derive_public_key, is_pgpony_message, pgpony_encrypt, pgpony_decrypt, PgpKeypair, PGPONY_HEADER, PGPONY_FOOTER, PGPONY_KEY_PREFIX};
 
 #[cfg(feature = "uniffi-bindings")]
 uniffi::setup_scaffolding!();
