@@ -154,6 +154,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "clipboard__clear_primary_clip_affects_history_if_unpinned",
             default = true,
         )
+        val customCategoriesJson = string(
+            key = "clipboard__custom_categories_json",
+            default = "{}",
+        )
     }
 
     val correction = Correction()

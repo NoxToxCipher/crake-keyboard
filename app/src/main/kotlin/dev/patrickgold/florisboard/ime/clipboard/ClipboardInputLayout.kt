@@ -59,6 +59,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FilterListOff
@@ -152,6 +154,36 @@ enum class ClipCategory(val displayName: String, val badgeColor: Color) {
     MEDIA("🖼️ Media", Color(0xFF10B981));
 }
 
+
+private fun getClipCategory(item: ClipboardItem, customCategoriesJson: String): ClipCategory {
+    val key = (item.text ?: item.id.toString()).take(40).trim()
+    for (cat in ClipCategory.entries) {
+        val target = "\"" + key + "\":\"" + cat.name + "\""
+        if (customCategoriesJson.contains(target)) {
+            return cat
+        }
+    }
+    return when {
+        item.matchesCategory(ClipCategory.CRYPTO) -> ClipCategory.CRYPTO
+        item.matchesCategory(ClipCategory.CODE) -> ClipCategory.CODE
+        item.matchesCategory(ClipCategory.WORK) -> ClipCategory.WORK
+        item.matchesCategory(ClipCategory.SOCIAL) -> ClipCategory.SOCIAL
+        item.type == ItemType.IMAGE || item.type == ItemType.VIDEO -> ClipCategory.MEDIA
+        else -> ClipCategory.ALL
+    }
+}
+
+private suspend fun assignClipCategory(item: ClipboardItem, category: ClipCategory, prefs: dev.patrickgold.florisboard.app.FlorisPreferenceModel) {
+    val key = (item.text ?: item.id.toString()).take(40).trim()
+    val currentJson = prefs.clipboard.customCategoriesJson.get()
+    val cleanJson = currentJson.trim('{', '}').trim()
+    val pattern = "\"" + key + "\""
+    val entries = cleanJson.split(",").filter { it.isNotBlank() && !it.contains(pattern) }.toMutableList()
+    entries.add("\"" + key + "\":\"" + category.name + "\"")
+    val newJson = "{" + entries.joinToString(",") + "}"
+    prefs.clipboard.customCategoriesJson.set(newJson)
+}
+
 private fun ClipboardItem.matchesCategory(category: ClipCategory): Boolean {
     if (type == ItemType.IMAGE || type == ItemType.VIDEO) {
         return category == ClipCategory.MEDIA || category == ClipCategory.ALL || (category == ClipCategory.PINNED && isPinned)
@@ -215,14 +247,12 @@ fun ClipboardInputLayout(
             unfilteredHistory.all.filter { activeFilterTypes.contains(it.type) }
         }
 
+        val customJson = prefs.clipboard.customCategoriesJson.get()
         val categoryFiltered = when (activeCategory) {
             ClipCategory.ALL -> baseList
             ClipCategory.PINNED -> baseList.filter { it.isPinned }
-            ClipCategory.WORK -> baseList.filter { it.matchesCategory(ClipCategory.WORK) }
-            ClipCategory.CRYPTO -> baseList.filter { it.matchesCategory(ClipCategory.CRYPTO) }
-            ClipCategory.CODE -> baseList.filter { it.matchesCategory(ClipCategory.CODE) }
-            ClipCategory.SOCIAL -> baseList.filter { it.matchesCategory(ClipCategory.SOCIAL) }
             ClipCategory.MEDIA -> baseList.filter { it.type == ItemType.IMAGE || it.type == ItemType.VIDEO }
+            else -> baseList.filter { getClipCategory(it, customJson) == activeCategory }
         }
 
         ClipboardHistory(categoryFiltered)
@@ -659,6 +689,29 @@ fun ClipboardInputLayout(
                                 } else {
                                     clipboardManager.pinClip(popupItem!!)
                                 }
+                                popupItem = null
+                            }
+                            PopupAction(
+                                icon = Icons.Default.ArrowUpward,
+                                text = "Move to Top of Pinned",
+                            ) {
+                                clipboardManager.moveToTop(popupItem!!)
+                                popupItem = null
+                            }
+                            PopupAction(
+                                icon = Icons.Default.Folder,
+                                text = "Move to Next Folder",
+                            ) {
+                                val currentCat = getClipCategory(popupItem!!, prefs.clipboard.customCategoriesJson.get())
+                                val nextCat = when (currentCat) {
+                                    ClipCategory.WORK -> ClipCategory.CRYPTO
+                                    ClipCategory.CRYPTO -> ClipCategory.CODE
+                                    ClipCategory.CODE -> ClipCategory.SOCIAL
+                                    ClipCategory.SOCIAL -> ClipCategory.WORK
+                                    else -> ClipCategory.WORK
+                                }
+                                val itemToMove = popupItem!!
+                                scope.launch { assignClipCategory(itemToMove, nextCat, prefs) }
                                 popupItem = null
                             }
                             PopupAction(
