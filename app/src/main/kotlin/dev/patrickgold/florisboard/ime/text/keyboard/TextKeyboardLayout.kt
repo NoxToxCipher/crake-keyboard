@@ -1082,7 +1082,7 @@ fun TextKeyboardLayout(
                 ) {
                     val w = size.width
                     val h = size.height
-                    val ballRadius = 12f * density
+                    val ballRadius = 14f * density
 
                     // Determine top and bottom fret lines
                     val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
@@ -1096,13 +1096,13 @@ fun TextKeyboardLayout(
                     if (t < 0.5f) {
                         // Phase 1: Roll across top fret from Left to Right
                         val p = t * 2.0f
-                        cx = (-ballRadius * 2f) + p * (w + ballRadius * 4f)
+                        cx = (-ballRadius * 2.5f) + p * (w + ballRadius * 5f)
                         cy = topFretY - ballRadius + 1f
                         rotDeg = p * 720f
                     } else {
                         // Phase 2: Roll across bottom fret from Right to Left
                         val p = (t - 0.5f) * 2.0f
-                        cx = (w + ballRadius * 2f) - p * (w + ballRadius * 4f)
+                        cx = (w + ballRadius * 2.5f) - p * (w + ballRadius * 5f)
                         cy = bottomFretY - ballRadius + 1f
                         rotDeg = -p * 720f
                     }
@@ -1111,74 +1111,105 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.translate(cx, cy)
                     drawContext.canvas.nativeCanvas.rotate(rotDeg)
 
-                    // B&W Classic Telstar Soccer Ball Paints
-                    val ballPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFFFDFDFD.toInt()
+                    // Authentic Telstar Truncated Icosahedron Paints
+                    val whiteLeatherPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFFFFF.toInt()
                         style = android.graphics.Paint.Style.FILL
                     }
-                    val ballBorderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFF212529.toInt()
-                        style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 1.4f
-                    }
-                    val blackPatchPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFF141414.toInt()
+                    val blackPentagonPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF121416.toInt() // Deep pitch black leather
                         style = android.graphics.Paint.Style.FILL
                     }
-                    val seamPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFF495057.toInt()
+                    val seamStitchPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF2B303A.toInt() // Authentic seam stitch
                         style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 1.0f
+                        strokeWidth = 1.3f
+                    }
+                    val ballOutlinePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF181A1B.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.6f
                     }
 
-                    // 1. Base White Sphere
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, ballPaint)
+                    // 1. Base White Sphere with subtle 3D depth
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, whiteLeatherPaint)
 
-                    // 2. Central Black Pentagon
+                    // 2. Center Pentagon (Black)
                     val centerPentagon = android.graphics.Path()
-                    val pentRadius = ballRadius * 0.38f
+                    val rCenter = ballRadius * 0.36f
                     for (i in 0 until 5) {
                         val angle = Math.toRadians((i * 72.0 - 90.0))
-                        val px = (pentRadius * kotlin.math.cos(angle)).toFloat()
-                        val py = (pentRadius * kotlin.math.sin(angle)).toFloat()
+                        val px = (rCenter * kotlin.math.cos(angle)).toFloat()
+                        val py = (rCenter * kotlin.math.sin(angle)).toFloat()
                         if (i == 0) centerPentagon.moveTo(px, py) else centerPentagon.lineTo(px, py)
                     }
                     centerPentagon.close()
-                    drawContext.canvas.nativeCanvas.drawPath(centerPentagon, blackPatchPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(centerPentagon, blackPentagonPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(centerPentagon, seamStitchPaint)
 
-                    // 3. Five Surrounding Outer Patches & Seam Radiating Lines
+                    // 3. Surrounding 5 Black Pentagons & Connecting Hexagonal Seams
+                    val rInnerSpoke = ballRadius * 0.65f
                     for (i in 0 until 5) {
-                        val angle1 = Math.toRadians((i * 72.0 - 90.0))
-                        val angle2 = Math.toRadians(((i + 1) * 72.0 - 90.0))
-                        val midAngle = (angle1 + angle2) / 2.0
+                        val aCenter = Math.toRadians((i * 72.0 - 90.0))
+                        val aNext = Math.toRadians(((i + 1) * 72.0 - 90.0))
+                        val aMid = (aCenter + aNext) / 2.0
 
-                        val vx = (pentRadius * kotlin.math.cos(angle1)).toFloat()
-                        val vy = (pentRadius * kotlin.math.sin(angle1)).toFloat()
-                        val ox = (ballRadius * kotlin.math.cos(angle1)).toFloat()
-                        val oy = (ballRadius * kotlin.math.sin(angle1)).toFloat()
-                        drawContext.canvas.nativeCanvas.drawLine(vx, vy, ox, oy, seamPaint)
+                        // Spoke from center pentagon vertex outward
+                        val vx = (rCenter * kotlin.math.cos(aCenter)).toFloat()
+                        val vy = (rCenter * kotlin.math.sin(aCenter)).toFloat()
+                        val sx = (rInnerSpoke * kotlin.math.cos(aCenter)).toFloat()
+                        val sy = (rInnerSpoke * kotlin.math.sin(aCenter)).toFloat()
+                        drawContext.canvas.nativeCanvas.drawLine(vx, vy, sx, sy, seamStitchPaint)
 
-                        val outerPatch = android.graphics.Path()
-                        val p1x = (ballRadius * kotlin.math.cos(midAngle - 0.28)).toFloat()
-                        val p1y = (ballRadius * kotlin.math.sin(midAngle - 0.28)).toFloat()
-                        val p2x = (ballRadius * kotlin.math.cos(midAngle + 0.28)).toFloat()
-                        val p2y = (ballRadius * kotlin.math.sin(midAngle + 0.28)).toFloat()
-                        val p3x = (ballRadius * 0.65f * kotlin.math.cos(midAngle)).toFloat()
-                        val p3y = (ballRadius * 0.65f * kotlin.math.sin(midAngle)).toFloat()
-                        outerPatch.moveTo(p1x, p1y)
-                        outerPatch.lineTo(p2x, p2y)
-                        outerPatch.lineTo(p3x, p3y)
-                        outerPatch.close()
-                        drawContext.canvas.nativeCanvas.drawPath(outerPatch, blackPatchPaint)
+                        // Hexagonal cross-bridges
+                        val sxNext = (rInnerSpoke * kotlin.math.cos(aNext)).toFloat()
+                        val syNext = (rInnerSpoke * kotlin.math.sin(aNext)).toFloat()
+                        drawContext.canvas.nativeCanvas.drawLine(sx, sy, sxNext, syNext, seamStitchPaint)
+
+                        // Outer Black Pentagon on perimeter
+                        val outerPent = android.graphics.Path()
+                        val pPeakX = (ballRadius * 0.62f * kotlin.math.cos(aMid)).toFloat()
+                        val pPeakY = (ballRadius * 0.62f * kotlin.math.sin(aMid)).toFloat()
+                        val pEdge1X = (ballRadius * kotlin.math.cos(aMid - 0.32)).toFloat()
+                        val pEdge1Y = (ballRadius * kotlin.math.sin(aMid - 0.32)).toFloat()
+                        val pEdge2X = (ballRadius * kotlin.math.cos(aMid + 0.32)).toFloat()
+                        val pEdge2Y = (ballRadius * kotlin.math.sin(aMid + 0.32)).toFloat()
+                        val pMid1X = (ballRadius * 0.88f * kotlin.math.cos(aMid - 0.42)).toFloat()
+                        val pMid1Y = (ballRadius * 0.88f * kotlin.math.sin(aMid - 0.42)).toFloat()
+                        val pMid2X = (ballRadius * 0.88f * kotlin.math.cos(aMid + 0.42)).toFloat()
+                        val pMid2Y = (ballRadius * 0.88f * kotlin.math.sin(aMid + 0.42)).toFloat()
+
+                        outerPent.moveTo(pPeakX, pPeakY)
+                        outerPent.lineTo(pMid1X, pMid1Y)
+                        outerPent.lineTo(pEdge1X, pEdge1Y)
+                        outerPent.lineTo(pEdge2X, pEdge2Y)
+                        outerPent.lineTo(pMid2X, pMid2Y)
+                        outerPent.close()
+
+                        drawContext.canvas.nativeCanvas.drawPath(outerPent, blackPentagonPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(outerPent, seamStitchPaint)
                     }
 
-                    // 4. Subtle 3D Specular Highlight & Outer Rim
-                    val specularPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0x88FFFFFF.toInt()
+                    // 4. Photorealistic 3D Curvature & Specular Lighting Overlay
+                    val shadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        shader = android.graphics.RadialGradient(
+                            ballRadius * 0.25f, ballRadius * 0.25f, ballRadius * 1.1f,
+                            intArrayOf(0x00000000, 0x1A000000, 0x66000000),
+                            floatArrayOf(0.4f, 0.75f, 1.0f),
+                            android.graphics.Shader.TileMode.CLAMP
+                        )
                         style = android.graphics.Paint.Style.FILL
                     }
-                    drawContext.canvas.nativeCanvas.drawCircle(-ballRadius * 0.35f, -ballRadius * 0.35f, ballRadius * 0.28f, specularPaint)
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, ballBorderPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, shadowPaint)
+
+                    val highlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0x66FFFFFF.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(-ballRadius * 0.38f, -ballRadius * 0.38f, ballRadius * 0.32f, highlightPaint)
+
+                    // Outer perimeter outline
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, ballOutlinePaint)
 
                     drawContext.canvas.nativeCanvas.restore()
                 }
