@@ -430,6 +430,7 @@ fun TextKeyboardLayout(
         var carDriveTriggerTime by remember { mutableStateOf(0L) }
         var cryptoRocketTriggerTime by remember { mutableStateOf(0L) }
         var murmurFlockTriggerTime by remember { mutableStateOf(0L) }
+        var lunaCrashTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -501,6 +502,10 @@ fun TextKeyboardLayout(
             val murmurKeys = listOf("murmur", "flock", "murmuration", "starlings")
             if (murmurKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 murmurFlockTriggerTime = System.currentTimeMillis()
+            }
+            val lunaKeys = listOf("terra", "luna", "ust", "lunc", "do kwon")
+            if (lunaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+                lunaCrashTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -3298,6 +3303,209 @@ fun TextKeyboardLayout(
                             close()
                         }
                         drawContext.canvas.nativeCanvas.drawPath(hawkPath, hawkPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+                }
+            }
+        }
+
+        // Terra / LUNA Crashing Rocket Easter Egg (Ascent -> Depeg Death Spiral -> Catastrophic Explosion)
+        if (lunaCrashTriggerTime > 0L) {
+            val lunaProgress = remember(lunaCrashTriggerTime) { Animatable(0f) }
+            LaunchedEffect(lunaCrashTriggerTime) {
+                lunaProgress.snapTo(0f)
+                lunaProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3500, easing = LinearEasing),
+                )
+                lunaCrashTriggerTime = 0L
+            }
+            if (lunaProgress.value in 0.001f..0.999f) {
+                val currentMs = lunaProgress.value * 3500f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    val apexX = canvasW * 0.44f
+                    val apexY = canvasH * 0.32f
+                    val impactX = canvasW * 0.65f
+                    val impactY = canvasH * 0.78f
+
+                    // Paints for Rocket
+                    val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFF8FAFC.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val nosePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF06B6D4.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val finPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF0891B2.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val lunaBadgePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFBBF24.toInt() // LUNA Yellow
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val blackSmokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0x881E293B.toInt()
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    // ==========================================
+                    // PHASE 1 & 2: ROCKET ASCENT & DEATH SPIRAL (0ms -> 1750ms)
+                    // ==========================================
+                    if (currentMs < 1750f) {
+                        val posX: Float
+                        val posY: Float
+                        val angle: Float
+
+                        if (currentMs < 1000f) {
+                            // Phase 1: Hopeful Liftoff (0ms -> 1000ms)
+                            val u1 = (currentMs / 1000f)
+                            posX = -35f * density + u1 * (apexX - (-35f * density))
+                            posY = (canvasH + 35f * density) + u1 * (apexY - (canvasH + 35f * density))
+                            angle = -38f
+                        } else {
+                            // Phase 2: Depeg Death Spiral & Nose Dive (1000ms -> 1750ms)
+                            val u2 = ((currentMs - 1000f) / 750f)
+                            posX = apexX + u2 * (impactX - apexX)
+                            posY = apexY + (u2 * u2) * (impactY - apexY)
+                            // Wild spinning tumble into nose-dive
+                            angle = -38f + u2 * 195f + (kotlin.math.sin(u2 * 16f) * 20f)
+
+                            // Sputtering engine black smoke puffs
+                            drawContext.canvas.nativeCanvas.drawCircle(posX - 12f * density, posY - 8f * density, 5f * density, blackSmokePaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(posX - 22f * density, posY - 16f * density, 8f * density, blackSmokePaint)
+                        }
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(posX, posY)
+                        drawContext.canvas.nativeCanvas.rotate(angle)
+
+                        // Sputtering thruster flame if alive
+                        if (currentMs < 1400f) {
+                            val flamePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = if (currentMs < 1000f) 0xFFEF4444.toInt() else 0xFFF97316.toInt()
+                                style = android.graphics.Paint.Style.FILL
+                            }
+                            val flameLen = (12f + kotlin.math.sin(currentMs * 0.05f) * 4f) * density
+                            val flame = android.graphics.Path().apply {
+                                moveTo(-11f * density, -3f * density)
+                                lineTo(-11f * density - flameLen, 0f)
+                                lineTo(-11f * density, 3f * density)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(flame, flamePaint)
+                        }
+
+                        // Fins
+                        val topFin = android.graphics.Path().apply {
+                            moveTo(-6f * density, -3.5f * density)
+                            lineTo(-12f * density, -8f * density)
+                            lineTo(-10f * density, -3.5f * density)
+                            close()
+                        }
+                        val bottomFin = android.graphics.Path().apply {
+                            moveTo(-6f * density, 3.5f * density)
+                            lineTo(-12f * density, 8f * density)
+                            lineTo(-10f * density, 3.5f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(topFin, finPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(bottomFin, finPaint)
+
+                        // Hull
+                        val hull = android.graphics.Path().apply {
+                            moveTo(-11f * density, -3.8f * density)
+                            lineTo(4f * density, -3.8f * density)
+                            quadTo(12f * density, -3.5f * density, 18f * density, 0f)
+                            quadTo(12f * density, 3.5f * density, 4f * density, 3.8f * density)
+                            lineTo(-11f * density, 3.8f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(hull, bodyPaint)
+
+                        // Nosecone
+                        val nosecone = android.graphics.Path().apply {
+                            moveTo(7f * density, -3.2f * density)
+                            quadTo(13f * density, -2.8f * density, 18f * density, 0f)
+                            quadTo(13f * density, 2.8f * density, 7f * density, 3.2f * density)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(nosecone, nosePaint)
+
+                        // LUNA Crescent Emblem
+                        drawContext.canvas.nativeCanvas.drawCircle(-3f * density, 0f, 2.4f * density, lunaBadgePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-2f * density, 0f, 2.1f * density, bodyPaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // =======================================================
+                    // PHASE 3: CATASTROPHIC EXPLOSION & DEBRIS (1750ms -> 3500ms)
+                    // =======================================================
+                    if (currentMs >= 1750f) {
+                        val expU = ((currentMs - 1750f) / 1750f).coerceIn(0f, 1f)
+                        val expAlpha = (1f - expU).coerceIn(0f, 1f)
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(impactX, impactY)
+
+                        // 1. Expanding Fireball Shockwaves
+                        val blastRadius = (expU * 45f * density)
+                        val blastOuter = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((expAlpha * 220).toInt().coerceIn(0, 255), 239, 68, 68)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val blastMid = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((expAlpha * 240).toInt().coerceIn(0, 255), 249, 115, 22)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val blastCore = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((expAlpha * 255).toInt().coerceIn(0, 255), 254, 240, 138)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, blastRadius, blastOuter)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, blastRadius * 0.65f, blastMid)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, blastRadius * 0.35f, blastCore)
+
+                        // 2. Flying Shrapnel & Debris Pieces
+                        val debrisPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((expAlpha * 255).toInt().coerceIn(0, 255), 248, 250, 252)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((expAlpha * 255).toInt().coerceIn(0, 255), 253, 224, 71)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        val debrisAngles = listOf(20f, 55f, 95f, 135f, 175f, 215f, 260f, 310f, 345f)
+                        for ((idx, deg) in debrisAngles.withIndex()) {
+                            val rad = deg * (Math.PI.toFloat() / 180f)
+                            val dist = (expU * (30f + idx * 4f) * density)
+                            val dx = kotlin.math.cos(rad) * dist
+                            val dy = kotlin.math.sin(rad) * dist + (expU * expU * 18f * density) // Gravity drop
+
+                            drawContext.canvas.nativeCanvas.drawCircle(dx, dy, (1.8f * density), debrisPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(dx * 1.15f, dy * 1.15f, (1.1f * density), sparkPaint)
+                        }
+
+                        // 3. Comical Downward Depeg Arrow (📉) floating up with smoke
+                        val chartPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((expAlpha * 255).toInt().coerceIn(0, 255), 239, 68, 68)
+                            textSize = 14f * density
+                            typeface = android.graphics.Typeface.create(android.graphics.Typeface.SANS_SERIF, android.graphics.Typeface.BOLD)
+                        }
+                        val smokeY = -blastRadius * 0.7f - (expU * 15f * density)
+                        drawContext.canvas.nativeCanvas.drawText("📉 -99.99%", -22f * density, smokeY, chartPaint)
+
                         drawContext.canvas.nativeCanvas.restore()
                     }
                 }
