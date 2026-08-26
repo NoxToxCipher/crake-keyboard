@@ -270,17 +270,42 @@ object Routes {
             navController = navController,
             startDestination = startDestination,
             enterTransition = {
-                slideIn { IntOffset(it.width, 0) } + fadeIn()
+                androidx.compose.animation.slideInHorizontally(
+                    initialOffsetX = { (it * 0.10f).toInt() },
+                    animationSpec = androidx.compose.animation.core.tween(240, easing = androidx.compose.animation.core.EaseOutCubic),
+                ) + androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(200, easing = androidx.compose.animation.core.LinearEasing),
+                ) + androidx.compose.animation.scaleIn(
+                    initialScale = 0.98f,
+                    animationSpec = androidx.compose.animation.core.tween(240, easing = androidx.compose.animation.core.EaseOutCubic),
+                )
             },
             exitTransition = {
-                slideOut { IntOffset(-it.width, 0) } + fadeOut()
+                androidx.compose.animation.slideOutHorizontally(
+                    targetOffsetX = { (-it * 0.06f).toInt() },
+                    animationSpec = androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.EaseInCubic),
+                ) + androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(150, easing = androidx.compose.animation.core.LinearEasing),
+                )
             },
-            popEnterTransition = { EnterTransition.None },
+            popEnterTransition = {
+                androidx.compose.animation.slideInHorizontally(
+                    initialOffsetX = { (-it * 0.06f).toInt() },
+                    animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.EaseOutCubic),
+                ) + androidx.compose.animation.fadeIn(
+                    animationSpec = androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.LinearEasing),
+                ) + androidx.compose.animation.scaleIn(
+                    initialScale = 0.985f,
+                    animationSpec = androidx.compose.animation.core.tween(220, easing = androidx.compose.animation.core.EaseOutCubic),
+                )
+            },
             popExitTransition = {
-                scaleOut(
-                    targetScale = 0.85F,
-                    transformOrigin = TransformOrigin(pivotFractionX = 0.8f, pivotFractionY = 0.5f)
-                ) + fadeOut(spring(stiffness = Spring.StiffnessMedium))
+                androidx.compose.animation.slideOutHorizontally(
+                    targetOffsetX = { (it * 0.10f).toInt() },
+                    animationSpec = androidx.compose.animation.core.tween(180, easing = androidx.compose.animation.core.EaseInCubic),
+                ) + androidx.compose.animation.fadeOut(
+                    animationSpec = androidx.compose.animation.core.tween(150, easing = androidx.compose.animation.core.LinearEasing),
+                )
             },
         ) {
             composable<Setup.Screen> { SetupScreen() }

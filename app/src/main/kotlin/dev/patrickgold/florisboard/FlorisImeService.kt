@@ -111,8 +111,14 @@ class FlorisImeService : LifecycleInputMethodService() {
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             try {
-                ims.startActivity(intent)
+                val options = android.app.ActivityOptions.makeCustomAnimation(
+                    ims,
+                    R.anim.crake_settings_open_enter,
+                    R.anim.crake_settings_open_exit,
+                )
+                ims.startActivity(intent, options.toBundle())
             } catch (_: Throwable) {
+                ims.startActivity(intent)
             }
         }
 
