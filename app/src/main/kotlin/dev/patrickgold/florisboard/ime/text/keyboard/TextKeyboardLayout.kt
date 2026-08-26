@@ -437,6 +437,7 @@ fun TextKeyboardLayout(
         var louiePawsTriggerTime by remember { mutableStateOf(0L) }
         var irobotTriggerTime by remember { mutableStateOf(0L) }
         var androidBugdroidTriggerTime by remember { mutableStateOf(0L) }
+        var rosePetalsTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -559,6 +560,10 @@ fun TextKeyboardLayout(
             val androidKeys = listOf("android", "bugdroid", "green dude", "google android", "apk")
             if (androidKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 androidBugdroidTriggerTime = System.currentTimeMillis()
+            }
+            val loveKeys = listOf("i love you", "iloveyou", "love you", "i <3 you", "i love u")
+            if (loveKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") || tb.endsWith("$it❤️") || tb.endsWith("$it🌹") }) {
+                rosePetalsTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -4771,6 +4776,160 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.restore()
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Rose Petals in the Wind Easter Egg (Velvet Crimson Rose Petals Sweeping on Atmospheric Breeze)
+        if (rosePetalsTriggerTime > 0L) {
+            val roseProgress = remember(rosePetalsTriggerTime) { Animatable(0f) }
+            LaunchedEffect(rosePetalsTriggerTime) {
+                roseProgress.snapTo(0f)
+                roseProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4600, easing = LinearEasing),
+                )
+                rosePetalsTriggerTime = 0L
+            }
+            if (roseProgress.value in 0.001f..0.999f) {
+                val totalMs = 4600f
+                val currentMs = roseProgress.value * totalMs
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // Master Alpha: Soft romantic fade in (0-400ms), Hold, Poetic fade out (3900-4600ms)
+                    val masterAlpha = when {
+                        currentMs < 400f -> (currentMs / 400f).coerceIn(0f, 1f)
+                        currentMs > 3900f -> ((totalMs - currentMs) / 700f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+
+                    // 1. Soft Warm Rose-Blush Atmosphere Glow across the Frets
+                    val blushGlowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 45).toInt().coerceIn(0, 255), 251, 113, 133)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawRect(0f, 0f, canvasW, canvasH, blushGlowPaint)
+
+                    // 2. 18 Wind-Blown Velvet Rose Petals
+                    // Deterministic petal configs: (startRelX, startRelY, speedMul, swayFreq, swayAmp, spinRate, baseScale, colorVariant)
+                    val petals = listOf(
+                        floatArrayOf(-0.10f, 0.85f, 1.15f, 0.012f, 18f, 1.4f, 1.2f, 0f),
+                        floatArrayOf(-0.05f, 0.65f, 0.95f, 0.015f, 14f, -1.8f, 0.9f, 1f),
+                        floatArrayOf(-0.15f, 0.45f, 1.25f, 0.010f, 22f, 2.0f, 1.3f, 2f),
+                        floatArrayOf(0.05f, 0.95f, 1.05f, 0.013f, 16f, -1.2f, 1.0f, 0f),
+                        floatArrayOf(-0.08f, 0.30f, 1.30f, 0.016f, 20f, 2.4f, 0.85f, 1f),
+                        floatArrayOf(0.12f, 0.75f, 1.10f, 0.014f, 15f, -1.6f, 1.15f, 2f),
+                        floatArrayOf(-0.02f, 0.55f, 0.88f, 0.011f, 24f, 1.7f, 1.25f, 0f),
+                        floatArrayOf(0.20f, 0.90f, 1.20f, 0.017f, 12f, -2.2f, 0.95f, 1f),
+                        floatArrayOf(-0.12f, 0.70f, 1.00f, 0.013f, 19f, 1.5f, 1.10f, 2f),
+                        floatArrayOf(0.02f, 0.40f, 1.22f, 0.015f, 17f, -1.9f, 1.30f, 0f),
+                        floatArrayOf(-0.18f, 0.60f, 0.92f, 0.012f, 21f, 2.1f, 0.80f, 1f),
+                        floatArrayOf(0.15f, 0.80f, 1.18f, 0.016f, 13f, -1.4f, 1.05f, 2f),
+                        floatArrayOf(-0.06f, 0.50f, 1.08f, 0.014f, 18f, 1.8f, 1.20f, 0f),
+                        floatArrayOf(0.08f, 0.35f, 1.28f, 0.011f, 23f, -2.5f, 0.90f, 1f),
+                        floatArrayOf(-0.14f, 0.88f, 0.96f, 0.015f, 16f, 1.3f, 1.15f, 2f),
+                        floatArrayOf(0.25f, 0.70f, 1.12f, 0.013f, 14f, -1.7f, 1.00f, 0f),
+                        floatArrayOf(-0.04f, 0.42f, 1.24f, 0.017f, 20f, 2.3f, 0.85f, 1f),
+                        floatArrayOf(0.18f, 0.52f, 1.04f, 0.012f, 15f, -1.5f, 1.25f, 2f)
+                    )
+
+                    // Palette: Velvet Crimson (#E11D48), Rich Rose (#BE123C), Soft Ruby (#FB7185)
+                    val petalPaints = listOf(
+                        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 225, 29, 72) // #E11D48
+                            style = android.graphics.Paint.Style.FILL
+                        },
+                        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 190, 18, 60) // #BE123C
+                            style = android.graphics.Paint.Style.FILL
+                        },
+                        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 251, 113, 133) // #FB7185
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                    )
+                    val shadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 140).toInt().coerceIn(0, 255), 136, 19, 55) // #881337
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.8f * density
+                    }
+                    val dewdropPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 220).toInt().coerceIn(0, 255), 254, 240, 138)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    for ((idx, cfg) in petals.withIndex()) {
+                        val startRelX = cfg[0]
+                        val startRelY = cfg[1]
+                        val speedMul = cfg[2]
+                        val swayFreq = cfg[3]
+                        val swayAmp = cfg[4]
+                        val spinRate = cfg[5]
+                        val baseScale = cfg[6]
+                        val colorIdx = cfg[7].toInt()
+
+                        // Progress along wind trajectory (Left/Bottom -> Right/Top)
+                        val u = (currentMs * 0.00028f * speedMul).coerceIn(0f, 1.4f)
+                        if (u > 1.3f) continue
+
+                        val startX = canvasW * startRelX
+                        val startY = canvasH * startRelY
+                        val endX = canvasW * 1.18f
+                        val endY = canvasH * -0.15f
+
+                        val posX = startX + u * (endX - startX)
+                        val swayY = kotlin.math.sin(currentMs * swayFreq + idx * 0.8f) * (swayAmp * density)
+                        val posY = startY + u * (endY - startY) + swayY
+
+                        // 3D Flutter and Tumble Rotation
+                        val tumbleAngle = (currentMs * 0.06f * spinRate + idx * 45f) % 360f
+                        val flutterX = kotlin.math.cos(currentMs * 0.008f * speedMul + idx) * baseScale
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(posX, posY)
+                        drawContext.canvas.nativeCanvas.rotate(tumbleAngle)
+                        drawContext.canvas.nativeCanvas.scale(flutterX, baseScale)
+
+                        val pr = 6.5f * density // Base petal radius
+
+                        // Curled Velvet Rose Petal Vector Path
+                        val petalPath = android.graphics.Path().apply {
+                            moveTo(0f, -pr * 1.2f)
+                            cubicTo(-pr * 1.1f, -pr * 0.7f, -pr * 0.95f, pr * 0.7f, 0f, pr * 1.2f)
+                            cubicTo(pr * 0.95f, pr * 0.7f, pr * 1.1f, -pr * 0.7f, 0f, -pr * 1.2f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(petalPath, petalPaints[colorIdx % petalPaints.size])
+                        // Petal Central Vein
+                        drawContext.canvas.nativeCanvas.drawLine(0f, -pr * 0.9f, 0f, pr * 0.8f, shadowPaint)
+
+                        // Golden Dewdrop on selected petals
+                        if (idx % 3 == 0) {
+                            drawContext.canvas.nativeCanvas.drawCircle(pr * 0.3f, -pr * 0.2f, 0.9f * density, dewdropPaint)
+                        }
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // 3. Floating Floral Stardust Pollen Sparkles
+                    val pollenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 190).toInt().coerceIn(0, 255), 254, 240, 138)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    for (pIdx in 0 until 12) {
+                        val pu = ((currentMs * 0.0003f + pIdx * 0.08f) % 1f)
+                        val px = canvasW * pu
+                        val py = (canvasH * (0.2f + (pIdx % 6) * 0.12f)) + kotlin.math.sin(currentMs * 0.005f + pIdx) * (10f * density)
+                        val pAlpha = (kotlin.math.sin(pu * Math.PI.toFloat()) * masterAlpha).coerceIn(0f, 1f)
+                        pollenPaint.alpha = (pAlpha * 200).toInt().coerceIn(0, 255)
+                        drawContext.canvas.nativeCanvas.drawCircle(px, py, 1.2f * density, pollenPaint)
+                    }
                 }
             }
         }
