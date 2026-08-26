@@ -33,6 +33,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.platform.LocalContext
 import dev.patrickgold.compose.tooltip.PlainTooltip
 import dev.patrickgold.florisboard.ime.input.LocalInputFeedbackController
@@ -126,12 +136,21 @@ fun QuickActionButton(
                             evaluator.computeImageVector(action.data) to evaluator.computeLabel(action.data)
                         }
                         if (imageVector != null) {
-                            SnyggBox(
-                                elementName = "$elementName-icon",
-                                attributes = attributes,
-                                selector = selector,
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isPressed) Color(0xFF1E293B) else Color(0xFF131A29))
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                SnyggIcon(imageVector = imageVector)
+                                SnyggBox(
+                                    elementName = "$elementName-icon",
+                                    attributes = attributes,
+                                    selector = selector,
+                                ) {
+                                    SnyggIcon(imageVector = imageVector)
+                                }
                             }
                         } else if (label != null) {
                             SnyggText(
