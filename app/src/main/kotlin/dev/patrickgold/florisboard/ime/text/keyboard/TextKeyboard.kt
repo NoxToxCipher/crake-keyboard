@@ -56,6 +56,51 @@ class TextKeyboard(
         return result
     }
 
+    /**
+     * Authentic BlackBerry 10 Bayesian Adaptive Hitbox Resolution.
+     * Expands touch catchment zones toward predicted next letters when finger taps land on ambiguous key boundaries.
+     */
+    fun getKeyForPosAdaptive(pointerX: Float, pointerY: Float, predictedNextLetters: Set<Char>): TextKey? {
+        val exactKey = getKeyForPos(pointerX, pointerY)
+        // Never hijack functional or non-character keys (Space, Backspace, Shift, Enter)
+        if (exactKey != null && exactKey.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
+            return exactKey
+        }
+
+        if (predictedNextLetters.isEmpty()) {
+            return exactKey
+        }
+
+        var bestKey: TextKey? = exactKey
+        var minWeightedDist = Float.MAX_VALUE
+
+        for (key in keys()) {
+            if (!key.isEnabled) continue
+            val center = key.visibleBounds.center
+            val dx = pointerX - center.x
+            val dy = pointerY - center.y
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+
+            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * 1.5f
+            if (dist > maxReach) continue
+
+            val charCode = key.computedData.code.toChar().lowercaseChar()
+            val isHighProbability = predictedNextLetters.contains(charCode)
+
+            // Bayesian probability distance weighting:
+            // High-probability next letters get a 35% distance reduction bonus (expanding their effective catchment area)
+            val weightFactor = if (isHighProbability) 0.65f else 1.0f
+            val weightedDist = dist * weightFactor
+
+            if (weightedDist < minWeightedDist) {
+                minWeightedDist = weightedDist
+                bestKey = key
+            }
+        }
+
+        return bestKey ?: exactKey
+    }
+
     override fun layout(
         keyboardWidth: Float,
         keyboardHeight: Float,

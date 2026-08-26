@@ -553,6 +553,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "keyboard__space_bar_switches_to_characters",
             default = true,
         )
+        val adaptiveHitboxExpansion = boolean(
+            key = "keyboard__adaptive_hitbox_expansion",
+            default = true,
+        )
         val incognitoDisplayMode = enum(
             key = "keyboard__incognito_indicator",
             default = IncognitoDisplayMode.DISPLAY_BEHIND_KEYBOARD,
