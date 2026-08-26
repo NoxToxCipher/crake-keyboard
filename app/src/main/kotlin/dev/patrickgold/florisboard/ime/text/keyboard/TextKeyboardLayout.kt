@@ -431,6 +431,7 @@ fun TextKeyboardLayout(
         var cryptoRocketTriggerTime by remember { mutableStateOf(0L) }
         var murmurFlockTriggerTime by remember { mutableStateOf(0L) }
         var lunaCrashTriggerTime by remember { mutableStateOf(0L) }
+        var sundaeTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -506,6 +507,10 @@ fun TextKeyboardLayout(
             val lunaKeys = listOf("terra", "luna", "ust", "lunc", "do kwon")
             if (lunaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 lunaCrashTriggerTime = System.currentTimeMillis()
+            }
+            val sundaeKeys = listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait")
+            if (sundaeKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+                sundaeTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -3581,6 +3586,237 @@ fun TextKeyboardLayout(
                         }
                         val smokeY = -blastRadius * 0.7f - (expU * 15f * density)
                         drawContext.canvas.nativeCanvas.drawText("📉 -99.99%", -22f * density, smokeY, chartPaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+                }
+            }
+        }
+
+        // Sundae Ice Cream in Several Places Easter Egg (Artisanal Sundae Coupes on Keys S, U, N, D, A, E)
+        if (sundaeTriggerTime > 0L) {
+            val sundaeProgress = remember(sundaeTriggerTime) { Animatable(0f) }
+            LaunchedEffect(sundaeTriggerTime) {
+                sundaeProgress.snapTo(0f)
+                sundaeProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 6500, easing = LinearEasing),
+                )
+                sundaeTriggerTime = 0L
+            }
+            if (sundaeProgress.value in 0.001f..0.999f) {
+                val u = sundaeProgress.value
+                val currentMs = u * 6500f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // 1. Locate positions on keys S, U, N, D, A, E
+                    val targetChars = listOf('s', 'u', 'n', 'd', 'a', 'e')
+                    val sundaePositions = mutableListOf<androidx.compose.ui.geometry.Offset>()
+
+                    for (char in targetChars) {
+                        var found = false
+                        for (key in keyboard.keys()) {
+                            if (key is TextKey) {
+                                val s = key.computedData.asString(true).lowercase()
+                                if (s == char.toString()) {
+                                    val kx = (key.visibleBounds.left + key.visibleBounds.width / 2f) * density
+                                    val ky = (key.visibleBounds.top + key.visibleBounds.height / 2f) * density
+                                    sundaePositions.add(androidx.compose.ui.geometry.Offset(kx, ky))
+                                    found = true
+                                    break
+                                }
+                            }
+                        }
+                        if (!found) {
+                            // Fallback default distributed positions
+                            val fallbackX = when (char) {
+                                's' -> canvasW * 0.20f
+                                'u' -> canvasW * 0.68f
+                                'n' -> canvasW * 0.58f
+                                'd' -> canvasW * 0.32f
+                                'a' -> canvasW * 0.12f
+                                else -> canvasW * 0.28f
+                            }
+                            val fallbackY = when (char) {
+                                's' -> canvasH * 0.48f
+                                'u' -> canvasH * 0.25f
+                                'n' -> canvasH * 0.72f
+                                'd' -> canvasH * 0.48f
+                                'a' -> canvasH * 0.48f
+                                else -> canvasH * 0.25f
+                            }
+                            sundaePositions.add(androidx.compose.ui.geometry.Offset(fallbackX, fallbackY))
+                        }
+                    }
+
+                    // 2. Render each Sundae coupe with individual stagger bounce & floating bob
+                    for ((idx, pos) in sundaePositions.withIndex()) {
+                        val staggerMs = idx * 110f
+                        val localMs = currentMs - staggerMs
+                        if (localMs <= 0f) continue
+
+                        val totalLife = 5800f
+                        val lifeU = (localMs / totalLife).coerceIn(0f, 1f)
+                        if (lifeU >= 1f) continue
+
+                        // Smooth fade in (0-600ms), floating hold (600-5000ms), soft melt fade out (5000-5800ms)
+                        val alpha = when {
+                            localMs < 600f -> (localMs / 600f).coerceIn(0f, 1f)
+                            localMs > 5000f -> ((totalLife - localMs) / 800f).coerceIn(0f, 1f)
+                            else -> 1f
+                        }
+
+                        // Pop-in bounce overshoot scale
+                        val bounceScale = if (localMs < 600f) {
+                            val bt = localMs / 600f
+                            1f + kotlin.math.sin(bt * Math.PI.toFloat()) * 0.25f
+                        } else {
+                            1f
+                        }
+
+                        // Gentle sweet floating bob
+                        val bobY = kotlin.math.sin((currentMs * 0.003f) + idx * 1.2f) * (2.2f * density)
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(pos.x, pos.y + bobY)
+                        drawContext.canvas.nativeCanvas.scale(bounceScale, bounceScale)
+
+                        val sr = 11f * density // Sundae scale radius
+
+                        // Paints
+                        val glassPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 200).toInt().coerceIn(0, 255), 226, 232, 240) // Translucent fluted glass
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val glassRimPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 0.9f * density
+                        }
+                        val vanillaPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 254, 249, 195) // Vanilla cream
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val strawberryPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 251, 113, 133) // Strawberry pink
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val chocolatePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 120, 53, 15) // Belgian Chocolate
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val fudgePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 69, 26, 3) // Hot fudge drizzle
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val whippedCreamPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255) // Cloud whipped cream
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val cherryPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 225, 29, 72) // Glazed Maraschino Cherry
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val stemPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 21, 128, 61) // Green stem
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 0.8f * density
+                        }
+
+                        // A. Fluted Glass Coupe Base & Tulip Bowl
+                        // Base Foot
+                        drawContext.canvas.nativeCanvas.drawRoundRect(-sr * 0.65f, sr * 0.85f, sr * 0.65f, sr * 1.05f, 1f * density, 1f * density, glassPaint)
+                        // Stem
+                        drawContext.canvas.nativeCanvas.drawRect(-sr * 0.15f, sr * 0.35f, sr * 0.15f, sr * 0.88f, glassPaint)
+                        // Coupe Tulip Bowl
+                        val coupePath = android.graphics.Path().apply {
+                            moveTo(-sr * 0.95f, -sr * 0.05f)
+                            quadTo(-sr * 0.85f, sr * 0.42f, 0f, sr * 0.42f)
+                            quadTo(sr * 0.85f, sr * 0.42f, sr * 0.95f, -sr * 0.05f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(coupePath, glassPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(coupePath, glassRimPaint)
+
+                        // B. Triple Scoops: Vanilla, Strawberry & Chocolate
+                        // Vanilla scoop (Left)
+                        drawContext.canvas.nativeCanvas.drawCircle(-sr * 0.38f, -sr * 0.22f, sr * 0.45f, vanillaPaint)
+                        // Strawberry scoop (Right)
+                        drawContext.canvas.nativeCanvas.drawCircle(sr * 0.38f, -sr * 0.22f, sr * 0.45f, strawberryPaint)
+                        // Chocolate scoop (Center Crown)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, -sr * 0.50f, sr * 0.48f, chocolatePaint)
+
+                        // C. Hot Fudge Drizzle Cascades
+                        val fudgePath = android.graphics.Path().apply {
+                            moveTo(-sr * 0.42f, -sr * 0.45f)
+                            quadTo(-sr * 0.20f, -sr * 0.20f, -sr * 0.15f, -sr * 0.05f)
+                            quadTo(0f, -sr * 0.30f, sr * 0.18f, -sr * 0.08f)
+                            quadTo(sr * 0.35f, -sr * 0.35f, sr * 0.45f, -sr * 0.45f)
+                            quadTo(0f, -sr * 0.68f, -sr * 0.42f, -sr * 0.45f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(fudgePath, fudgePaint)
+
+                        // D. Fluffy Chantilly Whipped Cream Peak
+                        val creamPath = android.graphics.Path().apply {
+                            moveTo(-sr * 0.35f, -sr * 0.68f)
+                            quadTo(-sr * 0.22f, -sr * 0.92f, 0f, -sr * 1.15f) // Swirl peak
+                            quadTo(sr * 0.22f, -sr * 0.92f, sr * 0.35f, -sr * 0.68f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(creamPath, whippedCreamPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, -sr * 0.85f, sr * 0.28f, whippedCreamPaint)
+
+                        // E. Ruby Glazed Maraschino Cherry with Stem
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, -sr * 1.22f, sr * 0.22f, cherryPaint)
+                        // Cherry glint highlight
+                        val glintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(-sr * 0.06f, -sr * 1.28f, sr * 0.06f, glintPaint)
+                        // Stem
+                        val stemPath = android.graphics.Path().apply {
+                            moveTo(0f, -sr * 1.35f)
+                            quadTo(sr * 0.25f, -sr * 1.55f, sr * 0.18f, -sr * 1.75f)
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(stemPath, stemPaint)
+
+                        // F. Rainbow Confetti Sprinkles
+                        val sprinkleYellow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 250, 204, 21)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val sprinkleCyan = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 56, 189, 248)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val sprinklePurple = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 192, 132, 252)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        drawContext.canvas.nativeCanvas.drawCircle(-sr * 0.18f, -sr * 0.65f, 0.9f * density, sprinkleYellow)
+                        drawContext.canvas.nativeCanvas.drawCircle(sr * 0.18f, -sr * 0.58f, 0.9f * density, sprinkleCyan)
+                        drawContext.canvas.nativeCanvas.drawCircle(-sr * 0.05f, -sr * 0.45f, 0.9f * density, sprinklePurple)
+                        drawContext.canvas.nativeCanvas.drawCircle(sr * 0.28f, -sr * 0.35f, 0.8f * density, sprinkleYellow)
+
+                        // G. Floating Aroma Sparkles
+                        val sparkleU = (currentMs * 0.002f + idx * 0.9f) % 1f
+                        val spX = kotlin.math.sin(sparkleU * 6.28f) * sr * 0.8f
+                        val spY = -sr * 1.5f - sparkleU * sr * 1.2f
+                        val spAlpha = ((1f - sparkleU) * alpha).coerceIn(0f, 1f)
+                        val floatSparklePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((spAlpha * 255).toInt().coerceIn(0, 255), 254, 240, 138)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(spX, spY, 1.2f * density, floatSparklePaint)
 
                         drawContext.canvas.nativeCanvas.restore()
                     }
