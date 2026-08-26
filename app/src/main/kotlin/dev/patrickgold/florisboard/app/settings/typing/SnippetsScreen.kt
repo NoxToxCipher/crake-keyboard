@@ -18,6 +18,8 @@ package dev.patrickgold.florisboard.app.settings.typing
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,13 +32,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -70,6 +76,8 @@ import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.dictionary.UserDictionaryEntry
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.florisboard.lib.util.CryptoChain
+import dev.patrickgold.florisboard.lib.util.ValidationResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -81,11 +89,13 @@ private val CardSurface = Color(0xFF131A29)
 private val CardBorder = Color(0xFF222D42)
 private val CyberEmerald = Color(0xFF00E5A3)
 private val ElectricCyan = Color(0xFF00D2FF)
+private val CyberAmber = Color(0xFFF59E0B)
+private val CyberCrimson = Color(0xFFEF4444)
 private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
 fun SnippetsScreen() = FlorisScreen {
-    title = "Smart Text Expansion & Snippets"
+    title = "Smart Text & Crypto Snippets"
     previewFieldVisible = true
     scrollable = false
 
@@ -164,13 +174,13 @@ fun SnippetsScreen() = FlorisScreen {
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
-                                    text = "Smart Snippets & Expansions",
+                                    text = "Smart Snippets & Crypto Vault",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     color = Color.White,
                                 )
                                 Text(
-                                    text = "Type shortcut prefix to instantly expand phrases",
+                                    text = "Type shortcut triggers (!addr, !btc1, !eth1) to expand live",
                                     fontSize = 12.sp,
                                     color = TextMuted,
                                 )
@@ -181,6 +191,83 @@ fun SnippetsScreen() = FlorisScreen {
                         HorizontalDivider(color = CardBorder, thickness = 1.dp)
                         Spacer(modifier = Modifier.height(12.dp))
 
+                        // CRYPTO WALLET SHORTCUTS SECTION
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CurrencyBitcoin,
+                                contentDescription = null,
+                                tint = CyberAmber,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "CRYPTO WALLET SHORTCUTS (TAP TO ADD)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = CyberAmber,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Scrollable Crypto Presets Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            CryptoPresetBadge("!btc1", "Bitcoin 1", "bc1q...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!btc2", "Bitcoin 2", "bc1q...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!eth1", "Ethereum", "0x...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!xmr1", "Monero", "48...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!ltc1", "Litecoin", "ltc1...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!rune1", "THORChain", "thor1...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!atom1", "Cosmos", "cosmos1...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                            CryptoPresetBadge("!arb1", "Arbitrum", "0x...") { t ->
+                                editingEntry = null
+                                inputTrigger = t
+                                inputExpansion = ""
+                                showDialog = true
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = "BUILT-IN DYNAMIC MACROS",
                             fontWeight = FontWeight.Bold,
@@ -190,7 +277,6 @@ fun SnippetsScreen() = FlorisScreen {
                         )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Dynamic Macros Row
                         val now = remember { Date() }
                         val timeStr = remember { SimpleDateFormat("h:mm a", Locale.getDefault()).format(now) }
                         val dateStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(now) }
@@ -206,7 +292,7 @@ fun SnippetsScreen() = FlorisScreen {
 
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "PRESET TEMPLATES (TAP TO ADD)",
+                            text = "GENERAL PRESETS",
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace,
@@ -251,7 +337,7 @@ fun SnippetsScreen() = FlorisScreen {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = "CUSTOM SHORTCUTS (${snippetList.size})",
+                        text = "SAVED SHORTCUTS (${snippetList.size})",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -291,7 +377,7 @@ fun SnippetsScreen() = FlorisScreen {
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tap '+ Add Snippet' below or pick a preset template above",
+                                text = "Tap '+ Add Snippet' below or pick a Crypto/Macro preset above",
                                 color = TextMuted,
                                 fontSize = 12.sp,
                             )
@@ -300,13 +386,19 @@ fun SnippetsScreen() = FlorisScreen {
                 }
             } else {
                 items(snippetList, key = { it.id }) { entry ->
+                    val shortcut = entry.shortcut ?: "!"
+                    val detectedChain = CryptoChain.detectFromShortcut(shortcut) ?: CryptoChain.detectFromAddress(entry.word)
+
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = CardSurface),
-                        border = BorderStroke(1.dp, CardBorder),
+                        border = BorderStroke(
+                            1.dp,
+                            if (detectedChain != null) CyberAmber.copy(alpha = 0.4f) else CardBorder,
+                        ),
                     ) {
                         Row(
                             modifier = Modifier
@@ -317,23 +409,34 @@ fun SnippetsScreen() = FlorisScreen {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(CyberEmerald.copy(alpha = 0.15f))
+                                    .background(if (detectedChain != null) CyberAmber.copy(alpha = 0.15f) else CyberEmerald.copy(alpha = 0.15f))
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                             ) {
                                 Text(
-                                    text = entry.shortcut ?: "!",
+                                    text = shortcut,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = CyberEmerald,
+                                    color = if (detectedChain != null) CyberAmber else CyberEmerald,
                                     fontFamily = FontFamily.Monospace,
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
+                                if (detectedChain != null) {
+                                    Text(
+                                        text = "${detectedChain.displayName} (${detectedChain.symbol})",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = CyberAmber,
+                                    )
+                                    Spacer(modifier = Modifier.height(1.dp))
+                                }
                                 Text(
                                     text = entry.word,
-                                    fontSize = 13.5.sp,
+                                    fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium,
+                                    fontFamily = if (detectedChain != null) FontFamily.Monospace else FontFamily.Default,
                                     color = Color.White,
                                     maxLines = 2,
                                 )
@@ -374,16 +477,28 @@ fun SnippetsScreen() = FlorisScreen {
             }
         }
 
-        // Custom Add / Edit Snippet Modal Dialog
+        // Custom Add / Edit Snippet Modal Dialog with Live Crypto Validation
         if (showDialog) {
             Dialog(onDismissRequest = { showDialog = false }) {
+                val detectedChain = CryptoChain.detectFromShortcut(inputTrigger) ?: CryptoChain.detectFromAddress(inputExpansion)
+                val validationResult = remember(inputTrigger, inputExpansion, detectedChain) {
+                    if (detectedChain != null && detectedChain != CryptoChain.UNKNOWN) {
+                        detectedChain.validate(inputExpansion)
+                    } else {
+                        null
+                    }
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    border = BorderStroke(1.dp, CardBorder),
+                    border = BorderStroke(
+                        1.dp,
+                        if (detectedChain != null) CyberAmber.copy(alpha = 0.5f) else CardBorder,
+                    ),
                 ) {
                     Column(modifier = Modifier.padding(20.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -391,13 +506,13 @@ fun SnippetsScreen() = FlorisScreen {
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(ElectricCyan.copy(alpha = 0.15f)),
+                                    .background(if (detectedChain != null) CyberAmber.copy(alpha = 0.15f) else ElectricCyan.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.FlashOn,
+                                    imageVector = if (detectedChain != null) Icons.Default.CurrencyBitcoin else Icons.Default.FlashOn,
                                     contentDescription = null,
-                                    tint = ElectricCyan,
+                                    tint = if (detectedChain != null) CyberAmber else ElectricCyan,
                                     modifier = Modifier.size(18.dp),
                                 )
                             }
@@ -423,7 +538,7 @@ fun SnippetsScreen() = FlorisScreen {
                         OutlinedTextField(
                             value = inputTrigger,
                             onValueChange = { inputTrigger = it },
-                            placeholder = { Text("e.g. !addr, !email, omw", color = TextMuted, fontSize = 13.sp) },
+                            placeholder = { Text("e.g. !btc1, !eth1, !xmr1, !addr", color = TextMuted, fontSize = 13.sp) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -437,26 +552,70 @@ fun SnippetsScreen() = FlorisScreen {
                         Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
-                            text = "Expanded Phrase or Template",
+                            text = if (detectedChain != null) "${detectedChain.displayName} (${detectedChain.symbol}) Wallet Address" else "Expanded Phrase or Template",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = CyberEmerald,
+                            color = if (detectedChain != null) CyberAmber else CyberEmerald,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         OutlinedTextField(
                             value = inputExpansion,
                             onValueChange = { inputExpansion = it },
-                            placeholder = { Text("e.g. 742 Evergreen Terrace, Springfield", color = TextMuted, fontSize = 13.sp) },
+                            placeholder = {
+                                Text(
+                                    if (detectedChain != null) "Paste ${detectedChain.symbol} address (${detectedChain.prefixHint})" else "e.g. 742 Evergreen Terrace, Springfield",
+                                    color = TextMuted,
+                                    fontSize = 12.sp,
+                                )
+                            },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
                             maxLines = 4,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = CyberEmerald,
+                                focusedBorderColor = if (detectedChain != null) CyberAmber else CyberEmerald,
                                 unfocusedBorderColor = CardBorder,
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
                             ),
                         )
+
+                        // Real-Time Address Validation Feedback Box
+                        if (validationResult != null && inputExpansion.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (validationResult.isValid) CyberEmerald.copy(alpha = 0.12f) else CyberCrimson.copy(alpha = 0.12f),
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (validationResult.isValid) CyberEmerald.copy(alpha = 0.4f) else CyberCrimson.copy(alpha = 0.4f),
+                                ),
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        imageVector = if (validationResult.isValid) Icons.Default.CheckCircle else Icons.Default.WarningAmber,
+                                        contentDescription = null,
+                                        tint = if (validationResult.isValid) CyberEmerald else CyberCrimson,
+                                        modifier = Modifier.size(16.dp),
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = validationResult.message,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (validationResult.isValid) CyberEmerald else CyberCrimson,
+                                        lineHeight = 14.sp,
+                                    )
+                                }
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(20.dp))
 
@@ -475,7 +634,9 @@ fun SnippetsScreen() = FlorisScreen {
                             Button(
                                 modifier = Modifier.weight(1f),
                                 shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (detectedChain != null) CyberAmber else ElectricCyan,
+                                ),
                                 onClick = {
                                     if (inputTrigger.isNotBlank() && inputExpansion.isNotBlank()) {
                                         scope.launch(Dispatchers.IO) {
@@ -504,11 +665,16 @@ fun SnippetsScreen() = FlorisScreen {
                                             }
                                             refreshSnippets()
                                         }
+                                        showDialog = false
                                     }
-                                    showDialog = false
                                 },
                             ) {
-                                Text("Save Snippet", fontWeight = FontWeight.Bold, color = Color.Black, fontSize = 13.sp)
+                                Text(
+                                    text = if (editingEntry == null) "Save" else "Update",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black,
+                                    fontSize = 13.sp,
+                                )
                             }
                         }
                     }
@@ -519,26 +685,29 @@ fun SnippetsScreen() = FlorisScreen {
 }
 
 @Composable
-private fun MacroPill(macro: String, preview: String, modifier: Modifier = Modifier) {
+private fun MacroPill(trigger: String, description: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0E131F)),
-        border = BorderStroke(1.dp, CardBorder),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1624)),
+        border = BorderStroke(1.dp, Color(0xFF1E283A)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = macro,
-                fontSize = 11.sp,
+                text = trigger,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = ElectricCyan,
                 fontFamily = FontFamily.Monospace,
+                color = ElectricCyan,
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = preview,
+                text = description,
                 fontSize = 10.sp,
                 color = TextMuted,
                 maxLines = 1,
@@ -555,20 +724,50 @@ private fun PresetBadge(
 ) {
     Card(
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
-        border = BorderStroke(1.dp, CardBorder),
-        onClick = { onClick(trigger, expansion) },
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1624)),
+        border = BorderStroke(1.dp, CyberEmerald.copy(alpha = 0.3f)),
+        modifier = Modifier.clickable { onClick(trigger, expansion) },
+    ) {
+        Text(
+            text = trigger,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            color = CyberEmerald,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+    }
+}
+
+@Composable
+private fun CryptoPresetBadge(
+    trigger: String,
+    chainName: String,
+    sample: String,
+    onClick: (String) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF151C2C)),
+        border = BorderStroke(1.dp, CyberAmber.copy(alpha = 0.4f)),
+        modifier = Modifier.clickable { onClick(trigger) },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "+ " + trigger,
-                fontSize = 11.sp,
+                text = trigger,
+                fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
-                color = ElectricCyan,
                 fontFamily = FontFamily.Monospace,
+                color = CyberAmber,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "($chainName)",
+                fontSize = 10.sp,
+                color = TextMuted,
             )
         }
     }
