@@ -522,6 +522,56 @@ pub const BIGRAM_TRANSITIONS: &[(&str, &[&str])] = &[
     ("no", &["problem", "worries", "doubt", "idea", "way"]),
 ];
 
+
+/// High-Precision Trigram & Bigram Homophone Disambiguation Table.
+/// Evaluates preceding context word to select the grammatically correct homophone.
+pub const HOMOPHONE_CONTEXT_RULES: &[(&[&str], &str, &str)] = &[
+    // ("your" vs "you're")
+    (&["you", "are", "if", "when", "that", "since", "know"], "your", "you're"),
+    (&["welcome", "right", "sure", "ready", "going", "invited", "beautiful", "crazy", "amazing"], "your", "you're"),
+    (&["in", "on", "with", "at", "for", "to", "from", "is", "about"], "you're", "your"),
+    
+    // ("their" vs "there" vs "they're")
+    (&["over", "in", "out", "up", "down", "is", "was", "are", "were", "go", "went", "stay", "been", "get", "hi", "hello"], "their", "there"),
+    (&["over", "in", "out", "up", "down", "is", "was", "are", "were", "go", "went", "stay", "been", "get"], "they're", "there"),
+    (&["house", "car", "phone", "money", "time", "dog", "team", "friends", "work", "job", "way", "place", "names", "own"], "there", "their"),
+    (&["house", "car", "phone", "money", "time", "dog", "team", "friends", "work", "job", "way", "place", "names", "own"], "they're", "their"),
+    (&["going", "coming", "doing", "trying", "working", "saying", "asking", "leaving", "arrived", "planning", "thinking"], "there", "they're"),
+    (&["going", "coming", "doing", "trying", "working", "saying", "asking", "leaving", "arrived", "planning", "thinking"], "their", "they're"),
+
+    // ("its" vs "it's")
+    (&["time", "been", "not", "okay", "fine", "cool", "great", "good", "ready", "true", "hard", "easy", "working", "going"], "its", "it's"),
+    (&["own", "color", "size", "weight", "name", "side", "way", "place", "price"], "it's", "its"),
+
+    // ("then" vs "than")
+    (&["more", "less", "better", "worse", "greater", "smaller", "faster", "slower", "taller", "shorter", "easier", "harder", "rather", "other"], "then", "than"),
+    (&["and", "back", "since", "until", "now", "just", "see", "ok", "okay", "alright"], "than", "then"),
+
+    // ("to" vs "too" vs "two")
+    (&["me", "you", "much", "many", "late", "far", "early", "fast", "slow", "hard", "easy", "good", "bad", "hot", "cold"], "to", "too"),
+    (&["want", "need", "have", "going", "ready", "able", "hope", "try", "trying", "used", "like", "love"], "too", "to"),
+    (&["people", "days", "hours", "minutes", "seconds", "weeks", "months", "years", "times", "things", "items"], "to", "two"),
+    (&["people", "days", "hours", "minutes", "seconds", "weeks", "months", "years", "times", "things", "items"], "too", "two"),
+
+    // ("were" vs "we're" vs "where")
+    (&["going", "coming", "trying", "thinking", "hoping", "ready", "done", "excited", "happy", "sorry", "here", "there"], "were", "we're"),
+    (&["are", "is", "was", "did", "do", "can", "could", "from", "to"], "we're", "where"),
+];
+
+    /// Resolves homophone ambiguity based on preceding word context.
+    pub fn disambiguate_homophone(prev_word: &str, candidate: &str) -> Option<&'static str> {
+        let prev = prev_word.trim().to_ascii_lowercase();
+        let cand = candidate.trim().to_ascii_lowercase();
+        for &(context_keywords, wrong_form, correct_form) in Self::HOMOPHONE_CONTEXT_RULES {
+            if cand == wrong_form {
+                if context_keywords.iter().any(|&k| k == prev) {
+                    return Some(correct_form);
+                }
+            }
+        }
+        None
+    }
+
 /// Top sentence starters when beginning a message or after sentence punctuation.
 pub const SENTENCE_STARTERS: &[(&str, char)] = &[
     ("I", 'i'),
