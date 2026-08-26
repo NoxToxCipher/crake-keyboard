@@ -72,7 +72,7 @@ fun AboutScreen() = FlorisScreen {
                 contentDescription = "FlorisBoard app icon",
             )
             Text(
-                text = stringRes(R.string.floris_app_name),
+                text = "CRAKE KEYBOARD",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 16.dp),

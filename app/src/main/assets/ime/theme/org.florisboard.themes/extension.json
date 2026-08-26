@@ -2,47 +2,125 @@
   "$": "ime.extension.theme",
   "meta": {
     "id": "org.florisboard.themes",
-    "version": "0.2.0",
-    "title": "FlorisBoard default themes",
-    "description": "Default themes (both day and night) for the keyboard UI",
-    "maintainers": [ "patrickgold <patrick@patrickgold.dev>", "lm41 <lm41@lm41.xyz>" ],
-    "license": "apache-2.0"
+    "version": "1.0.0",
+    "title": "Crake Cyberpunk Themes",
+    "description": "Official Crake OLED Obsidian colorways in BB10 Titanium Frets & Minimal Borderless",
+    "maintainers": [
+      "NoxToxCipher <github.elitism514@passmail.com>"
+    ],
+    "license": "gpl-3.0"
   },
   "themes": [
     {
-      "id": "floris_day",
-      "label": "Floris Day",
-      "authors": [ "patrickgold" ],
-      "isNight": false
-    },
-    {
-      "id": "floris_day_borderless",
-      "label": "Floris Day (Borderless)",
-      "authors": [ "patrickgold" ],
-      "isNight": false
-    },
-    {
-      "id": "floris_night",
-      "label": "Floris Night",
-      "authors": [ "patrickgold" ],
+      "id": "crake_cyan_bordered",
+      "label": "Crake Obsidian Cyan",
+      "authors": [
+        "NoxToxCipher"
+      ],
       "isNight": true
     },
     {
-      "id": "floris_night_borderless",
-      "label": "Floris Night (Borderless)",
-      "authors": [ "patrickgold" ],
+      "id": "crake_cyan_borderless",
+      "label": "Crake Obsidian Cyan (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
       "isNight": true
     },
     {
-      "id": "floris_pure_night",
-      "label": "Floris Pure Night",
-      "authors": [ "serebit" ],
+      "id": "crake_purple_bordered",
+      "label": "Crake Obsidian Purple",
+      "authors": [
+        "NoxToxCipher"
+      ],
       "isNight": true
     },
     {
-      "id": "floris_pure_night_borderless",
-      "label": "Floris Pure Night (Borderless)",
-      "authors": [ "serebit" ],
+      "id": "crake_purple_borderless",
+      "label": "Crake Obsidian Purple (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_crimson_bordered",
+      "label": "Crake Obsidian Crimson",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_crimson_borderless",
+      "label": "Crake Obsidian Crimson (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_sakura_bordered",
+      "label": "Crake Obsidian Sakura",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_sakura_borderless",
+      "label": "Crake Obsidian Sakura (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_emerald_bordered",
+      "label": "Crake Obsidian Emerald",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_emerald_borderless",
+      "label": "Crake Obsidian Emerald (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_amber_bordered",
+      "label": "Crake Obsidian Amber",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_amber_borderless",
+      "label": "Crake Obsidian Amber (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_ghost_white_bordered",
+      "label": "Crake Ghost Titanium White",
+      "authors": [
+        "NoxToxCipher"
+      ],
+      "isNight": true
+    },
+    {
+      "id": "crake_ghost_white_borderless",
+      "label": "Crake Ghost Titanium White (Borderless)",
+      "authors": [
+        "NoxToxCipher"
+      ],
       "isNight": true
     }
   ]

@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.app.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,6 +69,7 @@ import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
 import dev.patrickgold.jetpref.datastore.ui.Preference
+import org.florisboard.lib.compose.FlorisCanvasIcon
 import org.florisboard.lib.compose.FlorisErrorCard
 import org.florisboard.lib.compose.FlorisWarningCard
 import org.florisboard.lib.compose.stringRes
@@ -123,20 +125,38 @@ fun HomeScreen() = FlorisScreen {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = null,
-                            tint = CyberEmerald,
-                            modifier = Modifier.size(24.dp),
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "CRAKE // KEYBOARD",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            fontFamily = FontFamily.Monospace,
-                            color = Color.White,
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF0A0E17))
+                                .border(1.dp, CardBorder, RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            FlorisCanvasIcon(
+                                modifier = Modifier.size(26.dp),
+                                iconId = R.mipmap.floris_app_icon,
+                                contentDescription = "Crake App Icon",
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "CRAKE KEYBOARD",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp,
+                                color = Color.White,
+                            )
+                            Text(
+                                text = "PRIVACY & SECURITY CORE",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = ElectricCyan,
+                            )
+                        }
                     }
                     Box(
                         modifier = Modifier
