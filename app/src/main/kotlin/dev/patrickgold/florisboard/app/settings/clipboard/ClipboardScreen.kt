@@ -88,7 +88,6 @@ fun ClipboardScreen() = FlorisScreen {
             summary = "Automatically shred copied clips after specified time",
             icon = Icons.Default.Timer,
             accentColor = CyberEmerald,
-            enabledIf = { prefs.clipboard.historyEnabled.get() },
         )
         DialogSliderPreference(
             prefs.clipboard.historyAutoCleanOldAfter,
@@ -97,14 +96,12 @@ fun ClipboardScreen() = FlorisScreen {
             min = 1,
             max = 120,
             stepIncrement = 5,
-            enabledIf = { prefs.clipboard.historyEnabled.get() && prefs.clipboard.historyAutoCleanOldEnabled.get() },
         )
         CrakeRadioPreference(
             pref = prefs.clipboard.historyAutoCleanSensitiveEnabled,
             title = "Auto-Scrub Sensitive Passwords & OTPs",
             summary = "Instantly sanitize clips marked as sensitive or containing seed phrases",
             accentColor = CyberEmerald,
-            enabledIf = { prefs.clipboard.historyEnabled.get() },
             visibleIf = { AndroidVersion.ATLEAST_API33_T },
         )
 

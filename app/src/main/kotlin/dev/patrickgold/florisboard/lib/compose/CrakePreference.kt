@@ -21,11 +21,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,7 +37,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,7 +61,7 @@ private val CardBorder = Color(0xFF222D42)
 private val CyberEmerald = Color(0xFF00E5A3)
 private val ElectricCyan = Color(0xFF00D2FF)
 private val TextMuted = Color(0xFF94A3B8)
-private val DisabledColor = Color(0xFF475569)
+private val RadioRingUnselected = Color(0xFF64748B)
 
 @Composable
 fun CrakeRadioPreference(
@@ -76,24 +75,22 @@ fun CrakeRadioPreference(
 ) {
     if (!visibleIf()) return
 
-    val isEnabled = enabledIf()
     val isChecked by pref.observeAsState()
     val scope = rememberCoroutineScope()
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 3.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardSurface),
-        border = BorderStroke(1.dp, if (isChecked && isEnabled) accentColor.copy(alpha = 0.35f) else CardBorder),
-        onClick = {
-            if (isEnabled) {
+            .padding(horizontal = 12.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable {
                 scope.launch {
                     pref.set(!isChecked)
                 }
-            }
-        },
+            },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardSurface),
+        border = BorderStroke(1.dp, if (isChecked) accentColor.copy(alpha = 0.4f) else CardBorder),
     ) {
         Row(
             modifier = Modifier
@@ -106,13 +103,13 @@ fun CrakeRadioPreference(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (isChecked && isEnabled) accentColor.copy(alpha = 0.15f) else Color(0xFF1E293B)),
+                        .background(if (isChecked) accentColor.copy(alpha = 0.15f) else Color(0xFF1E293B)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (!isEnabled) DisabledColor else if (isChecked) accentColor else TextMuted,
+                        tint = if (isChecked) accentColor else TextMuted,
                         modifier = Modifier.size(18.dp),
                     )
                 }
@@ -124,14 +121,14 @@ fun CrakeRadioPreference(
                     text = title,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.5.sp,
-                    color = if (isEnabled) Color.White else DisabledColor,
+                    color = Color.White,
                 )
                 if (summary != null) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = summary,
                         fontSize = 11.5.sp,
-                        color = if (isEnabled) TextMuted else DisabledColor.copy(alpha = 0.7f),
+                        color = TextMuted,
                         lineHeight = 14.sp,
                     )
                 }
@@ -142,7 +139,7 @@ fun CrakeRadioPreference(
             // Cyber Radio Indicator
             CrakeRadioIndicator(
                 selected = isChecked,
-                enabled = isEnabled,
+                enabled = true,
                 accentColor = accentColor,
             )
         }
@@ -156,11 +153,7 @@ fun CrakeRadioIndicator(
     accentColor: Color = CyberEmerald,
 ) {
     val ringColor by animateColorAsState(
-        targetValue = when {
-            !enabled -> DisabledColor
-            selected -> accentColor
-            else -> Color(0xFF475569)
-        },
+        targetValue = if (selected) accentColor else RadioRingUnselected,
         animationSpec = tween(150),
         label = "RadioRingColor",
     )
@@ -175,39 +168,16 @@ fun CrakeRadioIndicator(
             .size(22.dp)
             .clip(CircleShape)
             .background(Color(0xFF0E131F))
-            .padding(1.5.dp),
+            .border(BorderStroke(2.dp, ringColor), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        // Outer Ring
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(CircleShape)
-                .background(Color.Transparent)
-                .padding(0.dp)
-        )
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(Color.Transparent)
-                .padding(0.dp)
-        )
-        // Center Dot
         if (selected) {
             Box(
                 modifier = Modifier
                     .size(10.dp)
                     .scale(dotScale)
                     .clip(CircleShape)
-                    .background(if (enabled) accentColor else DisabledColor)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(Color.Transparent)
+                    .background(accentColor)
             )
         }
     }
