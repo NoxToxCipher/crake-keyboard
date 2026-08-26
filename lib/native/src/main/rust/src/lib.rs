@@ -159,23 +159,19 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPred
     mut env: JNIEnv,
     _class: JClass,
     query: JString,
+    prev_word: JString,
 ) -> jobjectArray {
     let empty_array = env
         .new_object_array(0, "java/lang/String", JString::default())
         .map(|arr| arr.into_raw())
         .unwrap_or(std::ptr::null_mut());
 
-    let query_str = match env.get_string(&query) {
-        Ok(s) => match s.to_str() {
-            Ok(valid) => valid.to_string(),
-            Err(_) => return empty_array,
-        },
-        Err(_) => return empty_array,
-    };
+    let query_str = env.get_string(&query).map(|s| s.to_str().unwrap_or("").to_string()).unwrap_or_default();
+    let prev_word_str = env.get_string(&prev_word).map(|s| s.to_str().unwrap_or("").to_string()).unwrap_or_default();
 
     let predictions = {
         if let Ok(engine) = NLP_ENGINE.read() {
-            engine.predict_next_letter_words(&query_str)
+            engine.predict_next_letter_words(&query_str, &prev_word_str)
         } else {
             Vec::new()
         }

@@ -319,33 +319,180 @@ impl NlpEngine {
         }
     }
 
+
+/// Contextual Bigram Next-Word Transition Map for conversational English.
+pub const BIGRAM_TRANSITIONS: &[(&str, &[&str])] = &[
+    ("i", &["am", "will", "have", "think", "can", "know", "want", "need", "feel", "was", "just", "love", "hope", "see", "would"]),
+    ("you", &["can", "are", "have", "will", "know", "want", "need", "should", "see", "do", "get", "like", "think"]),
+    ("we", &["can", "will", "are", "have", "need", "should", "could", "want", "know", "hope", "agree"]),
+    ("he", &["is", "was", "will", "has", "can", "would", "said", "looks", "seems", "knows"]),
+    ("she", &["is", "was", "will", "has", "can", "would", "said", "looks", "seems", "knows"]),
+    ("it", &["is", "was", "will", "has", "can", "would", "looks", "seems", "feels", "works"]),
+    ("they", &["are", "were", "will", "have", "can", "all", "say", "know", "want"]),
+    ("that", &["is", "was", "would", "will", "sounds", "looks", "can", "you", "we", "the"]),
+    ("this", &["is", "was", "will", "looks", "means", "one", "week", "way", "year", "morning"]),
+    ("there", &["is", "are", "was", "were", "will", "has", "have", "can", "should"]),
+    ("what", &["do", "is", "are", "can", "time", "about", "happened", "would", "if", "you"]),
+    ("how", &["are", "is", "can", "about", "much", "many", "do", "was", "did", "would"]),
+    ("where", &["are", "is", "can", "do", "did", "were", "we", "you"]),
+    ("when", &["you", "we", "i", "is", "can", "will", "they", "the"]),
+    ("why", &["not", "did", "are", "is", "would", "do", "you"]),
+    ("am", &["going", "not", "sure", "glad", "here", "happy", "ready", "looking", "doing", "fine"]),
+    ("are", &["you", "we", "they", "going", "sure", "ready", "there", "not", "all", "welcome"]),
+    ("is", &["it", "there", "that", "not", "this", "going", "good", "great", "possible", "ready"]),
+    ("was", &["a", "the", "not", "just", "thinking", "going", "great", "very", "good", "there"]),
+    ("were", &["you", "there", "not", "going", "thinking", "able", "ready"]),
+    ("will", &["be", "have", "do", "get", "let", "see", "make", "call", "send", "take"]),
+    ("have", &["a", "been", "to", "you", "done", "seen", "time", "no", "any", "some"]),
+    ("has", &["been", "to", "a", "no", "already", "come", "done"]),
+    ("had", &["a", "been", "to", "no", "already"]),
+    ("can", &["you", "we", "be", "do", "get", "see", "help", "make", "find", "use"]),
+    ("could", &["be", "you", "have", "do", "we", "get", "see"]),
+    ("should", &["be", "we", "have", "i", "do", "get"]),
+    ("would", &["be", "you", "love", "like", "have", "do"]),
+    ("do", &["you", "not", "it", "that", "this", "we", "they"]),
+    ("did", &["you", "not", "it", "that", "we", "he", "she"]),
+    ("be", &["there", "able", "great", "ready", "fine", "good", "happy", "sure", "back"]),
+    ("been", &["a", "doing", "working", "thinking", "there", "able", "trying"]),
+    ("to", &["be", "the", "do", "see", "get", "you", "go", "make", "know", "have"]),
+    ("in", &["the", "a", "my", "this", "case", "order", "fact", "mind", "time"]),
+    ("on", &["the", "my", "it", "this", "your", "time", "board", "track"]),
+    ("at", &["the", "all", "home", "least", "work", "night", "first", "once"]),
+    ("for", &["the", "you", "a", "me", "this", "your", "now", "sure", "all"]),
+    ("with", &["you", "the", "a", "me", "my", "this", "that", "us", "them"]),
+    ("about", &["it", "that", "this", "the", "you", "time", "what"]),
+    ("the", &["same", "best", "way", "time", "first", "new", "next", "world", "other", "day"]),
+    ("a", &["lot", "great", "good", "few", "little", "new", "bit", "quick", "while"]),
+    ("an", &["idea", "issue", "update", "email", "option", "example", "item"]),
+    ("of", &["the", "a", "course", "this", "our", "my", "all", "them", "these"]),
+    ("and", &["i", "the", "we", "you", "see", "then", "also", "have", "more"]),
+    ("or", &["not", "something", "even", "maybe", "you", "we"]),
+    ("but", &["i", "it", "we", "you", "also", "not", "the"]),
+    ("if", &["you", "we", "i", "it", "there", "so", "possible"]),
+    ("so", &["that", "much", "far", "we", "you", "i", "good", "glad"]),
+    ("as", &["well", "soon", "a", "if", "much", "always", "expected"]),
+    ("thank", &["you", "god", "everyone"]),
+    ("thanks", &["for", "again", "so", "to", "all"]),
+    ("please", &["let", "find", "see", "send", "help", "note", "call", "check"]),
+    ("let", &["me", "us", "you", "them", "him", "her", "know"]),
+    ("see", &["you", "what", "if", "how", "them", "it"]),
+    ("good", &["morning", "night", "luck", "idea", "afternoon", "job", "news", "day"]),
+    ("great", &["to", "job", "news", "idea", "work", "day", "thanks"]),
+    ("sounds", &["good", "great", "like", "awesome", "perfect"]),
+    ("looks", &["good", "great", "like", "awesome", "promising"]),
+    ("feel", &["free", "like", "good", "better", "ready"]),
+    ("need", &["to", "some", "more", "help", "any", "time"]),
+    ("want", &["to", "you", "some", "more", "it"]),
+    ("know", &["what", "that", "how", "if", "about", "more"]),
+    ("think", &["about", "that", "it", "we", "you", "so"]),
+    ("hope", &["you", "this", "all", "to", "everything"]),
+    ("take", &["care", "a", "the", "your", "time", "it"]),
+    ("make", &["sure", "a", "sense", "it", "some"]),
+    ("get", &["back", "a", "the", "to", "in", "ready", "some"]),
+    ("go", &["to", "ahead", "with", "home", "out", "back"]),
+    ("going", &["to", "well", "home", "on", "out"]),
+    ("come", &["over", "to", "in", "on", "back"]),
+    ("send", &["me", "you", "the", "it", "a"]),
+    ("give", &["me", "you", "a", "them", "it"]),
+    ("tell", &["me", "you", "them", "him", "her"]),
+    ("ask", &["for", "you", "about", "them"]),
+    ("work", &["on", "with", "for", "together", "out"]),
+    ("call", &["me", "you", "it", "them"]),
+    ("soon", &["as", "after"]),
+    ("just", &["let", "wanted", "in", "a", "to", "like", "need"]),
+    ("also", &["have", "need", "want", "be", "can", "like"]),
+    ("very", &["much", "good", "well", "nice", "happy", "soon", "important"]),
+    ("really", &["appreciate", "good", "great", "like", "want", "need", "enjoy"]),
+    ("always", &["welcome", "be", "have", "good"]),
+    ("never", &["mind", "give", "been", "had", "seen"]),
+    ("sure", &["thing", "to", "about"]),
+    ("fine", &["with", "thank", "thanks"]),
+    ("happy", &["to", "birthday", "with"]),
+    ("ready", &["to", "for"]),
+    ("able", &["to"]),
+    ("welcome", &["to", "back"]),
+    ("sorry", &["for", "about", "to"]),
+    ("yes", &["please", "i", "we"]),
+    ("no", &["problem", "worries", "doubt", "idea", "way"]),
+];
+
+/// Top sentence starters when beginning a message or after sentence punctuation.
+pub const SENTENCE_STARTERS: &[(&str, char)] = &[
+    ("I", 'i'),
+    ("The", 't'),
+    ("How", 'h'),
+    ("What", 'w'),
+    ("We", 'w'),
+    ("Thank", 't'),
+    ("Please", 'p'),
+    ("Yes", 'y'),
+    ("No", 'n'),
+    ("Can", 'c'),
+    ("Let", 'l'),
+    ("Just", 'j'),
+    ("Good", 'g'),
+    ("Are", 'a'),
+    ("Do", 'd'),
+    ("My", 'm'),
+];
+
     /// Predicts the highest-frequency word for each next possible letter key (BlackBerry Flick Predictions).
-    /// Returns a list of (next_char, predicted_word).
-    pub fn predict_next_letter_words(&self, prefix: &str) -> Vec<(char, String)> {
+    /// If prefix is non-empty, predicts prefix completions starting with each letter.
+    /// If prefix is empty, predicts contextual next words following `prev_word`.
+    pub fn predict_next_letter_words(&self, prefix: &str, prev_word: &str) -> Vec<(char, String)> {
         let trimmed = prefix.trim();
-        if trimmed.is_empty() {
-            return Vec::new();
+        if !trimmed.is_empty() {
+            let trimmed_lower = trimmed.to_ascii_lowercase();
+            let mut candidates: Vec<(char, String, u32)> = Vec::with_capacity(26);
+
+            for ch in 'a'..='z' {
+                let candidate_prefix = format!("{}{}", trimmed_lower, ch);
+                let matches = self.trie.prefix_search(&candidate_prefix, 1);
+                if let Some((word, freq)) = matches.first() {
+                    if word.len() > trimmed_lower.len() && *freq >= 120 {
+                        let formatted = Self::apply_casing(trimmed, word);
+                        candidates.push((ch, formatted, *freq));
+                    }
+                }
+            }
+
+            candidates.sort_by(|a, b| b.2.cmp(&a.2));
+            candidates.truncate(6);
+            return candidates.into_iter().map(|(ch, word, _)| (ch, word)).collect();
         }
 
-        let trimmed_lower = trimmed.to_ascii_lowercase();
-        let mut candidates: Vec<(char, String, u32)> = Vec::with_capacity(26);
+        // Prefix is empty: Predict next words based on preceding context word
+        let prev_trimmed = prev_word.trim().to_ascii_lowercase();
+        let mut result_map = std::collections::HashMap::new();
 
-        for ch in 'a'..='z' {
-            let candidate_prefix = format!("{}{}", trimmed_lower, ch);
-            let matches = self.trie.prefix_search(&candidate_prefix, 1);
-            if let Some((word, freq)) = matches.first() {
-                if word.len() > trimmed_lower.len() && *freq >= 140 {
-                    let formatted = Self::apply_casing(trimmed, word);
-                    candidates.push((ch, formatted, *freq));
+        if let Some(&(_, next_words)) = Self::BIGRAM_TRANSITIONS.iter().find(|&&(k, _)| k == prev_trimmed) {
+            for &w in next_words {
+                if let Some(first_ch) = w.chars().next() {
+                    let ch_lower = first_ch.to_ascii_lowercase();
+                    if !result_map.contains_key(&ch_lower) {
+                        result_map.insert(ch_lower, w.to_string());
+                    }
+                }
+                if result_map.len() >= 6 {
+                    break;
                 }
             }
         }
 
-        // Keep top 5 most confident word predictions
-        candidates.sort_by(|a, b| b.2.cmp(&a.2));
-        candidates.truncate(5);
+        // If no preceding word or insufficient bigrams, fill with high-probability sentence starters
+        if result_map.is_empty() {
+            for &(w, ch) in Self::SENTENCE_STARTERS {
+                let ch_lower = ch.to_ascii_lowercase();
+                if !result_map.contains_key(&ch_lower) {
+                    result_map.insert(ch_lower, w.to_string());
+                }
+                if result_map.len() >= 6 {
+                    break;
+                }
+            }
+        }
 
-        candidates.into_iter().map(|(ch, word, _)| (ch, word)).collect()
+        result_map.into_iter().collect()
     }
 }
 
@@ -367,7 +514,7 @@ mod tests {
             ("could", 850),
         ]);
 
-        let th_preds = engine.predict_next_letter_words("th");
+        let th_preds = engine.predict_next_letter_words("th", "");
         let pred_map: std::collections::HashMap<char, String> = th_preds.into_iter().collect();
 
         assert_eq!(pred_map.get(&'e').unwrap(), "the");
@@ -377,7 +524,7 @@ mod tests {
         assert_eq!(pred_map.get(&'r').unwrap(), "three");
 
         // Test with capitalization preservation
-        let c_preds = engine.predict_next_letter_words("C");
+        let c_preds = engine.predict_next_letter_words("C", "");
         let c_map: std::collections::HashMap<char, String> = c_preds.into_iter().collect();
         assert_eq!(c_map.get(&'r').unwrap(), "Crypto");
         assert_eq!(c_map.get(&'a').unwrap(), "Can");
