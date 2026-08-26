@@ -16,6 +16,11 @@
 
 package dev.patrickgold.florisboard.ime.text.keyboard
 
+import dev.patrickgold.florisboard.R
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
@@ -61,6 +66,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -372,6 +380,19 @@ fun TextKeyboardLayout(
         val debugShowTouchBoundaries by prefs.devtools.showKeyTouchBoundaries.collectAsState()
         val flickPredictionsEnabled by prefs.glide.flickPredictionsEnabled.collectAsState()
         val activeContent by editorInstance.activeContentFlow.collectAsState()
+        var isEasterEggActive by remember { mutableStateOf(false) }
+
+        LaunchedEffect(activeContent) {
+            val textBefore = activeContent.textBeforeSelection.toString()
+            val composing = activeContent.composingText
+            if (textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
+                textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) {
+                isEasterEggActive = true
+                kotlinx.coroutines.delay(10_000L)
+                isEasterEggActive = false
+            }
+        }
+
         val currentWord = remember(activeContent) {
             when {
                 activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> {
@@ -752,6 +773,8 @@ private fun TextKeyButton(
     hideHint: Boolean = false,
 ) = with(LocalDensity.current) {
     val context = LocalContext.current
+    val editorInstance by context.editorInstance()
+    val activeContent by editorInstance.activeContentFlow.collectAsState()
     val themeManager by context.themeManager()
     val activeThemeInfo by themeManager.activeThemeInfo.collectAsState()
     val activeThemeCompId = activeThemeInfo.name.componentId
@@ -768,39 +791,16 @@ private fun TextKeyButton(
         }
     }
 
-    var powerSurgeTrigger by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    val powerSurgeAnim = remember { Animatable(0f) }
+    var isEasterEggActive by remember { mutableStateOf(false) }
 
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: android.content.Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_POWER_CONNECTED) {
-                    powerSurgeTrigger++
-                }
-            }
-        }
-        val filter = IntentFilter(Intent.ACTION_POWER_CONNECTED)
-        try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                context.registerReceiver(receiver, filter)
-            }
-        } catch (_: Throwable) {
-            try { context.registerReceiver(receiver, filter) } catch (_: Throwable) {}
-        }
-        onDispose {
-            try { context.unregisterReceiver(receiver) } catch (_: Throwable) {}
-        }
-    }
-
-    LaunchedEffect(powerSurgeTrigger) {
-        if (powerSurgeTrigger > 0) {
-            powerSurgeAnim.snapTo(0f)
-            powerSurgeAnim.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 1100, easing = LinearEasing),
-            )
+    LaunchedEffect(activeContent) {
+        val textBefore = activeContent.textBeforeSelection.toString()
+        val composing = activeContent.composingText
+        if (textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
+            textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) {
+            isEasterEggActive = true
+            kotlinx.coroutines.delay(10_000L)
+            isEasterEggActive = false
         }
     }
     val attributes = mapOf(
@@ -879,7 +879,22 @@ private fun TextKeyButton(
                     )
             )
         }
-        key.foregroundImageVector?.let { imageVector ->
+        if (key.computedData.code == KeyCode.SHIFT && isEasterEggActive) {
+            val eggImage = painterResource(id = R.drawable.ic_crake_easter_egg)
+            Image(
+                painter = eggImage,
+                contentDescription = "Easter Egg",
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(24.dp)
+                    .graphicsLayer {
+                        if (key.isPressed && key.isEnabled) {
+                            scaleX = 1.25f
+                            scaleY = 1.25f
+                        }
+                    }
+            )
+        } else key.foregroundImageVector?.let { imageVector ->
             SnyggIcon(
                 modifier = Modifier
                     .align(Alignment.Center)
