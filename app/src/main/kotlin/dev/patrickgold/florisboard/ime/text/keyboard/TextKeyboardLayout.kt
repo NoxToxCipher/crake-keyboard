@@ -53,6 +53,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.IntOffset
@@ -417,16 +418,27 @@ fun TextKeyboardLayout(
                 ) {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
+                                ambientColor = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                                spotColor = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                            )
                             .background(
-                                color = androidx.compose.ui.graphics.Color(0xF2091428),
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(
+                                        androidx.compose.ui.graphics.Color(0xF60A1832),
+                                        androidx.compose.ui.graphics.Color(0xF0060E1E),
+                                    )
+                                ),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
                             )
                             .border(
                                 width = 1.dp,
                                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                     colors = listOf(
-                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.75f),
-                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.20f),
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.85f),
+                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.25f),
                                     )
                                 ),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
