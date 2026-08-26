@@ -965,26 +965,31 @@ fun TextKeyboardLayout(
                     val scale = 0.90f
                     drawContext.canvas.nativeCanvas.scale(scale * density, scale * density)
 
-                    // Radiant Sun Conure Color Palette
+                    // Radiant Sun Conure Color Palette (Predominantly Brilliant Sunshine Yellow)
                     val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFFFFD600.toInt() // Radiant Golden Yellow
+                        color = 0xFFFFEA00.toInt() // Brilliant Canary / Pure Sunshine Yellow
                         style = android.graphics.Paint.Style.FILL
+                    }
+                    val wingYellowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFD600.toInt() // Luminous Sunburst Yellow wing plumage
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val wingSheenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFF59D.toInt() // Warm Sunlit Highlight
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.5f
                     }
                     val maskPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFFFF5722.toInt() // Fiery Orange-Red Facial Mask & Belly
-                        style = android.graphics.Paint.Style.FILL
-                    }
-                    val wingGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFF00C853.toInt() // Emerald Green wing coverts
+                        color = 0xFFFF9100.toInt() // Warm Tangerine cheek blush
                         style = android.graphics.Paint.Style.FILL
                     }
                     val wingBluePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFF1E88E5.toInt() // Deep Cobalt Blue primaries
+                        color = 0xFF2979FF.toInt() // Royal Cobalt primary wingtip rim
                         style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 1.6f
+                        strokeWidth = 1.2f
                     }
                     val beakPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0xFF263238.toInt() // Slate/Charcoal hooked beak
+                        color = 0xFF212121.toInt() // Charcoal beak
                         style = android.graphics.Paint.Style.FILL
                     }
 
@@ -1031,9 +1036,11 @@ fun TextKeyboardLayout(
                         close()
                     }
 
-                    // Draw Conure Wings (Green with Cobalt blue primary accents)
-                    drawContext.canvas.nativeCanvas.drawPath(leftWing, wingGreenPaint)
-                    drawContext.canvas.nativeCanvas.drawPath(rightWing, wingGreenPaint)
+                    // Draw Conure Wings (Luminous Yellow with subtle Cobalt rim)
+                    drawContext.canvas.nativeCanvas.drawPath(leftWing, wingYellowPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(rightWing, wingYellowPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(leftWing, wingSheenPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(rightWing, wingSheenPaint)
                     drawContext.canvas.nativeCanvas.drawPath(leftWing, wingBluePaint)
                     drawContext.canvas.nativeCanvas.drawPath(rightWing, wingBluePaint)
 
