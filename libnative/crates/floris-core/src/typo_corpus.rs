@@ -937,6 +937,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("mostly", "mostly"),
     ("movment", "movement"),
     ("movments", "movements"),
+    ("mt", "my"),
     ("mulitple", "multiple"),
     ("multichannel", "multichannel"),
     ("munincipal", "municipal"),
