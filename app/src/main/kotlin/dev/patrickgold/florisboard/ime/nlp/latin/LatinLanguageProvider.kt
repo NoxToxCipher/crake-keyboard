@@ -129,14 +129,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             // Restore what the user has taught this keyboard (learned words
             // + correction habits). App-private file; absent on first run.
             try {
-                val learnedFile = java.io.File(appContext.filesDir, "crake_learned.crkl")
-                if (learnedFile.exists()) {
-                    val restored = FlorisNative.importLearned(learnedFile.readBytes())
+                learnedStore.load()?.let {
+                    val restored = FlorisNative.importLearned(it)
                     Log.i("CrakeStartup", "learned state restored: $restored words")
                 }
-                val offsetsFile = java.io.File(appContext.filesDir, "crake_touch.crkt")
-                if (offsetsFile.exists()) {
-                    val keys = FlorisNative.importTouchOffsets(offsetsFile.readBytes())
+                offsetsStore.load()?.let {
+                    val keys = FlorisNative.importTouchOffsets(it)
                     Log.i("CrakeStartup", "touch offsets restored: $keys keys")
                 }
             } catch (e: Exception) {
@@ -341,13 +339,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
      * KB-scale, capped in the native layer. Incognito sessions never reach
      * this path — acceptance callbacks are gated upstream.
      */
+    private val learnedStore by lazy { LearnedStateStore(appContext.filesDir, "crake_learned.crkl") }
+    private val offsetsStore by lazy { LearnedStateStore(appContext.filesDir, "crake_touch.crkt") }
+
     private fun persistLearnedState() {
         try {
             val data = FlorisNative.exportLearned() ?: return
-            java.io.File(appContext.filesDir, "crake_learned.crkl").writeBytes(data)
-            FlorisNative.exportTouchOffsets()?.let {
-                java.io.File(appContext.filesDir, "crake_touch.crkt").writeBytes(it)
-            }
+            learnedStore.save(data)
+            FlorisNative.exportTouchOffsets()?.let { offsetsStore.save(it) }
         } catch (e: Exception) {
             flogDebug { "learned state persist failed: ${e.message}" }
         }
