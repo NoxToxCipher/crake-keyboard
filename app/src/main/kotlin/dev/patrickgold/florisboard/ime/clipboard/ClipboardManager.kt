@@ -59,6 +59,27 @@ class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
+    fun stripUrlTracking(url: String): String {
+        if (!url.contains("http://") && !url.contains("https://")) return url
+        return runCatching {
+            val uri = android.net.Uri.parse(url)
+            val trackingParams = setOf(
+                "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+                "fbclid", "gclid", "si", "igshid", "ref", "ref_src", "feature", "spm"
+            )
+            val queryNames = uri.queryParameterNames
+            if (queryNames.isNullOrEmpty()) return url
+            val builder = uri.buildUpon().clearQuery()
+            for (param in queryNames) {
+                if (!trackingParams.contains(param.lowercase())) {
+                    for (value in uri.getQueryParameters(param)) {
+                        builder.appendQueryParameter(param, value)
+                    }
+                }
+            }
+            builder.build().toString()
+        }.getOrDefault(url)
+    }
     private fun isLikelyOtpOrSensitive(text: String): Boolean {
         val clean = text.trim()
         // 4 to 8 digit numeric OTP or alphanumeric verification code
