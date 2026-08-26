@@ -467,8 +467,16 @@ fun TextKeyboardLayout(
             if (berryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 berriesFlowTriggerTime = System.currentTimeMillis()
             }
-            val twKeys = listOf("tw", "tribalwars", "tribal wars", "tribal_wars")
-            if (twKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            val fullTwKeys = listOf("tribalwars", "tribal wars", "tribal_wars")
+            val shortTwKeys = listOf("tw")
+            val isTwFullMatch = fullTwKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }
+            val isTwShortMatch = shortTwKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb == "$k$d"
+                }
+            }
+            if (isTwFullMatch || isTwShortMatch) {
                 tribalwarsTriggerTime = System.currentTimeMillis()
             }
             val bawenKeys = listOf("bawen")
