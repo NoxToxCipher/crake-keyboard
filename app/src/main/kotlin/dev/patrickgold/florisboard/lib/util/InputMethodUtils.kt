@@ -132,8 +132,8 @@ object InputMethodUtils {
     @RequiresApi(api = 34)
     @Composable
     private fun timedObserveIsFlorisBoardEnabled(): State<Boolean> {
-        val state = remember { mutableStateOf(false) }
         val context = LocalContext.current
+        val state = remember { mutableStateOf(isFlorisboardEnabled(context)) }
         LaunchedEffect(Unit) {
             while (true) {
                 state.value = isFlorisboardEnabled(context)
@@ -146,8 +146,8 @@ object InputMethodUtils {
     @RequiresApi(api = 34)
     @Composable
     private fun timedObserveIsFlorisBoardSelected(): State<Boolean> {
-        val state = remember { mutableStateOf(false) }
         val context = LocalContext.current
+        val state = remember { mutableStateOf(isFlorisboardSelected(context)) }
         LaunchedEffect(Unit) {
             while (true) {
                 state.value = isFlorisboardSelected(context)
