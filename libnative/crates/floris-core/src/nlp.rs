@@ -124,6 +124,7 @@ pub struct NlpEngine {
     corpus_words: Vec<String>,
     corpus_freqs: std::collections::HashMap<String, u32>,
     session_recency: std::collections::VecDeque<String>,
+    personal_corrections: std::collections::HashMap<String, std::collections::HashMap<String, u32>>,
 }
 
 impl NlpEngine {
@@ -137,6 +138,7 @@ impl NlpEngine {
             corpus_words: Vec::new(),
             corpus_freqs: std::collections::HashMap::new(),
             session_recency: std::collections::VecDeque::new(),
+            personal_corrections: std::collections::HashMap::new(),
         }
     }
 
@@ -166,6 +168,41 @@ impl NlpEngine {
 
     /// Records a typed/selected word in the session recency cache (bounded to 64 items).
     /// Dynamically learns or boosts a user-typed word in the trie and session recency cache.
+    /// Records a personal correction habit (e.g. user repeatedly corrected 'thay' -> 'that')
+    pub fn record_personal_correction(&mut self, typo: &str, intended: &str) {
+        let typo = typo.trim().to_ascii_lowercase();
+        let intended = intended.trim().to_ascii_lowercase();
+        if typo.is_empty() || intended.is_empty() || typo == intended {
+            return;
+        }
+        let counter = self.personal_corrections.entry(typo.clone()).or_default();
+        let count = counter.entry(intended.clone()).or_insert(0);
+        *count = count.saturating_add(1);
+
+        // Boost intended word so it rises to the top
+        self.learn_and_boost_word(&intended);
+    }
+
+    pub fn get_personal_correction(&self, typo: &str) -> Option<String> {
+        let typo = typo.trim().to_ascii_lowercase();
+        if let Some(targets) = self.personal_corrections.get(&typo) {
+            let mut best_target: Option<(&String, u32)> = None;
+            for (target, &count) in targets {
+                if count >= 1 {
+                    if let Some((_, best_count)) = best_target {
+                        if count > best_count {
+                            best_target = Some((target, count));
+                        }
+                    } else {
+                        best_target = Some((target, count));
+                    }
+                }
+            }
+            return best_target.map(|(t, _)| t.clone());
+        }
+        None
+    }
+
     pub fn learn_and_boost_word(&mut self, word: &str) {
         let trimmed = word.trim().to_ascii_lowercase();
         if trimmed.len() >= 2 {

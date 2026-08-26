@@ -1620,6 +1620,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("thanks", "thanks"),
     ("thanx", "thanks"),
     ("that", "that"),
+    ("thay", "that"),
     ("theater", "theater"),
     ("their", "their"),
     ("theirs", "theirs"),

@@ -241,6 +241,13 @@ object FlorisNative {
     ): Array<String>
 
     @JvmStatic
+    fun recordPersonalCorrection(typo: String, intended: String) {
+        if (!isLoaded || typo.isBlank() || intended.isBlank() || typo.equals(intended, ignoreCase = true)) return
+        nativeNlpRecordPersonalCorrection(typo.trim(), intended.trim())
+    }
+
+    private external fun nativeNlpRecordPersonalCorrection(typo: String, intended: String)
+
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
     private external fun nativeNlpLoadDictBlob(data: ByteArray): Int
