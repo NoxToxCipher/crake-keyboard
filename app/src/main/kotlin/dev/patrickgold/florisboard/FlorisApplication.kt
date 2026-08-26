@@ -32,6 +32,8 @@ import dev.patrickgold.florisboard.ime.core.SubtypeManager
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
 import dev.patrickgold.florisboard.ime.editor.EditorInstance
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardManager
+import dev.patrickgold.florisboard.lib.FlorisLocale
+import dev.patrickgold.florisboard.ime.media.emoji.EmojiData
 import dev.patrickgold.florisboard.ime.media.emoji.FlorisEmojiCompat
 import dev.patrickgold.florisboard.ime.nlp.NlpManager
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingManager
@@ -125,6 +127,18 @@ class FlorisApplication : Application() {
         extensionManager.value.init()
         clipboardManager.value.initializeForContext(this)
         DictionaryManager.init(this)
+
+        // Pre-warm critical keyboard engines asynchronously for instant zero-delay cold-start pop-up
+        scope.launch(Dispatchers.Default) {
+            keyboardManager.value
+            themeManager.value
+            nlpManager.value
+            subtypeManager.value
+            glideTypingManager.value
+            try {
+                EmojiData.get(this@FlorisApplication, FlorisLocale.default())
+            } catch (_: Throwable) {}
+        }
     }
 
     private inner class BootComplete : BroadcastReceiver() {

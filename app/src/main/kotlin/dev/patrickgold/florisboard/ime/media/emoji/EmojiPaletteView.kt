@@ -146,19 +146,8 @@ fun EmojiPaletteView(
     val metadataVersion = activeEditorInfo.emojiCompatMetadataVersion
     val replaceAll = activeEditorInfo.emojiCompatReplaceAll
     val emojiCompatInstance by FlorisEmojiCompat.getAsFlow(replaceAll).collectAsState()
-    val emojiMappings = remember(emojiCompatInstance, fullEmojiMappings, metadataVersion, systemFontPaint) {
-        fullEmojiMappings.byCategory.mapValues { (category, emojiSetList) ->
-            if (category == EmojiCategory.KAOMOJI || category == EmojiCategory.MATH_LOGIC || category == EmojiCategory.CRYPTO) {
-                emojiSetList
-            } else {
-                emojiSetList.mapNotNull { emojiSet ->
-                    emojiSet.emojis.filter { emoji ->
-                        emojiCompatInstance?.getEmojiMatch(emoji.value, metadataVersion) == EmojiCompat.EMOJI_SUPPORTED ||
-                            systemFontPaint.hasGlyph(emoji.value)
-                    }.let { if (it.isEmpty()) null else EmojiSet(it) }
-                }
-            }
-        }
+    val emojiMappings = remember(fullEmojiMappings) {
+        fullEmojiMappings.byCategory
     }
     val androidKeyguardManager = remember { context.systemService(AndroidKeyguardManager::class) }
 
@@ -443,8 +432,8 @@ private fun EmojiKey(
     onHistoryAction: () -> Unit,
 ) {
     val inputFeedbackController = LocalInputFeedbackController.current
-    val base = emojiSet.base(withSkinTone = preferredSkinTone)
-    val variations = emojiSet.variations(withoutSkinTone = preferredSkinTone)
+    val base = remember(emojiSet, preferredSkinTone) { emojiSet.base(withSkinTone = preferredSkinTone) }
+    val variations = remember(emojiSet, preferredSkinTone) { emojiSet.variations(withoutSkinTone = preferredSkinTone) }
     var showVariantsBox by remember { mutableStateOf(false) }
     val isKaomoji = base.value.length > 2
 
@@ -676,22 +665,11 @@ fun EmojiText(
     color: Color = Color.Unspecified,
     fontSize: TextUnit = EmojiDefaultFontSize,
 ) {
-    val processedText = remember(text, emojiCompatInstance) {
-        if (emojiCompatInstance != null) {
-            try {
-                emojiCompatInstance.process(text) ?: text
-            } catch (_: Exception) {
-                text
-            }
-        } else {
-            text
-        }
-    }
-
     Text(
-        text = processedText.toString(),
+        text = text,
         modifier = modifier,
         fontSize = fontSize,
         color = color,
+        maxLines = 1,
     )
 }
