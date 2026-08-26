@@ -34,13 +34,71 @@ class TextKeyboard(
     val keyCount: Int
         get() = arrangement.sumOf { it.size }
 
+    /**
+     * Generation of this keyboard's layout in the native shadow hit tester,
+     * -1 while never uploaded. Only the most recently laid-out keyboard owns
+     * the native slot; stale generations are skipped native-side.
+     */
+    private var shadowGeneration = -1
+
     override fun getKeyForPos(pointerX: Float, pointerY: Float): TextKey? {
+        var index = 0
+        var result: TextKey? = null
         for (key in keys()) {
             if (key.touchBounds.contains(pointerX, pointerY)) {
-                return key
+                result = key
+                break
+            }
+            index++
+        }
+        // Shadow only: Kotlin's answer above is returned regardless.
+        ShadowHitTest.compare(shadowGeneration, pointerX, pointerY, if (result != null) index else -1)
+        return result
+    }
+
+    /**
+     * Authentic BlackBerry 10 Bayesian Adaptive Hitbox Resolution.
+     * Expands touch catchment zones toward predicted next letters when finger taps land on ambiguous key boundaries.
+     */
+    fun getKeyForPosAdaptive(pointerX: Float, pointerY: Float, predictedNextLetters: Set<Char>): TextKey? {
+        val exactKey = getKeyForPos(pointerX, pointerY)
+        // Never hijack functional or non-character keys (Space, Backspace, Shift, Enter)
+        if (exactKey != null && exactKey.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
+            return exactKey
+        }
+
+        if (predictedNextLetters.isEmpty()) {
+            return exactKey
+        }
+
+        var bestKey: TextKey? = exactKey
+        var minWeightedDist = Float.MAX_VALUE
+
+        for (key in keys()) {
+            if (!key.isEnabled) continue
+            val center = key.visibleBounds.center
+            val dx = pointerX - center.x
+            val dy = pointerY - center.y
+            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+
+            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * 1.5f
+            if (dist > maxReach) continue
+
+            val charCode = key.computedData.code.toChar().lowercaseChar()
+            val isHighProbability = predictedNextLetters.contains(charCode)
+
+            // Bayesian probability distance weighting:
+            // High-probability next letters get a 35% distance reduction bonus (expanding their effective catchment area)
+            val weightFactor = if (isHighProbability) 0.65f else 1.0f
+            val weightedDist = dist * weightFactor
+
+            if (weightedDist < minWeightedDist) {
+                minWeightedDist = weightedDist
+                bestKey = key
             }
         }
-        return null
+
+        return bestKey ?: exactKey
     }
 
     /**
@@ -194,6 +252,7 @@ class TextKeyboard(
                 }
             }
         }
+        shadowGeneration = ShadowHitTest.uploadLayout(this)
     }
 
     override fun keys(): Iterator<TextKey> {

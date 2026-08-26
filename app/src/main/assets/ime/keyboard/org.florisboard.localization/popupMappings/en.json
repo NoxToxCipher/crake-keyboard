@@ -288,6 +288,50 @@
           "label": "?"
         }
       ]
+    },
+    ".": {
+      "main": {
+        "code": -255,
+        "label": ".com"
+      },
+      "relevant": [
+        {
+          "code": -255,
+          "label": ".org"
+        },
+        {
+          "code": -255,
+          "label": ".net"
+        },
+        {
+          "code": -255,
+          "label": ".io"
+        },
+        {
+          "code": -255,
+          "label": ".ai"
+        },
+        {
+          "code": -255,
+          "label": ".eth"
+        },
+        {
+          "code": -255,
+          "label": ".app"
+        },
+        {
+          "code": -255,
+          "label": ".gov"
+        },
+        {
+          "code": -255,
+          "label": ".edu"
+        },
+        {
+          "code": -255,
+          "label": ".co"
+        }
+      ]
     }
   },
   "uri": {
@@ -299,6 +343,30 @@
       "relevant": [
         {
           "code": -255,
+          "label": ".org"
+        },
+        {
+          "code": -255,
+          "label": ".net"
+        },
+        {
+          "code": -255,
+          "label": ".io"
+        },
+        {
+          "code": -255,
+          "label": ".ai"
+        },
+        {
+          "code": -255,
+          "label": ".eth"
+        },
+        {
+          "code": -255,
+          "label": ".app"
+        },
+        {
+          "code": -255,
           "label": ".gov"
         },
         {
@@ -307,11 +375,141 @@
         },
         {
           "code": -255,
+          "label": ".co"
+        }
+      ]
+    },
+    ".": {
+      "main": {
+        "code": -255,
+        "label": ".com"
+      },
+      "relevant": [
+        {
+          "code": -255,
           "label": ".org"
         },
         {
           "code": -255,
           "label": ".net"
+        },
+        {
+          "code": -255,
+          "label": ".io"
+        },
+        {
+          "code": -255,
+          "label": ".ai"
+        },
+        {
+          "code": -255,
+          "label": ".eth"
+        },
+        {
+          "code": -255,
+          "label": ".app"
+        },
+        {
+          "code": -255,
+          "label": ".gov"
+        },
+        {
+          "code": -255,
+          "label": ".edu"
+        },
+        {
+          "code": -255,
+          "label": ".co"
+        }
+      ]
+    }
+  },
+  "email_address": {
+    "~right": {
+      "main": {
+        "code": -255,
+        "label": ".com"
+      },
+      "relevant": [
+        {
+          "code": -255,
+          "label": ".org"
+        },
+        {
+          "code": -255,
+          "label": ".net"
+        },
+        {
+          "code": -255,
+          "label": ".io"
+        },
+        {
+          "code": -255,
+          "label": ".ai"
+        },
+        {
+          "code": -255,
+          "label": ".eth"
+        },
+        {
+          "code": -255,
+          "label": ".app"
+        },
+        {
+          "code": -255,
+          "label": ".gov"
+        },
+        {
+          "code": -255,
+          "label": ".edu"
+        },
+        {
+          "code": -255,
+          "label": ".co"
+        }
+      ]
+    },
+    ".": {
+      "main": {
+        "code": -255,
+        "label": ".com"
+      },
+      "relevant": [
+        {
+          "code": -255,
+          "label": ".org"
+        },
+        {
+          "code": -255,
+          "label": ".net"
+        },
+        {
+          "code": -255,
+          "label": ".io"
+        },
+        {
+          "code": -255,
+          "label": ".ai"
+        },
+        {
+          "code": -255,
+          "label": ".eth"
+        },
+        {
+          "code": -255,
+          "label": ".app"
+        },
+        {
+          "code": -255,
+          "label": ".gov"
+        },
+        {
+          "code": -255,
+          "label": ".edu"
+        },
+        {
+          "code": -255,
+          "label": ".co"
         }
       ]
     }

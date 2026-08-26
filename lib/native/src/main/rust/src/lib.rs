@@ -1,11 +1,13 @@
 use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
 use jni::objects::{JByteArray, JClass, JFloatArray, JIntArray, JObjectArray, JString};
-use jni::sys::{jfloatArray, jint, jintArray, jobjectArray, jstring};
+use jni::sys::{jfloat, jfloatArray, jint, jintArray, jobjectArray, jstring};
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
 
 static NLP_ENGINE: Lazy<RwLock<NlpEngine>> = Lazy::new(|| RwLock::new(NlpEngine::new()));
+static HIT_TESTER: Lazy<RwLock<floris_core::HitTester>> =
+    Lazy::new(|| RwLock::new(floris_core::HitTester::new()));
 static GLIDE_ENGINE: Lazy<RwLock<GlideEngine>> = Lazy::new(|| RwLock::new(GlideEngine::new()));
 static BOREAL_SCANNER: Lazy<RwLock<crake_privacy::BorealScanner>> =
     Lazy::new(|| RwLock::new(crake_privacy::BorealScanner::new().expect("Failed to init Boreal")));
@@ -50,6 +52,56 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoad
         }
     } else {
         -1
+    }
+}
+
+/// Uploads a keyboard layout's touch bounds as a flat [l,t,r,b]*n array for
+/// shadow hit-testing. Returns the layout generation (>= 1), or -1 on error.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitSetKeys(
+    env: JNIEnv,
+    _class: JClass,
+    rects: JFloatArray,
+) -> jint {
+    let len = match env.get_array_length(&rects) {
+        Ok(l) if l >= 0 => l as usize,
+        _ => return -1,
+    };
+    let mut buf = vec![0f32; len];
+    if env.get_float_array_region(&rects, 0, &mut buf).is_err() {
+        return -1;
+    }
+    match HIT_TESTER.write() {
+        Ok(mut tester) => match tester.set_keys(&buf) {
+            Some(generation) => generation.min(jint::MAX as u32) as jint,
+            None => -1,
+        },
+        Err(_) => -1,
+    }
+}
+
+/// Shadow hit test: first key containing (x, y) in upload order, half-open
+/// bounds — the FlorisRect contract. Returns the key index, -1 for no key
+/// (Kotlin's null), or -2 when `generation` is not the current layout (a
+/// different keyboard page was uploaded since; the comparison must be
+/// skipped, not counted).
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitTest(
+    _env: JNIEnv,
+    _class: JClass,
+    generation: jint,
+    x: jfloat,
+    y: jfloat,
+) -> jint {
+    let Ok(tester) = HIT_TESTER.read() else {
+        return -2;
+    };
+    if generation < 0 || tester.generation() != generation as u32 {
+        return -2;
+    }
+    match tester.hit(x, y) {
+        Some(index) => index.min(jint::MAX as usize) as jint,
+        None => -1,
     }
 }
 

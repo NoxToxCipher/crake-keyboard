@@ -785,6 +785,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.VIEW_PHONE2 -> activeState.keyboardMode = KeyboardMode.PHONE2
             KeyCode.VIEW_SYMBOLS -> activeState.keyboardMode = KeyboardMode.SYMBOLS
             KeyCode.VIEW_SYMBOLS2 -> activeState.keyboardMode = KeyboardMode.SYMBOLS2
+            KeyCode.URI_COMPONENT_TLD,
+            KeyCode.MULTIPLE_CODE_POINTS -> {
+                val text = data.asString(isForDisplay = false)
+                if (text.isNotEmpty()) {
+                    editorInstance.commitText(text)
+                }
+            }
             else -> {
                 if (activeState.imeUiMode == ImeUiMode.MEDIA) {
                     nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
