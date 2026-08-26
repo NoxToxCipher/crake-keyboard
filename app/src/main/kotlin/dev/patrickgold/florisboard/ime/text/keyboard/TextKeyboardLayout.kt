@@ -1226,14 +1226,14 @@ fun TextKeyboardLayout(
             }
         }
 
-        // Mango Dual Elegant Pulse Easter Egg: Pulses twice softly in rich honey mango gold
+        // Mango Dual Elegant Pulse Easter Egg: Pulses twice softly in whisper-soft borderless honey mango glow
         if (mangoPulseTriggerTime > 0L) {
             val mangoProgress = remember(mangoPulseTriggerTime) { Animatable(0f) }
             LaunchedEffect(mangoPulseTriggerTime) {
                 mangoProgress.snapTo(0f)
                 mangoProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 2200, easing = LinearEasing),
+                    animationSpec = tween(durationMillis = 2800, easing = LinearEasing),
                 )
                 mangoPulseTriggerTime = 0L
             }
@@ -1241,8 +1241,7 @@ fun TextKeyboardLayout(
                 val t = mangoProgress.value
                 val cycleProgress = if (t < 0.5f) t * 2.0f else (t - 0.5f) * 2.0f
                 val sineWave = (kotlin.math.sin(cycleProgress * Math.PI)).toFloat()
-                val pulseAlpha = sineWave * 0.38f
-                val densityScale = LocalDensity.current.density
+                val pulseAlpha = sineWave * 0.12f // Whisper soft, delicate breathing radiance
 
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier.fillMaxSize()
@@ -1252,35 +1251,23 @@ fun TextKeyboardLayout(
                     val cx = canvasW / 2f
                     val cy = canvasH / 2f
 
-                    // 1. Soft Luscious Mango Radial Gradient (Australian Kensington Pride & Honey Gold Mango)
+                    // Soft, Borderless, Organic Honey Mango Radial Aura (Zero hard lines or borders)
+                    val maxDim = kotlin.math.max(canvasW, canvasH)
                     val mangoGradientPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         shader = android.graphics.RadialGradient(
-                            cx, cy, kotlin.math.max(canvasW, canvasH) * 0.75f,
+                            cx, cy, maxDim * 0.85f,
                             intArrayOf(
-                                android.graphics.Color.argb((pulseAlpha * 255).toInt().coerceIn(0, 255), 255, 179, 0),  // Ripe Honey Mango Gold
-                                android.graphics.Color.argb((pulseAlpha * 210).toInt().coerceIn(0, 255), 255, 112, 67),  // Soft Blushing Mango Peach
-                                android.graphics.Color.argb((pulseAlpha * 140).toInt().coerceIn(0, 255), 255, 143, 0),  // Warm Golden Amber
-                                android.graphics.Color.argb(0, 255, 112, 67)
+                                android.graphics.Color.argb((pulseAlpha * 255).toInt().coerceIn(0, 255), 255, 183, 3),   // Honey Gold
+                                android.graphics.Color.argb((pulseAlpha * 160).toInt().coerceIn(0, 255), 251, 133, 0),  // Ripe Mango
+                                android.graphics.Color.argb((pulseAlpha * 65).toInt().coerceIn(0, 255), 247, 127, 0),   // Warm Amber
+                                android.graphics.Color.argb(0, 255, 183, 3)                                             // Pure 0% falloff
                             ),
-                            floatArrayOf(0.0f, 0.45f, 0.80f, 1.0f),
+                            floatArrayOf(0.0f, 0.40f, 0.70f, 1.0f),
                             android.graphics.Shader.TileMode.CLAMP
                         )
                         style = android.graphics.Paint.Style.FILL
                     }
-                    drawContext.canvas.nativeCanvas.drawRoundRect(0f, 0f, canvasW, canvasH, 12f * densityScale, 12f * densityScale, mangoGradientPaint)
-
-                    // 2. Soft Ambient Perimeter Rim Aura
-                    val perimeterAuraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((pulseAlpha * 180).toInt().coerceIn(0, 255), 255, 193, 7)
-                        style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = 2.5f * densityScale
-                    }
-                    drawContext.canvas.nativeCanvas.drawRoundRect(
-                        1.5f * densityScale, 1.5f * densityScale,
-                        canvasW - 1.5f * densityScale, canvasH - 1.5f * densityScale,
-                        12f * densityScale, 12f * densityScale,
-                        perimeterAuraPaint
-                    )
+                    drawContext.canvas.nativeCanvas.drawRect(0f, 0f, canvasW, canvasH, mangoGradientPaint)
                 }
             }
         }
