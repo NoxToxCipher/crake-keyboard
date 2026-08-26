@@ -86,7 +86,10 @@ class GlideTypingGesture {
                             // evaluate whether is actually a gesture
                             val dist = ViewUtils.px2dp(pointerData.positions[0].dist(pos))
                             val triggerSlop = (keySize * 0.35f).coerceIn(10f, 18f)
-                            if (dist > triggerSlop && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS)) {
+                            val diffX = pos.x - pointerData.positions[0].x
+                            val diffY = pos.y - pointerData.positions[0].y
+                            val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
+                            if (dist > triggerSlop && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS) && !isUpwardFlick) {
                                 pointerData.isActuallyGesture = true
                                 // Let listener know all those points need to be added.
                                 pointerData.positions.take(pointerData.positions.size - 1).forEach { point ->
