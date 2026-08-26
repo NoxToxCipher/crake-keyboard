@@ -98,6 +98,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
 import dev.patrickgold.florisboard.ime.window.LocalWindowController
 import dev.patrickgold.florisboard.keyboardManager
+import dev.patrickgold.florisboard.themeManager
 import dev.patrickgold.florisboard.lib.FlorisRect
 import dev.patrickgold.florisboard.lib.Pointer
 import dev.patrickgold.florisboard.lib.PointerMap
@@ -130,6 +131,22 @@ fun TextKeyboardLayout(
     val configuration = LocalConfiguration.current
     val glideTypingManager by context.glideTypingManager()
     val editorInstance by context.editorInstance()
+
+    val themeManager by context.themeManager()
+    val activeThemeInfo by themeManager.activeThemeInfo.collectAsState()
+    val activeThemeCompId = activeThemeInfo.name.componentId
+    val isBorderlessTheme = "borderless" in activeThemeCompId
+    val themeAccentColor = remember(activeThemeCompId) {
+        when {
+            "purple" in activeThemeCompId -> Color(0xFFA855F7)
+            "crimson" in activeThemeCompId -> Color(0xFFEF4444)
+            "sakura" in activeThemeCompId -> Color(0xFFEC4899)
+            "emerald" in activeThemeCompId -> Color(0xFF00E5A3)
+            "amber" in activeThemeCompId -> Color(0xFFF59E0B)
+            "ghost" in activeThemeCompId -> Color(0xFFF8FAFC)
+            else -> Color(0xFF00D2FF)
+        }
+    }
 
     val keyboard = evaluator.keyboard as TextKeyboard
     val glideEnabledInternal by prefs.glide.enabled.collectAsState()
@@ -360,7 +377,7 @@ fun TextKeyboardLayout(
         val rightFade = (rightCore + 0.12f).coerceAtMost(1f)
 
         // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows on all pages)
-        if (keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
+        if (!isBorderlessTheme && keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
             val fretPositions = remember(keyboard, keyboard.mode, keyboardWidth, keyboardHeight, desiredKeyHack.value) {
                 val rowBounds = keyboard.keys().asSequence()
                     .groupBy { it.touchBounds.top.toInt() }
@@ -402,11 +419,11 @@ fun TextKeyboardLayout(
                             brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                 colorStops = arrayOf(
                                     0.0f to Color.Transparent,
-                                    leftFade to Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
+                                    leftFade to themeAccentColor.copy(alpha = 0.12f * fretCyanPulseAlpha),
                                     leftCore to Color(0x60CBD5E1),
-                                    0.5f to Color(0xFF00E5FF).copy(alpha = fretCyanPulseAlpha),
+                                    0.5f to themeAccentColor.copy(alpha = fretCyanPulseAlpha),
                                     rightCore to Color(0x60CBD5E1),
-                                    rightFade to Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
+                                    rightFade to themeAccentColor.copy(alpha = 0.12f * fretCyanPulseAlpha),
                                     1.0f to Color.Transparent,
                                 )
                             )
@@ -475,8 +492,8 @@ fun TextKeyboardLayout(
                             .shadow(
                                 elevation = 4.dp,
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
-                                ambientColor = androidx.compose.ui.graphics.Color(0xFF00E5FF),
-                                spotColor = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                                ambientColor = themeAccentColor,
+                                spotColor = themeAccentColor,
                             )
                             .background(
                                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -491,8 +508,8 @@ fun TextKeyboardLayout(
                                 width = 1.dp,
                                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                     colors = listOf(
-                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.85f),
-                                        androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.25f),
+                                        themeAccentColor.copy(alpha = 0.85f),
+                                        themeAccentColor.copy(alpha = 0.25f),
                                     )
                                 ),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(7.dp),
@@ -503,7 +520,7 @@ fun TextKeyboardLayout(
                             text = flickWord,
                             fontSize = 12.sp,
                             fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                            color = themeAccentColor,
                             maxLines = 1,
                             softWrap = false,
                         )
@@ -547,8 +564,8 @@ fun TextKeyboardLayout(
                     .background(
                         brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(
-                                androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.8f * alpha),
-                                androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = 0.2f * alpha),
+                                themeAccentColor.copy(alpha = 0.8f * alpha),
+                                themeAccentColor.copy(alpha = 0.2f * alpha),
                                 androidx.compose.ui.graphics.Color.Transparent,
                             )
                         ),
@@ -586,7 +603,7 @@ fun TextKeyboardLayout(
                         )
                         .border(
                             width = 1.5.dp,
-                            color = androidx.compose.ui.graphics.Color(0xFF00E5FF).copy(alpha = alpha),
+                            color = themeAccentColor.copy(alpha = alpha),
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(9.dp),
                         )
                         .padding(horizontal = 10.dp, vertical = 3.dp),
@@ -595,7 +612,7 @@ fun TextKeyboardLayout(
                         text = activeCatapult.word,
                         fontSize = 13.sp,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
-                        color = androidx.compose.ui.graphics.Color(0xFF00E5FF),
+                        color = themeAccentColor,
                         maxLines = 1,
                     )
                 }
@@ -622,6 +639,22 @@ private fun TextKeyButton(
     debugShowTouchBoundaries: Boolean,
     hideHint: Boolean = false,
 ) = with(LocalDensity.current) {
+    val context = LocalContext.current
+    val themeManager by context.themeManager()
+    val activeThemeInfo by themeManager.activeThemeInfo.collectAsState()
+    val activeThemeCompId = activeThemeInfo.name.componentId
+    val isBorderlessTheme = "borderless" in activeThemeCompId
+    val themeAccentColor = remember(activeThemeCompId) {
+        when {
+            "purple" in activeThemeCompId -> Color(0xFFA855F7)
+            "crimson" in activeThemeCompId -> Color(0xFFEF4444)
+            "sakura" in activeThemeCompId -> Color(0xFFEC4899)
+            "emerald" in activeThemeCompId -> Color(0xFF00E5A3)
+            "amber" in activeThemeCompId -> Color(0xFFF59E0B)
+            "ghost" in activeThemeCompId -> Color(0xFFF8FAFC)
+            else -> Color(0xFF00D2FF)
+        }
+    }
     val attributes = mapOf(
         FlorisImeUi.Attr.Code to key.computedData.code,
         FlorisImeUi.Attr.Mode to evaluator.keyboard.mode.toString(),
@@ -726,8 +759,8 @@ private fun TextKeyButton(
                             width = 1.5.dp,
                             brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                 colors = listOf(
-                                    Color(0xFF00E5FF).copy(alpha = 0.95f),
-                                    Color(0xFF00D2FF).copy(alpha = 0.5f),
+                                    themeAccentColor.copy(alpha = 0.95f),
+                                    themeAccentColor.copy(alpha = 0.5f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -736,7 +769,7 @@ private fun TextKeyButton(
                         .background(
                             brush = androidx.compose.ui.graphics.Brush.radialGradient(
                                 colors = listOf(
-                                    Color(0x3500E5FF),
+                                    themeAccentColor.copy(alpha = 0.25f),
                                     Color.Transparent,
                                 ),
                             ),
@@ -752,7 +785,7 @@ private fun TextKeyButton(
                         .padding(bottom = 4.dp)
                         .requiredSize(width = if (isLocked) 18.dp else 8.dp, height = 2.5.dp)
                         .background(
-                            color = Color(0xFF00E5FF),
+                            color = themeAccentColor,
                             shape = RoundedCornerShape(2.dp),
                         )
                 )
@@ -768,9 +801,9 @@ private fun TextKeyButton(
                         brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color(0x6000E5FF),
-                                Color(0xCC00E5FF),
-                                Color(0x6000E5FF),
+                                themeAccentColor.copy(alpha = 0.38f),
+                                themeAccentColor.copy(alpha = 0.85f),
+                                themeAccentColor.copy(alpha = 0.38f),
                                 Color.Transparent,
                             )
                         ),
@@ -786,7 +819,7 @@ private fun TextKeyButton(
                         width = 1.dp,
                         brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xFF00E5FF).copy(alpha = 0.85f),
+                                themeAccentColor.copy(alpha = 0.85f),
                                 Color(0xFF00B4D8).copy(alpha = 0.35f),
                             )
                         ),

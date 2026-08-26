@@ -104,11 +104,10 @@ fun ThemeManagerScreen(action: ThemeManagerScreenAction?) = FlorisScreen {
 
     fun setTheme(extId: String, componentId: String) {
         val extComponentName = ExtensionComponentName(extId, componentId)
-        when (action) {
-            ThemeManagerScreenAction.SELECT_DAY,
-            ThemeManagerScreenAction.SELECT_NIGHT -> scope.launch {
-                getThemeIdPref().set(extComponentName)
-            }
+        scope.launch {
+            prefs.theme.dayThemeId.set(extComponentName)
+            prefs.theme.nightThemeId.set(extComponentName)
+            themeManager.previewThemeId.value = extComponentName
         }
     }
 

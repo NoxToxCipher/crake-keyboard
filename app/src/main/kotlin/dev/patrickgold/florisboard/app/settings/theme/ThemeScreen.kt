@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2025 The FlorisBoard Contributors
+ * Copyright (C) 2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,57 +16,195 @@
 
 package dev.patrickgold.florisboard.app.settings.theme
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Brightness2
 import androidx.compose.material.icons.filled.BrightnessAuto
-import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.WbTwilight
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.app.enumDisplayEntriesOf
 import dev.patrickgold.florisboard.app.ext.AddonManagementReferenceBox
 import dev.patrickgold.florisboard.app.ext.ExtensionListScreenType
+import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
+import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeRadioIndicator
+import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.themeManager
 import dev.patrickgold.jetpref.datastore.model.collectAsState
-import dev.patrickgold.jetpref.datastore.ui.ColorPickerPreference
-import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
-import dev.patrickgold.jetpref.datastore.ui.LocalTimePickerPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
-import dev.patrickgold.jetpref.datastore.ui.isMaterialYou
-import org.florisboard.lib.color.ColorMappings
+import kotlinx.coroutines.launch
 import org.florisboard.lib.compose.stringRes
+
+private val CardSurface = Color(0xFF131A29)
+private val CardBorder = Color(0xFF222D42)
+private val CyberEmerald = Color(0xFF00E5A3)
+private val ElectricCyan = Color(0xFF00D2FF)
+private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
 fun ThemeScreen() = FlorisScreen {
     title = stringRes(R.string.settings__theme__title)
     previewFieldVisible = true
 
+    val prefs by FlorisPreferenceStore
     val context = LocalContext.current
     val navController = LocalNavController.current
     val themeManager by context.themeManager()
+    val extensionManager by context.extensionManager()
+    val scope = rememberCoroutineScope()
 
-    @Composable
-    fun ThemeManager.getThemeLabel(id: ExtensionComponentName): String {
-        val configs by indexedThemeConfigs.collectAsState()
-        configs.first[id]?.let { return it.label }
-        return id.toString()
+    val indexedThemeExtensions by extensionManager.themes.collectAsState()
+    val allThemes = remember(indexedThemeExtensions) {
+        indexedThemeExtensions.flatMap { ext ->
+            ext.themes.map { comp -> Pair(ext.meta.id, comp) }
+        }.sortedBy { it.second.label }
+    }
+
+    val dayThemeId by prefs.theme.dayThemeId.collectAsState()
+    val nightThemeId by prefs.theme.nightThemeId.collectAsState()
+    val activeThemeInfo by themeManager.activeThemeInfo.collectAsState()
+
+    fun getThemeAccentColor(themeId: String): Color {
+        return when {
+            "purple" in themeId -> Color(0xFFA855F7)
+            "crimson" in themeId -> Color(0xFFEF4444)
+            "sakura" in themeId -> Color(0xFFEC4899)
+            "emerald" in themeId -> Color(0xFF00E5A3)
+            "amber" in themeId -> Color(0xFFF59E0B)
+            "ghost" in themeId -> Color(0xFFF8FAFC)
+            else -> Color(0xFF00D2FF)
+        }
     }
 
     content {
-        val dayThemeId by prefs.theme.dayThemeId.collectAsState()
-        val nightThemeId by prefs.theme.nightThemeId.collectAsState()
+        CrakeSectionHeader(title = "CYBERPUNK COLORWAYS", badgeText = "14 THEMES")
+
+        for ((extensionId, comp) in allThemes) {
+            val isSelected = (dayThemeId.componentId == comp.id && dayThemeId.extensionId == extensionId) ||
+                (activeThemeInfo.name.componentId == comp.id && activeThemeInfo.name.extensionId == extensionId)
+            val accent = getThemeAccentColor(comp.id)
+            val isBorderless = "borderless" in comp.id
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 3.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        val extComponentName = ExtensionComponentName(extensionId, comp.id)
+                        scope.launch {
+                            prefs.theme.dayThemeId.set(extComponentName)
+                            prefs.theme.nightThemeId.set(extComponentName)
+                            themeManager.previewThemeId.value = extComponentName
+                        }
+                    },
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isSelected) Color(0xFF162033) else CardSurface,
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    if (isSelected) accent.copy(alpha = 0.5f) else CardBorder,
+                ),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(accent.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(accent),
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = comp.label,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                            fontSize = 13.5.sp,
+                            color = if (isSelected) Color.White else Color(0xFFE2E8F0),
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isBorderless) Color(0xFF1E293B) else accent.copy(alpha = 0.15f))
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = if (isBorderless) "BORDERLESS" else "TITANIUM FRETS",
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = if (isBorderless) TextMuted else accent,
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    CrakeRadioIndicator(
+                        selected = isSelected,
+                        enabled = true,
+                        accentColor = accent,
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        CrakeSectionHeader(title = "SYSTEM OVERRIDES & DAY/NIGHT")
 
         CrakeListPreference(
             prefs.theme.mode,
@@ -74,53 +212,9 @@ fun ThemeScreen() = FlorisScreen {
             title = stringRes(R.string.pref__theme__mode__label),
             entries = enumDisplayEntriesOf(ThemeMode::class),
         )
-        Preference(
-            icon = Icons.Default.LightMode,
-            title = stringRes(R.string.pref__theme__day),
-            summary = themeManager.getThemeLabel(dayThemeId),
-            enabledIf = { prefs.theme.mode isNotEqualTo ThemeMode.ALWAYS_NIGHT },
-            onClick = {
-                navController.navigate(Routes.Settings.ThemeManager(ThemeManagerScreenAction.SELECT_DAY))
-            },
-        )
-        Preference(
-            icon = Icons.Default.DarkMode,
-            title = stringRes(R.string.pref__theme__night),
-            summary = themeManager.getThemeLabel(nightThemeId),
-            enabledIf = { prefs.theme.mode isNotEqualTo ThemeMode.ALWAYS_DAY },
-            onClick = {
-                navController.navigate(Routes.Settings.ThemeManager(ThemeManagerScreenAction.SELECT_NIGHT))
-            },
-        )
-        LocalTimePickerPreference(
-            pref = prefs.theme.sunriseTime,
-            title = stringRes(R.string.pref__theme__sunrise_time__label),
-            icon = Icons.Default.WbTwilight,
-            enabledIf = { prefs.theme.mode isEqualTo ThemeMode.FOLLOW_TIME },
-        )
-        LocalTimePickerPreference(
-            pref = prefs.theme.sunsetTime,
-            title = stringRes(R.string.pref__theme__sunset_time__label),
-            icon = Icons.Default.Brightness2,
-            enabledIf = { prefs.theme.mode isEqualTo ThemeMode.FOLLOW_TIME },
-        )
-        ColorPickerPreference(
-            pref = prefs.theme.accentColor,
-            title = stringRes(R.string.pref__theme__theme_accent_color__label),
-            defaultValueLabel = stringRes(R.string.action__default),
-            icon = Icons.Default.ColorLens,
-            defaultColors = ColorMappings.colors,
-            showAlphaSlider = false,
-            enableAdvancedLayout = true,
-            colorOverride = {
-                if (it.isMaterialYou(context)) {
-                    Color.Unspecified
-                } else {
-                    it
-                }
-            }
-        )
 
+        Spacer(modifier = Modifier.height(16.dp))
         AddonManagementReferenceBox(type = ExtensionListScreenType.EXT_THEME)
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
