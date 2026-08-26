@@ -421,6 +421,7 @@ fun TextKeyboardLayout(
         var mangoPulseTriggerTime by remember { mutableStateOf(0L) }
         var masterChiefRunTriggerTime by remember { mutableStateOf(0L) }
         var iceSkateSwirlTriggerTime by remember { mutableStateOf(0L) }
+        var berriesFlowTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -451,6 +452,10 @@ fun TextKeyboardLayout(
             val skateKeys = listOf("rink", "skating", "iceskating", "ice skating", "skate", "figure skating")
             if (skateKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 iceSkateSwirlTriggerTime = System.currentTimeMillis()
+            }
+            val berryKeys = listOf("berry", "berries", "strawberry", "blueberry", "raspberry", "blackberry")
+            if (berryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                berriesFlowTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -1550,6 +1555,166 @@ fun TextKeyboardLayout(
                         close()
                     }
                     drawContext.canvas.nativeCanvas.drawPath(diamondPath, bladePaint)
+                }
+            }
+        }
+
+        // Berries Fret Inward-Fade & Fast Outward Flow Easter Egg
+        if (berriesFlowTriggerTime > 0L) {
+            val berryProgress = remember(berriesFlowTriggerTime) { Animatable(0f) }
+            LaunchedEffect(berriesFlowTriggerTime) {
+                berryProgress.snapTo(0f)
+                berryProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 2000, easing = LinearEasing),
+                )
+                berriesFlowTriggerTime = 0L
+            }
+            if (berryProgress.value in 0.001f..0.999f) {
+                val t = berryProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val cx = canvasW / 2f
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+
+                    // Stage 1: 0.0 -> 0.28 (Soft fade into center with scale 0 -> 1)
+                    // Stage 2: 0.28 -> 1.0 (Rapid outward flow left & right along fret frets)
+                    val fadePhase = (t / 0.28f).coerceIn(0f, 1f)
+                    val isFlowing = t >= 0.28f
+                    val flowU = if (isFlowing) ((t - 0.28f) / 0.72f) else 0f
+                    val flowDistance = (flowU * flowU) * (canvasW * 0.58f + 40f * density) // Exponential outward acceleration
+                    val globalAlpha = (if (flowU > 0.7f) (1f - (flowU - 0.7f) / 0.3f) else 1f) * fadePhase
+                    val scale = 0.3f + 0.7f * fadePhase
+
+                    // Berry drawing helper functions
+                    fun drawStrawberry(bx: Float, by: Float, bScale: Float, alpha: Float) {
+                        val pRed = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 245).toInt().coerceIn(0, 255), 239, 68, 68)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pLeaf = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 34, 197, 94)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pSeed = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 254, 240, 138)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val r = 5.5f * density * bScale
+                        // Strawberry Body (Tapered oval)
+                        val path = android.graphics.Path().apply {
+                            moveTo(bx, by - r * 0.8f)
+                            cubicTo(bx + r * 1.1f, by - r * 0.6f, bx + r * 0.9f, by + r * 0.8f, bx, by + r * 1.2f)
+                            cubicTo(bx - r * 0.9f, by + r * 0.8f, bx - r * 1.1f, by - r * 0.6f, bx, by - r * 0.8f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(path, pRed)
+                        // Calyx Leaf Crown
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, by - r * 0.9f, r * 0.38f, pLeaf)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx - r * 0.45f, by - r * 0.75f, r * 0.28f, pLeaf)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx + r * 0.45f, by - r * 0.75f, r * 0.28f, pLeaf)
+                        // Seeds
+                        drawContext.canvas.nativeCanvas.drawCircle(bx - r * 0.35f, by - r * 0.1f, r * 0.12f, pSeed)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx + r * 0.35f, by - r * 0.1f, r * 0.12f, pSeed)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, by + r * 0.35f, r * 0.12f, pSeed)
+                    }
+
+                    fun drawBlueberry(bx: Float, by: Float, bScale: Float, alpha: Float) {
+                        val pBlue = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 37, 99, 235) // Deep Sapphire
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pDarkCrown = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 250).toInt().coerceIn(0, 255), 30, 58, 138)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pGlint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 200).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val r = 4.8f * density * bScale
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, by, r, pBlue)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, by - r * 0.4f, r * 0.32f, pDarkCrown)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx - r * 0.35f, by - r * 0.3f, r * 0.22f, pGlint)
+                    }
+
+                    fun drawRaspberry(bx: Float, by: Float, bScale: Float, alpha: Float) {
+                        val pRasp = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 240).toInt().coerceIn(0, 255), 225, 29, 72) // Rose-600
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pShine = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 180).toInt().coerceIn(0, 255), 251, 113, 133)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val r = 2.2f * density * bScale
+                        // Clustered drupelets
+                        val drupeOffsets = listOf(
+                            Pair(0f, -3f), Pair(-3f, -1f), Pair(3f, -1f),
+                            Pair(-2f, 2f), Pair(2f, 2f), Pair(0f, 4f)
+                        )
+                        for ((dx, dy) in drupeOffsets) {
+                            drawContext.canvas.nativeCanvas.drawCircle(bx + dx * density * bScale * 0.7f, by + dy * density * bScale * 0.7f, r, pRasp)
+                            drawContext.canvas.nativeCanvas.drawCircle(bx + dx * density * bScale * 0.7f - 0.4f * density, by + dy * density * bScale * 0.7f - 0.4f * density, r * 0.35f, pShine)
+                        }
+                    }
+
+                    fun drawBlackberry(bx: Float, by: Float, bScale: Float, alpha: Float) {
+                        val pDark = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 245).toInt().coerceIn(0, 255), 88, 28, 135) // Deep Blackberry Purple
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pGlint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 200).toInt().coerceIn(0, 255), 192, 132, 252)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val r = 2.2f * density * bScale
+                        val drupeOffsets = listOf(
+                            Pair(0f, -3f), Pair(-3f, -1f), Pair(3f, -1f),
+                            Pair(-2f, 2f), Pair(2f, 2f), Pair(0f, 4f)
+                        )
+                        for ((dx, dy) in drupeOffsets) {
+                            drawContext.canvas.nativeCanvas.drawCircle(bx + dx * density * bScale * 0.7f, by + dy * density * bScale * 0.7f, r, pDark)
+                            drawContext.canvas.nativeCanvas.drawCircle(bx + dx * density * bScale * 0.7f - 0.4f * density, by + dy * density * bScale * 0.7f - 0.4f * density, r * 0.32f, pGlint)
+                        }
+                    }
+
+                    // For each fret line, draw berries streaming outward Left and Right
+                    for ((fretIdx, fretY) in fretYs.withIndex()) {
+                        val fretShift = if (fretIdx % 2 == 0) 1f else 0.85f
+                        val streamOffsets = listOf(
+                            Pair(0f * density, 0),
+                            Pair(18f * density, 1),
+                            Pair(36f * density, 2),
+                            Pair(54f * density, 3)
+                        )
+
+                        for ((stOffset, berryType) in streamOffsets) {
+                            val rightX = cx + (flowDistance * fretShift) + stOffset
+                            val leftX = cx - (flowDistance * fretShift) - stOffset
+
+                            // Right stream
+                            when ((berryType + fretIdx) % 4) {
+                                0 -> drawStrawberry(rightX, fretY, scale, globalAlpha)
+                                1 -> drawBlueberry(rightX, fretY, scale, globalAlpha)
+                                2 -> drawRaspberry(rightX, fretY, scale, globalAlpha)
+                                else -> drawBlackberry(rightX, fretY, scale, globalAlpha)
+                            }
+
+                            // Left stream
+                            when ((berryType + fretIdx + 2) % 4) {
+                                0 -> drawStrawberry(leftX, fretY, scale, globalAlpha)
+                                1 -> drawBlueberry(leftX, fretY, scale, globalAlpha)
+                                2 -> drawRaspberry(leftX, fretY, scale, globalAlpha)
+                                else -> drawBlackberry(leftX, fretY, scale, globalAlpha)
+                            }
+                        }
+                    }
                 }
             }
         }
