@@ -90,9 +90,9 @@ object FlorisNative {
         }
     }
 
-    fun predictNextLetterWords(prefix: String): Map<Char, String> {
-        if (!isLoaded || prefix.isBlank()) return emptyMap()
-        val rawMatches = nativeNlpPredictNextLetterWords(prefix)
+    fun predictNextLetterWords(prefix: String = "", prevWord: String = ""): Map<Char, String> {
+        if (!isLoaded) return emptyMap()
+        val rawMatches = nativeNlpPredictNextLetterWords(prefix, prevWord)
         val result = mutableMapOf<Char, String>()
         for (raw in rawMatches) {
             val colonIdx = raw.indexOf(':')
@@ -214,7 +214,7 @@ object FlorisNative {
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>
 
     @JvmStatic
-    private external fun nativeNlpPredictNextLetterWords(query: String): Array<String>
+    private external fun nativeNlpPredictNextLetterWords(query: String, prevWord: String): Array<String>
 
     @JvmStatic
     private external fun nativeSanitizeUrl(rawUrl: String): String
