@@ -585,7 +585,19 @@ impl NlpEngine {
                 let formatted = Self::apply_casing(trimmed, &fc.word);
                 if !contains_word(&candidates, &formatted) {
                     let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
-                    let should_autocorrect = !is_exact && !is_capitalized && (fc.distance <= 2 || is_neighbor) && candidates.is_empty();
+                    // Edge apostrophes are deliberate punctuation (quotes sit
+                    // behind long-press — they are not fat-fingered): a token
+                    // like 'word or word' must never be "repaired" by
+                    // auto-commit, which used to eat opening quotes and turn
+                    // trailing quotes into possessives (field report
+                    // 2026-08-27: 'word' -> word's).
+                    let has_edge_apostrophe =
+                        trimmed_lower.starts_with('\'') || trimmed_lower.ends_with('\'');
+                    let should_autocorrect = !is_exact
+                        && !is_capitalized
+                        && !has_edge_apostrophe
+                        && (fc.distance <= 2 || is_neighbor)
+                        && candidates.is_empty();
                     candidates.push(RankedCandidate {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
@@ -619,7 +631,10 @@ impl NlpEngine {
         // 8. CRITICAL: The literal raw typed word MUST ALWAYS be in the candidate list
         // so the user can always tap their exact text (e.g. custom names, passphrases, codes)
         if !contains_word(&candidates, trimmed) {
-            if is_capitalized || candidates.is_empty() {
+            // Quoted tokens keep their quotes in front: the literal leads so
+            // tapping a suggestion is a choice, not a quote-stripping trap.
+            let edge_apostrophe = trimmed.starts_with('\'') || trimmed.ends_with('\'');
+            if is_capitalized || edge_apostrophe || candidates.is_empty() {
                 // For capitalized names/proper nouns, prioritize the literal typed word in slot 0
                 candidates.insert(0, RankedCandidate {
                     word: trimmed.to_string(),
@@ -644,12 +659,15 @@ impl NlpEngine {
             }
         }
 
-        // Bigram context re-rank, v1: ORDERING ONLY. The immovable head —
-        // leading auto-commit candidates and the literal typed word — never
-        // moves, so the LM can surface a context-apt candidate without ever
+        // Neural context re-rank, ORDERING ONLY. The immovable head — leading
+        // auto-commit candidates and the literal typed word — never moves, so
+        // the rescorer can surface a context-apt candidate without ever
         // changing what auto-commits or hiding what the user typed. Runs
         // before truncation so context can rescue a candidate from below the
-        // display cut.
+        // display cut. The MLP (rescorer.rs) weighs edit units, frequency,
+        // and the bigram LM's pair score together; gated on the bigram table
+        // being loaded and context existing, so behaviour without either is
+        // bit-identical to the ungated path.
         if !self.bigrams.is_empty() && candidates.len() > 1 {
             let prev_clean: String = prev_word
                 .trim()
@@ -663,12 +681,28 @@ impl NlpEngine {
                     .take_while(|c| c.is_autocorrect || c.word.eq_ignore_ascii_case(trimmed))
                     .count();
                 if head < candidates.len() {
-                    candidates[head..].sort_by_key(|c| {
-                        std::cmp::Reverse(
-                            self.bigram_score_words(&prev_clean, &c.word.to_lowercase())
-                                .map_or(-1i32, i32::from),
-                        )
-                    });
+                    let scores: Vec<i64> = candidates[head..]
+                        .iter()
+                        .map(|c| {
+                            let cand = c.word.to_lowercase();
+                            let freq = self.trie.get_frequency(&cand).unwrap_or(0);
+                            let bigram = self.bigram_score_words(&prev_clean, &cand).unwrap_or(0);
+                            let f = crate::rescorer::features(
+                                &trimmed_lower,
+                                &cand,
+                                freq,
+                                bigram,
+                                |a, b| self.keys_near(a, b),
+                            );
+                            // Fixed-point so the sort key is total-ordered.
+                            (crate::rescorer::score(&f) * 1_000_000.0) as i64
+                        })
+                        .collect();
+                    let mut order: Vec<usize> = (0..scores.len()).collect();
+                    order.sort_by_key(|&i| std::cmp::Reverse(scores[i]));
+                    let reordered: Vec<RankedCandidate> =
+                        order.iter().map(|&i| candidates[head + i].clone()).collect();
+                    candidates.splice(head.., reordered);
                 }
             }
         }

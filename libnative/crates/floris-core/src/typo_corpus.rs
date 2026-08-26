@@ -1803,6 +1803,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("yield", "yield"),
     ("young", "young"),
     ("youth", "youth"),
+    ("ys", "us"),
     ("zealous", "zealous"),
 ];
 
