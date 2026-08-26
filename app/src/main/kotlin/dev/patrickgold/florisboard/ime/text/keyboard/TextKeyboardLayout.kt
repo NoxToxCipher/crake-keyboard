@@ -1417,6 +1417,8 @@ private class TextKeyboardLayoutController(
                                 }
                                 val predictedWord = predictions[charCode]
                                 if (predictedWord != null) {
+                                    glideTypingDetector.cancel()
+                                    isGliding = false
                                     activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
                                     keyboardManager.commitFlickPrediction(predictedWord)
                                     inputFeedbackController?.flickCommit(initialKey.computedData)
@@ -1432,6 +1434,8 @@ private class TextKeyboardLayoutController(
                                 else -> SwipeAction.NO_ACTION
                             }
                             if (swipeAction != SwipeAction.NO_ACTION) {
+                                glideTypingDetector.cancel()
+                                isGliding = false
                                 keyboardManager.executeSwipeAction(swipeAction)
                                 true
                             } else {
