@@ -434,6 +434,7 @@ fun TextKeyboardLayout(
         var sundaeTriggerTime by remember { mutableStateOf(0L) }
         var trainTriggerTime by remember { mutableStateOf(0L) }
         var isNobleTrainMode by remember { mutableStateOf(false) }
+        var louiePawsTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -536,6 +537,10 @@ fun TextKeyboardLayout(
             } else if (regularTrainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 isNobleTrainMode = false
                 trainTriggerTime = System.currentTimeMillis()
+            }
+            val louieKeys = listOf("louie", "pitty", "pitbull", "red nose", "rednose", "red nose pitty")
+            if (louieKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+                louiePawsTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -4105,6 +4110,138 @@ fun TextKeyboardLayout(
                     }
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // Louie Red Nose Pitty Dog Paw Prints Easter Egg (Trotting Paws + Warm Red-Nose Copper Glow)
+        if (louiePawsTriggerTime > 0L) {
+            val pawsProgress = remember(louiePawsTriggerTime) { Animatable(0f) }
+            LaunchedEffect(louiePawsTriggerTime) {
+                pawsProgress.snapTo(0f)
+                pawsProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4400, easing = LinearEasing),
+                )
+                louiePawsTriggerTime = 0L
+            }
+            if (pawsProgress.value in 0.001f..0.999f) {
+                val currentMs = pawsProgress.value * 4400f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // 5 Trotting Dog Paw Prints (Left-Right-Left-Right Gait)
+                    val pawSteps = listOf(
+                        Triple(canvasW * 0.16f, canvasH * 0.72f, -24f),
+                        Triple(canvasW * 0.32f, canvasH * 0.50f, -16f),
+                        Triple(canvasW * 0.48f, canvasH * 0.66f, -22f),
+                        Triple(canvasW * 0.65f, canvasH * 0.44f, -14f),
+                        Triple(canvasW * 0.82f, canvasH * 0.32f, -18f)
+                    )
+
+                    for ((idx, step) in pawSteps.withIndex()) {
+                        val staggerMs = idx * 280f
+                        val localMs = currentMs - staggerMs
+                        if (localMs <= 0f) continue
+
+                        val totalLife = 3200f
+                        val lifeU = (localMs / totalLife).coerceIn(0f, 1f)
+                        if (lifeU >= 1f) continue
+
+                        // Soft bounce impact on stamp down (0-300ms), hold, and gentle warm fade out (2400-3200ms)
+                        val alpha = when {
+                            localMs < 300f -> (localMs / 300f).coerceIn(0f, 1f)
+                            localMs > 2400f -> ((totalLife - localMs) / 800f).coerceIn(0f, 1f)
+                            else -> 1f
+                        }
+
+                        val stampBounce = if (localMs < 300f) {
+                            val st = localMs / 300f
+                            1f + kotlin.math.sin(st * Math.PI.toFloat()) * 0.35f
+                        } else {
+                            1f
+                        }
+
+                        val (px, py, baseAngle) = step
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(px, py)
+                        drawContext.canvas.nativeCanvas.rotate(baseAngle)
+                        drawContext.canvas.nativeCanvas.scale(stampBounce, stampBounce)
+
+                        val pr = 10f * density // Dog paw radius
+
+                        // Red Nose Pitty Color Palette: Rich warm chestnut / copper terracotta
+                        val pittyAuraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 90).toInt().coerceIn(0, 255), 254, 215, 170) // Warm peach aura
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pittyMainPadPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 194, 65, 12) // Warm Copper Chestnut
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pittyToePadPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 234, 88, 12) // Terracotta Red Nose Hue
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pittyClawPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 230).toInt().coerceIn(0, 255), 124, 45, 18) // Dark mahogany claw points
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // 1. Soft Impact Ring Aura
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, pr * 1.5f, pittyAuraPaint)
+
+                        // 2. Large Central Metacarpal Pad (Chunky dog palm with heart contour)
+                        val mainPad = android.graphics.Path().apply {
+                            moveTo(-pr * 0.72f, pr * 0.15f)
+                            quadTo(-pr * 0.85f, -pr * 0.35f, -pr * 0.45f, -pr * 0.55f)
+                            quadTo(0f, -pr * 0.25f, pr * 0.45f, -pr * 0.55f)
+                            quadTo(pr * 0.85f, -pr * 0.35f, pr * 0.72f, pr * 0.15f)
+                            quadTo(pr * 0.55f, pr * 0.75f, 0f, pr * 0.65f)
+                            quadTo(-pr * 0.55f, pr * 0.75f, -pr * 0.72f, pr * 0.15f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(mainPad, pittyMainPadPaint)
+
+                        // 3. 4 Oval Digital Toe Pads with Claw Points
+                        val toeOffsets = listOf(
+                            Pair(-pr * 0.68f, -pr * 0.85f),
+                            Pair(-pr * 0.24f, -pr * 1.15f),
+                            Pair(pr * 0.24f, -pr * 1.15f),
+                            Pair(pr * 0.68f, -pr * 0.85f)
+                        )
+                        for ((tx, ty) in toeOffsets) {
+                            drawContext.canvas.nativeCanvas.drawOval(tx - pr * 0.22f, ty - pr * 0.32f, tx + pr * 0.22f, ty + pr * 0.32f, pittyToePadPaint)
+                            // Subtle cute claw tip
+                            drawContext.canvas.nativeCanvas.drawCircle(tx, ty - pr * 0.40f, pr * 0.08f, pittyClawPaint)
+                        }
+
+                        // 4. Sweet Red Nose Pitty Heart Tribute on the final paw
+                        if (idx == pawSteps.size - 1 && localMs > 200f) {
+                            val heartU = ((localMs - 200f) / 1000f).coerceIn(0f, 1f)
+                            val heartFloatY = -pr * 1.6f - (heartU * 12f * density)
+                            val heartAlpha = (alpha * (1f - heartU * 0.3f)).coerceIn(0f, 1f)
+                            val redNoseHeartPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = android.graphics.Color.argb((heartAlpha * 255).toInt().coerceIn(0, 255), 225, 29, 72) // Red Nose Heart
+                                style = android.graphics.Paint.Style.FILL
+                            }
+                            val heartPath = android.graphics.Path().apply {
+                                moveTo(0f, heartFloatY)
+                                cubicTo(-pr * 0.4f, heartFloatY - pr * 0.5f, -pr * 0.7f, heartFloatY + pr * 0.1f, 0f, heartFloatY + pr * 0.7f)
+                                cubicTo(pr * 0.7f, heartFloatY + pr * 0.1f, pr * 0.4f, heartFloatY - pr * 0.5f, 0f, heartFloatY)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(heartPath, redNoseHeartPaint)
+                        }
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
                 }
             }
         }
