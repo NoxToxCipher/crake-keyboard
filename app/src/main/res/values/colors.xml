@@ -17,7 +17,7 @@
     <color name="cardViewBackgroundColor">#FFFFFF</color><!-- White -->
     <color name="navigationBarColor">#000000</color><!-- Black -->
     <color name="toolbarForegroundColor">#000000</color><!-- Black -->
-    <color name="windowBackground">#FAFAFA</color><!-- Gray 50 -->
+    <color name="windowBackground">#0A0E17</color><!-- Gray 50 -->
 
-    <color name="florisApp_windowBackground">#FFFFFFFF</color>
+    <color name="florisApp_windowBackground">#FF0A0E17</color>
 </resources>
