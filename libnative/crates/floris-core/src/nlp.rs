@@ -644,12 +644,15 @@ impl NlpEngine {
             }
         }
 
-        // Bigram context re-rank, v1: ORDERING ONLY. The immovable head —
-        // leading auto-commit candidates and the literal typed word — never
-        // moves, so the LM can surface a context-apt candidate without ever
+        // Neural context re-rank, ORDERING ONLY. The immovable head — leading
+        // auto-commit candidates and the literal typed word — never moves, so
+        // the rescorer can surface a context-apt candidate without ever
         // changing what auto-commits or hiding what the user typed. Runs
         // before truncation so context can rescue a candidate from below the
-        // display cut.
+        // display cut. The MLP (rescorer.rs) weighs edit units, frequency,
+        // and the bigram LM's pair score together; gated on the bigram table
+        // being loaded and context existing, so behaviour without either is
+        // bit-identical to the ungated path.
         if !self.bigrams.is_empty() && candidates.len() > 1 {
             let prev_clean: String = prev_word
                 .trim()
@@ -663,12 +666,28 @@ impl NlpEngine {
                     .take_while(|c| c.is_autocorrect || c.word.eq_ignore_ascii_case(trimmed))
                     .count();
                 if head < candidates.len() {
-                    candidates[head..].sort_by_key(|c| {
-                        std::cmp::Reverse(
-                            self.bigram_score_words(&prev_clean, &c.word.to_lowercase())
-                                .map_or(-1i32, i32::from),
-                        )
-                    });
+                    let scores: Vec<i64> = candidates[head..]
+                        .iter()
+                        .map(|c| {
+                            let cand = c.word.to_lowercase();
+                            let freq = self.trie.get_frequency(&cand).unwrap_or(0);
+                            let bigram = self.bigram_score_words(&prev_clean, &cand).unwrap_or(0);
+                            let f = crate::rescorer::features(
+                                &trimmed_lower,
+                                &cand,
+                                freq,
+                                bigram,
+                                |a, b| self.keys_near(a, b),
+                            );
+                            // Fixed-point so the sort key is total-ordered.
+                            (crate::rescorer::score(&f) * 1_000_000.0) as i64
+                        })
+                        .collect();
+                    let mut order: Vec<usize> = (0..scores.len()).collect();
+                    order.sort_by_key(|&i| std::cmp::Reverse(scores[i]));
+                    let reordered: Vec<RankedCandidate> =
+                        order.iter().map(|&i| candidates[head + i].clone()).collect();
+                    candidates.splice(head.., reordered);
                 }
             }
         }

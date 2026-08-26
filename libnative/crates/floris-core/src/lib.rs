@@ -13,6 +13,8 @@ pub mod bigram;
 pub mod blob;
 pub mod core_dict;
 pub mod hit_test;
+pub mod rescorer;
+pub mod rescorer_weights;
 pub mod touch_model;
 pub mod distance;
 pub mod glide;
