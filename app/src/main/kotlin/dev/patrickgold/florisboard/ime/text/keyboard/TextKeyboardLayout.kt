@@ -486,8 +486,8 @@ fun TextKeyboardLayout(
             if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 dukuFruitTriggerTime = System.currentTimeMillis()
             }
-            val carKeys = listOf("drive", "car", "driving", "cars", "aston martin", "aston")
-            if (carKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            val carKeys = listOf("drive", "car", "driving", "cars", "driver", "drives", "drove", "aston martin", "aston")
+            if (carKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 carDriveTriggerTime = System.currentTimeMillis()
             }
             val cryptoKeys = listOf(
