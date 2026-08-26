@@ -711,6 +711,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
 
     val theme = Theme()
     inner class Theme {
+        val showFretsOnBorderless = boolean(
+            key = "theme__show_frets_on_borderless",
+            default = true,
+        )
         val mode = enum(
             key = "theme__mode",
             default = ThemeMode.FOLLOW_SYSTEM,

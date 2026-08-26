@@ -38,8 +38,6 @@ import kotlinx.serialization.json.Json
 import org.florisboard.lib.android.readText
 import org.florisboard.lib.kotlin.guardedByLock
 import org.florisboard.libnative.FlorisNative
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 
 class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider {
     companion object {
@@ -49,6 +47,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val appContext by context.appContext()
     private val wordData = guardedByLock { mutableMapOf<String, Int>() }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
+
+    /**
+     * Whether a load attempt succeeded. The map's non-emptiness used to be
+     * the guard, but the blob path keeps the map empty (the corpus lives
+     * native-side), so it needs its own flag — without it every
+     * ensureLoaded() re-ran the full blob load. Guarded by the wordData lock.
+     */
+    private var dictLoaded = false
 
     override val providerId = ProviderId
 
@@ -64,9 +70,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private suspend fun ensureLoaded() = withContext(Dispatchers.IO) {
         wordData.withLock { words ->
-            if (words.isEmpty()) {
-                if (!loadFromBlob(words)) {
+            if (!dictLoaded) {
+                dictLoaded = if (loadFromBlob(words)) {
+                    true
+                } else {
                     loadFromJson(words)
+                    // JSON semantics unchanged: retry on next call only while
+                    // the map stayed empty (i.e. the load failed).
+                    words.isNotEmpty()
                 }
             }
         }
@@ -89,18 +100,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             val nativeCount = FlorisNative.loadDictionaryBlob(bytes)
             if (nativeCount < 0) return false
             val tNative = SystemClock.elapsedRealtime()
-            val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-            buf.position(9) // magic(4) + version(1) + count(4), validated natively
-            repeat(nativeCount) {
-                val wordBytes = ByteArray(buf.short.toInt() and 0xFFFF)
-                buf.get(wordBytes)
-                words[String(wordBytes, Charsets.UTF_8)] = buf.int
-            }
-            val tMap = SystemClock.elapsedRealtime()
+            // No JVM mirror of the dictionary any more: the native corpus
+            // store serves getListOfWords/getFrequencyForWord instead. The
+            // map stays empty on this path — it only fills on JSON fallback.
             Log.i(
                 "CrakeStartup",
                 "dict load (blob): assetRead=${tRead - tStart}ms nativeLoad(1 JNI call)=${tNative - tRead}ms " +
-                    "kotlinMap=${tMap - tNative}ms total=${tMap - tStart}ms words=$nativeCount",
+                    "total=${tNative - tStart}ms words=$nativeCount",
             )
             flogInfo { "Loaded $nativeCount dictionary words from CRKD blob" }
             true
@@ -231,11 +237,17 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     override suspend fun getListOfWords(subtype: Subtype): List<String> {
         ensureLoaded()
-        return wordData.withLock { it.keys.toList() }
+        // The map only holds data on the JSON fallback path; the blob path
+        // keeps the corpus native-side. Same 49,981 words either way.
+        val fromMap = wordData.withLock { it.keys.toList() }
+        if (fromMap.isNotEmpty()) return fromMap
+        return FlorisNative.corpusWords().toList()
     }
 
     override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
         ensureLoaded()
-        return (wordData.withLock { it[word] } ?: 0) / 255.0
+        val fromMap = wordData.withLock { it[word] }
+        if (fromMap != null) return fromMap / 255.0
+        return FlorisNative.corpusFrequency(word) / 255.0
     }
 }
