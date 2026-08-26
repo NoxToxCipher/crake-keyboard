@@ -23,6 +23,10 @@ import android.view.MotionEvent
 import android.view.animation.AccelerateInterpolator
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -330,6 +334,17 @@ fun TextKeyboardLayout(
                 emptyMap()
             }
         }
+        val infiniteTransition = rememberInfiniteTransition(label = "FretPulseTransition")
+        val fretCyanPulseAlpha by infiniteTransition.animateFloat(
+            initialValue = 0.35f,
+            targetValue = 0.90f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 2800, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "FretCyanPulseAlpha"
+        )
+
         // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows on all pages)
         if (keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
             val fretPositions = remember(keyboard) {
@@ -353,7 +368,7 @@ fun TextKeyboardLayout(
                 positions
             }
             for (fretY in fretPositions) {
-                // Top Specular Chrome Highlight with Subtle Cyan Core Glow
+                // Top Specular Chrome Highlight with Elegant Cyan Core Breathing Pulse
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -362,13 +377,13 @@ fun TextKeyboardLayout(
                         .background(
                             brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0x1500E5FF),
+                                    Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
                                     Color(0x60CBD5E1),
                                     Color(0xDDE2E8F0),
-                                    Color(0x8000E5FF),
+                                    Color(0xFF00E5FF).copy(alpha = fretCyanPulseAlpha),
                                     Color(0xDDE2E8F0),
                                     Color(0x60CBD5E1),
-                                    Color(0x1500E5FF),
+                                    Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
                                 )
                             )
                         )
