@@ -9,6 +9,7 @@
     clippy::perf
 )]
 
+pub mod bigram;
 pub mod blob;
 pub mod core_dict;
 pub mod hit_test;
@@ -20,6 +21,7 @@ pub mod shorthand;
 pub mod trie;
 pub mod typo_corpus;
 
+pub use bigram::{BigramError, BigramModel};
 pub use blob::{parse_dict_blob, BlobError};
 pub use core_dict::CORE_DICTIONARY;
 pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold};

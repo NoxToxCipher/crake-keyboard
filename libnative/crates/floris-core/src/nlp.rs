@@ -131,6 +131,12 @@ pub struct NlpEngine {
     /// the keyboard the user is really typing on. None until the first
     /// layout upload (and in host-side tests, which exercise the fallback).
     touch_model: Option<crate::TouchModel>,
+    /// Bigram language model (CRKB blob) for context re-ranking. Empty until
+    /// loaded; every consumer must behave identically when it is empty.
+    bigrams: crate::bigram::BigramModel,
+    /// Word -> CRKD-blob-order id, built as the corpus loads. The bigram
+    /// table's ids index this same order.
+    word_ids: std::collections::HashMap<String, u32>,
 }
 
 impl NlpEngine {
@@ -146,7 +152,28 @@ impl NlpEngine {
             session_recency: std::collections::VecDeque::new(),
             personal_corrections: std::collections::HashMap::new(),
             touch_model: None,
+            bigrams: crate::bigram::BigramModel::default(),
+            word_ids: std::collections::HashMap::new(),
         }
+    }
+
+    /// Loads the CRKB bigram table, replacing any previous one. Returns the
+    /// pair count; on any parse error the previous table is kept.
+    pub fn load_bigrams(&mut self, data: &[u8]) -> Result<usize, crate::bigram::BigramError> {
+        let model = crate::bigram::BigramModel::parse(data)?;
+        let count = model.len();
+        self.bigrams = model;
+        Ok(count)
+    }
+
+    pub fn bigram_count(&self) -> usize {
+        self.bigrams.len()
+    }
+
+    fn bigram_score_words(&self, prev: &str, next: &str) -> Option<u8> {
+        let a = *self.word_ids.get(prev)?;
+        let b = *self.word_ids.get(next)?;
+        self.bigrams.score(a, b)
     }
 
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
@@ -176,6 +203,10 @@ impl NlpEngine {
     /// last frequency and its first position, matching JVM map semantics.
     pub fn corpus_insert(&mut self, word: &str, freq: u32) {
         if self.corpus_freqs.insert(word.to_string(), freq).is_none() {
+            // First occurrence claims the next id: identical to the CRKD
+            // blob's entry order, which the bigram table's ids reference.
+            self.word_ids
+                .insert(word.to_string(), self.corpus_words.len() as u32);
             self.corpus_words.push(word.to_string());
         }
     }
@@ -610,6 +641,35 @@ impl NlpEngine {
                     word: formatted,
                     is_autocorrect: true,
                 });
+            }
+        }
+
+        // Bigram context re-rank, v1: ORDERING ONLY. The immovable head —
+        // leading auto-commit candidates and the literal typed word — never
+        // moves, so the LM can surface a context-apt candidate without ever
+        // changing what auto-commits or hiding what the user typed. Runs
+        // before truncation so context can rescue a candidate from below the
+        // display cut.
+        if !self.bigrams.is_empty() && candidates.len() > 1 {
+            let prev_clean: String = prev_word
+                .trim()
+                .to_lowercase()
+                .chars()
+                .filter(|c| c.is_alphabetic() || *c == '\'')
+                .collect();
+            if !prev_clean.is_empty() {
+                let head = candidates
+                    .iter()
+                    .take_while(|c| c.is_autocorrect || c.word.eq_ignore_ascii_case(trimmed))
+                    .count();
+                if head < candidates.len() {
+                    candidates[head..].sort_by_key(|c| {
+                        std::cmp::Reverse(
+                            self.bigram_score_words(&prev_clean, &c.word.to_lowercase())
+                                .map_or(-1i32, i32::from),
+                        )
+                    });
+                }
             }
         }
 

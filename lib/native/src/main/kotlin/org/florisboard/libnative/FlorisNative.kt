@@ -120,9 +120,19 @@ object FlorisNative {
         nativeNlpInsertWord(word, frequency)
     }
 
-    fun suggest(query: String, limit: Int = 3): List<NativeCandidate> {
+    /**
+     * Loads the CRKB bigram language model used for context re-ranking.
+     * Returns the pair count, or -1 on rejection (suggestions then simply
+     * run without context re-ranking — no fallback needed).
+     */
+    fun loadBigramBlob(data: ByteArray): Int {
+        if (!isLoaded || data.isEmpty()) return -1
+        return nativeNlpLoadBigramBlob(data)
+    }
+
+    fun suggest(query: String, limit: Int = 3, prevWord: String = ""): List<NativeCandidate> {
         if (!isLoaded || query.isBlank()) return emptyList()
-        val rawMatches = nativeNlpSuggest(query, limit)
+        val rawMatches = nativeNlpSuggestCtx(query, prevWord, limit)
         return rawMatches.map { raw ->
             val lastColon = raw.lastIndexOf(':')
             if (lastColon > 0) {
@@ -267,6 +277,10 @@ object FlorisNative {
     private external fun nativeHitTest(generation: Int, x: Float, y: Float): Int
 
     private external fun nativeNlpMergeRepair(prevWord: String, current: String): String
+
+    private external fun nativeNlpLoadBigramBlob(data: ByteArray): Int
+
+    private external fun nativeNlpSuggestCtx(query: String, prevWord: String, limit: Int): Array<String>
 
     private external fun nativeNlpCorpusWords(): Array<String>
 
