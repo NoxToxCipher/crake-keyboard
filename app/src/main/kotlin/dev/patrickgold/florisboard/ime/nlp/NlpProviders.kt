@@ -221,7 +221,8 @@ interface SuggestionProvider : NlpProvider {
                     // Include Emoji indicator in local composing. This is required so that emoji suggestion indicator'
                     // can be detected in the composing text.
                     (pos - 1).takeIf { updatedPos ->
-                        textBeforeSelection.getOrNull(updatedPos) == EmojiSuggestionType.LEADING_COLON.prefix.first()
+                        val char = textBeforeSelection.getOrNull(updatedPos)
+                        char == ':' || char == '!'
                     } ?: pos
                 }
                 EditorRange(start, end)

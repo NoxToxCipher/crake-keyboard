@@ -253,25 +253,25 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         val text = candidate.text.toString()
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val content = activeContent
-        return if (content.composing.isValid) {
-            phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
-            super.finalizeComposingText(text)
+
+        // Delete whatever token or shortcut trigger was typed before cursor (e.g. "!addr", "!time", "omw")
+        val tokenBeforeCursor = content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        if (tokenBeforeCursor.isNotEmpty()) {
+            runBlocking {
+                deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = tokenBeforeCursor.length)
+            }
+        } else if (content.composing.isValid) {
+            super.finalizeComposingText("")
+        }
+
+        val isPhantomSpaceActive = phantomSpace.determine(text)
+        phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
+        return if (isPhantomSpaceActive) {
+            super.commitText("$SPACE$text")
         } else {
-            val wordPrefix = content.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
-            if (wordPrefix.isNotEmpty()) {
-                runBlocking {
-                    deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = wordPrefix.length)
-                }
-            }
-            val isPhantomSpaceActive = phantomSpace.determine(text)
-            phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
-            return if (isPhantomSpaceActive) {
-                super.commitText("$SPACE$text")
-            } else {
-                super.commitText(text)
-            }.also {
-                updateLastCommitPosition()
-            }
+            super.commitText(text)
+        }.also {
+            updateLastCommitPosition()
         }
     }
 

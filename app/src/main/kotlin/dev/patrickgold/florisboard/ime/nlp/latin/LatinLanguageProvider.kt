@@ -113,9 +113,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     ): List<SuggestionCandidate> {
         ensureLoaded()
         val query = when {
+            content.textBeforeSelection.isNotEmpty() -> content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
             content.composingText.isNotBlank() -> content.composingText
-            content.currentWordText.isNotBlank() -> content.currentWordText
-            else -> content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+            else -> content.currentWordText
         }.trim()
 
         if (query.isBlank()) return emptyList()
