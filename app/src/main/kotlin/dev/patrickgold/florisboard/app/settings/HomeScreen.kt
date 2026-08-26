@@ -266,7 +266,7 @@ fun HomeScreen() = FlorisScreen {
             icon = Icons.Default.FlashOn,
             title = "Smart Text Expansion & Snippets",
             summary = "Custom triggers (!addr, !email, macros) & fast expansion",
-            badgeText = "SNIPPETS",
+            badgeText = "MACROS",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Snippets) },
         )
@@ -384,12 +384,16 @@ private fun CrakeNavTile(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
                     Text(
                         text = title,
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
+                        fontSize = 13.5.sp,
                         color = Color.White,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     if (badgeText != null) {
                         Spacer(modifier = Modifier.width(6.dp))
@@ -397,7 +401,7 @@ private fun CrakeNavTile(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(accentColor.copy(alpha = 0.15f))
-                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
                         ) {
                             Text(
                                 text = badgeText,
@@ -405,6 +409,8 @@ private fun CrakeNavTile(
                                 fontWeight = FontWeight.Bold,
                                 color = accentColor,
                                 fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                                softWrap = false,
                             )
                         }
                     }
