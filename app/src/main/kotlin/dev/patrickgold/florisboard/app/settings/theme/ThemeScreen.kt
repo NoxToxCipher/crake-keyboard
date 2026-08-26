@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LinearScale
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -63,6 +64,7 @@ import dev.patrickgold.florisboard.extensionManager
 import dev.patrickgold.florisboard.ime.theme.ThemeManager
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.lib.compose.CrakeListPreference
+import dev.patrickgold.florisboard.lib.compose.CrakeRadioPreference
 import dev.patrickgold.florisboard.lib.compose.CrakeRadioIndicator
 import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
@@ -202,6 +204,17 @@ fun ThemeScreen() = FlorisScreen {
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        CrakeSectionHeader(title = "BLACKBERRY 10 TITANIUM FRETS", badgeText = "GEOMETRIC")
+
+        CrakeRadioPreference(
+            pref = prefs.theme.showFretsOnBorderless,
+            title = "Show Frets on Borderless Themes",
+            summary = "Render dual-tone metallic fret bars and cyan pulse even when using borderless keycap styles",
+            icon = Icons.Default.LinearScale,
+            accentColor = CyberEmerald,
+        )
 
         Spacer(modifier = Modifier.height(14.dp))
         CrakeSectionHeader(title = "SYSTEM OVERRIDES & DAY/NIGHT")

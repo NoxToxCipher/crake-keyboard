@@ -521,7 +521,9 @@ fun TextKeyboardLayout(
             }
         }
 
-        if (!isBorderlessTheme && keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
+        val showFretsOnBorderless by prefs.theme.showFretsOnBorderless.collectAsState()
+        val shouldShowFrets = !isBorderlessTheme || showFretsOnBorderless
+        if (shouldShowFrets && keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
             val fretPositions = remember(keyboard, keyboard.mode, keyboardWidth, keyboardHeight, desiredKeyHack.value) {
                 val rowBounds = keyboard.keys().asSequence()
                     .groupBy { it.touchBounds.top.toInt() }
