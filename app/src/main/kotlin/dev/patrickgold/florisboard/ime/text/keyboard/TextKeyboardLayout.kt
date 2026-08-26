@@ -22,6 +22,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.foundation.layout.fillMaxSize
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
@@ -412,6 +414,16 @@ fun TextKeyboardLayout(
             }
         }
 
+        var eclectusFlightTriggerTime by remember { mutableStateOf(0L) }
+        LaunchedEffect(activeContent) {
+            val tb = activeContent.textBeforeSelection.toString().lowercase()
+            val comp = activeContent.composingText.lowercase()
+            val keys = listOf("eclectus", "ecky", "eckies", "roratus")
+            if (keys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+                eclectusFlightTriggerTime = System.currentTimeMillis()
+            }
+        }
+
         val currentWord = remember(activeContent) {
             when {
                 activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> {
@@ -766,6 +778,143 @@ fun TextKeyboardLayout(
                         ),
                         maxLines = 1,
                     )
+                }
+            }
+        }
+
+        // Roratus Live Wallpaper Easter Egg: Eclectus Parrots Tandem Flight
+        if (eclectusFlightTriggerTime > 0L) {
+            val flightProgress = remember(eclectusFlightTriggerTime) { Animatable(0f) }
+            LaunchedEffect(eclectusFlightTriggerTime) {
+                flightProgress.snapTo(0f)
+                flightProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4200, easing = LinearEasing),
+                )
+                eclectusFlightTriggerTime = 0L
+            }
+            if (flightProgress.value in 0.001f..0.999f) {
+                val t = flightProgress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val w = size.width
+                    val h = size.height
+
+                    // Smooth Swooping Bezier Curve across keyboard
+                    val startX = -60f * density
+                    val endX = w + 60f * density
+                    val u = 1f - t
+                    val cx = u * u * startX + 2 * u * t * (w * 0.5f) + t * t * endX
+                    val cy = u * u * (h * 0.70f) + 2 * u * t * (h * 0.15f) + t * t * (h * 0.55f)
+
+                    // Velocity Heading
+                    val vx = 2 * u * (w * 0.5f - startX) + 2 * t * (endX - w * 0.5f)
+                    val vy = 2 * u * (h * 0.15f - h * 0.70f) + 2 * t * (h * 0.55f - h * 0.15f)
+                    val angleDeg = Math.toDegrees(Math.atan2(vy.toDouble(), vx.toDouble())).toFloat()
+
+                    val flapSin = kotlin.math.sin(t * 36f)
+                    val wingSpanFactor = 0.55f + 0.45f * flapSin
+
+                    // Function to draw one Eclectus parrot
+                    fun drawParrot(x: Float, y: Float, isMale: Boolean, scale: Float) {
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(x, y)
+                        drawContext.canvas.nativeCanvas.rotate(angleDeg)
+                        drawContext.canvas.nativeCanvas.scale(scale * density, scale * density)
+
+                        val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = if (isMale) 0xFF18A957.toInt() else 0xFFE5484D.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val wingSheenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = if (isMale) 0xFF3FD680.toInt() else 0xFFFF5C63.toInt()
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.5f
+                        }
+                        val underwingPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = if (isMale) 0xFF2E6FD6.toInt() else 0xFF7C5CD6.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val beakPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = if (isMale) 0xFFF6813C.toInt() else 0xFF111815.toInt()
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        val bodyPath = android.graphics.Path().apply {
+                            moveTo(18f, 0f)
+                            lineTo(6f, 4f)
+                            lineTo(-12f, 3f)
+                            lineTo(-24f, 1.5f)
+                            lineTo(-24f, -1.5f)
+                            lineTo(-12f, -3f)
+                            lineTo(6f, -4f)
+                            close()
+                        }
+
+                        val wingSpread = 22f * wingSpanFactor
+                        val leftWing = android.graphics.Path().apply {
+                            moveTo(4f, -2f)
+                            lineTo(-6f, -wingSpread)
+                            lineTo(-14f, -wingSpread * 0.85f)
+                            lineTo(-10f, -2f)
+                            close()
+                        }
+                        val rightWing = android.graphics.Path().apply {
+                            moveTo(4f, 2f)
+                            lineTo(-6f, wingSpread)
+                            lineTo(-14f, wingSpread * 0.85f)
+                            lineTo(-10f, 2f)
+                            close()
+                        }
+
+                        val beakPath = android.graphics.Path().apply {
+                            moveTo(18f, 0f)
+                            lineTo(8f, 3.5f)
+                            lineTo(8f, -3.5f)
+                            close()
+                        }
+
+                        // Draw wings
+                        drawContext.canvas.nativeCanvas.drawPath(leftWing, underwingPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(rightWing, underwingPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(leftWing, wingSheenPaint)
+                        drawContext.canvas.nativeCanvas.drawPath(rightWing, wingSheenPaint)
+
+                        // Draw body
+                        drawContext.canvas.nativeCanvas.drawPath(bodyPath, bodyPaint)
+
+                        // Female Royal Violet band
+                        if (!isMale) {
+                            val bandPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = 0xFF7C5CD6.toInt()
+                                style = android.graphics.Paint.Style.FILL
+                            }
+                            val bandPath = android.graphics.Path().apply {
+                                moveTo(4f, -3.5f)
+                                lineTo(-4f, -3f)
+                                lineTo(-4f, 3f)
+                                lineTo(4f, 3.5f)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(bandPath, bandPaint)
+                        }
+
+                        // Draw beak
+                        drawContext.canvas.nativeCanvas.drawPath(beakPath, beakPaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // 1. Male Eclectus (Leader)
+                    drawParrot(cx, cy, isMale = true, scale = 0.85f)
+
+                    // 2. Female Eclectus (Tandem Follower: -48px behind, -22px above)
+                    val rad = Math.toRadians(angleDeg.toDouble())
+                    val femaleX = cx - (48f * density * kotlin.math.cos(rad).toFloat()) + (20f * density * kotlin.math.sin(rad).toFloat())
+                    val femaleY = cy - (48f * density * kotlin.math.sin(rad).toFloat()) - (20f * density * kotlin.math.cos(rad).toFloat())
+                    drawParrot(femaleX, femaleY, isMale = false, scale = 0.80f)
                 }
             }
         }

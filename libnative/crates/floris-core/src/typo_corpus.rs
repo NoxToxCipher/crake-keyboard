@@ -1446,6 +1446,8 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("salary", "salary"),
     ("sandwhich", "sandwich"),
     ("sandwich", "sandwich"),
+    ("saster", "easter"),
+    ("saster egg", "easter egg"),
     ("satelite", "satellite"),
     ("satellite", "satellite"),
     ("satisfactorily", "satisfactorily"),
