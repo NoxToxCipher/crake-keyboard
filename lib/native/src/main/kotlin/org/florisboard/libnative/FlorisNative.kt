@@ -352,4 +352,12 @@ object FlorisNative {
         return nativePgponyIsArmored(text)
     }
 
+    fun toBritishSpelling(word: String): String? {
+        if (!isAvailable()) return null
+        val res = nativeToBritishSpelling(word)
+        return if (res.isNullOrEmpty()) null else res
+    }
+
+    private external fun nativeToBritishSpelling(word: String): String?
+
 }

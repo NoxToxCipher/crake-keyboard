@@ -11,6 +11,7 @@
 
 pub mod bigram;
 pub mod blob;
+pub mod british_spelling;
 pub mod core_dict;
 pub mod hit_test;
 pub mod rescorer;

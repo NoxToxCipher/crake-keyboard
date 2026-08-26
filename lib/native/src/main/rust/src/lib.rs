@@ -858,3 +858,23 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePgponyI
         0
     }
 }
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeToBritishSpelling(
+    mut env: JNIEnv,
+    _class: JClass,
+    word: JString,
+) -> jstring {
+    let empty = env
+        .new_string("")
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+    let w = match env.get_string(&word) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return empty,
+    };
+    match floris_core::british_spelling::to_british_spelling(&w.to_lowercase()) {
+        Some(br) => env.new_string(br).map(|s| s.into_raw()).unwrap_or(empty),
+        None => empty,
+    }
+}
