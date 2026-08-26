@@ -646,6 +646,26 @@ private fun TextKeyButton(
                     )
             )
         }
+        if (key.computedData.code == KeyCode.SPACE) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 5.dp)
+                    .requiredSize(width = 54.dp, height = 2.dp)
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0x6000E5FF),
+                                Color(0xCC00E5FF),
+                                Color(0x6000E5FF),
+                                Color.Transparent,
+                            )
+                        ),
+                        shape = RoundedCornerShape(1.dp),
+                    )
+            )
+        }
     }
     if (debugShowTouchBoundaries) {
         Box(
