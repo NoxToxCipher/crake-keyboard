@@ -436,6 +436,7 @@ fun TextKeyboardLayout(
         var isNobleTrainMode by remember { mutableStateOf(false) }
         var louiePawsTriggerTime by remember { mutableStateOf(0L) }
         var irobotTriggerTime by remember { mutableStateOf(0L) }
+        var androidBugdroidTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -554,6 +555,10 @@ fun TextKeyboardLayout(
             }
             if (isAiFullMatch || isAiShortMatch) {
                 irobotTriggerTime = System.currentTimeMillis()
+            }
+            val androidKeys = listOf("android", "bugdroid", "green dude", "google android", "apk")
+            if (androidKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+                androidBugdroidTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -4520,6 +4525,213 @@ fun TextKeyboardLayout(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        // Android Little Green Dude (Bugdroid Pop-up, Antennae Wiggle, Wave, 360 Backflip & Thumbs Up)
+        if (androidBugdroidTriggerTime > 0L) {
+            val bugdroidProgress = remember(androidBugdroidTriggerTime) { Animatable(0f) }
+            LaunchedEffect(androidBugdroidTriggerTime) {
+                bugdroidProgress.snapTo(0f)
+                bugdroidProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4500, easing = LinearEasing),
+                )
+                androidBugdroidTriggerTime = 0L
+            }
+            if (bugdroidProgress.value in 0.001f..0.999f) {
+                val totalMs = 4500f
+                val currentMs = bugdroidProgress.value * totalMs
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    val baseCenterX = canvasW * 0.50f
+                    val baseCenterY = canvasH * 0.65f
+
+                    // Master Alpha: Pop in (0-300ms), Hold, Fade out (3900-4500ms)
+                    val alpha = when {
+                        currentMs < 300f -> (currentMs / 300f).coerceIn(0f, 1f)
+                        currentMs > 3900f -> ((4500f - currentMs) / 600f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+
+                    // Act 1 (0ms -> 1400ms): Pop up & Hand Wave
+                    // Act 2 (1400ms -> 2800ms): 360° Joy Backflip with Neon Sparkles
+                    // Act 3 (2800ms -> 4500ms): Double Thumbs Up & Happy Dance
+                    val isFlipping = currentMs in 1400f..2800f
+                    val flipU = if (isFlipping) (currentMs - 1400f) / 1400f else 0f
+
+                    val jumpY = if (isFlipping) {
+                        -kotlin.math.sin(flipU * Math.PI.toFloat()) * (36f * density)
+                    } else if (currentMs < 400f) {
+                        // Elastic entry spring
+                        val su = currentMs / 400f
+                        -(1f - su) * 20f * density
+                    } else {
+                        // Gentle idle breathing bob
+                        kotlin.math.sin(currentMs * 0.006f) * (2f * density)
+                    }
+
+                    val rotationAngle = if (isFlipping) {
+                        flipU * 360f
+                    } else {
+                        0f
+                    }
+
+                    // Squash & stretch on jump/landing
+                    val scaleX = when {
+                        isFlipping && (flipU < 0.15f || flipU > 0.85f) -> 1.18f
+                        isFlipping -> 0.90f
+                        currentMs in 2800f..3000f -> 1.15f
+                        else -> 1.0f
+                    }
+                    val scaleY = when {
+                        isFlipping && (flipU < 0.15f || flipU > 0.85f) -> 0.82f
+                        isFlipping -> 1.12f
+                        currentMs in 2800f..3000f -> 0.88f
+                        else -> 1.0f
+                    }
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(baseCenterX, baseCenterY + jumpY)
+                    drawContext.canvas.nativeCanvas.rotate(rotationAngle)
+                    drawContext.canvas.nativeCanvas.scale(scaleX, scaleY)
+
+                    val br = 12f * density // Bugdroid base radius unit
+
+                    // 1. Neon Green Aura Glow & Stardust Sparkles during Backflip
+                    val auraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 90).toInt().coerceIn(0, 255), 61, 220, 132)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, br * 2.2f, auraPaint)
+
+                    if (isFlipping) {
+                        val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 254, 240, 138)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        for (spIdx in 0 until 8) {
+                            val ang = spIdx * (Math.PI.toFloat() / 4f) + (flipU * 6.28f)
+                            val dist = br * (1.8f + (spIdx % 3) * 0.4f)
+                            val sx = kotlin.math.cos(ang) * dist
+                            val sy = kotlin.math.sin(ang) * dist
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 1.4f * density, sparkPaint)
+                        }
+                    }
+
+                    // 2. Official Android Green Paints
+                    val androidGreenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 61, 220, 132) // #3DDC84
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val eyePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val antennaPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((alpha * 255).toInt().coerceIn(0, 255), 61, 220, 132)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.8f * density
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+
+                    // A. Barrel Torso (Centered from Y: -2dp to Y: +16dp)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -br * 1.0f, -br * 0.15f, br * 1.0f, br * 1.35f,
+                        br * 0.25f, br * 0.25f, androidGreenPaint
+                    )
+
+                    // B. Semicircular Dome Head (Y: -3dp to Y: -16dp)
+                    val headW = br * 1.0f
+                    val headH = br * 0.95f
+                    val headGap = -br * 0.35f
+                    val headTop = headGap - headH
+
+                    drawContext.canvas.nativeCanvas.drawArc(
+                        -headW, headTop - headH, headW, headTop + headH,
+                        180f, 180f, true, androidGreenPaint
+                    )
+
+                    // C. 2 Wiggling Antennae
+                    val antennaWiggle = kotlin.math.sin(currentMs * 0.015f) * 6f
+                    // Left Antenna
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(-headW * 0.45f, headTop + 1f * density)
+                    drawContext.canvas.nativeCanvas.rotate(-28f + antennaWiggle)
+                    drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, -br * 0.55f, antennaPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Right Antenna
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(headW * 0.45f, headTop + 1f * density)
+                    drawContext.canvas.nativeCanvas.rotate(28f - antennaWiggle)
+                    drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, -br * 0.55f, antennaPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // D. 2 Bright White Round Eyes
+                    val eyeY = headTop + headH * 0.45f
+                    drawContext.canvas.nativeCanvas.drawCircle(-headW * 0.42f, eyeY, 1.6f * density, eyePaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(headW * 0.42f, eyeY, 1.6f * density, eyePaint)
+
+                    // E. Pill Legs (2 short rounded legs at bottom)
+                    val legW = br * 0.24f
+                    val legH = br * 0.50f
+                    val legY = br * 1.35f
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -br * 0.65f, legY, -br * 0.65f + legW * 2f, legY + legH,
+                        legW, legW, androidGreenPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        br * 0.65f - legW * 2f, legY, br * 0.65f, legY + legH,
+                        legW, legW, androidGreenPaint
+                    )
+
+                    // F. Left Arm & Right Arm (Waving or Thumbs Up!)
+                    val armW = br * 0.24f
+                    val armH = br * 0.90f
+                    val armY = -br * 0.10f
+
+                    // Left Arm:
+                    val leftArmAngle = if (currentMs > 2800f) {
+                        // Thumbs up / Cheer pose in Act 3
+                        -45f + kotlin.math.sin(currentMs * 0.01f) * 8f
+                    } else {
+                        kotlin.math.sin(currentMs * 0.005f) * 6f
+                    }
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(-br * 1.30f, armY)
+                    drawContext.canvas.nativeCanvas.rotate(leftArmAngle)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -armW, 0f, armW, armH, armW, armW, androidGreenPaint
+                    )
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Right Arm (Waving in Act 1, Cheering in Act 3):
+                    val rightArmAngle = if (currentMs < 1400f) {
+                        // Enthusiastic 3-stroke wave in Act 1
+                        -120f + kotlin.math.sin(currentMs * 0.02f) * 35f
+                    } else if (currentMs > 2800f) {
+                        // Thumbs up cheer in Act 3
+                        45f - kotlin.math.sin(currentMs * 0.01f) * 8f
+                    } else {
+                        kotlin.math.sin(currentMs * 0.005f) * 6f
+                    }
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(br * 1.30f, armY)
+                    drawContext.canvas.nativeCanvas.rotate(rightArmAngle)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        -armW, 0f, armW, armH, armW, armW, androidGreenPaint
+                    )
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
