@@ -161,15 +161,19 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         shape = roundedCornerShape(24.dp)
     }
     FlorisImeUi.SmartbarActionTile.elementName {
-        background = `var`("--background-variant")
+        background = rgbaColor(20, 25, 36)
         foreground = `var`("--on-background")
         fontSize = fontSize(14.sp)
         margin = padding(4.dp)
-        padding = padding(4.dp)
-        shape = roundedCornerShape(20)
+        padding = padding(6.dp)
+        shape = roundedCornerShape(12.dp)
         textAlign = textAlign(TextAlign.Center)
         textMaxLines = textMaxLines(2)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
+    }
+    FlorisImeUi.SmartbarActionTile.elementName(selector = SnyggSelector.PRESSED) {
+        background = rgbaColor(32, 40, 58)
+        foreground = rgbaColor(0, 229, 255)
     }
     FlorisImeUi.SmartbarActionTile.elementName(selector = SnyggSelector.DISABLED) {
         foreground = `var`("--on-background-disabled")
@@ -180,13 +184,13 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     }
 
     FlorisImeUi.SmartbarActionsEditor.elementName {
-        background = `var`("--background")
+        background = rgbaColor(10, 12, 18)
         foreground = `var`("--on-background")
-        shape = roundedCornerShape(24.dp, 24.dp, 0.dp, 0.dp)
+        shape = roundedCornerShape(20.dp, 20.dp, 0.dp, 0.dp)
     }
     FlorisImeUi.SmartbarActionsEditorHeader.elementName {
-        background = `var`("--surface")
-        foreground = `var`("--on-surface")
+        background = rgbaColor(16, 20, 30)
+        foreground = rgbaColor(0, 229, 255)
         fontSize = fontSize(16.sp)
         textMaxLines = textMaxLines(1)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
@@ -196,7 +200,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         shape = circleShape()
     }
     FlorisImeUi.SmartbarActionsEditorSubheader.elementName {
-        foreground = `var`("--secondary")
+        foreground = rgbaColor(0, 229, 255)
         fontSize = fontSize(16.sp)
         fontWeight = fontWeight(FontWeight.Bold)
         padding = padding(12.dp, 16.dp, 12.dp, 8.dp)
@@ -217,7 +221,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         foreground = `var`("--on-background-disabled")
     }
     FlorisImeUi.SmartbarActionsEditorTile.elementName(FlorisImeUi.Attr.Code to listOf(KeyCode.DRAG_MARKER)) {
-        foreground = rgbaColor(255, 0, 0)
+        foreground = rgbaColor(0, 229, 255)
     }
 
     FlorisImeUi.SmartbarCandidateWord.elementName {
