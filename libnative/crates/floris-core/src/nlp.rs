@@ -209,6 +209,14 @@ impl NlpEngine {
         self.bigrams.score(a, b)
     }
 
+    /// Public pair score for other engines (glide context blending):
+    /// 0 when either word is unknown or the pair is unseen. Inputs are
+    /// lowercased here so callers cannot get casing wrong.
+    pub fn bigram_pair_score(&self, prev: &str, next: &str) -> u8 {
+        self.bigram_score_words(&prev.to_lowercase(), &next.to_lowercase())
+            .unwrap_or(0)
+    }
+
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
         self.touch_model = model;
     }

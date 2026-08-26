@@ -212,6 +212,23 @@ impl GlideEngine {
         trie: &RadixTrie,
         max_results: usize,
     ) -> Vec<GlideMatch> {
+        self.match_gesture_with_context(raw_path, trie, max_results, None)
+    }
+
+    /// Context-aware gesture match: identical geometry scoring, plus a bonus
+    /// for words the bigram language model expects after `prev_word`. The
+    /// bonus is deliberately modest — strong context (score ~200) is worth
+    /// about one key-width of anchor error, so geometry still dominates and
+    /// context breaks ties between near-identical traces ("hello"/"jello").
+    /// With `context: None` the behaviour is bit-identical to
+    /// [`Self::match_gesture`].
+    pub fn match_gesture_with_context(
+        &self,
+        raw_path: &[Point2D],
+        trie: &RadixTrie,
+        max_results: usize,
+        context: Option<(&crate::NlpEngine, &str)>,
+    ) -> Vec<GlideMatch> {
         if raw_path.len() < 2 || self.key_centers.is_empty() {
             return Vec::new();
         }
@@ -289,7 +306,15 @@ impl GlideEngine {
 
                     // Combine DTW geometric closeness with word frequency bonus
                     let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
-                    let total_score = normalized_dist + anchor_penalty - freq_bonus;
+                    // Sentence-context bonus from the bigram LM (0 without
+                    // context or when the pair is unseen).
+                    let context_bonus = match context {
+                        Some((nlp, prev)) if !prev.is_empty() => {
+                            nlp.bigram_pair_score(prev, &word) as f32 * 0.04
+                        }
+                        _ => 0.0,
+                    };
+                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus;
 
                     matches.push(GlideMatch {
                         word,

@@ -236,11 +236,11 @@ object FlorisNative {
         nativeGlideSetLayout(codes, chars, xs, ys, widths, heights)
     }
 
-    fun glideMatch(points: List<GlidePoint>, maxResults: Int = 5): List<String> {
+    fun glideMatch(points: List<GlidePoint>, maxResults: Int = 5, prevWord: String = ""): List<String> {
         if (!isLoaded || points.size < 2) return emptyList()
         val xs = FloatArray(points.size) { points[it].x }
         val ys = FloatArray(points.size) { points[it].y }
-        return nativeGlideMatch(xs, ys, maxResults).toList()
+        return nativeGlideMatch(xs, ys, maxResults, prevWord).toList()
     }
 
     @JvmStatic
@@ -258,6 +258,7 @@ object FlorisNative {
         xs: FloatArray,
         ys: FloatArray,
         maxResults: Int,
+        prevWord: String,
     ): Array<String>
 
     @JvmStatic

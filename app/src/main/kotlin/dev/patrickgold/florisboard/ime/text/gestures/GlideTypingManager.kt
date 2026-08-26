@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.ime.text.gestures
 
 import android.content.Context
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.keyboard.KeyData
 import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKey
@@ -42,6 +43,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     }
 
     private val prefs by FlorisPreferenceStore
+    private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
     private val nlpManager by context.nlpManager()
     private val subtypeManager by context.subtypeManager()
@@ -116,7 +118,13 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
         scope.launch(Dispatchers.Default) {
             val pts = synchronized(gesturePoints) { gesturePoints.toList() }
             val nativeSuggestions = if (FlorisNative.isAvailable() && pts.size >= 2) {
-                FlorisNative.glideMatch(pts, MAX_SUGGESTION_COUNT)
+                // Previous committed word, so the native matcher can blend
+                // sentence context (bigram LM) into gesture scoring.
+                val prevWord = editorInstance.activeContent.textBeforeSelection
+                    .trimEnd()
+                    .takeLastWhile { it.isLetter() || it == '\'' }
+                    .toString()
+                FlorisNative.glideMatch(pts, MAX_SUGGESTION_COUNT, prevWord)
             } else {
                 emptyList()
             }

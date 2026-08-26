@@ -688,6 +688,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
     xs: JFloatArray,
     ys: JFloatArray,
     max_results: jint,
+    prev_word: JString,
 ) -> jobjectArray {
     let empty_array = env
         .new_object_array(0, "java/lang/String", JString::default())
@@ -717,12 +718,18 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
         path.push(Point2D::new(x_buf[i], y_buf[i]));
     }
 
+    let prev = env
+        .get_string(&prev_word)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+
     let matches = {
         let glide_guard = GLIDE_ENGINE.read();
         let nlp_guard = NLP_ENGINE.read();
 
         if let (Ok(glide), Ok(nlp)) = (glide_guard, nlp_guard) {
-            glide.match_gesture(&path, &nlp.trie, max_results.max(1) as usize)
+            let context = if prev.is_empty() { None } else { Some((&*nlp, prev.as_str())) };
+            glide.match_gesture_with_context(&path, &nlp.trie, max_results.max(1) as usize, context)
         } else {
             Vec::new()
         }

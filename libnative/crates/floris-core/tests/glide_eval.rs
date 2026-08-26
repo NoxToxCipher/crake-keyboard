@@ -168,6 +168,70 @@ fn synth_sloppy_trace(engine: &GlideEngine, word: &str, rng: &mut Lcg) -> Option
     Some(trace)
 }
 
+/// Context-aware glide: "hello" and "jello" trace nearly identical paths
+/// (h/j are adjacent), so geometry cannot separate them. With "jello" given
+/// the higher frequency, only sentence context can rescue "hello" — and it
+/// must, after "say". Without context the frequency favourite must still
+/// win, proving the None path is unchanged.
+#[test]
+fn context_separates_near_identical_traces() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for (w, f) in [("hello", 200), ("jello", 240), ("say", 220)] {
+        nlp.corpus_insert(w, f);
+        nlp.trie.insert(w, f);
+    }
+    let say_id = nlp.corpus_words().iter().position(|w| w == "say").unwrap() as u32;
+    let hello_id = nlp.corpus_words().iter().position(|w| w == "hello").unwrap() as u32;
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"CRKB");
+    blob.push(2);
+    blob.extend_from_slice(&1u32.to_le_bytes());
+    blob.extend_from_slice(&(nlp.corpus_words().len() as u32).to_le_bytes());
+    blob.extend_from_slice(&say_id.to_le_bytes());
+    blob.extend_from_slice(&hello_id.to_le_bytes());
+    blob.push(220);
+    nlp.load_bigrams(&blob).unwrap();
+
+    let mut rng = Lcg(0xFACADE);
+    // Start the gesture midway between h and j so the anchor cannot decide:
+    // shift the whole trace half a key toward j. Geometry is now genuinely
+    // ambiguous between hello and jello; frequency (or context) must decide.
+    let trace: Vec<Point2D> = synth_trace(&glide, "hello", &mut rng)
+        .unwrap()
+        .into_iter()
+        .map(|p| Point2D::new(p.x + 50.0, p.y))
+        .collect();
+
+    let score_of = |ms: &[floris_core::GlideMatch], w: &str| {
+        ms.iter().find(|m| m.word == w).map(|m| m.score).unwrap()
+    };
+    let no_ctx = glide.match_gesture(&trace, &nlp.trie, 3);
+    for w in ["hello", "jello"] {
+        assert!(
+            no_ctx.iter().any(|m| m.word == w),
+            "ambiguous trace must offer '{w}', got {:?}",
+            no_ctx.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+        );
+    }
+    let gap_no_ctx = score_of(&no_ctx, "jello") - score_of(&no_ctx, "hello");
+
+    let with_ctx = glide.match_gesture_with_context(&trace, &nlp.trie, 3, Some((&nlp, "say")));
+    assert_eq!(
+        with_ctx.first().map(|m| m.word.as_str()),
+        Some("hello"),
+        "'say hello' (220) must lead with context, got {:?}",
+        with_ctx.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+    // The bonus is exactly bigram * 0.04 and applies only to "hello", so the
+    // hello-vs-jello margin must widen by 220 * 0.04 = 8.8 (float tolerance).
+    let gap_ctx = score_of(&with_ctx, "jello") - score_of(&with_ctx, "hello");
+    assert!(
+        (gap_ctx - gap_no_ctx - 8.8).abs() < 0.05,
+        "context must widen the margin by 8.8: {gap_no_ctx} -> {gap_ctx}"
+    );
+}
+
 /// Regression armor for the "israeli for testing" field report (2026-08-26):
 /// a clean glide can never surface a word whose first letter is nowhere near
 /// where the finger landed — the start-anchor filter and penalty must hold
