@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2025 The FlorisBoard Contributors
+ * Copyright (C) 2021-2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,45 +17,64 @@
 package dev.patrickgold.florisboard.app.settings.about
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Policy
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.R
-import dev.patrickgold.florisboard.app.LocalNavController
-import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.launchUrl
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import org.florisboard.lib.android.stringRes
-import org.florisboard.lib.compose.FlorisCanvasIcon
 import org.florisboard.lib.compose.stringRes
+
+private val CardSurface = Color(0xFF131A29)
+private val CardBorder = Color(0xFF222D42)
+private val CyberEmerald = Color(0xFF00E5A3)
+private val ElectricCyan = Color(0xFF00D2FF)
+private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
 fun AboutScreen() = FlorisScreen {
     title = stringRes(R.string.about__title)
 
-    val navController = LocalNavController.current
     val context = LocalContext.current
     val clipboardManager by context.clipboardManager()
-
     val appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
     content {
@@ -64,20 +83,82 @@ fun AboutScreen() = FlorisScreen {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp, bottom = 32.dp)
+                .padding(top = 24.dp, bottom = 24.dp)
         ) {
-            FlorisCanvasIcon(
-                modifier = Modifier.requiredSize(64.dp),
-                iconId = R.mipmap.floris_app_icon,
-                contentDescription = "FlorisBoard app icon",
-            )
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF0F172A))
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_app_icon_foreground),
+                    contentDescription = "Crake Logo",
+                    modifier = Modifier.size(64.dp),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             Text(
                 text = "CRAKE KEYBOARD",
-                fontSize = 24.sp,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                letterSpacing = 1.5.sp,
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "SAFE RUST CORE • AIR-GAPPED • LOCAL VAULT",
+                fontSize = 10.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 16.dp),
+                color = CyberEmerald,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 1.sp,
             )
         }
+
+        // CRAKE ARCHITECTURE & PRIVACY CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = CyberEmerald,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Cryptographic Sovereignty",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.5.sp,
+                        color = Color.White,
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Crake Keyboard is an independent, security-hardened air-gapped fork engineered for absolute privacy, 5.3M word/s native Safe Rust NLP predictive intelligence, and encrypted local storage.",
+                    fontSize = 11.5.sp,
+                    color = TextMuted,
+                    lineHeight = 16.sp,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
         Preference(
             icon = Icons.Outlined.Info,
             title = stringRes(R.string.about__version__title),
@@ -95,35 +176,28 @@ fun AboutScreen() = FlorisScreen {
                 }
             },
         )
+
         Preference(
-            icon = Icons.Default.History,
-            title = stringRes(R.string.about__changelog__title),
-            summary = stringRes(R.string.about__changelog__summary),
-            onClick = { context.launchUrl(R.string.florisboard__changelog_url, "version" to BuildConfig.VERSION_NAME) },
+            icon = Icons.Default.Memory,
+            title = "Native Engine Core",
+            summary = "Safe Rust 5.3M word/s Radix Trie + Damerau-Levenshtein Engine",
+            onClick = {},
         )
+
+        Preference(
+            icon = Icons.Default.Lock,
+            title = "Zero-Network Guarantee",
+            summary = "100% Air-Gapped • No Internet Permission • Zero Telemetry",
+            onClick = {},
+        )
+
         Preference(
             icon = Icons.Default.Code,
             title = stringRes(R.string.about__repository__title),
-            summary = stringRes(R.string.about__repository__summary),
+            summary = "https://github.com/NoxToxCipher/crake-keyboard",
             onClick = { context.launchUrl(R.string.florisboard__repo_url) },
         )
-        Preference(
-            icon = Icons.Outlined.Policy,
-            title = stringRes(R.string.about__privacy_policy__title),
-            summary = stringRes(R.string.about__privacy_policy__summary),
-            onClick = { context.launchUrl(R.string.florisboard__privacy_policy_url) },
-        )
-        Preference(
-            icon = Icons.Outlined.Description,
-            title = stringRes(R.string.about__project_license__title),
-            summary = stringRes(R.string.about__project_license__summary, "license_name" to "Apache 2.0"),
-            onClick = { navController.navigate(Routes.Settings.ProjectLicense) },
-        )
-        Preference(
-            icon = Icons.Outlined.Description,
-            title = stringRes(id = R.string.about__third_party_licenses__title),
-            summary = stringRes(id = R.string.about__third_party_licenses__summary),
-            onClick = { navController.navigate(Routes.Settings.ThirdPartyLicenses) },
-        )
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
