@@ -1765,9 +1765,9 @@ fun TextKeyboardLayout(
                         setShadowLayer(5f * density, 0f, 1f * density, 0xFF000000.toInt())
                     }
 
-                    // Fret 1: "Cat all their farms to level 0." (0ms -> 3800ms)
+                    // Fret 1: "Cat all their farms to level 1." (0ms -> 3800ms)
                     if (currentMs in 0f..3800f) {
-                        val text = "Cat all their farms to level 0."
+                        val text = "Cat all their farms to level 1."
                         val textW = textPaint.measureText(text)
                         val u = (currentMs / 3800f).coerceIn(0f, 1f)
                         val alpha = (if (u < 0.15f) (u / 0.15f) else if (u > 0.85f) ((1f - u) / 0.15f) else 1f).coerceIn(0f, 1f)
