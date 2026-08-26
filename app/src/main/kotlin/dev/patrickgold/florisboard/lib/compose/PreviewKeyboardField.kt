@@ -78,6 +78,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -371,7 +372,7 @@ fun PreviewKeyboardField(
                             // Glide Typing Toggle Pill
                             Card(
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (glideEnabled) ElectricCyan.copy(alpha = 0.12f) else Color(0xFF0E131F)
                                 ),
@@ -383,26 +384,33 @@ fun PreviewKeyboardField(
                                 },
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(10.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Gesture,
                                         contentDescription = null,
                                         tint = if (glideEnabled) ElectricCyan else TextMuted,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
+                                        modifier = Modifier.fillMaxWidth(),
                                         text = "Glide Typing",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        textAlign = TextAlign.Center,
                                         color = if (glideEnabled) Color.White else TextMuted,
                                     )
+                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
+                                        modifier = Modifier.fillMaxWidth(),
                                         text = if (glideEnabled) "ON" else "OFF",
-                                        fontSize = 9.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
                                         color = if (glideEnabled) ElectricCyan else TextMuted,
                                         fontFamily = FontFamily.Monospace,
                                     )
@@ -412,7 +420,7 @@ fun PreviewKeyboardField(
                             // Haptics Toggle Pill
                             Card(
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp),
+                                shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (hapticEnabled) CyberEmerald.copy(alpha = 0.12f) else Color(0xFF0E131F)
                                 ),
@@ -424,26 +432,33 @@ fun PreviewKeyboardField(
                                 },
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(10.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 12.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Vibration,
                                         contentDescription = null,
                                         tint = if (hapticEnabled) CyberEmerald else TextMuted,
-                                        modifier = Modifier.size(18.dp),
+                                        modifier = Modifier.size(20.dp),
                                     )
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
+                                        modifier = Modifier.fillMaxWidth(),
                                         text = "Haptics",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        textAlign = TextAlign.Center,
                                         color = if (hapticEnabled) Color.White else TextMuted,
                                     )
+                                    Spacer(modifier = Modifier.height(2.dp))
                                     Text(
+                                        modifier = Modifier.fillMaxWidth(),
                                         text = if (hapticEnabled) "ON" else "OFF",
-                                        fontSize = 9.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
                                         color = if (hapticEnabled) CyberEmerald else TextMuted,
                                         fontFamily = FontFamily.Monospace,
                                     )
