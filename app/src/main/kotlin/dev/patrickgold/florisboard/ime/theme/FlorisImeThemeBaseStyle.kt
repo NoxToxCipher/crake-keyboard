@@ -271,31 +271,35 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         padding = padding(10.dp)
     }
     FlorisImeUi.ClipboardItem.elementName {
-        background = `var`("--surface")
+        background = rgbaColor(18, 22, 32)
         foreground = `var`("--on-surface")
         fontSize = fontSize(14.sp)
         margin = padding(4.dp)
         padding = padding(12.dp, 8.dp)
-        shape = `var`("--shape-variant")
-        shadowElevation = size(2.dp)
+        shape = roundedCornerShape(10.dp)
+        shadowElevation = size(3.dp)
         textMaxLines = textMaxLines(10)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
     }
+    FlorisImeUi.ClipboardItem.elementName(selector = SnyggSelector.PRESSED) {
+        background = rgbaColor(28, 35, 52)
+        foreground = rgbaColor(0, 229, 255)
+    }
     FlorisImeUi.ClipboardItemPopup.elementName {
-        background = `var`("--surface")
-        foreground = `var`("--on-surface")
+        background = rgbaColor(16, 20, 30)
+        foreground = rgbaColor(0, 229, 255)
         fontSize = fontSize(14.sp)
         margin = padding(4.dp)
         padding = padding(12.dp, 8.dp)
-        shape = `var`("--shape-variant")
-        shadowElevation = size(2.dp)
+        shape = roundedCornerShape(10.dp)
+        shadowElevation = size(6.dp)
     }
     FlorisImeUi.ClipboardItemActions.elementName {
-        background = `var`("--surface")
+        background = rgbaColor(16, 20, 30)
         foreground = `var`("--on-surface")
         margin = padding(4.dp)
-        shape = `var`("--shape-variant")
-        shadowElevation = size(2.dp)
+        shape = roundedCornerShape(10.dp)
+        shadowElevation = size(6.dp)
     }
     FlorisImeUi.ClipboardItemAction.elementName {
         fontSize = fontSize(16.sp)
