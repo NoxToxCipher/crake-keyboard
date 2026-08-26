@@ -420,11 +420,12 @@ fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
     val batteryAnim = remember(overchargeTriggerTime) { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(overchargeTriggerTime) {
         if (overchargeTriggerTime > 0L) {
-            batteryAnim.snapTo(1f)
-            batteryAnim.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(durationMillis = 5000, easing = androidx.compose.animation.core.LinearEasing),
-            )
+            // Smooth 300ms fade in
+            batteryAnim.animateTo(1f, tween(300, easing = androidx.compose.animation.core.LinearEasing))
+            // Hold full supercharge for 4200ms
+            kotlinx.coroutines.delay(4200L)
+            // Smooth 500ms fade out completely
+            batteryAnim.animateTo(0f, tween(500, easing = androidx.compose.animation.core.LinearEasing))
             overchargeTriggerTime = 0L
         }
     }
@@ -458,34 +459,32 @@ fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
     val density = LocalDensity.current.density
     val overchargeAlpha = batteryAnim.value
 
-    androidx.compose.foundation.Canvas(
-        modifier = modifier
-            .width(28.dp)
-            .height(FlorisImeSizing.smartbarHeight)
-            .graphicsLayer {
-                if (overchargeAlpha > 0f) {
+    if (overchargeAlpha > 0f) {
+        androidx.compose.foundation.Canvas(
+            modifier = modifier
+                .width(28.dp)
+                .height(FlorisImeSizing.smartbarHeight)
+                .graphicsLayer {
                     val vibration = (kotlin.math.sin(lightningPhase * 2 * Math.PI) * 2f * overchargeAlpha).toFloat()
                     translationY = vibration
                     scaleX = 1f + (energyPulse - 1f) * overchargeAlpha * 0.4f
                     scaleY = 1f + (energyPulse - 1f) * overchargeAlpha * 0.4f
                 }
-            }
-    ) {
-        val canvasW = this.size.width
-        val canvasH = this.size.height
-        val cx = canvasW / 2f
-        val cy = canvasH / 2f
+        ) {
+            val canvasW = this.size.width
+            val canvasH = this.size.height
+            val cx = canvasW / 2f
+            val cy = canvasH / 2f
 
-        val battW = 18f * density
-        val battH = 9.5f * density
-        val left = cx - battW / 2f
-        val top = cy - battH / 2f
-        val right = left + battW
-        val bottom = top + battH
-        val corner = 2.5f * density
+            val battW = 18f * density
+            val battH = 9.5f * density
+            val left = cx - battW / 2f
+            val top = cy - battH / 2f
+            val right = left + battW
+            val bottom = top + battH
+            val corner = 2.5f * density
 
-        // 1. Overcharged Outer Neon Aura Glow
-        if (overchargeAlpha > 0f) {
+            // 1. Overcharged Outer Neon Aura Glow
             val auraPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 color = android.graphics.Color.argb((overchargeAlpha * 120 * (energyPulse - 0.7f)).toInt().coerceIn(0, 255), 0, 240, 255)
                 style = android.graphics.Paint.Style.FILL
@@ -493,66 +492,53 @@ fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
             drawContext.canvas.nativeCanvas.drawRoundRect(left - 4f * density, top - 4f * density, right + 6f * density, bottom + 4f * density, corner * 2.5f, corner * 2.5f, auraPaint)
 
             val yellowAura = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.argb((overchargeAlpha * 160).toInt(), 255, 230, 0)
+                color = android.graphics.Color.argb((overchargeAlpha * 160).toInt().coerceIn(0, 255), 255, 230, 0)
                 style = android.graphics.Paint.Style.STROKE
                 strokeWidth = 1.8f * density
             }
             drawContext.canvas.nativeCanvas.drawRoundRect(left - 2f * density, top - 2f * density, right + 4.5f * density, bottom + 2f * density, corner * 1.8f, corner * 1.8f, yellowAura)
-        }
 
-        // 2. Battery Shell Border & Terminal Nub
-        val shellPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (overchargeAlpha > 0f) {
-                android.graphics.Color.argb(255, 255, 235, 59) // Electric Gold
-            } else {
-                android.graphics.Color.argb(160, 200, 210, 225) // Clean metallic
+            // 2. Battery Shell Border & Terminal Nub (Electric Gold)
+            val shellPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.argb((overchargeAlpha * 255).toInt().coerceIn(0, 255), 255, 235, 59)
+                style = android.graphics.Paint.Style.STROKE
+                strokeWidth = 1.2f * density
             }
-            style = android.graphics.Paint.Style.STROKE
-            strokeWidth = 1.2f * density
-        }
-        drawContext.canvas.nativeCanvas.drawRoundRect(left, top, right, bottom, corner, corner, shellPaint)
+            drawContext.canvas.nativeCanvas.drawRoundRect(left, top, right, bottom, corner, corner, shellPaint)
 
-        // Terminal Positive Nub
-        val nubPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = shellPaint.color
-            style = android.graphics.Paint.Style.FILL
-        }
-        val nubW = 1.8f * density
-        val nubH = 4.2f * density
-        drawContext.canvas.nativeCanvas.drawRoundRect(right + 0.5f, cy - nubH / 2f, right + nubW + 0.5f, cy + nubH / 2f, 1f * density, 1f * density, nubPaint)
+            // Terminal Positive Nub
+            val nubPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                color = shellPaint.color
+                style = android.graphics.Paint.Style.FILL
+            }
+            val nubW = 1.8f * density
+            val nubH = 4.2f * density
+            drawContext.canvas.nativeCanvas.drawRoundRect(right + 0.5f, cy - nubH / 2f, right + nubW + 0.5f, cy + nubH / 2f, 1f * density, 1f * density, nubPaint)
 
-        // 3. Battery Fill
-        val fillPadding = 1.6f * density
-        val fillMaxW = (battW - fillPadding * 2)
-        val fillPct = if (overchargeAlpha > 0f) 1.0f else (realLevel / 100f)
-        val currentFillW = fillMaxW * fillPct
+            // 3. Battery Fill (Neon Supercharged Plasma)
+            val fillPadding = 1.6f * density
+            val fillMaxW = (battW - fillPadding * 2)
+            val currentFillW = fillMaxW * 1.0f
 
-        val fillPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (overchargeAlpha > 0f) {
-                // Electric Neon Cyan-Green Plasma
+            val fillPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                 val r = (0 + overchargeAlpha * 255).toInt().coerceIn(0, 255)
                 val g = 240
                 val b = (255 - overchargeAlpha * 100).toInt().coerceIn(0, 255)
-                android.graphics.Color.argb(230, r, g, b)
-            } else if (realLevel > 20) {
-                android.graphics.Color.argb(220, 56, 189, 248) // Clean Sky Blue
-            } else {
-                android.graphics.Color.argb(240, 239, 68, 68) // Low battery Red
+                val a = (overchargeAlpha * 230).toInt().coerceIn(0, 255)
+                color = android.graphics.Color.argb(a, r, g, b)
+                style = android.graphics.Paint.Style.FILL
             }
-            style = android.graphics.Paint.Style.FILL
-        }
-        drawContext.canvas.nativeCanvas.drawRoundRect(
-            left + fillPadding,
-            top + fillPadding,
-            left + fillPadding + currentFillW,
-            bottom - fillPadding,
-            corner * 0.6f,
-            corner * 0.6f,
-            fillPaint
-        )
+            drawContext.canvas.nativeCanvas.drawRoundRect(
+                left + fillPadding,
+                top + fillPadding,
+                left + fillPadding + currentFillW,
+                bottom - fillPadding,
+                corner * 0.6f,
+                corner * 0.6f,
+                fillPaint
+            )
 
-        // 4. Energized Electric Lightning Bolt (when overcharged)
-        if (overchargeAlpha > 0f) {
+            // 4. Energized Electric Lightning Bolt
             val boltPath = android.graphics.Path().apply {
                 val bx = cx - 1f * density
                 val by = cy
@@ -565,11 +551,11 @@ fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
                 close()
             }
             val boltPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.argb((overchargeAlpha * 255).toInt(), 255, 255, 255)
+                color = android.graphics.Color.argb((overchargeAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
                 style = android.graphics.Paint.Style.FILL
             }
             val boltGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.argb((overchargeAlpha * 200).toInt(), 255, 230, 0)
+                color = android.graphics.Color.argb((overchargeAlpha * 200).toInt().coerceIn(0, 255), 255, 230, 0)
                 style = android.graphics.Paint.Style.STROKE
                 strokeWidth = 0.9f * density
             }
