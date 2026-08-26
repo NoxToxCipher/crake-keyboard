@@ -344,31 +344,55 @@ fun TextKeyboardLayout(
             ),
             label = "FretCyanPulseAlpha"
         )
+        val pulseSpread by infiniteTransition.animateFloat(
+            initialValue = 0.10f,
+            targetValue = 0.38f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 2800, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "FretPulseSpread"
+        )
+
+        val leftCore = (0.5f - pulseSpread).coerceAtLeast(0.05f)
+        val rightCore = (0.5f + pulseSpread).coerceAtMost(0.95f)
+        val leftFade = (leftCore - 0.12f).coerceAtLeast(0f)
+        val rightFade = (rightCore + 0.12f).coerceAtMost(1f)
 
         // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows on all pages)
         if (keyboard.mode in setOf(KeyboardMode.CHARACTERS, KeyboardMode.SYMBOLS, KeyboardMode.SYMBOLS2, KeyboardMode.NUMERIC, KeyboardMode.NUMERIC_ADVANCED, KeyboardMode.PHONE, KeyboardMode.PHONE2)) {
-            val fretPositions = remember(keyboard) {
+            val fretPositions = remember(keyboard, keyboard.mode, keyboardWidth, keyboardHeight, desiredKeyHack.value) {
                 val rowBounds = keyboard.keys().asSequence()
                     .groupBy { it.touchBounds.top.toInt() }
                     .values
-                    .map { keysInRow ->
-                        val top = keysInRow.minOf { it.visibleBounds.top }
-                        val bottom = keysInRow.maxOf { it.visibleBounds.bottom }
-                        top to bottom
+                    .mapNotNull { keysInRow ->
+                        val top = keysInRow.minOfOrNull { it.visibleBounds.top }
+                        val bottom = keysInRow.maxOfOrNull { it.visibleBounds.bottom }
+                        if (top != null && bottom != null && bottom > top) top to bottom else null
                     }
                     .sortedBy { it.first }
 
                 val positions = mutableListOf<Int>()
-                for (i in 1 until rowBounds.size) {
-                    val prevBottom = rowBounds[i - 1].second
-                    val currentTop = rowBounds[i].first
-                    val centerBetweenRows = ((prevBottom + currentTop) / 2f).toInt()
-                    positions.add(centerBetweenRows)
+                if (rowBounds.size > 1) {
+                    for (i in 1 until rowBounds.size) {
+                        val prevBottom = rowBounds[i - 1].second
+                        val currentTop = rowBounds[i].first
+                        val centerBetweenRows = ((prevBottom + currentTop) / 2f).toInt()
+                        if (centerBetweenRows > 0) {
+                            positions.add(centerBetweenRows)
+                        }
+                    }
+                } else if (keyboard.rowCount > 1 && keyboardHeight > 0f) {
+                    // 100% reliable geometric fallback
+                    val rowH = keyboardHeight / keyboard.rowCount
+                    for (i in 1 until keyboard.rowCount) {
+                        positions.add((i * rowH).toInt())
+                    }
                 }
                 positions
             }
             for (fretY in fretPositions) {
-                // Top Specular Chrome Highlight with Elegant Cyan Core Breathing Pulse
+                // Top Specular Chrome Highlight with Outward-Radiating Cyan Breathing Wave
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -376,14 +400,14 @@ fun TextKeyboardLayout(
                         .absoluteOffset { IntOffset(0, fretY - 1) }
                         .background(
                             brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                colors = listOf(
-                                    Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
-                                    Color(0x60CBD5E1),
-                                    Color(0xDDE2E8F0),
-                                    Color(0xFF00E5FF).copy(alpha = fretCyanPulseAlpha),
-                                    Color(0xDDE2E8F0),
-                                    Color(0x60CBD5E1),
-                                    Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent,
+                                    leftFade to Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
+                                    leftCore to Color(0x60CBD5E1),
+                                    0.5f to Color(0xFF00E5FF).copy(alpha = fretCyanPulseAlpha),
+                                    rightCore to Color(0x60CBD5E1),
+                                    rightFade to Color(0x1500E5FF).copy(alpha = 0.12f * fretCyanPulseAlpha),
+                                    1.0f to Color.Transparent,
                                 )
                             )
                         )
