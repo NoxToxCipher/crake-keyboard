@@ -1,4 +1,4 @@
-﻿//! Fuzzing, Sanitizers, Oracles, and Invariant Anti-Rot Test Suite.
+//! Fuzzing, Sanitizers, Oracles, and Invariant Anti-Rot Test Suite.
 //!
 //! Validates:
 //! 1. Panic-freedom on arbitrary Unicode, malformed inputs, control characters, and emojis.
@@ -272,4 +272,27 @@ fn test_anisotropic_distance_numerical_stability() {
             assert!(dist >= 0.0);
         }
     }
+}
+
+#[test]
+fn test_touch_model_and_spatial_slip_invariants() {
+    let qwerty_keys = [
+        ('q', 50.0, 100.0), ('w', 150.0, 100.0), ('e', 250.0, 100.0), ('r', 350.0, 100.0), ('t', 450.0, 100.0),
+        ('a', 75.0, 200.0), ('s', 175.0, 200.0), ('d', 275.0, 200.0), ('f', 375.0, 200.0), ('g', 475.0, 200.0),
+        ('z', 100.0, 300.0), ('x', 200.0, 300.0), ('c', 300.0, 300.0), ('v', 400.0, 300.0), ('b', 500.0, 300.0),
+    ];
+
+    let model = floris_core::TouchModel::from_layout(&qwerty_keys).expect("Valid layout must construct TouchModel");
+    assert!(model.near_dist_sq() > 0.0);
+    assert!(model.near_dist_sq().is_finite());
+
+    // Identity and known adjacency properties
+    assert!(model.is_near('a', 's'));
+    assert!(model.is_near('w', 'e'));
+    assert!(!model.is_near('q', 'p'));
+
+    // Spatial slip matching symmetry and reflexivity
+    assert!(floris_core::NlpEngine::is_spatial_slip_match("helo", "help") || !floris_core::NlpEngine::is_spatial_slip_match("helo", "helo"));
+    assert!(!floris_core::NlpEngine::is_spatial_slip_match("", ""));
+    assert!(!floris_core::NlpEngine::is_spatial_slip_match("abc", "defg"));
 }

@@ -106,8 +106,9 @@ impl TouchModel {
                     .fold(f32::INFINITY, f32::min)
             })
             .collect();
-        nearest.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        let median_sq = nearest[nearest.len() / 2];
+        let mid = nearest.len() / 2;
+        nearest.select_nth_unstable_by(mid, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let median_sq = nearest[mid];
         if !(median_sq.is_finite() && median_sq > 0.0) {
             return None;
         }
