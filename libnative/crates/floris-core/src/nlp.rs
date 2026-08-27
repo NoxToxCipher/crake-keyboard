@@ -1288,17 +1288,24 @@ impl NlpEngine {
         let p_clean = prev_token.trim().to_ascii_lowercase();
         let c_clean = current_token.trim().to_ascii_lowercase();
 
-        if p_clean.is_empty() || c_clean.is_empty() {
+        if p_clean.is_empty() || c_clean.is_empty() || p_clean.len() + c_clean.len() > 32 {
             return None;
         }
 
-        let merged = format!("{}{}", p_clean, c_clean);
-        if let Some(m_freq) = self.trie.get_frequency(&merged) {
+        let mut merged_buf = [0u8; 32];
+        let p_bytes = p_clean.as_bytes();
+        let c_bytes = c_clean.as_bytes();
+        let m_len = p_bytes.len() + c_bytes.len();
+        merged_buf[..p_bytes.len()].copy_from_slice(p_bytes);
+        merged_buf[p_bytes.len()..m_len].copy_from_slice(c_bytes);
+        let merged_str = std::str::from_utf8(&merged_buf[..m_len]).ok()?;
+
+        if let Some(m_freq) = self.trie.get_frequency(merged_str) {
             if m_freq >= 120 {
                 let pair_score = self.bigram_pair_score(&p_clean, &c_clean);
                 if pair_score < 40 {
                     return Some(SpaceBeamCandidate {
-                        text: merged,
+                        text: merged_str.to_string(),
                         is_split: false,
                         score: m_freq as f32 * 0.5,
                     });
