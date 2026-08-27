@@ -1,4 +1,4 @@
-﻿use std::collections::BTreeMap;
+use std::collections::BTreeMap;
 
 const MAX_QUERY_STACK_LEN: usize = 32;
 
@@ -17,7 +17,7 @@ impl Default for BloomFilter {
 
 impl BloomFilter {
     pub fn new(size_bits: usize) -> Self {
-        let u64_count = (size_bits + 63) / 64;
+        let u64_count = size_bits.div_ceil(64);
         Self {
             bits: vec![0u64; u64_count],
             num_bits: size_bits,
@@ -441,6 +441,7 @@ impl RadixTrie {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn fuzzy_search_stack(
         &self,
         node: &TrieNode,
