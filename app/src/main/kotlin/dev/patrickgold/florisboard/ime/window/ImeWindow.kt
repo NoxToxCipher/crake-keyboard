@@ -19,6 +19,17 @@ package dev.patrickgold.florisboard.ime.window
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.updateTransition
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
+import org.florisboard.lib.compose.toDp
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -230,6 +241,7 @@ private fun ImeInnerWindow() {
             }
             ImeSystemUiFloating()
         }
+        ImeDirectTopResizeHandle()
         ImeWindowResizeHandlesFixed()
     }
 }
@@ -388,6 +400,103 @@ private fun BoxScope.OneHandedPanel(spec: ImeWindowSpec.Fixed) {
                         attributes = attributes,
                     )
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+private fun BoxScope.ImeDirectTopResizeHandle() {
+    val windowController = LocalWindowController.current
+    val inputFeedbackController = LocalInputFeedbackController.current
+    val rowCount by FlorisImeSizing.rowCountAsState()
+    val smartbarRowCount by FlorisImeSizing.smartbarRowCountAsState()
+    val editorState by windowController.editor.state.collectAsState()
+
+    if (editorState.isEnabled) return
+
+    var isDragging by remember { mutableStateOf(false) }
+    var heightPercentage by remember { mutableStateOf(100) }
+
+    val handleColor = if (isDragging) Color(0xFF00E5FF) else Color.White.copy(alpha = 0.38f)
+
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .fillMaxWidth()
+            .height(20.dp)
+            .offset(y = (-6).dp)
+            .systemGestureExclusion()
+            .pointerInput(Unit) {
+                var accumulatedOffset = Offset.Zero
+                var initialSpec = ImeWindowSpec.Fallback
+                var currentSpec = ImeWindowSpec.Fallback
+                detectDragGestures(
+                    onDragStart = {
+                        isDragging = true
+                        accumulatedOffset = Offset.Zero
+                        initialSpec = windowController.editor.beginResizeGesture()
+                        currentSpec = initialSpec
+                        inputFeedbackController.keyPress()
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        accumulatedOffset += dragAmount
+                        currentSpec = initialSpec.resizedBy(
+                            accumulatedOffset.toDp(),
+                            ImeWindowResizeHandle.TOP,
+                            rowCount,
+                            smartbarRowCount
+                        )
+                        val baselineH = currentSpec.constraints.defKeyboardHeight.value
+                        val currentH = currentSpec.props.keyboardHeight.value
+                        if (baselineH > 0f) {
+                            heightPercentage = ((currentH / baselineH) * 100f).roundToInt()
+                        }
+                        windowController.editor.onSpecUpdated(currentSpec)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        windowController.editor.endResizeGesture(currentSpec)
+                        inputFeedbackController.keyPress()
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                        windowController.editor.cancelGesture()
+                    }
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        // Pill Grab Bar
+        Box(
+            modifier = Modifier
+                .width(if (isDragging) 60.dp else 38.dp)
+                .height(4.dp)
+                .background(
+                    color = handleColor,
+                    shape = RoundedCornerShape(2.dp),
+                )
+        )
+
+        // Live Height Percentage Badge floating above when dragging
+        if (isDragging) {
+            Box(
+                modifier = Modifier
+                    .offset(y = (-22).dp)
+                    .background(
+                        color = Color(0xFF0F172A),
+                        shape = RoundedCornerShape(6.dp),
+                    )
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "$heightPercentage%",
+                    color = Color(0xFF00E5FF),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
     }
