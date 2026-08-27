@@ -557,6 +557,23 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         max_results: usize,
         context: Option<(&crate::NlpEngine, &str)>,
     ) -> Vec<GlideMatch> {
+        self.match_gesture_timed(raw_path, &[], trie, max_results, context)
+    }
+
+    /// Timing-aware matching: `timestamps` (ms since stroke start, one per
+    /// raw point) enable the DWELL CONSISTENCY term — a candidate that
+    /// leaves heavily-dwelt keys unexplained pays for them. Empty slice =
+    /// identical to the untimed path (every existing caller and eval).
+    /// First real evidence 2026-08-28: a stroke committed "horatio" dwelt
+    /// w:89 o:86 l:63 e:57 ms — horatio explains almost none of that.
+    pub fn match_gesture_timed(
+        &self,
+        raw_path: &[Point2D],
+        timestamps: &[u32],
+        trie: &RadixTrie,
+        max_results: usize,
+        context: Option<(&crate::NlpEngine, &str)>,
+    ) -> Vec<GlideMatch> {
         if raw_path.len() < 2 || self.key_centers.is_empty() {
             return Vec::new();
         }
@@ -596,6 +613,27 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         let inflections = extract_inflections(cleaned_path, self.average_key_radius);
         let double_loops = detect_double_letter_loops(cleaned_path, self.average_key_radius);
         let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
+
+        // Per-key dwell map from raw timing (ms spent within 0.6 key-widths
+        // of each key). Empty when no timing data — the dwell term then
+        // contributes nothing anywhere.
+        let mut key_dwell: Vec<(char, u32)> = Vec::new();
+        if timestamps.len() == raw_path.len() && raw_path.len() >= 2 {
+            for k in &self.key_bounds {
+                let radius = k.width * 0.6;
+                let mut d = 0u32;
+                for i in 0..raw_path.len() - 1 {
+                    if raw_path[i].distance(&k.center) < radius {
+                        d += timestamps[i + 1].saturating_sub(timestamps[i]);
+                    }
+                }
+                // Only meaningful holds count: sweep-through takes ~20-40ms
+                // per key at normal glide speed.
+                if d >= 50 {
+                    key_dwell.push((k.character.to_ascii_lowercase(), d));
+                }
+            }
+        }
 
         // 3. Collect candidate words from Radix Trie matching start characters
         let mut matches = Vec::new();
@@ -689,7 +727,16 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                         }
                         _ => 0.0,
                     };
-                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
+                    // Dwell consistency: every meaningfully-held key the
+                    // candidate does not contain is unexplained evidence
+                    // against it, priced per millisecond of hold.
+                    let mut dwell_penalty = 0.0f32;
+                    for &(ch, d) in &key_dwell {
+                        if !word.contains(ch) {
+                            dwell_penalty += d as f32 * 0.08;
+                        }
+                    }
+                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty + dwell_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
 
                     matches.push(GlideMatch {
                         word,
