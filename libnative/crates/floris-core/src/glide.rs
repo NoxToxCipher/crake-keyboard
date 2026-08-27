@@ -162,6 +162,83 @@ pub fn extract_inflections(points: &[Point2D], key_radius: f32) -> Vec<Inflectio
     inflections
 }
 
+
+/// Detects micro-loops (closed mini-circles) and hesitation stutters in a gesture trace.
+/// Used to recognize intentional double-letter inputs (e.g. "look", "good", "coffee", "sleep").
+pub fn detect_double_letter_loops(points: &[Point2D], key_radius: f32) -> Vec<Point2D> {
+    if points.len() < 5 {
+        return Vec::new();
+    }
+
+    let mut loop_centers = Vec::new();
+    let max_radius_sq = (key_radius * 1.15).powi(2);
+
+    // Sliding window checking for closed trajectory loops:
+    // A loop occurs when points wrap around (total angle change >= 240 deg)
+    // while remaining confined within a single keycap boundary.
+    let window_size = 8;
+    for i in 0..points.len().saturating_sub(window_size) {
+        let window = &points[i..i + window_size];
+        let p_start = window[0];
+        let p_mid = window[window_size / 2];
+
+        // Must stay confined within single key radius
+        let mut confined = true;
+        for p in window {
+            if p.distance_squared(&p_mid) > max_radius_sq {
+                confined = false;
+                break;
+            }
+        }
+
+        if !confined {
+            continue;
+        }
+
+        // Sum angular turns in the window
+        let mut total_angle_deg = 0.0f32;
+        for j in 1..window.len() - 1 {
+            let dx1 = window[j].x - window[j - 1].x;
+            let dy1 = window[j].y - window[j - 1].y;
+            let dx2 = window[j + 1].x - window[j].x;
+            let dy2 = window[j + 1].y - window[j].y;
+
+            let mag1 = (dx1 * dx1 + dy1 * dy1).sqrt();
+            let mag2 = (dx2 * dx2 + dy2 * dy2).sqrt();
+
+            if mag1 > 1e-3 && mag2 > 1e-3 {
+                let dot = (dx1 * dx2 + dy1 * dy2) / (mag1 * mag2);
+                let cross = dx1 * dy2 - dy1 * dx2;
+                let angle = dot.clamp(-1.0, 1.0).acos();
+                // Signed angle turn
+                let signed_deg = angle * (180.0 / std::f32::consts::PI) * cross.signum();
+                total_angle_deg += signed_deg;
+            }
+        }
+
+        // Loop threshold: >= 220 degrees of consistent rotation or end-to-start close loop
+        if total_angle_deg.abs() >= 220.0 || window.last().unwrap().distance_squared(&p_start) < (key_radius * 0.4).powi(2) {
+            if loop_centers.last().map(|c: &Point2D| c.distance_squared(&p_mid)).unwrap_or(1e6) > max_radius_sq {
+                loop_centers.push(p_mid);
+            }
+        }
+    }
+
+    loop_centers
+}
+
+/// Checks if a word contains consecutive doubled characters (e.g. "oo", "ee", "ll", "tt").
+pub fn get_double_letter_chars(word: &str) -> Vec<char> {
+    let mut doubles = Vec::new();
+    let chars: Vec<char> = word.chars().map(|c| c.to_ascii_lowercase()).collect();
+    for i in 0..chars.len().saturating_sub(1) {
+        if chars[i] == chars[i + 1] && chars[i].is_alphabetic() {
+            doubles.push(chars[i]);
+        }
+    }
+    doubles
+}
+
 pub fn simplify_rdp(points: &[Point2D], epsilon: f32) -> Vec<Point2D> {
     if points.len() <= 2 {
         return points.to_vec();
@@ -376,6 +453,11 @@ impl GlideEngine {
             return Vec::new();
         }
 
+        // 2b. Extract kinematics (corners and dwell points) and micro-loops from the raw trace
+        let inflections = extract_inflections(raw_path, self.average_key_radius);
+        let double_loops = detect_double_letter_loops(raw_path, self.average_key_radius);
+        let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
+
         // 3. Collect candidate words from Radix Trie matching start characters
         let mut matches = Vec::new();
 
@@ -396,9 +478,6 @@ impl GlideEngine {
                         .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
             });
             let viable = viable.into_iter();
-
-            // 2b. Extract kinematics (corners and dwell points) from the raw trace
-            let inflections = extract_inflections(raw_path, self.average_key_radius);
 
             for (word, freq) in viable {
                 // Build ideal keypath for the word
@@ -423,12 +502,24 @@ impl GlideEngine {
 
                     // Kinematics Inflection Alignment:
                     // Reward candidates whose interior keys align with detected turn corners/dwells.
-                    // Penalize spurious pass-through letters that have no corner or dwell witness.
                     let mut kinematics_bonus = 0.0f32;
-                    let radius_match = self.average_key_radius * 1.35;
+                    let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
                     for key_pt in &ideal_path {
-                        if inflections.iter().any(|inf| inf.point.distance(key_pt) <= radius_match) {
+                        if inflections.iter().any(|inf| inf.point.distance_squared(key_pt) <= radius_match_sq) {
                             kinematics_bonus += 0.8;
+                        }
+                    }
+
+                    // Double-letter loop / stutter bonus:
+                    // If candidate word has double letters (e.g. "good", "look", "coffee", "sleep")
+                    // and a micro-loop was detected over that keycap, apply a strong double-letter reward.
+                    let mut double_letter_bonus = 0.0f32;
+                    let double_chars = get_double_letter_chars(&word);
+                    for d_char in double_chars {
+                        if let Some(&center) = self.key_centers.get(&d_char) {
+                            if double_loops.iter().any(|lp| lp.distance_squared(&center) <= radius_match_sq) {
+                                double_letter_bonus += 4.0;
+                            }
                         }
                     }
 
@@ -442,7 +533,7 @@ impl GlideEngine {
                         }
                         _ => 0.0,
                     };
-                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus - kinematics_bonus;
+                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
 
                     matches.push(GlideMatch {
                         word,
