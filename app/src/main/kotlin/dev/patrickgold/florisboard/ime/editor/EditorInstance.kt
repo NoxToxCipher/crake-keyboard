@@ -172,6 +172,11 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (activeInfo.isRawInputEditor) return false
         if (activeState.keyVariation != KeyVariation.NORMAL) return false
 
+        val currentWord = activeContent.currentWordText
+        if (currentWord.contains('@') || currentWord.contains("http") || currentWord.contains("www") || currentWord.startsWith(".") || currentWord.startsWith("/")) {
+            return false
+        }
+
         val punctuationRule = nlpManager.getActivePunctuationRule()
         val textBefore = activeContent.getTextBeforeCursor(1)
         return textBefore.isNotEmpty() && !textBefore.last().isWhitespace() &&
@@ -183,8 +188,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (activeInfo.isRawInputEditor) return false
         if (activeState.keyVariation != KeyVariation.NORMAL) return false
 
-        val punctuationRule = nlpManager.getActivePunctuationRule()
         val content = activeContent
+        val currentWord = content.currentWordText
+        if (currentWord.contains('@') || currentWord.contains("http") || currentWord.contains("www") || currentWord.startsWith(".") || currentWord.startsWith("/")) {
+            return false
+        }
+
+        val punctuationRule = nlpManager.getActivePunctuationRule()
         val textBefore = content.getTextBeforeCursor(3).let { textBefore ->
             if (autoSpace.isActive && textBefore.isNotEmpty() && textBefore.last() == ' ') {
                 textBefore.dropLast(1)
