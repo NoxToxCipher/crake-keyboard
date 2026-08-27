@@ -229,12 +229,12 @@ impl HitTester {
             let dist_sq = dx * dx + dy * dy;
 
             // Only consider keys within 1.85x key radius of the touch
-            let max_reach_sq = (key_radius * 1.85).powi(2);
+            let max_reach_sq = (key_radius * 2.0).powi(2);
             if dist_sq <= max_reach_sq {
-                let sigma = key_radius * 0.45;
+                let sigma = key_radius * 0.65;
                 let spatial_score = (-dist_sq / (2.0 * sigma * sigma)).exp();
 
-                // Look up LM prior (default 0.05 if not in top predictions)
+                // Look up LM prior (default 0.02 if not in top predictions)
                 let prior = priors
                     .iter()
                     .find(|(c, _)| c.to_ascii_lowercase() == ch.to_ascii_lowercase())
@@ -242,9 +242,9 @@ impl HitTester {
                     .unwrap_or(0.02);
 
                 // Probabilistic hit score: spatial Gaussian * (1.0 + gamma * LM prior)
-                // Geometric containment provides an initial anchor boost
-                let containment_bonus = if rect.contains(x, y) { 1.25 } else { 1.0 };
-                let final_score = spatial_score * (1.0 + 1.2 * prior) * containment_bonus;
+                // Geometric containment provides an anchor boost
+                let containment_bonus = if rect.contains(x, y) { 1.15 } else { 1.0 };
+                let final_score = spatial_score * (1.0 + 2.2 * prior) * containment_bonus;
 
                 candidates.push(ProbabilisticHit {
                     index: idx,
