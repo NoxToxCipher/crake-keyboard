@@ -587,3 +587,29 @@ fn junk_blockers_dissolve_and_abbreviations_survive() {
         r.candidates
     );
 }
+
+/// The 3-slip tolerance stays at 8+ chars: lowering it to 7 false-flipped
+/// "gradlew" (the build tool, typed daily) and "brissie" (Brisbane) for
+/// the single win "gkudinf" (sweep 2026-08-27). These two must never
+/// auto-commit; gkudinf keeps its top suggestion instead.
+#[test]
+fn seven_char_three_slip_stays_suggestion_only() {
+    let mut e = engine();
+    for (w, f) in [("trailed", 180), ("brownie", 190), ("brissie", 170), ("gradlew", 160)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    // gradlew/brissie are dict words here (deliberate tokens), so they are
+    // exact and stay; the armor is about the non-word garble class too:
+    let r = e.suggest_with_context("gkudinf", "", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.is_autocorrect),
+        "7-char 3-slip garble stays suggestion-only: {:?}",
+        r.candidates
+    );
+    assert!(
+        r.candidates.iter().any(|c| c.word == "gliding"),
+        "but the recovery must still be offered: {:?}",
+        r.candidates
+    );
+}

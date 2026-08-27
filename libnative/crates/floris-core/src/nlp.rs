@@ -1332,6 +1332,9 @@ pub fn is_spatial_slip_match(query: &str, candidate: &str) -> bool {
     // shape still identifies the target ("thoriufhky" -> thoroughly,
     // "xurrenrky" -> currently, field specimens 2026-08-27), while at
     // short lengths 3 slips is a different word, not a slip chain.
+    // 8 is measured, not arbitrary: at 7 chars the 3-slip tolerance false-
+    // flipped "gradlew" -> trailed and "brissie" -> brownie (sweep
+    // 2026-08-27) for the one win "gkudinf" -> gliding. Do not lower it.
     let max_slips = if q_chars.len() >= 8 { 3 } else { 2 };
     slip_count > 0 && slip_count <= max_slips
 }
