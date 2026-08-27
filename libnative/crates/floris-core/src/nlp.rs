@@ -1608,8 +1608,17 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
         include_personal: bool,
     ) -> Vec<String> {
         let prev_l = prev.trim().to_lowercase();
-        if prev_l.is_empty() || max == 0 {
+        if max == 0 {
             return Vec::new();
+        }
+        if prev_l.is_empty() {
+            // Sentence start (or empty field): the capitalized starters,
+            // same list the letter-prior fallback uses.
+            return Self::SENTENCE_STARTERS
+                .iter()
+                .take(max)
+                .map(|&(w, _)| w.to_string())
+                .collect();
         }
         let mut scored: Vec<(u8, &str)> = Vec::new();
         if include_personal {

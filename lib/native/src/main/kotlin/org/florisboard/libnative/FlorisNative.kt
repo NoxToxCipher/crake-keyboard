@@ -197,7 +197,8 @@ object FlorisNative {
         maxResults: Int = 3,
         includePersonal: Boolean = true,
     ): List<String> {
-        if (!isLoaded || prevWord.isBlank()) return emptyList()
+        if (!isLoaded) return emptyList()
+        // Blank prev is valid: the native side answers sentence starters.
         return nativeNlpPredictNextWords(prevWord, maxResults, includePersonal).toList()
     }
 

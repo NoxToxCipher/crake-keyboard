@@ -226,7 +226,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 .trimEnd()
                 .takeLastWhile { it.isLetter() || it == '\'' }
                 .toString()
-            if (prevCommitted.isBlank() || !FlorisNative.isAvailable()) return emptyList()
+            if (!FlorisNative.isAvailable()) return emptyList()
+            // A blank prev is a sentence start: the native side answers
+            // with capitalized starters instead of going silent.
             // Private sessions predict from the shipped model only: what
             // this keyboard has learned about its user stays off the
             // screen the user marked private.
