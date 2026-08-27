@@ -709,3 +709,46 @@ fn micro_loops_accurately_select_double_letter_words() {
 
     assert!(failures.is_empty(), "Double-letter micro-loop failures:\n{}", failures.join("\n"));
 }
+
+
+/// Multi-word N-Gram Context Resolution Battery (Loop 8/18):
+/// Verifies that multi-token conversational history (bigram + trigram fusion)
+/// rescues ambiguous/sloppy traces to their idiomatic contextual targets.
+#[test]
+fn multi_word_ngram_context_resolution_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_cases = [
+        ("thank you", "very", 240),
+        ("thank you", "much", 240),
+        ("let me", "know", 240),
+        ("in order", "to", 250),
+        ("see you", "later", 240),
+        ("have a", "great", 240),
+    ];
+
+    for &(_, target, freq) in &test_cases {
+        nlp.trie.insert(target, freq);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(ctx, target, _)) in test_cases.iter().enumerate() {
+        let mut rng = Lcg(0x369A_BEEF + idx as u64 * 0x1111);
+        if let Some(trace) = synth_sloppy_trace(&glide, target, &mut rng) {
+            let res = glide.match_gesture_with_context(&trace, &nlp.trie, 5, Some((&nlp, ctx)));
+            let top_word = res.first().map(|m| m.word.as_str());
+            if top_word != Some(target) {
+                failures.push(format!(
+                    "Context '{ctx}' for target '{target}' expected '{target}', got {top_word:?} (all: {:?})",
+                    res.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+                ));
+            }
+        } else {
+            failures.push(format!("Failed to synthesize sloppy trace for '{target}'"));
+        }
+    }
+
+    assert!(failures.is_empty(), "Multi-word N-gram context failures:\n{}", failures.join("\n"));
+}
