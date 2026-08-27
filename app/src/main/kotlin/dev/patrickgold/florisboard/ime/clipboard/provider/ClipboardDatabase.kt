@@ -222,11 +222,13 @@ data class ClipboardItem @OptIn(ExperimentalSerializationApi::class) constructor
     }
 
     /**
-     * Instructs the content provider to delete this URI. If not an image, is a noop
+     * Instructs the content provider to delete this item's backing media
+     * file (images and videos). For text items this is a noop.
      */
     fun close(context: Context) {
-        if (type == ItemType.IMAGE) {
-            tryOrNull { context.contentResolver.delete(this.uri!!, null, null) }
+        if (type == ItemType.IMAGE || type == ItemType.VIDEO) {
+            val mediaUri = uri ?: return
+            tryOrNull { context.contentResolver.delete(mediaUri, null, null) }
         }
     }
 
@@ -293,10 +295,10 @@ interface ClipboardHistoryDao {
     fun update(items: List<ClipboardItem>)
 
     @Query("DELETE FROM $CLIPBOARD_HISTORY_TABLE WHERE ${BaseColumns._ID} = :id")
-    fun delete(id: Long)
+    fun delete(id: Long): Int
 
     @Query("DELETE FROM $CLIPBOARD_HISTORY_TABLE WHERE ${BaseColumns._ID} = :id AND not isPinned ")
-    fun deleteIfUnpinned(id: Long)
+    fun deleteIfUnpinned(id: Long): Int
 
     @Delete
     fun delete(items: List<ClipboardItem>)

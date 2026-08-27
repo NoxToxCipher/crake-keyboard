@@ -274,12 +274,28 @@ class ClipboardManager(
                 sensitiveEnabled = false,
                 sensitiveAfterMs = 0,
             )
-            if (removedIds.isNotEmpty()) {
-                val itemsToRemove = clipHistory.all.filter { it.id in removedIds }
-                ioScope.launch {
-                    clipHistoryDao?.delete(itemsToRemove)
-                }
+            removeItemsAndBackingMedia(clipHistory.all.filter { it.id in removedIds })
+        }
+    }
+
+    /**
+     * Removes the given history items: clears the primary clip if it is one
+     * of them, deletes each item's backing media file, then deletes the rows.
+     * Every path that removes rows outside the user's direct control must go
+     * through here so media files are never orphaned.
+     */
+    private fun removeItemsAndBackingMedia(itemsToRemove: Collection<ClipboardItem>) {
+        if (itemsToRemove.isEmpty()) return
+        val currentPrimary = primaryClip
+        if (currentPrimary != null && itemsToRemove.any { it.id == currentPrimary.id || (it.text == currentPrimary.text && it.type == currentPrimary.type) }) {
+            updatePrimaryClip(null)
+            systemClipboardManager.clearPrimaryClipAnyApi()
+        }
+        ioScope.launch {
+            for (item in itemsToRemove) {
+                item.close(appContext)
             }
+            clipHistoryDao?.delete(itemsToRemove.toList())
         }
     }
 
@@ -305,19 +321,7 @@ class ClipboardManager(
         } else {
             emptySet()
         }
-        if (itemsToRemove.isNotEmpty()) {
-            val currentPrimary = primaryClip
-            if (currentPrimary != null && itemsToRemove.any { it.id == currentPrimary.id || (it.text == currentPrimary.text && it.type == currentPrimary.type) }) {
-                updatePrimaryClip(null)
-                systemClipboardManager.clearPrimaryClipAnyApi()
-            }
-            ioScope.launch {
-                for (item in itemsToRemove) {
-                    item.close(appContext)
-                }
-                clipHistoryDao?.delete(itemsToRemove.toList())
-            }
-        }
+        removeItemsAndBackingMedia(itemsToRemove)
     }
 
     /**
@@ -384,7 +388,11 @@ class ClipboardManager(
     fun clearHistory() {
         ioScope.launch {
             for (item in currentHistory.all) {
-                item.close(appContext)
+                // Only unpinned rows are deleted below — closing a pinned
+                // item here would orphan its row from its backing media file.
+                if (!item.isPinned) {
+                    item.close(appContext)
+                }
             }
             clipHistoryDao?.deleteAllUnpinned()
         }
@@ -421,15 +429,20 @@ class ClipboardManager(
 
     fun deleteClip(item: ClipboardItem, onlyIfUnpinned: Boolean) {
         ioScope.launch {
-            if (onlyIfUnpinned) {
-                clipHistoryDao?.deleteIfUnpinned(item.id)
+            val rowsDeleted = if (onlyIfUnpinned) {
+                clipHistoryDao?.deleteIfUnpinned(item.id) ?: 0
             } else {
-                clipHistoryDao?.delete(item.id)
+                clipHistoryDao?.delete(item.id) ?: 0
             }
-            tryOrNull {
-                val uri = item.uri
-                if (uri != null) {
-                    appContext.contentResolver.delete(uri, null, null)
+            // Delete the backing media file only when a row was actually
+            // removed — a surviving row (e.g. it got pinned) must keep its
+            // media file.
+            if (rowsDeleted > 0) {
+                tryOrNull {
+                    val uri = item.uri
+                    if (uri != null) {
+                        appContext.contentResolver.delete(uri, null, null)
+                    }
                 }
             }
         }
