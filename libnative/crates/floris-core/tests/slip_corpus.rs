@@ -24,6 +24,8 @@ fn engine() -> NlpEngine {
         ("ona", 60),
         ("tra", 60),
         ("lock", 220),
+        ("lo", 207),
+        ("hell", 238),
         ("dies", 219),
         ("mistakes", 180),
         ("deliberately", 160),
@@ -473,6 +475,44 @@ fn splitter_refuses_junk_band_halves() {
         r.candidates.first().map(|c| c.word.as_str()),
         Some("in my"),
         "real splits keep working: {:?}",
+        r.candidates
+    );
+}
+
+/// Junk-band words are suggestions at most, never auto-commits: with the
+/// splitter refusing "doona", fuzzy silently committed 60-band "dona"
+/// instead; the transposition fast-path would likewise commit "ona" for
+/// "oan". Real words above the floor keep auto-committing ("nad" -> "and").
+#[test]
+fn junk_band_words_never_autocommit() {
+    let e = engine();
+    for typed in ["doona", "oan"] {
+        let r = e.suggest_with_context(typed, "", 5);
+        assert!(
+            !r.candidates.iter().any(|c| c.is_autocorrect),
+            "'{typed}' must not auto-commit junk: {:?}",
+            r.candidates
+        );
+    }
+    let r = e.suggest_with_context("nad", "", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "and", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect, "real-word rescue must keep auto-committing");
+}
+
+/// A triple letter run is a burst, never a missing space: "helllo" must
+/// collapse to "hello", not split to "hell lo" (which won on real data
+/// because the splitter ran first and both halves are real words).
+#[test]
+fn triple_runs_collapse_instead_of_splitting() {
+    let e = engine();
+    let r = e.suggest_with_context("helllo", "", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "hello", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect);
+    assert!(
+        !r.candidates.iter().any(|c| c.word == "hell lo"),
+        "no burst token may split: {:?}",
         r.candidates
     );
 }

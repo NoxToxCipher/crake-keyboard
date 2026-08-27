@@ -716,6 +716,10 @@ impl NlpEngine {
             };
         }
 
+        // Words below this unigram floor are junk-band or vanishingly rare:
+        // they may be SUGGESTED but never auto-committed over the user's
+        // typed text (same 150 convention as merge repair and the splitter).
+        const AUTOCOMMIT_MIN_FREQ: u32 = 150;
         let is_exact = self.trie.contains(&trimmed_lower);
         let has_internal_uppercase = trimmed.chars().skip(1).any(|c| c.is_uppercase());
         let mut candidates: Vec<RankedCandidate> = Vec::with_capacity(max_candidates);
@@ -797,7 +801,15 @@ impl NlpEngine {
             // ("adblock" -> "adb lock", "doona" -> "do ona", "tradies" ->
             // "tra dies", sweep 2026-08-27).
             const SPLIT_MIN_HALF_FREQ: u32 = 150;
-            for split_idx in 2..trimmed_lower.len() - 1 {
+            // A triple letter run is burst territory ("helllo"), never a
+            // missing space: splitting won ("hell lo") because the splitter
+            // runs first and both halves are real words. Let stage 5c
+            // collapse it instead (sweep 2026-08-27).
+            let has_triple_run = trimmed_lower
+                .as_bytes()
+                .windows(3)
+                .any(|w| w[0] == w[1] && w[1] == w[2]);
+            for split_idx in (2..trimmed_lower.len() - 1).take_while(|_| !has_triple_run) {
                 let left = &trimmed_lower[..split_idx];
                 let right = &trimmed_lower[split_idx..];
                 if self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
@@ -825,11 +837,13 @@ impl NlpEngine {
                     }
                 }
                 if single_collapsed.len() < trimmed_lower.len() {
-                    if self.trie.contains(&single_collapsed) {
+                    if let Some(f) = self.trie.get_frequency(&single_collapsed) {
                         let formatted = Self::apply_casing(trimmed, &single_collapsed);
                         candidates.push(RankedCandidate {
                             word: formatted,
-                            is_autocorrect: true,
+                            // "doona" collapsing to 60-band "dona" must not
+                            // auto-commit: junk stays a suggestion.
+                            is_autocorrect: f >= AUTOCOMMIT_MIN_FREQ,
                         });
                     } else {
                         // Try 2-char max collapsed (e.g. heelllooo -> hello)
@@ -848,11 +862,11 @@ impl NlpEngine {
                                 double_collapsed.push(ch);
                             }
                         }
-                        if self.trie.contains(&double_collapsed) {
+                        if let Some(f) = self.trie.get_frequency(&double_collapsed) {
                             let formatted = Self::apply_casing(trimmed, &double_collapsed);
                             candidates.push(RankedCandidate {
                                 word: formatted,
-                                is_autocorrect: true,
+                                is_autocorrect: f >= AUTOCOMMIT_MIN_FREQ,
                             });
                         }
                     }
@@ -893,12 +907,15 @@ impl NlpEngine {
                 let mut swapped = chars.clone();
                 swapped.swap(i, i + 1);
                 let swapped_str: String = swapped.into_iter().collect();
-                if self.trie.contains(&swapped_str) {
+                if let Some(f) = self.trie.get_frequency(&swapped_str) {
                     let formatted = Self::apply_casing(trimmed, &swapped_str);
                     if !contains_word(&candidates, &formatted) {
                         candidates.push(RankedCandidate {
                             word: formatted,
-                            is_autocorrect: candidates.is_empty(),
+                            // Never auto-commit a junk-band word ("oan" must
+                            // not become "ona"): only solidly real words may
+                            // replace what the user typed.
+                            is_autocorrect: candidates.is_empty() && f >= AUTOCOMMIT_MIN_FREQ,
                         });
                         break;
                     }
@@ -909,12 +926,12 @@ impl NlpEngine {
                 let mut doubled = chars.clone();
                 doubled.insert(i, chars[i]);
                 let doubled_str: String = doubled.into_iter().collect();
-                if self.trie.contains(&doubled_str) {
+                if let Some(f) = self.trie.get_frequency(&doubled_str) {
                     let formatted = Self::apply_casing(trimmed, &doubled_str);
                     if !contains_word(&candidates, &formatted) {
                         candidates.push(RankedCandidate {
                             word: formatted,
-                            is_autocorrect: candidates.is_empty(),
+                            is_autocorrect: candidates.is_empty() && f >= AUTOCOMMIT_MIN_FREQ,
                         });
                         break;
                     }
@@ -964,10 +981,16 @@ impl NlpEngine {
                     // 2026-08-27: 'word' -> word's).
                     let has_edge_apostrophe =
                         trimmed_lower.starts_with('\'') || trimmed_lower.ends_with('\'');
+                    // A junk-band winner never auto-commits: with the
+                    // splitter refusing "doona" -> "do ona", fuzzy was
+                    // silently committing 60-band "dona" instead. Below
+                    // the floor the word stays a plain suggestion and the
+                    // literal is what space commits.
                     let should_autocorrect = !is_exact
                         && !is_capitalized
                         && !has_edge_apostrophe
                         && (fc.distance <= 2 || is_neighbor)
+                        && fc.frequency >= AUTOCOMMIT_MIN_FREQ
                         && candidates.is_empty();
                     candidates.push(RankedCandidate {
                         word: formatted,
