@@ -61,6 +61,12 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("must", "he", ""),
         ("a", "cot", ""),
         ("the", "hen", ""),
+        // form/from are cross-hand adjacent transpositions of each other
+        // and BOTH valid: timing-based transposition features must never
+        // flip a typed valid word (review of loop 7/21, 2026-08-28).
+        ("", "form", ""),
+        ("the", "form", ""),
+        ("", "from", ""),
     ];
     let mut failures = Vec::new();
     for &(prev, typed, expected) in cases {
