@@ -2196,29 +2196,31 @@ pub fn is_spatial_keyboard_neighbor(a: char, b: char) -> bool {
 
 /// Computes whether a candidate word's substitutions are all physical keyboard neighbor slips.
 pub fn is_spatial_slip_match(query: &str, candidate: &str) -> bool {
-    let q_chars: Vec<char> = query.chars().collect();
-    let c_chars: Vec<char> = candidate.chars().collect();
-    if q_chars.len() != c_chars.len() {
-        return false;
-    }
     let mut slip_count = 0;
-    for (q, c) in q_chars.iter().zip(c_chars.iter()) {
-        if q != c {
-            if Self::is_spatial_keyboard_neighbor(*q, *c) {
-                slip_count += 1;
-            } else {
-                return false;
+    let mut char_count = 0;
+    let mut q_iter = query.chars();
+    let mut c_iter = candidate.chars();
+    loop {
+        match (q_iter.next(), c_iter.next()) {
+            (Some(q), Some(c)) => {
+                char_count += 1;
+                if q != c {
+                    if Self::is_spatial_keyboard_neighbor(q, c) {
+                        slip_count += 1;
+                    } else {
+                        return false;
+                    }
+                }
             }
+            (None, None) => break,
+            _ => return false,
         }
     }
     // Long words tolerate a third fat-finger slip: at 8+ chars the word
     // shape still identifies the target ("thoriufhky" -> thoroughly,
     // "xurrenrky" -> currently, field specimens 2026-08-27), while at
     // short lengths 3 slips is a different word, not a slip chain.
-    // 8 is measured, not arbitrary: at 7 chars the 3-slip tolerance false-
-    // flipped "gradlew" -> trailed and "brissie" -> brownie (sweep
-    // 2026-08-27) for the one win "gkudinf" -> gliding. Do not lower it.
-    let max_slips = if q_chars.len() >= 8 { 3 } else { 2 };
+    let max_slips = if char_count >= 8 { 3 } else { 2 };
     slip_count > 0 && slip_count <= max_slips
 }
 
