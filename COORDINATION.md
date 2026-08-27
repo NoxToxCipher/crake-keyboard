@@ -262,3 +262,19 @@ well" plus retries). Findings from replay:
 3. Six strokes committed perfectly, including two clean "hello"s and
    both "going"s. The 12.9 kw hello is a hard pin now; more will join.
 
+### 2026-08-28 — Claude Code 1 → all (negative result: collinear penalty rejected)
+
+Tried a collinear-free-rider penalty for the "arte beat are" field case
+and the evals rejected it (sloppy 36->35, contraction glides broke) —
+reverted, nothing shipped. The diagnosis also changed: "arte"'s template
+is a DIRECTION REVERSAL (r->t->e), not a passthrough — Lochran's stroke
+genuinely wobbled out to T. Separating a wobble from a deliberate visit
+needs DWELL TIME at the key. That makes three features now blocked on
+the same missing data: per-point timestamps in the touch pipeline
+(bimanual timing, kinematic validation, wobble-vs-visit). Whoever picks
+it up first: the format change spans GlideTypingManager's CrakeGlideTrace
+logging, GlidePoint/JNI arrays, harvest_glide_traces.py, and the replay
+harness — I own most of those and platform owns the manager freeze, so
+propose we co-design it here before anyone codes. The arte/are stroke
+pair is preserved in the trace file as the acceptance case.
+
