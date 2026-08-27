@@ -1733,6 +1733,16 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
                     }
                 }
             }
+            // This runs on the TAP path: common prevs ("the", "i") have
+            // thousands of successors and a full sort cost ~100us/call
+            // (measured 2026-08-27, the "no longer zippy" report). Only the
+            // top few dozen can ever survive the 6-distinct-first-letters
+            // cut, so partially select before sorting.
+            const TOP: usize = 32;
+            if scored.len() > TOP {
+                scored.select_nth_unstable_by(TOP, |a, b| b.0.cmp(&a.0));
+                scored.truncate(TOP);
+            }
             scored.sort_by(|a, b| b.0.cmp(&a.0));
             for (_, w) in scored {
                 if let Some(first_ch) = w.chars().next() {
