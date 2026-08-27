@@ -921,3 +921,45 @@ fn adaptive_trajectory_centroid_learning_battery() {
     glide.reset_adaptive_centroids();
     assert_eq!(glide.get_adaptive_key_center('p').unwrap(), nominal_p);
 }
+
+/// The junk coin-flip never demotes the user's own vocabulary: unlearned
+/// "crake" (corpus 30) loses its clean glide to a 150+ near-tie (honest
+/// fresh-install behaviour), but once the user has learned the word it
+/// wins its own trace again.
+#[test]
+fn learned_words_survive_the_junk_coin_flip() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for &(w, f) in EVAL_WORDS {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    // Walk the seeded sloppy battery to crake's exact trace — the one the
+    // recall eval records as a near-miss. A fresh clean trace wins by
+    // landslide and never exercises the coin flip.
+    let mut rng = Lcg(0xDECAF);
+    let mut trace = None;
+    for &(word, _) in EVAL_WORDS {
+        let t = synth_sloppy_trace(&glide, word, &mut rng).expect("trace");
+        if word == "crake" {
+            trace = Some(t);
+            break;
+        }
+    }
+    let trace = trace.expect("crake in EVAL_WORDS");
+    let before = glide.match_gesture_with_context(&trace, &nlp.trie, 8, Some((&nlp, "")));
+    if before.first().map(|m| m.word.as_str()) == Some("crake") {
+        // Scoring changes made even this trace a landslide; the policy
+        // then has nothing to exempt and the test is vacuous by luck.
+        eprintln!("premise gone: crake wins unlearned; exemption untestable on this trace");
+        return;
+    }
+    nlp.learn_word("crake", 100);
+    let after = glide.match_gesture_with_context(&trace, &nlp.trie, 8, Some((&nlp, "")));
+    assert_eq!(
+        after.first().map(|m| m.word.as_str()),
+        Some("crake"),
+        "learned crake must win its own glide: {:?}",
+        after.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+}

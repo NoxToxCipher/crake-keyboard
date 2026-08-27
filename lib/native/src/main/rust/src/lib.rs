@@ -892,7 +892,10 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
         let nlp_guard = NLP_ENGINE.read();
 
         if let (Ok(glide), Ok(nlp)) = (glide_guard, nlp_guard) {
-            let context = if prev.is_empty() { None } else { Some((&*nlp, prev.as_str())) };
+            // nlp always rides along: an empty prev disables the bigram
+            // bonus inside the engine, but the learned-word exemption in
+            // the commit policy still needs the engine reference.
+            let context = Some((&*nlp, prev.as_str()));
             glide.match_gesture_with_context(&path, &nlp.trie, max_results.max(1) as usize, context)
         } else {
             Vec::new()

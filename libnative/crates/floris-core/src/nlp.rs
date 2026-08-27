@@ -621,6 +621,13 @@ impl NlpEngine {
         }
     }
 
+    /// Whether the user has personally learned this word (typed, accepted
+    /// or reverted-to it). Learned vocabulary is the user's own: commit
+    /// policies must never demote it in favour of "more common" words.
+    pub fn is_learned(&self, word: &str) -> bool {
+        self.learned_words.contains_key(&word.trim().to_ascii_lowercase())
+    }
+
     pub fn corpus_words(&self) -> &[String] {
         &self.corpus_words
     }
