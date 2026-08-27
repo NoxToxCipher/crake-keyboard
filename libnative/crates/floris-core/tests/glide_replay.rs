@@ -109,13 +109,18 @@ fn replay_captured_device_traces() {
         let mut engine = GlideEngine::new();
         engine.set_layout(layout);
         let ctx = if prev.is_empty() { None } else { Some((&nlp, prev)) };
+        // v2 traces exercise the timed path; v1 traces the classic one.
         // Micro-strokes (tap-slides) may legitimately return NOTHING now:
         // kinematic gating rejects them engine-side, which is the desired
         // defense in depth next to the detector threshold. Only strokes
         // with real glide extent must produce candidates.
         // (key width captured before set_layout consumed the vec)
         let travel: f32 = points.windows(2).map(|w| w[0].distance(&w[1])).sum();
-        let results = engine.match_gesture_with_context(&points, &nlp.trie, 8, ctx);
+        let results = if timestamps.len() == points.len() && !timestamps.is_empty() {
+            engine.match_gesture_timed(&points, &timestamps, &nlp.trie, 8, ctx)
+        } else {
+            engine.match_gesture_with_context(&points, &nlp.trie, 8, ctx)
+        };
         // Below ~1.5 key-widths the engine may reject the stroke as a
         // tap-slide (kinematic gating) — that is desired; a real word
         // glide travels several key-widths. Only clearly-multi-key

@@ -24,6 +24,8 @@ import dev.patrickgold.florisboard.app.settings.theme.DisplayKbdAfterDialogs
 import dev.patrickgold.florisboard.app.settings.theme.SnyggLevel
 import dev.patrickgold.florisboard.app.setup.NotificationPermissionState
 import dev.patrickgold.florisboard.ime.clipboard.CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO
+import dev.patrickgold.florisboard.ime.keyboard.EasterEgg
+import dev.patrickgold.florisboard.ime.keyboard.EasterEggs
 import dev.patrickgold.florisboard.ime.clipboard.ClipboardSyncBehavior
 import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
 import dev.patrickgold.florisboard.ime.core.Subtype
@@ -227,6 +229,42 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "suggestion__enable_floris_user_dictionary",
             default = true,
         )
+    }
+
+    val easterEggs = EasterEggsPrefs()
+    inner class EasterEggsPrefs {
+        val discovered = string(
+            key = "easter_eggs__discovered",
+            default = "",
+        )
+        val disabled = string(
+            key = "easter_eggs__disabled",
+            default = "",
+        )
+
+        /**
+         * Records the egg as discovered (making its off switch visible in
+         * Settings) and reports whether it is currently allowed to fire.
+         * Call this exactly when the egg's trigger condition matched.
+         */
+        fun fire(egg: EasterEgg): Boolean {
+            val discoveredCsv = discovered.get()
+            if (!EasterEggs.isDiscovered(discoveredCsv, egg)) {
+                discovered.set(EasterEggs.withId(discoveredCsv, egg.id))
+            }
+            return EasterEggs.isEnabled(disabled.get(), egg)
+        }
+
+        fun setEggEnabled(egg: EasterEgg, enabled: Boolean) {
+            val disabledCsv = disabled.get()
+            disabled.set(
+                if (enabled) {
+                    EasterEggs.withoutId(disabledCsv, egg.id)
+                } else {
+                    EasterEggs.withId(disabledCsv, egg.id)
+                }
+            )
+        }
     }
 
     val emoji = Emoji()

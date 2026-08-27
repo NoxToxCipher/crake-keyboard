@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Egg
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Gesture
@@ -65,10 +66,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
+import dev.patrickgold.florisboard.ime.keyboard.EasterEggs
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
+import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import org.florisboard.lib.compose.FlorisCanvasIcon
 import org.florisboard.lib.compose.FlorisErrorCard
@@ -89,6 +93,7 @@ fun HomeScreen() = FlorisScreen {
 
     val navController = LocalNavController.current
     val context = LocalContext.current
+    val prefs by FlorisPreferenceStore
 
     content {
         val isFlorisBoardEnabled by InputMethodUtils.observeIsFlorisboardEnabled(foregroundOnly = true)
@@ -315,6 +320,17 @@ fun HomeScreen() = FlorisScreen {
             summary = "Legibility fonts with the evidence behind them",
             onClick = { navController.navigate(Routes.Settings.Fonts) },
         )
+        // Appears only once at least one easter egg has been discovered —
+        // the off switches surface after first trigger, never before.
+        val discoveredEggsCsv by prefs.easterEggs.discovered.collectAsState()
+        if (EasterEggs.parseIds(discoveredEggsCsv).isNotEmpty()) {
+            CrakeNavTile(
+                icon = Icons.Default.Egg,
+                title = "Easter eggs",
+                summary = "The ones you've found, with their off switches",
+                onClick = { navController.navigate(Routes.Settings.EasterEggs) },
+            )
+        }
         CrakeNavTile(
             icon = Icons.Outlined.Keyboard,
             title = stringRes(R.string.settings__keyboard__title),

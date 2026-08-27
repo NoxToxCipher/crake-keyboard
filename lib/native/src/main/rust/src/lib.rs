@@ -139,6 +139,14 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoad
         Err(_) => return -1,
     };
     if let Ok(mut engine) = NLP_ENGINE.write() {
+        // CRKD header: magic(4) + version(1) + count(u32 LE). Pre-sizing
+        // saves rehash churn across the 49k-word bulk load.
+        if bytes.len() >= 9 {
+            let count = u32::from_le_bytes([bytes[5], bytes[6], bytes[7], bytes[8]]) as usize;
+            if count <= 1_000_000 {
+                engine.reserve_corpus(count);
+            }
+        }
         match floris_core::parse_dict_blob(&bytes, |word, freq| {
             engine.trie.insert(word, freq);
             engine.corpus_insert(word, freq);
@@ -359,54 +367,6 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpMerg
     match merged {
         Some(word) => env.new_string(&word).map(|s| s.into_raw()).unwrap_or(empty),
         None => empty,
-    }
-}
-
-/// The static corpus as loaded from the CRKD blob, in blob order. Serves the
-/// glide classifier's word list now that the JVM no longer keeps its own copy
-/// of the dictionary.
-#[no_mangle]
-pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpCorpusWords(
-    mut env: JNIEnv,
-    _class: JClass,
-) -> jobjectArray {
-    let empty_array = env
-        .new_object_array(0, "java/lang/String", JString::default())
-        .map(|arr| arr.into_raw())
-        .unwrap_or(std::ptr::null_mut());
-
-    let Ok(engine) = NLP_ENGINE.read() else {
-        return empty_array;
-    };
-    let words = engine.corpus_words();
-    let Ok(array) = env.new_object_array(words.len() as i32, "java/lang/String", JString::default()) else {
-        return empty_array;
-    };
-    for (i, word) in words.iter().enumerate() {
-        let Ok(jword) = env.new_string(word) else {
-            return empty_array;
-        };
-        if env.set_object_array_element(&array, i as i32, jword).is_err() {
-            return empty_array;
-        }
-    }
-    array.into_raw()
-}
-
-/// Frequency of a corpus word, 0 when absent — the JVM map's lookup contract.
-#[no_mangle]
-pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpCorpusFreq(
-    mut env: JNIEnv,
-    _class: JClass,
-    word: JString,
-) -> jint {
-    let Ok(w) = env.get_string(&word) else {
-        return 0;
-    };
-    let word_str = w.to_str().unwrap_or("");
-    match NLP_ENGINE.read() {
-        Ok(engine) => engine.corpus_freq(word_str).min(jint::MAX as u32) as jint,
-        Err(_) => 0,
     }
 }
 

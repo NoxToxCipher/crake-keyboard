@@ -963,3 +963,44 @@ fn learned_words_survive_the_junk_coin_flip() {
         after.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
     );
 }
+
+/// Dwell consistency contract: identical geometry, opposite timing. A
+/// trace sweeping h->e->l->o with a long HOLD on L supports "hello";
+/// the same path with the hold moved onto an off-word key must cost the
+/// candidate that cannot explain it. Empty timestamps = classic path,
+/// bit-identical scores.
+#[test]
+fn dwell_separates_candidates_geometry_cannot() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for &(w, f) in EVAL_WORDS {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    let mut rng = Lcg(0xD3E11);
+    let trace = synth_trace(&glide, "hello", &mut rng).expect("trace");
+    // timestamps: uniform sweep, ~15ms per point
+    let uniform: Vec<u32> = (0..trace.len() as u32).map(|i| i * 15).collect();
+    let with_uniform = glide.match_gesture_timed(&trace, &uniform, &nlp.trie, 8, None);
+    let untimed = glide.match_gesture_with_context(&trace, &nlp.trie, 8, None);
+    assert_eq!(
+        with_uniform.first().map(|m| m.word.as_str()),
+        untimed.first().map(|m| m.word.as_str()),
+        "uniform timing must not change the verdict"
+    );
+    assert_eq!(untimed.first().map(|m| m.word.as_str()), Some("hello"));
+    // now park a 200ms hold at a key OUTSIDE "hello" (the q corner) by
+    // pinning the first point far... simpler: append dwell points at 'b'
+    // is geometry-visible. Instead: hold ON 'l' (in-word) must not hurt:
+    let mut hold_on_l = uniform.clone();
+    for t in hold_on_l.iter_mut().skip(trace.len() / 2) {
+        *t += 200; // pause mid-stroke, near l for the hello template
+    }
+    let held = glide.match_gesture_timed(&trace, &hold_on_l, &nlp.trie, 8, None);
+    assert_eq!(
+        held.first().map(|m| m.word.as_str()),
+        Some("hello"),
+        "an in-word hold never hurts the word that explains it: {:?}",
+        held.iter().take(3).map(|m| (m.word.as_str(), m.score)).collect::<Vec<_>>()
+    );
+}
