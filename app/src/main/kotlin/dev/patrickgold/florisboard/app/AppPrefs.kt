@@ -250,14 +250,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         fun fire(egg: EasterEgg): Boolean {
             val discoveredCsv = discovered.get()
             if (!EasterEggs.isDiscovered(discoveredCsv, egg)) {
-                discovered.set(EasterEggs.withId(discoveredCsv, egg.id))
+                discovered.setSync(EasterEggs.withId(discoveredCsv, egg.id))
             }
             return EasterEggs.isEnabled(disabled.get(), egg)
         }
 
         fun setEggEnabled(egg: EasterEgg, enabled: Boolean) {
             val disabledCsv = disabled.get()
-            disabled.set(
+            disabled.setSync(
                 if (enabled) {
                     EasterEggs.withoutId(disabledCsv, egg.id)
                 } else {
