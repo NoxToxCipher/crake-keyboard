@@ -30,6 +30,34 @@ impl Point2D {
     }
 }
 
+
+/// Anisotropic Ergonomic Thumb-Arc Metric (Idea 4 / Loops 10-12):
+/// Models the biomechanical reach envelope of the human thumb.
+/// The major axis is aligned with natural diagonal thumb sweep (~28.5 degrees).
+#[inline]
+pub fn anisotropic_thumb_distance_sq(touch: &Point2D, target: &Point2D, _key_radius: f32) -> f32 {
+    let dx = touch.x - target.x;
+    let dy = touch.y - target.y;
+
+    // Rotate coordinates by thumb sweep angle theta ~ 28.5 degrees (cos = 0.8788, sin = 0.4772)
+    let cos_t = 0.8788f32;
+    let sin_t = 0.4772f32;
+
+    let u = dx * cos_t + dy * sin_t;  // along major reach axis
+    let v = -dx * sin_t + dy * cos_t; // along minor perpendicular axis
+
+    // Scale axes: thumb has higher reach tolerance along radial sweep (1.25x), tighter cross-sweep (0.85x)
+    let u_scaled = u / 1.25;
+    let v_scaled = v / 0.85;
+
+    u_scaled * u_scaled + v_scaled * v_scaled
+}
+
+#[inline]
+pub fn anisotropic_thumb_distance(touch: &Point2D, target: &Point2D, key_radius: f32) -> f32 {
+    anisotropic_thumb_distance_sq(touch, target, key_radius).sqrt()
+}
+
 /// Metadata about a single keyboard key's geometric layout.
 #[derive(Debug, Clone)]
 pub struct KeyInfo {
@@ -440,10 +468,10 @@ impl GlideEngine {
         let mut end_chars = Vec::new();
 
         for (&ch, &center) in &self.key_centers {
-            if center.distance_squared(&start_pt) <= search_radius_sq {
+            if anisotropic_thumb_distance_sq(&start_pt, &center, self.average_key_radius) <= search_radius_sq {
                 start_chars.push(ch);
             }
-            if center.distance_squared(&end_pt) <= search_radius_sq {
+            if anisotropic_thumb_distance_sq(&end_pt, &center, self.average_key_radius) <= search_radius_sq {
                 end_chars.push(ch);
             }
         }
@@ -487,12 +515,11 @@ impl GlideEngine {
                     let normalized_dist = dtw_dist / (simplified_gesture.len() + ideal_path.len()) as f32;
 
                     // Anchor accuracy: glides start deliberately (the user is
-                    // looking at the first key), so distance from the trace's
-                    // endpoints to the word's first/last key centers carries
-                    // real signal that plain DTW dilutes across the path.
+                    // looking at the first key), evaluated via anisotropic ergonomic thumb reach.
                     let anchor_penalty = match (ideal_path.first(), ideal_path.last()) {
                         (Some(first), Some(last)) => {
-                            (start_pt.distance(first) + end_pt.distance(last))
+                            (anisotropic_thumb_distance(&start_pt, first, self.average_key_radius)
+                                + anisotropic_thumb_distance(&end_pt, last, self.average_key_radius))
                                 / self.average_key_radius.max(1.0)
                                 * 6.0
                         }
