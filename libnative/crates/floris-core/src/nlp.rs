@@ -792,10 +792,17 @@ impl NlpEngine {
             });
         } else if trimmed_lower.len() >= 4 && candidates.is_empty() {
             // 5b. Missing Space Splitter (e.g. andthe -> and the, inmy -> in my, tothe -> to the)
+            // Both halves must be solidly real words: dictionary junk in
+            // the demoted 60-band produced auto-committing garbage splits
+            // ("adblock" -> "adb lock", "doona" -> "do ona", "tradies" ->
+            // "tra dies", sweep 2026-08-27).
+            const SPLIT_MIN_HALF_FREQ: u32 = 150;
             for split_idx in 2..trimmed_lower.len() - 1 {
                 let left = &trimmed_lower[..split_idx];
                 let right = &trimmed_lower[split_idx..];
-                if self.trie.contains(left) && self.trie.contains(right) {
+                if self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                    && self.trie.get_frequency(right).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                {
                     let formatted_left = Self::apply_casing(&trimmed[..split_idx], left);
                     let formatted_right = right.to_string();
                     let split_phrase = format!("{} {}", formatted_left, formatted_right);

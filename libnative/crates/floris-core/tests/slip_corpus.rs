@@ -19,6 +19,12 @@ fn engine() -> NlpEngine {
         ("for", 255),
         ("you", 255),
         ("my", 255),
+        ("in", 254),
+        ("adb", 60),
+        ("ona", 60),
+        ("tra", 60),
+        ("lock", 220),
+        ("dies", 219),
         ("mistakes", 180),
         ("deliberately", 160),
         ("this", 250),
@@ -443,6 +449,30 @@ fn three_slip_chains_autocommit_on_long_words_only() {
     assert!(
         !r.candidates.iter().any(|c| c.is_autocorrect),
         "short 3-slip must stay suggestion-only: {:?}",
+        r.candidates
+    );
+}
+
+/// The missing-space splitter must never weld junk-band halves into an
+/// auto-commit: "adblock" -> "adb lock" and "doona" -> "do ona" were real
+/// garbage splits (sweep 2026-08-27) — "adb", "ona", "tra" sit in the
+/// demoted 60-band. Genuine splits from real words keep working.
+#[test]
+fn splitter_refuses_junk_band_halves() {
+    let e = engine();
+    for typed in ["adblock", "doona", "tradies"] {
+        let r = e.suggest_with_context(typed, "", 5);
+        assert!(
+            !r.candidates.iter().any(|c| c.is_autocorrect && c.word.contains(' ')),
+            "'{typed}' must not split into junk: {:?}",
+            r.candidates
+        );
+    }
+    let r = e.suggest_with_context("inmy", "", 5);
+    assert_eq!(
+        r.candidates.first().map(|c| c.word.as_str()),
+        Some("in my"),
+        "real splits keep working: {:?}",
         r.candidates
     );
 }
