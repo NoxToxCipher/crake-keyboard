@@ -910,23 +910,23 @@ impl NlpEngine {
     
     /// Suggests completions and autocorrects with bimanual keystroke dynamics and transposition timing analysis (Idea 3 / Loops 7-9).
     
-    /// Evaluates 1-to-2 token splits and fat-thumb spacebar bottom-row slips on an unspaced token (Idea 4 / Loops 10-12).
+    /// Evaluates 1-to-2 token splits and fat-thumb spacebar bottom-row slips on an unspaced token with zero-allocation slicing (Idea 4 / Loop 12).
+    #[inline]
     pub fn evaluate_split_beam(&self, token: &str) -> Option<SpaceBeamCandidate> {
         let clean = token.trim().to_ascii_lowercase();
-        let len = clean.chars().count();
-        if len < 3 || len > 24 {
+        let bytes = clean.as_bytes();
+        let len = bytes.len();
+        if len < 3 || len > 24 || !clean.is_ascii() {
             return None;
         }
 
         let mut best_split = None;
         let mut best_score = -1.0f32;
 
-        let chars: Vec<char> = clean.chars().collect();
-
         // 1. Direct split: clean = L1 + L2 (0 edits, e.g. "inorder" -> "in order", "aswell" -> "as well")
         for i in 1..len {
-            let left_s: String = chars[0..i].iter().collect();
-            let right_s: String = chars[i..len].iter().collect();
+            let left_s = &clean[..i];
+            let right_s = &clean[i..];
 
             if (left_s.len() == 1 && left_s != "a" && left_s != "i")
                 || (right_s.len() == 1 && right_s != "a" && right_s != "i")
@@ -934,11 +934,11 @@ impl NlpEngine {
                 continue;
             }
 
-            if let (Some(f1), Some(f2)) = (self.trie.get_frequency(&left_s), self.trie.get_frequency(&right_s)) {
+            if let (Some(f1), Some(f2)) = (self.trie.get_frequency(left_s), self.trie.get_frequency(right_s)) {
                 if f1 >= 30 && f2 >= 30 {
                     let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
                     let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
-                    let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.6;
+                    let bigram_bonus = self.bigram_pair_score(left_s, right_s) as f32 * 0.6;
                     let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 30.0;
 
                     let single_freq = self.trie.get_frequency(&clean).unwrap_or(0);
@@ -951,12 +951,12 @@ impl NlpEngine {
         }
 
         // 2. Bottom-row spacebar substitution: clean = L1 + [v,b,n,m] + L2 (1 deletion edit)
-        // e.g. "gotnto" -> "got to", "inborder" -> "in order"
+        // e.g. "gotnto" -> "got to", "inmorder" -> "in order"
         for i in 1..(len - 1) {
-            let mid_ch = chars[i];
-            if mid_ch == 'v' || mid_ch == 'b' || mid_ch == 'n' || mid_ch == 'm' {
-                let left_s: String = chars[0..i].iter().collect();
-                let right_s: String = chars[(i + 1)..len].iter().collect();
+            let b = bytes[i];
+            if b == b'v' || b == b'b' || b == b'n' || b == b'm' {
+                let left_s = &clean[..i];
+                let right_s = &clean[(i + 1)..];
 
                 if (left_s.len() == 1 && left_s != "a" && left_s != "i")
                     || (right_s.len() == 1 && right_s != "a" && right_s != "i")
@@ -964,11 +964,11 @@ impl NlpEngine {
                     continue;
                 }
 
-                if let (Some(f1), Some(f2)) = (self.trie.get_frequency(&left_s), self.trie.get_frequency(&right_s)) {
+                if let (Some(f1), Some(f2)) = (self.trie.get_frequency(left_s), self.trie.get_frequency(right_s)) {
                     if f1 >= 40 && f2 >= 40 {
                         let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
                         let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
-                        let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.6;
+                        let bigram_bonus = self.bigram_pair_score(left_s, right_s) as f32 * 0.6;
                         let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 15.0;
 
                         if freq_score > best_score {
