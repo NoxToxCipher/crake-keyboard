@@ -638,3 +638,74 @@ fn kinematics_inflections_separate_swipe_through_accidental_keys() {
         res_cart.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
     );
 }
+
+
+/// Generates a synthetic touch trace with a deliberate micro-loop at a specified keycap.
+fn synth_trace_with_loop(engine: &GlideEngine, word: &str, loop_char: char, rng: &mut Lcg) -> Option<Vec<Point2D>> {
+    let ideal = engine.build_ideal_keypath(word)?;
+    let mut trace = Vec::new();
+    let loop_center = engine.key_center(loop_char)?;
+
+    for pair in ideal.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let steps = 6;
+        for s in 0..steps {
+            let t = s as f32 / steps as f32;
+            trace.push(Point2D::new(
+                a.x + (b.x - a.x) * t + rng.next_f32() * 8.0,
+                a.y + (b.y - a.y) * t + rng.next_f32() * 8.0,
+            ));
+        }
+
+        // If 'a' matches the loop character, insert a mini circular loop
+        if (a.x - loop_center.x).abs() < 1.0 && (a.y - loop_center.y).abs() < 1.0 {
+            let r = 25.0;
+            for k in 0..8 {
+                let theta = k as f32 * (std::f32::consts::TAU / 8.0);
+                trace.push(Point2D::new(
+                    loop_center.x + r * theta.cos() + rng.next_f32() * 4.0,
+                    loop_center.y + r * theta.sin() + rng.next_f32() * 4.0,
+                ));
+            }
+        }
+    }
+    let last = *ideal.last()?;
+    trace.push(Point2D::new(last.x + rng.next_f32() * 15.0, last.y + rng.next_f32() * 15.0));
+    Some(trace)
+}
+
+/// Double-letter micro-loop recognition battery (Loop 5/18):
+/// Verifies that swiping with a micro-loop over a keycap successfully selects the double-letter word.
+#[test]
+fn micro_loops_accurately_select_double_letter_words() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_pairs = [
+        ("look", 'o', "look"),
+        ("good", 'o', "good"),
+        ("sleep", 'e', "sleep"),
+        ("cool", 'o', "cool"),
+    ];
+
+    for &(w, _, _) in &test_pairs {
+        nlp.trie.insert(w, 240);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(word, loop_char, expected)) in test_pairs.iter().enumerate() {
+        let mut rng = Lcg(0x1009_C0DE + idx as u64 * 0x7777);
+        if let Some(trace) = synth_trace_with_loop(&glide, word, loop_char, &mut rng) {
+            let results = glide.match_gesture(&trace, &nlp.trie, 3);
+            let top_word = results.first().map(|m| m.word.as_str());
+            if top_word != Some(expected) {
+                failures.push(format!("Word '{word}' with loop at '{loop_char}' expected '{expected}', got {top_word:?} (all: {:?})", results.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()));
+            }
+        } else {
+            failures.push(format!("Failed to synthesize loop trace for '{word}' at '{loop_char}'"));
+        }
+    }
+
+    assert!(failures.is_empty(), "Double-letter micro-loop failures:\n{}", failures.join("\n"));
+}

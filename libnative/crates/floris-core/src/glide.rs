@@ -171,55 +171,43 @@ pub fn detect_double_letter_loops(points: &[Point2D], key_radius: f32) -> Vec<Po
     }
 
     let mut loop_centers = Vec::new();
-    let max_radius_sq = (key_radius * 1.15).powi(2);
+    let max_radius_sq = (key_radius * 1.2).powi(2);
+    let min_loop_path = key_radius * 1.1;
+    let max_closure_dist_sq = (key_radius * 0.65).powi(2);
 
-    // Sliding window checking for closed trajectory loops:
-    // A loop occurs when points wrap around (total angle change >= 240 deg)
-    // while remaining confined within a single keycap boundary.
-    let window_size = 8;
-    for i in 0..points.len().saturating_sub(window_size) {
-        let window = &points[i..i + window_size];
-        let p_start = window[0];
-        let p_mid = window[window_size / 2];
+    // Scan for sub-paths that travel a significant arc while closing back on themselves
+    for i in 0..points.len() {
+        let mut path_len = 0.0f32;
+        for j in (i + 3)..points.len().min(i + 16) {
+            path_len += points[j - 1].distance(&points[j]);
+            if path_len >= min_loop_path {
+                let closure_dist_sq = points[i].distance_squared(&points[j]);
+                if closure_dist_sq <= max_closure_dist_sq {
+                    // Compute centroid of the loop
+                    let mut cx = 0.0;
+                    let mut cy = 0.0;
+                    for k in i..=j {
+                        cx += points[k].x;
+                        cy += points[k].y;
+                    }
+                    let count = (j - i + 1) as f32;
+                    let center = Point2D::new(cx / count, cy / count);
 
-        // Must stay confined within single key radius
-        let mut confined = true;
-        for p in window {
-            if p.distance_squared(&p_mid) > max_radius_sq {
-                confined = false;
-                break;
-            }
-        }
+                    // Ensure all points in loop stay within keycap radius
+                    let mut confined = true;
+                    for k in i..=j {
+                        if points[k].distance_squared(&center) > max_radius_sq {
+                            confined = false;
+                            break;
+                        }
+                    }
 
-        if !confined {
-            continue;
-        }
-
-        // Sum angular turns in the window
-        let mut total_angle_deg = 0.0f32;
-        for j in 1..window.len() - 1 {
-            let dx1 = window[j].x - window[j - 1].x;
-            let dy1 = window[j].y - window[j - 1].y;
-            let dx2 = window[j + 1].x - window[j].x;
-            let dy2 = window[j + 1].y - window[j].y;
-
-            let mag1 = (dx1 * dx1 + dy1 * dy1).sqrt();
-            let mag2 = (dx2 * dx2 + dy2 * dy2).sqrt();
-
-            if mag1 > 1e-3 && mag2 > 1e-3 {
-                let dot = (dx1 * dx2 + dy1 * dy2) / (mag1 * mag2);
-                let cross = dx1 * dy2 - dy1 * dx2;
-                let angle = dot.clamp(-1.0, 1.0).acos();
-                // Signed angle turn
-                let signed_deg = angle * (180.0 / std::f32::consts::PI) * cross.signum();
-                total_angle_deg += signed_deg;
-            }
-        }
-
-        // Loop threshold: >= 220 degrees of consistent rotation or end-to-start close loop
-        if total_angle_deg.abs() >= 220.0 || window.last().unwrap().distance_squared(&p_start) < (key_radius * 0.4).powi(2) {
-            if loop_centers.last().map(|c: &Point2D| c.distance_squared(&p_mid)).unwrap_or(1e6) > max_radius_sq {
-                loop_centers.push(p_mid);
+                    if confined {
+                        if loop_centers.last().map(|c: &Point2D| c.distance_squared(&center)).unwrap_or(1e6) > max_radius_sq {
+                            loop_centers.push(center);
+                        }
+                    }
+                }
             }
         }
     }
@@ -349,6 +337,11 @@ impl GlideEngine {
             self.average_key_radius = total_radius / keys.len() as f32;
         }
         self.key_bounds = keys;
+    }
+
+    /// Returns the center position of a key character if present in layout.
+    pub fn key_center(&self, ch: char) -> Option<Point2D> {
+        self.key_centers.get(&ch.to_ascii_lowercase()).copied()
     }
 
     /// Builds the ideal ideal keypath trajectory for a given candidate word.
@@ -503,7 +496,6 @@ impl GlideEngine {
                     // Kinematics Inflection Alignment:
                     // Reward candidates whose interior keys align with detected turn corners/dwells.
                     let mut kinematics_bonus = 0.0f32;
-                    let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
                     for key_pt in &ideal_path {
                         if inflections.iter().any(|inf| inf.point.distance_squared(key_pt) <= radius_match_sq) {
                             kinematics_bonus += 0.8;
@@ -512,13 +504,15 @@ impl GlideEngine {
 
                     // Double-letter loop / stutter bonus:
                     // If candidate word has double letters (e.g. "good", "look", "coffee", "sleep")
-                    // and a micro-loop was detected over that keycap, apply a strong double-letter reward.
+                    // and a micro-loop was detected over that keycap, apply a decisive double-letter reward.
                     let mut double_letter_bonus = 0.0f32;
                     let double_chars = get_double_letter_chars(&word);
-                    for d_char in double_chars {
-                        if let Some(&center) = self.key_centers.get(&d_char) {
-                            if double_loops.iter().any(|lp| lp.distance_squared(&center) <= radius_match_sq) {
-                                double_letter_bonus += 4.0;
+                    if !double_loops.is_empty() && !double_chars.is_empty() {
+                        for d_char in &double_chars {
+                            if let Some(&center) = self.key_centers.get(d_char) {
+                                if double_loops.iter().any(|lp| lp.distance_squared(&center) <= radius_match_sq) {
+                                    double_letter_bonus += 22.0;
+                                }
                             }
                         }
                     }
