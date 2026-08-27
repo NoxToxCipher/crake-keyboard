@@ -3,6 +3,110 @@ use crate::trie::RadixTrie;
 use crate::typo_corpus::lookup_common_typo;
 
 /// Comprehensive lexicon of common English contractions (SCOWL & Wiktionary).
+
+/// Hand assignment for touch keys in bimanual thumb typing (Idea 3 / Loops 7-9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Hand {
+    Left,
+    Right,
+    Unknown,
+}
+
+/// Returns the default hand assignment for a key character.
+#[inline]
+pub fn get_key_hand(ch: char) -> Hand {
+    match ch.to_ascii_lowercase() {
+        'q' | 'w' | 'e' | 'r' | 't' | 'a' | 's' | 'd' | 'f' | 'g' | 'z' | 'x' | 'c' | 'v' => Hand::Left,
+        'y' | 'u' | 'i' | 'o' | 'p' | 'h' | 'j' | 'k' | 'l' | 'b' | 'n' | 'm' => Hand::Right,
+        _ => Hand::Unknown,
+    }
+}
+
+/// Checks if `raw_token` and `candidate` are an adjacent-character transposition
+/// occurring across opposite hands with an inter-keystroke interval under 55ms with zero heap allocation (Idea 3 / Loop 9).
+#[inline]
+pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &[u64]) -> bool {
+    if raw_token.len() != candidate.len() || raw_token.len() < 2 {
+        return false;
+    }
+
+    // Stack array for fast zero-allocation char inspection
+    let mut raw_buf = ['\0'; 32];
+    let mut cand_buf = ['\0'; 32];
+
+    let mut raw_len = 0;
+    for ch in raw_token.chars() {
+        if raw_len >= 32 { return false; }
+        raw_buf[raw_len] = ch;
+        raw_len += 1;
+    }
+
+    let mut cand_len = 0;
+    for ch in candidate.chars() {
+        if cand_len >= 32 { return false; }
+        cand_buf[cand_len] = ch;
+        cand_len += 1;
+    }
+
+    if raw_len != cand_len || raw_len < 2 {
+        return false;
+    }
+
+    let mut mismatch_idx = None;
+    for i in 0..raw_len {
+        if raw_buf[i] != cand_buf[i] {
+            mismatch_idx = Some(i);
+            break;
+        }
+    }
+
+    let Some(i) = mismatch_idx else {
+        return false;
+    };
+
+    if i + 1 >= raw_len {
+        return false;
+    }
+
+    if raw_buf[i] != cand_buf[i + 1] || raw_buf[i + 1] != cand_buf[i] {
+        return false;
+    }
+
+    for j in (i + 2)..raw_len {
+        if raw_buf[j] != cand_buf[j] {
+            return false;
+        }
+    }
+
+    let hand1 = get_key_hand(raw_buf[i]);
+    let hand2 = get_key_hand(raw_buf[i + 1]);
+    if hand1 == Hand::Unknown || hand2 == Hand::Unknown || hand1 == hand2 {
+        return false;
+    }
+
+    if timestamps.len() == raw_len {
+        let t1 = timestamps[i];
+        let t2 = timestamps[i + 1];
+        let delta = if t2 >= t1 { t2 - t1 } else { t1 - t2 };
+        return delta <= 55;
+    }
+
+    // No timing data means no timing evidence: the 55ms window IS the
+    // feature, so absent or mismatched timestamps must never satisfy it.
+    // (Was `true`, which made every cross-hand transposition qualify
+    // unconditionally — coord review 2026-08-28, defect 1.)
+    false
+}
+
+
+/// A candidate token split or merge from the continuous space beam search (Idea 4 / Loops 10-12).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpaceBeamCandidate {
+    pub text: String,
+    pub is_split: bool,
+    pub score: f32,
+}
+
 pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
     ("bitcoin", "Bitcoin"),
     ("chatgpt", "ChatGPT"),
@@ -314,6 +418,99 @@ pub fn contraction_display_for_glide(bare: &str) -> Option<&'static str> {
     canonicalize_contraction(bare)
 }
 
+
+/// Context-gated contraction resolver that disambiguates dual-meaning words
+/// (e.g. `well` vs `we'll`, `were` vs `we're`, `ill` vs `I'll`, `shed` vs `she'd`)
+/// using grammatical triggers from surrounding tokens (Idea 5 / Loops 13-15).
+#[inline]
+pub fn resolve_contraction_with_context(
+    bare: &str,
+    prev_word: Option<&str>,
+    next_word: Option<&str>,
+) -> Option<&'static str> {
+    let lower = bare.to_ascii_lowercase();
+    let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
+
+    // 1. Unconditionally safe contractions (never valid conversational non-contractions)
+    if let Some(c) = canonicalize_contraction(&clean) {
+        return Some(c);
+    }
+
+    let prev = prev_word.map(|w| w.trim().to_ascii_lowercase());
+    let next = next_word.map(|w| w.trim().to_ascii_lowercase());
+
+    match clean.as_str() {
+        "well" => {
+            if let Some(ref p) = prev {
+                if matches!(
+                    p.as_str(),
+                    "as" | "very" | "so" | "quite" | "pretty" | "how" | "doing" | "done"
+                        | "all" | "deep" | "water" | "oil" | "wish" | "said"
+                        // modal + "well" + verb is adverbial, never "we'll":
+                        // "it may well be", "could well go" (audit 2026-08-28)
+                        | "may" | "might" | "could" | "should" | "would" | "will" | "can" | "must"
+                ) {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "be" | "go" | "see" | "find" | "know" | "take" | "get" | "have" | "make" | "do" | "come" | "call" | "try" | "need" | "tell" | "ask" | "look" | "talk" | "check" | "wait" | "meet") {
+                    return Some("we'll");
+                }
+            }
+            None
+        }
+        "were" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "they" | "we" | "you" | "there" | "who" | "which" | "where" | "that" | "as" | "if") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "going" | "coming" | "doing" | "getting" | "looking" | "waiting" | "excited" | "happy" | "ready" | "sorry" | "back" | "here" | "not" | "all" | "trying" | "living" | "taking") {
+                    return Some("we're");
+                }
+            }
+            None
+        }
+        "ill" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "feel" | "feeling" | "fell" | "seriously" | "terminally" | "mentally" | "physically" | "critically" | "look" | "looked" | "is" | "was") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "be" | "go" | "see" | "find" | "get" | "have" | "make" | "do" | "call" | "tell" | "check" | "let" | "try" | "take" | "ask") {
+                    return Some("I'll");
+                }
+            }
+            None
+        }
+        "shed" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "the" | "a" | "storage" | "garden" | "tool" | "back" | "old" | "build" | "in" | "my" | "his" | "her") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "like" | "love" | "want" | "prefer" | "rather" | "go" | "have" | "be" | "do" | "know" | "think" | "make" | "said") {
+                    return Some("she'd");
+                }
+            }
+            None
+        }
+        "hed" => {
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "like" | "love" | "want" | "prefer" | "rather" | "go" | "have" | "be" | "do" | "know" | "think" | "make" | "said") {
+                    return Some("he'd");
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
 pub fn contraction_display(bare: &str) -> Option<&'static str> {
     let lower = bare.to_ascii_lowercase();
     let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
@@ -365,6 +562,10 @@ pub struct NlpEngine {
     /// context consumer (rescorer, glide, merge attestation, split-repair
     /// witnesses) reflects how this user actually writes. Capped and pruned.
     personal_bigrams: std::collections::HashMap<(String, String), u32>,
+    /// Suppressed false-positive corrections (typo, wrong_word) -> rejection count (Idea 6 / Loops 16-18)
+    rejected_corrections: std::collections::HashMap<(String, String), u32>,
+    /// Last-used interaction epoch for learned words
+    word_epochs: std::collections::HashMap<String, u64>,
 }
 
 impl NlpEngine {
@@ -384,12 +585,70 @@ impl NlpEngine {
             word_ids: std::collections::HashMap::new(),
             learned_words: std::collections::HashMap::new(),
             personal_bigrams: std::collections::HashMap::new(),
+            rejected_corrections: std::collections::HashMap::new(),
+            word_epochs: std::collections::HashMap::new(),
         }
     }
 
     /// Records that the user wrote `next` after `prev`. At the cap, the
     /// least-used pair is pruned so the store follows current habits
     /// instead of freezing on old ones.
+    
+    /// Records an explicitly rejected / backspaced autocorrect to suppress sticky typos (Idea 6 / Loops 16-18).
+    #[inline]
+    pub fn record_rejected_correction(&mut self, typo: &str, wrong_suggestion: &str) {
+        let t = typo.trim().to_ascii_lowercase();
+        let w = wrong_suggestion.trim().to_ascii_lowercase();
+        if !t.is_empty() && !w.is_empty() {
+            let entry = self.rejected_corrections.entry((t, w)).or_insert(0);
+            *entry = entry.saturating_add(1);
+        }
+    }
+
+    /// Checks whether a suggestion has been repeatedly rejected by the user with zero-allocation fast path.
+    #[inline]
+    pub fn is_rejected_correction(&self, typo: &str, candidate: &str) -> bool {
+        if self.rejected_corrections.is_empty() {
+            return false;
+        }
+        let t = typo.trim().to_ascii_lowercase();
+        let c = candidate.trim().to_ascii_lowercase();
+        if let Some(&rejections) = self.rejected_corrections.get(&(t, c)) {
+            return rejections >= 2;
+        }
+        false
+    }
+
+    /// Learns a word with recency epoch tracking (Idea 6 / Loops 16-18).
+    #[inline]
+    pub fn learn_word_with_decay(&mut self, word: &str, freq: u32, current_epoch: u64) {
+        self.learn_word(word, freq);
+        let trimmed = word.trim().to_ascii_lowercase();
+        if !trimmed.is_empty() {
+            self.word_epochs.insert(trimmed, current_epoch);
+        }
+    }
+
+    /// Decays transient learned words that have not been reinforced within `half_life` epochs in a single retain pass (Idea 6 / Loop 18).
+    #[inline]
+    pub fn decay_learned_entries(&mut self, current_epoch: u64, half_life: u64) {
+        if self.word_epochs.is_empty() {
+            return;
+        }
+        let learned_ref = &mut self.learned_words;
+        self.word_epochs.retain(|word, &mut epoch| {
+            if current_epoch > epoch && (current_epoch - epoch) >= half_life {
+                if let Some(&freq) = learned_ref.get(word) {
+                    if freq <= 140 {
+                        learned_ref.remove(word);
+                        return false;
+                    }
+                }
+            }
+            true
+        });
+    }
+
     pub fn record_personal_bigram(&mut self, prev: &str, next: &str) {
         let prev = prev.trim().to_lowercase();
         let next = next.trim().to_lowercase();
@@ -460,12 +719,28 @@ impl NlpEngine {
             .collect();
         // Keep the most-used pairs when over the cap.
         state.bigrams.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
+        
+        state.rejected = self
+            .rejected_corrections
+            .iter()
+            .map(|((t, w), &n)| (t.clone(), w.clone(), n))
+            .collect();
+        state.rejected.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
+
+        state.word_epochs = self
+            .word_epochs
+            .iter()
+            .map(|(w, &ep)| (w.clone(), ep))
+            .collect();
+        state.word_epochs.sort();
+
         state.serialize()
     }
 
     /// Restores learned state from a CRKL blob: learned words re-enter the
-    /// trie and correction habits their counters. Returns how many words
-    /// were restored; a corrupt blob restores nothing and errors.
+    /// trie, correction habits, personal bigrams, rejected corrections, and
+    /// decay epochs. Returns how many words were restored; a corrupt blob
+    /// restores nothing and errors.
     pub fn import_learned(&mut self, data: &[u8]) -> Result<usize, crate::persist::LearnedError> {
         let state = crate::persist::LearnedState::parse(data)?;
         let count = state.words.len();
@@ -486,6 +761,14 @@ impl NlpEngine {
         for (w1, w2, n) in state.bigrams {
             let slot = self.personal_bigrams.entry((w1, w2)).or_insert(0);
             *slot = (*slot).max(n);
+        }
+        for (typo, wrong, n) in state.rejected {
+            let slot = self.rejected_corrections.entry((typo, wrong)).or_insert(0);
+            *slot = (*slot).max(n);
+        }
+        for (word, epoch) in state.word_epochs {
+            let slot = self.word_epochs.entry(word).or_insert(0);
+            *slot = (*slot).max(epoch);
         }
         Ok(count)
     }
@@ -586,6 +869,42 @@ impl NlpEngine {
         total_score
     }
 
+    
+    /// Computes normalized next-character probability priors based on Trie completions and Bigram LM (Idea 1 / Loops 1-3).
+    pub fn predict_next_char_probabilities(&self, prefix: &str) -> Vec<(char, f32)> {
+        if prefix.is_empty() {
+            // Default unigram starter distribution for common English letters
+            return vec![
+                ('t', 0.16), ('a', 0.12), ('o', 0.10), ('s', 0.09), ('w', 0.08),
+                ('h', 0.07), ('i', 0.07), ('b', 0.05), ('c', 0.05), ('m', 0.04),
+            ];
+        }
+
+        let mut counts = std::collections::HashMap::new();
+        let completions = self.trie.prefix_search(prefix, 40);
+        let prefix_len = prefix.chars().count();
+
+        for (word, freq) in completions {
+            let word_chars: Vec<char> = word.chars().collect();
+            if word_chars.len() > prefix_len {
+                let next_ch = word_chars[prefix_len].to_ascii_lowercase();
+                if next_ch.is_alphabetic() {
+                    *counts.entry(next_ch).or_insert(0.0f32) += freq as f32;
+                }
+            }
+        }
+
+        let total: f32 = counts.values().sum();
+        if total <= 0.0 {
+            return Vec::new();
+        }
+
+        let mut results: Vec<(char, f32)> = counts.into_iter().map(|(c, weight)| (c, weight / total)).collect();
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(8);
+        results
+    }
+
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
         self.touch_model = model;
     }
@@ -619,6 +938,13 @@ impl NlpEngine {
                 .insert(word.to_string(), self.corpus_words.len() as u32);
             self.corpus_words.push(word.to_string());
         }
+    }
+
+    /// Whether the user has personally learned this word (typed, accepted
+    /// or reverted-to it). Learned vocabulary is the user's own: commit
+    /// policies must never demote it in favour of "more common" words.
+    pub fn is_learned(&self, word: &str) -> bool {
+        self.learned_words.contains_key(&word.trim().to_ascii_lowercase())
     }
 
     pub fn corpus_words(&self) -> &[String] {
@@ -758,6 +1084,156 @@ impl NlpEngine {
         } else {
             candidate.to_string()
         }
+    }
+
+    /// Resolves contractions with context-gating on grammatical evidence (Idea 5 / Loops 13-15).
+    #[inline]
+    pub fn resolve_contraction_context(
+        &self,
+        token: &str,
+        prev_word: Option<&str>,
+        next_word: Option<&str>,
+    ) -> Option<&'static str> {
+        resolve_contraction_with_context(token, prev_word, next_word)
+    }
+
+    /// Evaluates 1-to-2 token splits and fat-thumb spacebar bottom-row slips on an unspaced token with zero-allocation slicing (Idea 4 / Loop 12).
+    #[inline]
+    pub fn evaluate_split_beam(&self, token: &str) -> Option<SpaceBeamCandidate> {
+        let clean = token.trim().to_ascii_lowercase();
+        let bytes = clean.as_bytes();
+        let len = bytes.len();
+        if len < 3 || len > 24 || !clean.is_ascii() {
+            return None;
+        }
+
+        let mut best_split = None;
+        let mut best_score = -1.0f32;
+
+        // 1. Direct split: clean = L1 + L2 (0 edits, e.g. "inorder" -> "in order", "aswell" -> "as well")
+        for i in 1..len {
+            let left_s = &clean[..i];
+            let right_s = &clean[i..];
+
+            if (left_s.len() == 1 && left_s != "a" && left_s != "i")
+                || (right_s.len() == 1 && right_s != "a" && right_s != "i")
+            {
+                continue;
+            }
+
+            if let (Some(f1), Some(f2)) = (self.trie.get_frequency(left_s), self.trie.get_frequency(right_s)) {
+                if f1 >= 30 && f2 >= 30 {
+                    let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
+                    let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
+                    let bigram_bonus = self.bigram_pair_score(left_s, right_s) as f32 * 0.6;
+                    let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 30.0;
+
+                    let single_freq = self.trie.get_frequency(&clean).unwrap_or(0);
+                    if single_freq < 150 && freq_score > best_score {
+                        best_score = freq_score;
+                        best_split = Some(format!("{} {}", left_s, right_s));
+                    }
+                }
+            }
+        }
+
+        // 2. Bottom-row spacebar substitution: clean = L1 + [v,b,n,m] + L2 (1 deletion edit)
+        // e.g. "gotnto" -> "got to", "inmorder" -> "in order"
+        for i in 1..(len - 1) {
+            let b = bytes[i];
+            if b == b'v' || b == b'b' || b == b'n' || b == b'm' {
+                let left_s = &clean[..i];
+                let right_s = &clean[(i + 1)..];
+
+                if (left_s.len() == 1 && left_s != "a" && left_s != "i")
+                    || (right_s.len() == 1 && right_s != "a" && right_s != "i")
+                {
+                    continue;
+                }
+
+                if let (Some(f1), Some(f2)) = (self.trie.get_frequency(left_s), self.trie.get_frequency(right_s)) {
+                    if f1 >= 40 && f2 >= 40 {
+                        let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
+                        let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
+                        let bigram_bonus = self.bigram_pair_score(left_s, right_s) as f32 * 0.6;
+                        let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 15.0;
+
+                        if freq_score > best_score {
+                            best_score = freq_score;
+                            best_split = Some(format!("{} {}", left_s, right_s));
+                        }
+                    }
+                }
+            }
+        }
+
+        best_split.map(|text| SpaceBeamCandidate {
+            text,
+            is_split: true,
+            score: best_score,
+        })
+    }
+
+    /// Evaluates 2-to-1 token merges for accidental mid-word spacebar insertions (Idea 4 / Loops 10-12).
+    pub fn evaluate_merge_beam(&self, prev_token: &str, current_token: &str) -> Option<SpaceBeamCandidate> {
+        let p_clean = prev_token.trim().to_ascii_lowercase();
+        let c_clean = current_token.trim().to_ascii_lowercase();
+
+        if p_clean.is_empty() || c_clean.is_empty() {
+            return None;
+        }
+
+        let merged = format!("{}{}", p_clean, c_clean);
+        if let Some(m_freq) = self.trie.get_frequency(&merged) {
+            if m_freq >= 120 {
+                let pair_score = self.bigram_pair_score(&p_clean, &c_clean);
+                if pair_score < 40 {
+                    return Some(SpaceBeamCandidate {
+                        text: merged,
+                        is_split: false,
+                        score: m_freq as f32 * 0.5,
+                    });
+                }
+            }
+        }
+        None
+    }
+
+    pub fn suggest_with_timing(
+        &self,
+        raw_token: &str,
+        timestamps: &[u64],
+        max_suggestions: usize,
+    ) -> SuggestionResult {
+        let mut result = self.suggest(raw_token, max_suggestions);
+        if raw_token.len() >= 2 {
+            let raw_chars: Vec<char> = raw_token.chars().collect();
+            for i in 0..(raw_chars.len() - 1) {
+                let hand1 = get_key_hand(raw_chars[i]);
+                let hand2 = get_key_hand(raw_chars[i + 1]);
+                if hand1 != Hand::Unknown && hand2 != Hand::Unknown && hand1 != hand2 {
+                    let mut swapped = raw_chars.clone();
+                    swapped.swap(i, i + 1);
+                    let candidate_str: String = swapped.into_iter().collect();
+
+                    if self.trie.contains(&candidate_str) && is_bimanual_transposition(raw_token, &candidate_str, timestamps) {
+                        if let Some(pos) = result.candidates.iter().position(|c| c.word == candidate_str) {
+                            let mut cand = result.candidates.remove(pos);
+                            cand.is_autocorrect = true;
+                            result.candidates.insert(0, cand);
+                        } else {
+                            result.candidates.insert(0, RankedCandidate {
+                                word: candidate_str,
+                                is_autocorrect: true,
+                            });
+                            result.candidates.truncate(max_suggestions);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        result
     }
 
     pub fn suggest(&self, query: &str, max_candidates: usize) -> SuggestionResult {
@@ -1088,6 +1564,38 @@ impl NlpEngine {
                 }
             }
             
+            // 5b-2. Space-beam fallback (Antigravity Idea 4, wired here):
+            // catches what the direct splitter cannot — a fat thumb
+            // hitting a bottom-row letter INSTEAD of space ("gotnto" ->
+            // "got to"). Only when the splitter found nothing, and under
+            // this file's commit discipline: never for capitalized input,
+            // and the winning halves must each be solidly real (>= 150)
+            // or the pair attested in the language model.
+            let beam_triple_run = trimmed_lower
+                .as_bytes()
+                .windows(3)
+                .any(|w| w[0] == w[1] && w[1] == w[2]);
+            if candidates.is_empty()
+                && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
+                && trimmed_lower.len() >= 5
+                // burst territory ("helllo") collapses, never splits — the
+                // same rule the direct splitter learned (iteration ~42).
+                && !beam_triple_run
+            {
+                if let Some(beam) = self.evaluate_split_beam(&trimmed_lower) {
+                    let mut parts = beam.text.splitn(2, ' ');
+                    if let (Some(l), Some(r)) = (parts.next(), parts.next()) {
+                        let solid = |w: &str| self.trie.get_frequency(w).unwrap_or(0) >= 150;
+                        if (solid(l) && solid(r)) || self.bigram_pair_score(l, r) > 0 {
+                            candidates.push(RankedCandidate {
+                                word: beam.text,
+                                is_autocorrect: true,
+                            });
+                        }
+                    }
+                }
+            }
+
             // 5c. Repeated Letter Burst Normalization (e.g. soooo -> so, yessss -> yes, pleaaase -> please, heyyy -> hey)
             if candidates.is_empty() {
                 let mut single_collapsed = String::with_capacity(trimmed_lower.len());
@@ -1529,6 +2037,19 @@ impl NlpEngine {
                     let reordered: Vec<RankedCandidate> =
                         order.iter().map(|&i| candidates[head + i].clone()).collect();
                     candidates.splice(head.., reordered);
+                }
+            }
+        }
+
+        // The user's spoken: a correction they have rejected twice (via
+        // backspace revert) never auto-commits for that typed token again.
+        // One gate here covers every lane — corpus, fuzzy, homophone,
+        // rescues — instead of each lane consulting separately. The word
+        // stays visible as a plain suggestion.
+        if !self.rejected_corrections.is_empty() {
+            for c in candidates.iter_mut() {
+                if c.is_autocorrect && self.is_rejected_correction(&trimmed_lower, &c.word) {
+                    c.is_autocorrect = false;
                 }
             }
         }

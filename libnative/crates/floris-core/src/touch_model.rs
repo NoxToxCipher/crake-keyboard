@@ -27,6 +27,48 @@ use std::collections::HashMap;
 /// a full edit. See the module docs for the Gaussian derivation.
 pub const NEAR_FACTOR: f32 = 1.25;
 
+/// A physical capacitive contact patch reported by hardware touch digitizer (Idea 2 / Loops 4-6).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ContactPatch {
+    pub x: f32,
+    pub y: f32,
+    pub major: f32,
+    pub minor: f32,
+    pub orientation: f32, // angle in radians (-PI/2 to PI/2)
+}
+
+impl ContactPatch {
+    #[inline]
+    pub fn new(x: f32, y: f32, major: f32, minor: f32, orientation: f32) -> Self {
+        Self { x, y, major, minor, orientation }
+    }
+
+    /// Calculates the true physical fingertip / bone apex coordinates by correcting for
+    /// the capacitive smear and thumb-roll tilt vector with sub-microsecond branchless math (Idea 2 / Loop 6).
+    #[inline]
+    pub fn corrected_apex(&self) -> (f32, f32) {
+        if !self.x.is_finite() || !self.y.is_finite() || !self.major.is_finite() || !self.minor.is_finite() || !self.orientation.is_finite() {
+            return (self.x, self.y);
+        }
+        let eccentricity = (self.major - self.minor).max(0.0);
+        if eccentricity <= 0.001 {
+            return (self.x, self.y);
+        }
+
+        // Thumb pad apex scale factor kappa: shifts contact center toward physical bone apex (0.19 * eccentricity)
+        const KAPPA_HALF: f32 = 0.19;
+        let shift_mag = eccentricity * KAPPA_HALF;
+
+        // Fast path for straight-on / vertical touches without full trigonometry
+        if self.orientation.abs() <= 0.05 {
+            return (self.x, self.y - shift_mag);
+        }
+
+        let (sin_o, cos_o) = self.orientation.sin_cos();
+        (self.x - shift_mag * sin_o, self.y - shift_mag * cos_o)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct TouchModel {
     centers: HashMap<char, (f32, f32)>,
@@ -81,6 +123,17 @@ impl TouchModel {
     /// this layout. Unknown characters (not on the layout) are never near —
     /// the caller's fallback table does not apply once a model is loaded,
     /// because mixing the two would reintroduce the union-graph problem.
+    
+    #[inline]
+    pub fn get_center(&self, ch: char) -> Option<(f32, f32)> {
+        self.centers.get(&ch.to_ascii_lowercase()).copied()
+    }
+
+    #[inline]
+    pub fn near_dist_sq(&self) -> f32 {
+        self.near_dist_sq
+    }
+
     pub fn is_near(&self, a: char, b: char) -> bool {
         let a = a.to_ascii_lowercase();
         let b = b.to_ascii_lowercase();

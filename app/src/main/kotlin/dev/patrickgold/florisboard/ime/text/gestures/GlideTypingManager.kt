@@ -73,9 +73,14 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
 
     override fun onGlideComplete(data: GlideTypingGesture.Detector.PointerData) {
         previewJob?.cancel()
-        updateSuggestionsAsync(MAX_SUGGESTION_COUNT, true) {
-            synchronized(gesturePoints) { gesturePoints.clear() }
+        // Snapshot and clear synchronously so a next glide starting before
+        // the async match completes can never mix its points into this one.
+        val ptsCopy = synchronized(gesturePoints) {
+            val copy = gesturePoints.toList()
+            gesturePoints.clear()
+            copy
         }
+        updateSuggestionsAsync(MAX_SUGGESTION_COUNT, true, ptsCopy)
     }
 
     override fun onGlideCancelled() {
@@ -167,9 +172,14 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
      * @param callback Called when this function completes. Takes a boolean, which indicates if suggestions
      * were successfully set.
      */
-    private fun updateSuggestionsAsync(maxSuggestionsToShow: Int, commit: Boolean, callback: (Boolean) -> Unit): Job {
+    private fun updateSuggestionsAsync(
+        maxSuggestionsToShow: Int,
+        commit: Boolean,
+        points: List<FlorisNative.GlidePoint>? = null,
+        callback: (Boolean) -> Unit = {},
+    ): Job {
         return scope.launch(Dispatchers.Default) {
-            val pts = synchronized(gesturePoints) { gesturePoints.toList() }
+            val pts = points ?: synchronized(gesturePoints) { gesturePoints.toList() }
             var prevWordForTrace = ""
             val nativeSuggestions = if (FlorisNative.isAvailable() && pts.size >= 2) {
                 // Previous committed word, so the native matcher can blend

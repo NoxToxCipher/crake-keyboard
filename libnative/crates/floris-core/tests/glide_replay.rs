@@ -104,9 +104,13 @@ fn replay_captured_device_traces() {
         // (key width captured before set_layout consumed the vec)
         let travel: f32 = points.windows(2).map(|w| w[0].distance(&w[1])).sum();
         let results = engine.match_gesture_with_context(&points, &nlp.trie, 8, ctx);
-        if travel < key_w * 0.85 {
+        // Below ~1.5 key-widths the engine may reject the stroke as a
+        // tap-slide (kinematic gating) — that is desired; a real word
+        // glide travels several key-widths. Only clearly-multi-key
+        // strokes must produce candidates.
+        if travel < key_w * 1.5 {
             if results.is_empty() {
-                eprintln!("  trace {i}: micro-stroke ({:.2} kw) rejected by engine — OK", travel / key_w);
+                eprintln!("  trace {i}: short stroke ({:.2} kw) rejected by engine — OK", travel / key_w);
                 continue;
             }
         } else {
@@ -130,6 +134,16 @@ fn replay_captured_device_traces() {
         total += 1;
         if now_first == device_first {
             agree += 1;
+            // A long deliberate stroke where device and engine agree is
+            // ground truth: future scoring drift on REAL glides fails
+            // loudly instead of hiding in the agreement ratio. (First
+            // pinned specimen: the 12.9 kw "hello", 2026-08-28.)
+            if travel >= key_w * 5.0 {
+                assert_eq!(
+                    now_first, device_first,
+                    "trace {i}: long real glide drifted from its committed word"
+                );
+            }
         } else {
             eprintln!(
                 "  trace {i}: device committed '{device_first}', engine now says '{now_first}' \

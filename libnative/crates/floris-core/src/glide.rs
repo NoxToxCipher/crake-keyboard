@@ -745,10 +745,24 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         // nearby) still wins — that is a genuine rare-word glide.
         const JUNK_RESCUE_MARGIN: f32 = 12.0;
         if matches.first().is_some_and(|m| m.frequency < GLIDE_COMMIT_MIN_FREQ) {
-            if let Some(pos) = matches.iter().position(|m| m.frequency >= GLIDE_COMMIT_MIN_FREQ) {
-                if matches[pos].score - matches[0].score <= JUNK_RESCUE_MARGIN {
-                    let rescued = matches.remove(pos);
-                    matches.insert(0, rescued);
+            // The user's own learned words are NEVER demoted by the junk
+            // coin-flip: "crake" (corpus freq 30, but learned on the
+            // owner's device) was losing its clean glide to "cake" under
+            // this rule (audit 2026-08-27). Frequency cannot tell a rare
+            // legitimate word from junk; personal vocabulary can.
+            let winner_is_learned = context
+                .map(|(nlp, _)| {
+                    matches
+                        .first()
+                        .is_some_and(|m| nlp.is_learned(&m.word))
+                })
+                .unwrap_or(false);
+            if !winner_is_learned {
+                if let Some(pos) = matches.iter().position(|m| m.frequency >= GLIDE_COMMIT_MIN_FREQ) {
+                    if matches[pos].score - matches[0].score <= JUNK_RESCUE_MARGIN {
+                        let rescued = matches.remove(pos);
+                        matches.insert(0, rescued);
+                    }
                 }
             }
         }

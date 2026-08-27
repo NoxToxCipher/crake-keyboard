@@ -194,3 +194,128 @@ mod tests {
         }
     }
 }
+
+
+/// Returns the millimeter-aware substitution cost between two characters (Idea 7 / Loops 19-21).
+#[inline]
+pub fn spatial_substitution_cost(a: char, b: char, touch_model: Option<&crate::TouchModel>) -> f32 {
+    let a_low = a.to_ascii_lowercase();
+    let b_low = b.to_ascii_lowercase();
+    if a_low == b_low {
+        return 0.0;
+    }
+
+    if let Some(model) = touch_model {
+        if let (Some(p1), Some(p2)) = (model.get_center(a_low), model.get_center(b_low)) {
+            let dx = p1.0 - p2.0;
+            let dy = p1.1 - p2.1;
+            let dist_sq = dx * dx + dy * dy;
+            let near_dist_sq = model.near_dist_sq();
+            if near_dist_sq > 0.0 && dist_sq <= near_dist_sq {
+                let ratio = (dist_sq / near_dist_sq).min(1.0);
+                return 0.35 + 0.50 * ratio;
+            }
+        }
+    }
+
+    if is_qwerty_adjacent(a_low, b_low) {
+        0.50
+    } else {
+        1.50
+    }
+}
+
+#[inline]
+fn is_qwerty_adjacent(a: char, b: char) -> bool {
+    const ADJACENCIES: &[(char, &[char])] = &[
+        ('q', &['w', 'a', 's', '1', '2']),
+        ('w', &['q', 'e', 'a', 's', 'd', '2', '3']),
+        ('e', &['w', 'r', 's', 'd', 'f', '3', '4']),
+        ('r', &['e', 't', 'd', 'f', 'g', '4', '5']),
+        ('t', &['r', 'y', 'f', 'g', 'h', '5', '6']),
+        ('y', &['t', 'u', 'g', 'h', 'j', '6', '7']),
+        ('u', &['y', 'i', 'h', 'j', 'k', '7', '8']),
+        ('i', &['u', 'o', 'j', 'k', 'l', '8', '9']),
+        ('o', &['i', 'p', 'k', 'l', '9', '0']),
+        ('p', &['o', 'l', '0']),
+        ('a', &['q', 'w', 's', 'z', 'x']),
+        ('s', &['q', 'w', 'e', 'a', 'd', 'z', 'x', 'c']),
+        ('d', &['w', 'e', 'r', 's', 'f', 'x', 'c', 'v']),
+        ('f', &['e', 'r', 't', 'd', 'g', 'c', 'v', 'b']),
+        ('g', &['r', 't', 'y', 'f', 'h', 'v', 'b', 'n']),
+        ('h', &['t', 'y', 'u', 'g', 'j', 'b', 'n', 'm']),
+        ('j', &['y', 'u', 'i', 'h', 'k', 'n', 'm']),
+        ('k', &['u', 'i', 'o', 'j', 'l', 'm']),
+        ('l', &['i', 'o', 'p', 'k']),
+        ('z', &['a', 's', 'x']),
+        ('x', &['z', 'a', 's', 'd', 'c']),
+        ('c', &['x', 's', 'd', 'f', 'v']),
+        ('v', &['c', 'd', 'f', 'g', 'b']),
+        ('b', &['v', 'f', 'g', 'h', 'n']),
+        ('n', &['b', 'g', 'h', 'j', 'm']),
+        ('m', &['n', 'h', 'j', 'k']),
+    ];
+    ADJACENCIES.iter().any(|&(k, adj)| k == a && adj.contains(&b))
+}
+
+/// Calculates the millimeter-aware spatial Levenshtein distance between query and target
+/// using stack-allocated rolling DP buffers with zero heap allocation (Idea 7 / Loop 21).
+#[inline]
+pub fn spatial_levenshtein_distance(
+    query: &str,
+    target: &str,
+    touch_model: Option<&crate::TouchModel>,
+) -> f32 {
+    if query == target {
+        return 0.0;
+    }
+
+    let mut q_buf = ['\0'; 32];
+    let mut t_buf = ['\0'; 32];
+
+    let mut m = 0;
+    for ch in query.chars() {
+        if m >= 32 { return 32.0; }
+        q_buf[m] = ch;
+        m += 1;
+    }
+
+    let mut n = 0;
+    for ch in target.chars() {
+        if n >= 32 { return 32.0; }
+        t_buf[n] = ch;
+        n += 1;
+    }
+
+    if m == 0 { return n as f32; }
+    if n == 0 { return m as f32; }
+
+    let mut dp = [[0.0f32; 33]; 33];
+
+    for i in 0..=m {
+        dp[i][0] = i as f32;
+    }
+    for j in 0..=n {
+        dp[0][j] = j as f32;
+    }
+
+    for i in 1..=m {
+        for j in 1..=n {
+            let cost = spatial_substitution_cost(q_buf[i - 1], t_buf[j - 1], touch_model);
+            let deletion = dp[i - 1][j] + 1.0;
+            let insertion = dp[i][j - 1] + 1.0;
+            let substitution = dp[i - 1][j - 1] + cost;
+
+            let mut best = deletion.min(insertion).min(substitution);
+
+            if i > 1 && j > 1 && q_buf[i - 1] == t_buf[j - 2] && q_buf[i - 2] == t_buf[j - 1] {
+                let trans_cost = dp[i - 2][j - 2] + 0.6;
+                best = best.min(trans_cost);
+            }
+
+            dp[i][j] = best;
+        }
+    }
+
+    dp[m][n]
+}

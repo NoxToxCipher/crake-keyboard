@@ -844,7 +844,10 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
         let nlp_guard = NLP_ENGINE.read();
 
         if let (Ok(glide), Ok(nlp)) = (glide_guard, nlp_guard) {
-            let context = if prev.is_empty() { None } else { Some((&*nlp, prev.as_str())) };
+            // nlp always rides along: an empty prev disables the bigram
+            // bonus inside the engine, but the learned-word exemption in
+            // the commit policy still needs the engine reference.
+            let context = Some((&*nlp, prev.as_str()));
             glide.match_gesture_with_context(&path, &nlp.trie, max_results.max(1) as usize, context)
         } else {
             Vec::new()
@@ -933,6 +936,20 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPred
         }
     }
     result_array.into_raw()
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRecordRejectedCorrection(
+    mut env: JNIEnv,
+    _class: JClass,
+    typo: JString,
+    wrong_suggestion: JString,
+) {
+    let t = env.get_string(&typo).map(|s| s.to_str().unwrap_or("").to_string()).unwrap_or_default();
+    let w = env.get_string(&wrong_suggestion).map(|s| s.to_str().unwrap_or("").to_string()).unwrap_or_default();
+    if let Ok(mut engine) = NLP_ENGINE.write() {
+        engine.record_rejected_correction(&t, &w);
+    }
 }
 
 #[no_mangle]

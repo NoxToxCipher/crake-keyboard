@@ -350,6 +350,10 @@ fun TextKeyboardLayout(
                 }
                 desiredKey.visibleBounds.applyFrom(desiredKey.touchBounds).deflateBy(keyMarginH, keyMarginV)
                 keyboard.layout(keyboardWidth, keyboardHeight, desiredKey, true)
+                if (glideEnabled && keyboard.mode == KeyboardMode.CHARACTERS) {
+                    val keys = keyboard.keys().asSequence().toList()
+                    glideTypingManager.setLayout(keys)
+                }
             }
         }
 
@@ -7887,8 +7891,10 @@ private class TextKeyboardLayoutController(
                 }
                 if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
                     pointerMap.clear()
+                    isGliding = false
+                } else {
+                    isGliding = true
                 }
-                isGliding = true
                 return
             }
         }
@@ -8211,17 +8217,26 @@ private class TextKeyboardLayoutController(
         val initialKey = pointer.initialKey ?: return false
         val activeKey = pointer.activeKey
         flogDebug(LogTopic.TEXT_KEYBOARD_VIEW)
-        cancelGlideActive()
 
         return when (initialKey.computedData.code) {
-            KeyCode.DELETE -> handleDeleteSwipe(event)
-            KeyCode.SPACE, KeyCode.CJK_SPACE -> handleSpaceSwipe(event)
+            KeyCode.DELETE -> {
+                cancelGlideActive()
+                handleDeleteSwipe(event)
+            }
+            KeyCode.SPACE, KeyCode.CJK_SPACE -> {
+                cancelGlideActive()
+                handleSpaceSwipe(event)
+            }
             else -> when {
                 (initialKey.computedData.code == KeyCode.SHIFT && activeKey?.computedData?.code == KeyCode.SPACE ||
                     initialKey.computedData.code == KeyCode.SHIFT && activeKey?.computedData?.code == KeyCode.CJK_SPACE) &&
-                    event.type == SwipeGesture.Type.TOUCH_MOVE -> handleSpaceSwipe(event)
+                    event.type == SwipeGesture.Type.TOUCH_MOVE -> {
+                    cancelGlideActive()
+                    handleSpaceSwipe(event)
+                }
                 initialKey.computedData.code == KeyCode.SHIFT && activeKey?.computedData?.code != KeyCode.SHIFT &&
                     event.type == SwipeGesture.Type.TOUCH_UP -> {
+                    cancelGlideActive()
                     activeKey?.let {
                         inputEventDispatcher.sendUp(popupUiController.getActiveKeyData(it) ?: it.computedDataOnDown)
                     }

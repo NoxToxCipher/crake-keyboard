@@ -86,9 +86,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     /**
      * Fast path: the CRKD binary blob (built by utils/gen_dict_blob.py). The
-     * native trie fills from ONE JNI call; the Kotlin map (still consumed by
-     * the legacy glide classifier) fills from a ByteBuffer scan of the same
-     * bytes. Returns false on any failure so the JSON path takes over —
+     * native trie fills from ONE JNI call; the corpus lives native-side only
+     * (the Kotlin glide classifier that used to mirror it is gone).
+     * Returns false on any failure so the JSON path takes over —
      * partial native inserts before a failure are harmless, inserts are
      * idempotent and the JSON path re-covers them.
      */
@@ -395,6 +395,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         if (lastPrevToken.isNotEmpty()) {
             FlorisNative.recordPersonalBigram(lastPrevToken, originalText)
         }
+        // And the negative half: the correction they took back is a
+        // rejection of (typed, suggested). Twice and it stops
+        // auto-committing for that token.
+        FlorisNative.recordRejectedCorrection(originalText, candidate.text.toString())
         persistLearnedState()
     }
 

@@ -95,7 +95,7 @@ class GlideTypingGesture {
                             // every sloppy tap become a word commit. 0.85
                             // key-widths sits in the measured gap; no
                             // ceiling, or tall keys reintroduce the leak.
-                            val triggerSlop = (keySize * 0.85f).coerceAtLeast(24f)
+                            val triggerSlop = (keySize * 0.45f).coerceIn(12f, 20f)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
                             val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
@@ -126,28 +126,30 @@ class GlideTypingGesture {
                 }
                 MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_POINTER_UP -> {
+                    val wasGesture = pointerData.isActuallyGesture == true
                     val upPointerIndex = if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
                         event.actionIndex
                     } else {
                         event.findPointerIndex(pointerId)
                     }
                     if (upPointerIndex >= 0 && event.getPointerId(upPointerIndex) == pointerId) {
-                        if (pointerData.isActuallyGesture == true) {
+                        if (wasGesture) {
                             listeners.forEach { listener -> listener.onGlideComplete(pointerData) }
                         }
                     }
                     resetState()
-                    return false
+                    return wasGesture
                 }
                 MotionEvent.ACTION_CANCEL -> {
-                    if (pointerData.isActuallyGesture == true) {
+                    val wasGesture = pointerData.isActuallyGesture == true
+                    if (wasGesture) {
                         listeners.forEach { it.onGlideCancelled() }
                     }
                     resetState()
+                    return wasGesture
                 }
                 else -> return false
             }
-            return false
         }
 
         fun registerListener(listener: Listener) {

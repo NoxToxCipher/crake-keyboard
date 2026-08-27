@@ -1,29 +1,30 @@
-//! CRKL: persistence for the keyboard's LEARNED state — user-learned words
-//! and personal typo-correction habits.
+//! CRKL: persistence for the keyboard's LEARNED state — user-learned words,
+//! personal typo-correction habits, personal bigrams, anti-sticky rejected
+//! corrections, and recency-decay epochs.
 //!
-//! Until this existed, everything the keyboard learned lived in process
-//! memory and died on every restart (during development: every install,
-//! i.e. constantly). The blob is written to app-private storage by the
-//! Kotlin side; nothing here does I/O. Learned content is guarded upstream:
-//! the Secret Shield filters secrets before words are ever learned, and
-//! incognito sessions never learn at all.
-//!
-//! Format (little-endian), hostile-parse discipline as with CRKD/CRKB:
+//! Format (little-endian), hostile-parse discipline with backwards compatibility:
 //! ```text
-//! magic   b"CRKL"
-//! version u8 = 1
-//! words   u32 count, then { len: u16, word: UTF-8, freq: u32 }*
-//! pairs   u32 count, then { tlen: u16, typo, ilen: u16, intended, n: u32 }*
+//! magic                b"CRKL"
+//! version              u8 = 3
+//! words                u32 count, then { len: u16, word: UTF-8, freq: u32 }*
+//! pairs                u32 count, then { tlen: u16, typo, ilen: u16, intended, n: u32 }*
+//! bigrams (v2+)        u32 count, then { w1len: u16, w1, w2len: u16, w2, n: u32 }*
+//! rejected (v3+)       u32 count, then { tlen: u16, typo, wlen: u16, wrong, n: u32 }*
+//! word_epochs (v3+)    u32 count, then { len: u16, word: UTF-8, epoch: u64 }*
 //! ```
 
 pub const LEARNED_MAGIC: [u8; 4] = *b"CRKL";
-/// v2 appends the personal-bigrams section; v1 blobs (already on devices)
-/// still parse — their bigram section is simply empty.
-pub const LEARNED_VERSION: u8 = 2;
+/// v1: words + corrections
+/// v2: words + corrections + personal bigrams
+/// v3: words + corrections + personal bigrams + rejected corrections + decay epochs
+pub const LEARNED_VERSION: u8 = 3;
+
 /// Size discipline (standing directive: no bloat): every section capped.
 pub const MAX_LEARNED_WORDS: u32 = 5_000;
 pub const MAX_CORRECTIONS: u32 = 5_000;
 pub const MAX_PERSONAL_BIGRAMS: u32 = 2_000;
+pub const MAX_REJECTED_CORRECTIONS: u32 = 2_000;
+pub const MAX_WORD_EPOCHS: u32 = 5_000;
 pub const MAX_TOKEN_LEN: usize = 64;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -40,6 +41,10 @@ pub struct LearnedState {
     pub corrections: Vec<(String, String, u32)>,
     /// The user's own consecutive word pairs with use counts (v2+).
     pub bigrams: Vec<(String, String, u32)>,
+    /// Anti-sticky rejected corrections (v3+).
+    pub rejected: Vec<(String, String, u32)>,
+    /// Interaction epochs for recency decay (v3+).
+    pub word_epochs: Vec<(String, u64)>,
 }
 
 fn push_token(out: &mut Vec<u8>, token: &str) {
@@ -76,6 +81,16 @@ fn read_u32(data: &[u8], offset: &mut usize) -> Result<u32, LearnedError> {
     Ok(v)
 }
 
+fn read_u64(data: &[u8], offset: &mut usize) -> Result<u64, LearnedError> {
+    if data.len() - *offset < 8 {
+        return Err(LearnedError::Truncated);
+    }
+    let mut bytes = [0u8; 8];
+    bytes.copy_from_slice(&data[*offset..*offset + 8]);
+    *offset += 8;
+    Ok(u64::from_le_bytes(bytes))
+}
+
 impl LearnedState {
     pub fn serialize(&self) -> Vec<u8> {
         let mut out = Vec::new();
@@ -100,6 +115,19 @@ impl LearnedState {
             push_token(&mut out, w1);
             push_token(&mut out, w2);
             out.extend_from_slice(&n.to_le_bytes());
+        }
+        let rejected = &self.rejected[..self.rejected.len().min(MAX_REJECTED_CORRECTIONS as usize)];
+        out.extend_from_slice(&(rejected.len() as u32).to_le_bytes());
+        for (typo, wrong, n) in rejected {
+            push_token(&mut out, typo);
+            push_token(&mut out, wrong);
+            out.extend_from_slice(&n.to_le_bytes());
+        }
+        let epochs = &self.word_epochs[..self.word_epochs.len().min(MAX_WORD_EPOCHS as usize)];
+        out.extend_from_slice(&(epochs.len() as u32).to_le_bytes());
+        for (word, epoch) in epochs {
+            push_token(&mut out, word);
+            out.extend_from_slice(&epoch.to_le_bytes());
         }
         out
     }
@@ -148,7 +176,32 @@ impl LearnedState {
                 bigrams.push((w1, w2, n));
             }
         }
-        Ok(Self { words, corrections, bigrams })
+        let mut rejected = Vec::new();
+        let mut word_epochs = Vec::new();
+        if version >= 3 {
+            let rej_count = read_u32(data, &mut offset)?;
+            if rej_count > MAX_REJECTED_CORRECTIONS {
+                return Err(LearnedError::CountTooLarge(rej_count));
+            }
+            rejected.reserve(rej_count as usize);
+            for _ in 0..rej_count {
+                let typo = read_token(data, &mut offset)?.to_string();
+                let wrong = read_token(data, &mut offset)?.to_string();
+                let n = read_u32(data, &mut offset)?;
+                rejected.push((typo, wrong, n));
+            }
+            let epoch_count = read_u32(data, &mut offset)?;
+            if epoch_count > MAX_WORD_EPOCHS {
+                return Err(LearnedError::CountTooLarge(epoch_count));
+            }
+            word_epochs.reserve(epoch_count as usize);
+            for _ in 0..epoch_count {
+                let word = read_token(data, &mut offset)?.to_string();
+                let ep = read_u64(data, &mut offset)?;
+                word_epochs.push((word, ep));
+            }
+        }
+        Ok(Self { words, corrections, bigrams, rejected, word_epochs })
     }
 }
 
@@ -161,6 +214,8 @@ mod tests {
             words: vec![("crake".into(), 180), ("roratus".into(), 120)],
             corrections: vec![("thay".into(), "that".into(), 3), ("hte".into(), "the".into(), 7)],
             bigrams: vec![("glossy".into(), "cockatoo".into(), 2)],
+            rejected: vec![("idk".into(), "ink".into(), 2)],
+            word_epochs: vec![("roratus".into(), 105)],
         }
     }
 
@@ -189,9 +244,7 @@ mod tests {
     }
 
     #[test]
-    fn v1_blobs_still_parse_with_empty_bigrams() {
-        // Hand-built v1 layout: magic, version 1, two sections only —
-        // exactly what iteration-18 builds wrote to devices.
+    fn v1_blobs_still_parse_with_empty_bigrams_and_rejected() {
         let mut v1 = Vec::new();
         v1.extend_from_slice(&LEARNED_MAGIC);
         v1.push(1);
@@ -202,6 +255,28 @@ mod tests {
         let parsed = LearnedState::parse(&v1).unwrap();
         assert_eq!(parsed.words, vec![("crake".to_string(), 180)]);
         assert!(parsed.bigrams.is_empty());
+        assert!(parsed.rejected.is_empty());
+        assert!(parsed.word_epochs.is_empty());
+    }
+
+    #[test]
+    fn v2_blobs_still_parse_with_empty_rejected_and_epochs() {
+        let mut v2 = Vec::new();
+        v2.extend_from_slice(&LEARNED_MAGIC);
+        v2.push(2);
+        v2.extend_from_slice(&1u32.to_le_bytes());
+        push_token(&mut v2, "crake");
+        v2.extend_from_slice(&180u32.to_le_bytes());
+        v2.extend_from_slice(&0u32.to_le_bytes());
+        v2.extend_from_slice(&1u32.to_le_bytes());
+        push_token(&mut v2, "glossy");
+        push_token(&mut v2, "cockatoo");
+        v2.extend_from_slice(&2u32.to_le_bytes());
+        let parsed = LearnedState::parse(&v2).unwrap();
+        assert_eq!(parsed.words, vec![("crake".to_string(), 180)]);
+        assert_eq!(parsed.bigrams, vec![("glossy".to_string(), "cockatoo".to_string(), 2)]);
+        assert!(parsed.rejected.is_empty());
+        assert!(parsed.word_epochs.is_empty());
     }
 
     #[test]

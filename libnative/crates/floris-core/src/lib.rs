@@ -28,15 +28,15 @@ pub mod typo_corpus;
 pub use bigram::{BigramError, BigramModel};
 pub use blob::{parse_dict_blob, BlobError};
 pub use core_dict::CORE_DICTIONARY;
-pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold};
+pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold, spatial_levenshtein_distance, spatial_substitution_cost};
 pub use glide::{
     anisotropic_thumb_distance, anisotropic_thumb_distance_sq, compute_dtw,
     detect_double_letter_loops, simplify_rdp, trim_takeoff_and_landing_hooks, GlideEngine,
     GlideMatch, KeyInfo, Point2D,
 };
-pub use hit_test::{HitTester, KeyRect};
-pub use touch_model::TouchModel;
-pub use nlp::{NlpEngine, SuggestionResult};
+pub use hit_test::{HitTester, KeyRect, ProbabilisticHit};
+pub use touch_model::{ContactPatch, TouchModel};
+pub use nlp::{get_key_hand, is_bimanual_transposition, resolve_contraction_with_context, Hand, NlpEngine, SpaceBeamCandidate, SuggestionResult};
 pub use shorthand::{lookup_shorthand, ShorthandEntry, SHORTHAND_LEXICON};
 pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};
 pub use typo_corpus::{lookup_common_typo, WIKIPEDIA_COMMON_TYPOS};
