@@ -641,10 +641,22 @@ fn single_slip_punches_prefix_filler_on_long_words() {
         e.corpus_insert(w, f);
         e.trie.insert(w, f);
     }
+    // "pleade" is corpus-covered since 2026-08-27 (fires in branch 3 and
+    // never reaches fuzzy), so the punch-through mechanism is exercised by
+    // "worke": prefix of worked/worker (filler) and one adjacent slip from
+    // "works" (e<->s).
+    for (w, f) in [("works", 240), ("worked", 220), ("worker", 210), ("workers", 200)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let r = e.suggest_with_context("worke", "", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "works", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect, "'worke' -> works must auto-commit");
     let r = e.suggest_with_context("pleade", "", 5);
     let head = r.candidates.first().expect("candidates");
-    assert_eq!(head.word, "please", "got {:?}", r.candidates);
-    assert!(head.is_autocorrect, "'pleade' -> please must auto-commit");
+    assert_eq!(head.word, "please", "corpus lane: got {:?}", r.candidates);
+    assert!(head.is_autocorrect);
     // 2-char prefixes stay sacred: "co" (if it were a non-word) class —
     // approximated by asserting the length gate via a 4-char token.
     let r = e.suggest_with_context("plea", "", 5);
