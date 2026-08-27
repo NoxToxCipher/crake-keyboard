@@ -176,25 +176,25 @@ fn personal_bigrams_evict_weakest_at_capacity() {
 #[test]
 fn filtered_prefix_search_orders_and_filters() {
     let mut e = NlpEngine::new();
+    // zq-prefixed fakes: NlpEngine::new() preseeds CORE_DICTIONARY, so
+    // real-looking words collide with it (first version of this test
+    // learned that from an unexpected "save").
     for (w, f) in [
-        ("sail", 200u32),
-        ("sale", 240),
-        ("salt", 240),
-        ("same", 100),
-        ("sand", 250),
-        ("send", 250),
+        ("zqail", 200u32),
+        ("zqale", 240),
+        ("zqalt", 240),
+        ("zqame", 100),
+        ("zqand", 250),
+        ("zqend", 250),
     ] {
         e.trie.insert(w, f);
     }
-    // keep only words ending in a vowel-adjacent set {e}
-    let got = e.trie.prefix_search_filtered("sa", 2, |w| w.ends_with('e'));
+    let got = e.trie.prefix_search_filtered("zqa", 2, |w| w.ends_with('e'));
     let words: Vec<&str> = got.iter().map(|(w, _)| w.as_str()).collect();
-    // sale(240) beats same(100); salt/sand filtered out; limit 2 but only
-    // matching words count
-    assert_eq!(words, vec!["sale", "same"], "{got:?}");
-    // tie at 240 resolves lexicographically when both pass
-    let got = e.trie.prefix_search_filtered("sa", 3, |w| w.len() == 4);
+    assert_eq!(words, vec!["zqale", "zqame"], "{got:?}");
+    // tie at 240 resolves lexicographically; limit counts only matches
+    let got = e.trie.prefix_search_filtered("zqa", 3, |w| w.len() == 5);
     let words: Vec<&str> = got.iter().map(|(w, _)| w.as_str()).collect();
-    assert_eq!(words[0], "sand", "{got:?}");
-    assert_eq!(&words[1..3], &["sale", "salt"], "freq tie -> lex asc: {got:?}");
+    assert_eq!(words[0], "zqand", "{got:?}");
+    assert_eq!(&words[1..3], &["zqale", "zqalt"], "freq tie -> lex asc: {got:?}");
 }
