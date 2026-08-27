@@ -95,7 +95,15 @@ class GlideTypingGesture {
                             // every sloppy tap become a word commit. 0.85
                             // key-widths sits in the measured gap; no
                             // ceiling, or tall keys reintroduce the leak.
-                            val triggerSlop = (keySize * 0.45f).coerceIn(12f, 20f)
+                            // RESTORED 2026-08-28: a merge reduced this to
+                            // 0.45 capped at 20dp, which readmits the
+                            // measured stray band (tap-slides reach 0.63
+                            // key-widths; the shortest real glide is ~1.76).
+                            // If a lower trigger is wanted, land a velocity
+                            // gate validated on v2 timestamped traces FIRST,
+                            // then lower this with measurements in the
+                            // commit message.
+                            val triggerSlop = (keySize * 0.85f).coerceAtLeast(24f)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
                             val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
