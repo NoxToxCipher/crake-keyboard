@@ -439,6 +439,7 @@ fun TextKeyboardLayout(
         var androidBugdroidTriggerTime by remember { mutableStateOf(0L) }
         var rosePetalsTriggerTime by remember { mutableStateOf(0L) }
         var xboxAchievementTriggerTime by remember { mutableStateOf(0L) }
+        var hiddenHoodedTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -609,6 +610,17 @@ fun TextKeyboardLayout(
             }
             if (isXboxMatch) {
                 xboxAchievementTriggerTime = System.currentTimeMillis()
+            }
+            // Strict word boundary isolation for 'hidden' (fires 8s later)
+            val hiddenKeys = listOf("hidden", "assassin", "hooded figure", "ninja")
+            val isHiddenMatch = hiddenKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isHiddenMatch) {
+                hiddenHoodedTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -5139,6 +5151,215 @@ fun TextKeyboardLayout(
                             sparkPaint.alpha = (sa * 220).toInt().coerceIn(0, 255)
                             drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 1.1f * density, sparkPaint)
                         }
+                    }
+                }
+            }
+        }
+
+        // 18. Delayed "Hidden" Hooded Assassin Easter Egg (Fires 8.0s after "hidden" is typed, runs for 3.5s)
+        if (hiddenHoodedTriggerTime > 0L) {
+            val hiddenProgress = remember(hiddenHoodedTriggerTime) { Animatable(0f) }
+            LaunchedEffect(hiddenHoodedTriggerTime) {
+                // 8.0 seconds suspense delay after word was typed
+                kotlinx.coroutines.delay(8000L)
+                hiddenProgress.snapTo(0f)
+                hiddenProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3500, easing = LinearEasing),
+                )
+                hiddenHoodedTriggerTime = 0L
+            }
+            if (hiddenProgress.value in 0.001f..0.999f) {
+                val progress = hiddenProgress.value
+                val totalMs = 3500f
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val d = density
+
+                    // H Key location on standard keyboard (approx row 2 center)
+                    val hCenterX = canvasW * 0.55f
+                    val hCenterY = canvasH * 0.48f
+                    val hWidth = canvasW * 0.09f
+                    val hHeight = canvasH * 0.22f
+                    val fretY = canvasH * 0.60f
+
+                    // Master Alpha
+                    val masterAlpha = when {
+                        progress < 0.05f -> (progress / 0.05f).coerceIn(0f, 1f)
+                        progress > 0.92f -> ((1f - progress) / 0.08f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+
+                    // 1. Curtains / H Key Splitting (Opens 0.0..0.22, stays open 0.22..0.78, closes 0.78..1.0)
+                    val splitFraction = when {
+                        progress < 0.22f -> (progress / 0.22f).coerceIn(0f, 1f)
+                        progress > 0.78f -> (1f - (progress - 0.78f) / 0.22f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+                    val splitOffset = splitFraction * (hWidth * 0.6f)
+
+                    if (splitFraction > 0.01f) {
+                        // Portal Void inside the split H
+                        val voidPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 250).toInt().coerceIn(0, 255), 8, 8, 12)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val voidRect = android.graphics.RectF(hCenterX - hWidth / 2f, hCenterY - hHeight / 2f, hCenterX + hWidth / 2f, hCenterY + hHeight / 2f)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(voidRect, 6f * d, 6f * d, voidPaint)
+
+                        // Shadow Smoke Wisp from Portal
+                        val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 120 * splitFraction).toInt().coerceIn(0, 255), 76, 29, 149)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        for (i in 0 until 5) {
+                            val su = ((progress * 3f + i * 0.2f) % 1f)
+                            val sx = hCenterX + kotlin.math.sin(su * 6f + i) * (8f * d)
+                            val sy = hCenterY - su * (22f * d)
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, (3f + su * 4f) * d, smokePaint)
+                        }
+
+                        // Left Curtain Half (Black/Charcoal Velvet)
+                        val curtainPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            shader = android.graphics.LinearGradient(
+                                hCenterX - hWidth / 2f - splitOffset, hCenterY,
+                                hCenterX - splitOffset, hCenterY,
+                                intArrayOf(
+                                    android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 20, 20, 25),
+                                    android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 35, 35, 42),
+                                    android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 15, 20)
+                                ),
+                                floatArrayOf(0f, 0.7f, 1f),
+                                android.graphics.Shader.TileMode.CLAMP
+                            )
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val leftRect = android.graphics.RectF(
+                            hCenterX - hWidth / 2f - splitOffset, hCenterY - hHeight / 2f,
+                            hCenterX - splitOffset, hCenterY + hHeight / 2f
+                        )
+                        drawContext.canvas.nativeCanvas.drawRoundRect(leftRect, 4f * d, 4f * d, curtainPaint)
+
+                        // Right Curtain Half
+                        val rightRect = android.graphics.RectF(
+                            hCenterX + splitOffset, hCenterY - hHeight / 2f,
+                            hCenterX + hWidth / 2f + splitOffset, hCenterY + hHeight / 2f
+                        )
+                        drawContext.canvas.nativeCanvas.drawRoundRect(rightRect, 4f * d, 4f * d, curtainPaint)
+
+                        // Split "H" glyph halves on parted curtains
+                        val hPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 220).toInt().coerceIn(0, 255), 240, 240, 240)
+                            textSize = 14f * d
+                            typeface = android.graphics.Typeface.DEFAULT_BOLD
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                        // Left vertical bar of 'H'
+                        drawContext.canvas.nativeCanvas.drawText("I", hCenterX - splitOffset - 3f * d, hCenterY + 4.5f * d, hPaint)
+                        // Right vertical bar of 'H'
+                        drawContext.canvas.nativeCanvas.drawText("I", hCenterX + splitOffset + 3f * d, hCenterY + 4.5f * d, hPaint)
+                    }
+
+                    // 2. Black Hooded Figure Leaping Out & Sprinting Left on the Fret
+                    if (progress in 0.18f..0.82f) {
+                        val runProgress = ((progress - 0.18f) / 0.64f).coerceIn(0f, 1f)
+                        val startX = hCenterX
+                        val endX = -45f * d
+                        val currentX = startX + runProgress * (endX - startX)
+
+                        // Vertical landing arc from H key down to fret
+                        val currentY = if (runProgress < 0.15f) {
+                            val dropU = (runProgress / 0.15f)
+                            hCenterY + dropU * (fretY - hCenterY) - kotlin.math.sin(dropU * Math.PI.toFloat()) * (12f * d)
+                        } else {
+                            fretY
+                        }
+
+                        // Running Gait & Lean
+                        val runPhase = runProgress * 42f
+                        val legAngle1 = kotlin.math.sin(runPhase) * 35f
+                        val legAngle2 = -kotlin.math.sin(runPhase) * 35f
+                        val cloakFlutter = kotlin.math.sin(runPhase * 1.5f) * (6f * d)
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(currentX, currentY)
+
+                        // Athletic forward sprint lean towards left (-18 degrees)
+                        drawContext.canvas.nativeCanvas.rotate(-18f)
+
+                        // Shadow Figure Body Paints
+                        val cloakPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 10, 10, 14)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val cloakShadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 24, 24, 30)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // A. Trailing Shadow Smoke on Fret
+                        val trailPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 90).toInt().coerceIn(0, 255), 30, 27, 75)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        for (tIdx in 0 until 4) {
+                            val tx = (tIdx * 8f * d) + 4f * d
+                            val ty = kotlin.math.sin(runPhase + tIdx) * (3f * d)
+                            drawContext.canvas.nativeCanvas.drawCircle(tx, ty, (4f - tIdx * 0.8f) * d, trailPaint)
+                        }
+
+                        // B. Sprinting Legs
+                        val legPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 15, 20)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 2.2f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.rotate(legAngle2)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 10f * d, legPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 10f * d, 4f * d, 14f * d, legPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.rotate(legAngle1)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 0f, 0f, 10f * d, legPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, 10f * d, -4f * d, 14f * d, legPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+
+                        // C. Billowing Hooded Cloak Torso
+                        val cloakPath = android.graphics.Path().apply {
+                            moveTo(-3f * d, -14f * d)
+                            lineTo(10f * d + cloakFlutter, -2f * d)
+                            lineTo(6f * d + cloakFlutter * 0.5f, 4f * d)
+                            lineTo(-4f * d, 2f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(cloakPath, cloakPaint)
+
+                        // D. Pointed Assassin Hood & Silhouette Head
+                        val hoodPath = android.graphics.Path().apply {
+                            moveTo(-6f * d, -16f * d)
+                            lineTo(2f * d, -22f * d)
+                            lineTo(4f * d, -14f * d)
+                            lineTo(-4f * d, -12f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(hoodPath, cloakShadowPaint)
+
+                        // E. Glowing Cyan Assassin Eyes
+                        val eyePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 56, 189, 248)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(-3.2f * d, -15.5f * d, 0.9f * d, eyePaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
                     }
                 }
             }

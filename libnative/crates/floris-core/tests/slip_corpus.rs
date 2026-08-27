@@ -43,6 +43,7 @@ fn engine() -> NlpEngine {
         ("so", 255),
         ("look", 250),
         ("and", 255),
+        ("off", 250),
         ("hello", 240),
         ("keyboard", 200),
         ("privacy", 150),
@@ -79,6 +80,7 @@ fn recovers_adjacent_key_slips() {
         ("ao", "so"),               // 1 adjacent slip on 2-letter word (a<->s from live typing 2026-08-27)
         ("abd", "and"),             // 1 adjacent slip (b<->n from live typing 2026-08-27)
         ("looke", "look"),          // trailing slip (from live typing 2026-08-27)
+        ("iff", "off"),             // 1 adjacent slip (i<->o from live typing 2026-08-27)
     ] {
         let got = top3(&e, typed);
         if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
