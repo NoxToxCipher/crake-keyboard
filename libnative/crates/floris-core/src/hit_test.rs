@@ -176,6 +176,25 @@ impl HitTester {
         Ok(restored)
     }
 
+    
+    /// Resolves a key hit using hardware capacitive contact-patch ellipsoid and thumb-roll correction.
+    #[inline]
+    pub fn hit_with_patch(&self, patch: &crate::touch_model::ContactPatch) -> Option<usize> {
+        let (ax, ay) = patch.corrected_apex();
+        self.hit(ax, ay)
+    }
+
+    /// Resolves a probabilistic key hit using contact-patch ellipsoid correction and dynamic LM priors.
+    #[inline]
+    pub fn probabilistic_hit_with_patch(
+        &self,
+        patch: &crate::touch_model::ContactPatch,
+        priors: &[(char, f32)],
+    ) -> Option<usize> {
+        let (ax, ay) = patch.corrected_apex();
+        self.probabilistic_hit(ax, ay, priors)
+    }
+
     pub fn generation(&self) -> u32 {
         self.generation
     }

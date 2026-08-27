@@ -35,7 +35,7 @@ pub use glide::{
     GlideMatch, KeyInfo, Point2D,
 };
 pub use hit_test::{HitTester, KeyRect, ProbabilisticHit};
-pub use touch_model::TouchModel;
+pub use touch_model::{ContactPatch, TouchModel};
 pub use nlp::{NlpEngine, SuggestionResult};
 pub use shorthand::{lookup_shorthand, ShorthandEntry, SHORTHAND_LEXICON};
 pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};

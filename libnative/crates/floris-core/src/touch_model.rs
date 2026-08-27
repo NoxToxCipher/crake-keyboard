@@ -27,6 +27,44 @@ use std::collections::HashMap;
 /// a full edit. See the module docs for the Gaussian derivation.
 pub const NEAR_FACTOR: f32 = 1.25;
 
+/// A physical capacitive contact patch reported by hardware touch digitizer (Idea 2 / Loops 4-6).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ContactPatch {
+    pub x: f32,
+    pub y: f32,
+    pub major: f32,
+    pub minor: f32,
+    pub orientation: f32, // angle in radians (-PI/2 to PI/2)
+}
+
+impl ContactPatch {
+    pub fn new(x: f32, y: f32, major: f32, minor: f32, orientation: f32) -> Self {
+        Self { x, y, major, minor, orientation }
+    }
+
+    /// Calculates the true physical fingertip / bone apex coordinates by correcting for
+    /// the capacitive smear and thumb-roll tilt vector.
+    #[inline]
+    pub fn corrected_apex(&self) -> (f32, f32) {
+        if !self.x.is_finite() || !self.y.is_finite() {
+            return (self.x, self.y);
+        }
+        let eccentricity = (self.major - self.minor).max(0.0);
+        if eccentricity <= 0.001 || !self.orientation.is_finite() {
+            return (self.x, self.y);
+        }
+
+        // Thumb pad apex scale factor kappa: shifts contact center toward physical bone apex
+        const KAPPA: f32 = 0.38;
+        let shift_mag = (eccentricity * 0.5) * KAPPA;
+
+        let dx = -shift_mag * self.orientation.sin();
+        let dy = -shift_mag * self.orientation.cos();
+
+        (self.x + dx, self.y + dy)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct TouchModel {
     centers: HashMap<char, (f32, f32)>,
