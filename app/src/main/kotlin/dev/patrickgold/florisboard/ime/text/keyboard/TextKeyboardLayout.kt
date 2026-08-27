@@ -5538,68 +5538,165 @@ fun TextKeyboardLayout(
                     }
 
                     // =========================================================================
-                    // STAGE 2: Richmond Birdwing Butterfly (15.0s - 17.5s) - Left to Right
+                    // STAGE 2: Authentic Richmond Birdwing (Ornithoptera richmondia) (15.0s - 17.8s)
                     // =========================================================================
-                    if (elapsedSec in 15.0f..17.5f) {
-                        val bf1U = ((elapsedSec - 15.0f) / 2.5f).coerceIn(0f, 1f)
-                        val bf1Alpha = (kotlin.math.sin(bf1U * Math.PI.toFloat()) * 1.3f).coerceIn(0f, 1f)
-                        val startX = -25f * d
-                        val endX = canvasW + 25f * d
+                    if (elapsedSec in 15.0f..17.8f) {
+                        val bf1U = ((elapsedSec - 15.0f) / 2.8f).coerceIn(0f, 1f)
+                        val bf1Alpha = (kotlin.math.sin(bf1U * Math.PI.toFloat()) * 1.35f).coerceIn(0f, 1f)
+                        val startX = -35f * d
+                        val endX = canvasW + 35f * d
                         val currentX = startX + bf1U * (endX - startX)
-                        val currentY = (canvasH * 0.42f) + kotlin.math.sin(bf1U * 4f * Math.PI.toFloat()) * (16f * d)
+                        // Majestic soaring canopy glide path
+                        val currentY = (canvasH * 0.40f) + kotlin.math.sin(bf1U * 3f * Math.PI.toFloat()) * (20f * d)
 
-                        val wingFlap = kotlin.math.cos(bf1U * 18f * Math.PI.toFloat()) // Realistic wing flap
-                        val wingSpan = (12f * d) * (0.35f + 0.65f * kotlin.math.abs(wingFlap))
+                        // Deep, majestic wing flap cycle of large birdwings (~2.8 flaps/sec)
+                        val flapCos = kotlin.math.cos(bf1U * 14f * Math.PI.toFloat())
+                        val wingSpan = (18f * d) * (0.30f + 0.70f * kotlin.math.abs(flapCos))
+                        val bankAngle = 10f + kotlin.math.cos(bf1U * 3f * Math.PI.toFloat()) * 14f
 
                         drawContext.canvas.nativeCanvas.save()
                         drawContext.canvas.nativeCanvas.translate(currentX, currentY)
-                        drawContext.canvas.nativeCanvas.rotate(12f + kotlin.math.cos(bf1U * 4f * Math.PI.toFloat()) * 15f)
+                        drawContext.canvas.nativeCanvas.rotate(bankAngle)
 
-                        // Richmond Birdwing: Velvet Black + Emerald Green Stripes
-                        val blackWing = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 18, 18, 22)
+                        // Authentic Color Palette (Male Richmond Birdwing)
+                        val velvetBlack = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 11, 13, 17)
                             style = android.graphics.Paint.Style.FILL
                         }
-                        val emeraldStripe = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        val emeraldCosta = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 16, 185, 129)
                             style = android.graphics.Paint.Style.FILL
                         }
-                        val goldAccent = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((bf1Alpha * 240).toInt().coerceIn(0, 255), 245, 158, 11)
+                        val emeraldGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 240).toInt().coerceIn(0, 255), 52, 211, 153)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val scarletCollar = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 239, 68, 68)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val goldenAbdomen = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 251, 191, 36)
                             style = android.graphics.Paint.Style.FILL
                         }
 
-                        // Forewings
-                        val forewingPath = android.graphics.Path().apply {
-                            moveTo(0f, 0f)
-                            lineTo(-wingSpan, -8f * d)
-                            quadTo(-wingSpan * 0.6f, -14f * d, 0f, -4f * d)
-                            close()
+                        // -------------------------------------------------------------
+                        // A. Elongated Triangular Forewings (Velvet Black + Emerald Costa)
+                        // -------------------------------------------------------------
+                        for (side in -1..1 step 2) {
+                            val sign = side.toFloat()
+                            val fwPath = android.graphics.Path().apply {
+                                moveTo(0f, -2f * d)
+                                lineTo(sign * wingSpan, -13f * d) // Apex
+                                quadTo(sign * wingSpan * 0.95f, -6f * d, sign * wingSpan * 0.65f, 0f) // Outer margin
+                                lineTo(0f, 0f) // Inner margin
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(fwPath, velvetBlack)
+
+                            // Bold Iridescent Emerald Costa Stripe along upper leading edge
+                            val costaPath = android.graphics.Path().apply {
+                                moveTo(0f, -2f * d)
+                                lineTo(sign * wingSpan, -13f * d)
+                                quadTo(sign * wingSpan * 0.6f, -10f * d, 0f, -4f * d)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(costaPath, emeraldCosta)
+
+                            // Sub-Marginal Emerald Streak in cell
+                            val innerStreak = android.graphics.Path().apply {
+                                moveTo(sign * wingSpan * 0.25f, -3f * d)
+                                lineTo(sign * wingSpan * 0.70f, -6.5f * d)
+                                lineTo(sign * wingSpan * 0.60f, -4.5f * d)
+                                lineTo(sign * wingSpan * 0.20f, -1.8f * d)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(innerStreak, emeraldGlow)
                         }
-                        drawContext.canvas.nativeCanvas.drawPath(forewingPath, blackWing)
 
-                        val rightForewing = android.graphics.Path().apply {
-                            moveTo(0f, 0f)
-                            lineTo(wingSpan, -8f * d)
-                            quadTo(wingSpan * 0.6f, -14f * d, 0f, -4f * d)
-                            close()
+                        // -------------------------------------------------------------
+                        // B. Scalloped Hindwings (Emerald Green Field + Black Spots)
+                        // -------------------------------------------------------------
+                        for (side in -1..1 step 2) {
+                            val sign = side.toFloat()
+                            val hwWidth = wingSpan * 0.70f
+
+                            // Hindwing outer black frame
+                            val hwPath = android.graphics.Path().apply {
+                                moveTo(0f, 0f)
+                                lineTo(sign * hwWidth * 0.95f, 2f * d)
+                                quadTo(sign * hwWidth * 0.85f, 9.5f * d, sign * hwWidth * 0.35f, 10.5f * d)
+                                quadTo(0f, 8f * d, 0f, 2f * d)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(hwPath, velvetBlack)
+
+                            // Vivid Emerald-Green Central Field
+                            val hwGreenField = android.graphics.Path().apply {
+                                moveTo(sign * 2f * d, 1f * d)
+                                lineTo(sign * hwWidth * 0.80f, 2.8f * d)
+                                quadTo(sign * hwWidth * 0.70f, 8.2f * d, sign * hwWidth * 0.35f, 8.8f * d)
+                                quadTo(sign * 2f * d, 6.8f * d, sign * 2f * d, 2f * d)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(hwGreenField, emeraldCosta)
+
+                            // Golden flash along inner abdominal margin
+                            drawContext.canvas.nativeCanvas.drawOval(
+                                android.graphics.RectF(sign * 0.5f * d, 2f * d, sign * 3.5f * d, 8f * d),
+                                goldenAbdomen
+                            )
+
+                            // Characteristic 4 Sub-Marginal Black Spots in the emerald field
+                            for (spot in 0 until 4) {
+                                val su = 0.25f + spot * 0.20f
+                                val spotX = sign * (su * hwWidth * 0.75f + 2f * d)
+                                val spotY = 3.5f * d + spot * 1.3f * d
+                                drawContext.canvas.nativeCanvas.drawCircle(spotX, spotY, 0.9f * d, velvetBlack)
+                            }
                         }
-                        drawContext.canvas.nativeCanvas.drawPath(rightForewing, blackWing)
 
-                        // Emerald Iridescent Markings
-                        drawContext.canvas.nativeCanvas.drawCircle(-wingSpan * 0.45f, -7f * d, 2.2f * d, emeraldStripe)
-                        drawContext.canvas.nativeCanvas.drawCircle(wingSpan * 0.45f, -7f * d, 2.2f * d, emeraldStripe)
+                        // -------------------------------------------------------------
+                        // C. Anatomy: Thorax with Green Stripe, Scarlet Collar & Golden Abdomen
+                        // -------------------------------------------------------------
+                        // 1. Signature Scarlet Red Patch on collar / under wing base
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, -4f * d, 1.8f * d, scarletCollar)
 
-                        // Hindwings with golden glow
-                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-wingSpan * 0.7f, -2f * d, -1f * d, 7f * d), goldAccent)
-                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(1f * d, -2f * d, wingSpan * 0.7f, 7f * d), goldAccent)
-
-                        // Body & Antennae
-                        val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 10, 10, 12)
-                            style = android.graphics.Paint.Style.FILL
+                        // 2. Abdomen (Bright golden yellow with black segment bands)
+                        val abdomenRect = android.graphics.RectF(-1.2f * d, -1f * d, 1.2f * d, 9f * d)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(abdomenRect, 1.2f * d, 1.2f * d, goldenAbdomen)
+                        val abSegPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = velvetBlack.color
+                            strokeWidth = 0.7f * d
+                            style = android.graphics.Paint.Style.STROKE
                         }
-                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(-1f * d, -7f * d, 1f * d, 6f * d), 1f * d, 1f * d, bodyPaint)
+                        for (seg in 1..4) {
+                            val sy = 1f * d + seg * 1.5f * d
+                            drawContext.canvas.nativeCanvas.drawLine(-1f * d, sy, 1f * d, sy, abSegPaint)
+                        }
+
+                        // 3. Thorax (Velvet black with bright emerald green dorsal stripe)
+                        val thoraxRect = android.graphics.RectF(-1.5f * d, -7f * d, 1.5f * d, -0.5f * d)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(thoraxRect, 1.5f * d, 1.5f * d, velvetBlack)
+                        val greenStripePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = emeraldCosta.color
+                            strokeWidth = 0.8f * d
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(0f, -6.5f * d, 0f, -1f * d, greenStripePaint)
+
+                        // 4. Head & Antennae with club tips
+                        drawContext.canvas.nativeCanvas.drawCircle(0f, -8f * d, 1.3f * d, velvetBlack)
+                        val antPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = velvetBlack.color
+                            strokeWidth = 0.7f * d
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(0f, -8f * d, -3.5f * d, -12.5f * d, antPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(0f, -8f * d, 3.5f * d, -12.5f * d, antPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-3.5f * d, -12.5f * d, 0.7f * d, velvetBlack)
+                        drawContext.canvas.nativeCanvas.drawCircle(3.5f * d, -12.5f * d, 0.7f * d, velvetBlack)
+
                         drawContext.canvas.nativeCanvas.restore()
                     }
 

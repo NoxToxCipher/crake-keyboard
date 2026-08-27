@@ -572,6 +572,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("feburary", "february"),
     ("federaly", "federally"),
     ("fianlly", "finally"),
+    ("fichmond", "richmond"),
     ("ficticious", "fictitious"),
     ("fiel", "feel"),
     ("finacial", "financial"),
