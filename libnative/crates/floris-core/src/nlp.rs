@@ -98,6 +98,15 @@ pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &
     false
 }
 
+
+/// A candidate token split or merge from the continuous space beam search (Idea 4 / Loops 10-12).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpaceBeamCandidate {
+    pub text: String,
+    pub is_split: bool,
+    pub score: f32,
+}
+
 pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
     ("bitcoin", "Bitcoin"),
     ("chatgpt", "ChatGPT"),
@@ -900,6 +909,105 @@ impl NlpEngine {
 
     
     /// Suggests completions and autocorrects with bimanual keystroke dynamics and transposition timing analysis (Idea 3 / Loops 7-9).
+    
+    /// Evaluates 1-to-2 token splits and fat-thumb spacebar bottom-row slips on an unspaced token (Idea 4 / Loops 10-12).
+    pub fn evaluate_split_beam(&self, token: &str) -> Option<SpaceBeamCandidate> {
+        let clean = token.trim().to_ascii_lowercase();
+        let len = clean.chars().count();
+        if len < 3 || len > 24 {
+            return None;
+        }
+
+        let mut best_split = None;
+        let mut best_score = -1.0f32;
+
+        let chars: Vec<char> = clean.chars().collect();
+
+        // 1. Direct split: clean = L1 + L2 (e.g. "inorder" -> "in order", "aswell" -> "as well")
+        for i in 1..len {
+            let left_s: String = chars[0..i].iter().collect();
+            let right_s: String = chars[i..len].iter().collect();
+
+            if (left_s.len() == 1 && left_s != "a" && left_s != "i")
+                || (right_s.len() == 1 && right_s != "a" && right_s != "i")
+            {
+                continue;
+            }
+
+            if let (Some(f1), Some(f2)) = (self.trie.get_frequency(&left_s), self.trie.get_frequency(&right_s)) {
+                if f1 >= 30 && f2 >= 30 {
+                    let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.4;
+                    let freq_score = ((f1 + f2) as f32) * 0.15 + bigram_bonus;
+
+                    let single_freq = self.trie.get_frequency(&clean).unwrap_or(0);
+                    if single_freq < 150 && freq_score > best_score {
+                        best_score = freq_score;
+                        best_split = Some(format!("{} {}", left_s, right_s));
+                    }
+                }
+            }
+        }
+
+        // 2. Bottom-row spacebar substitution: clean = L1 + [v,b,n,m] + L2
+        // e.g. "gotnto" -> "got to", "inborder" -> "in order"
+        for i in 1..(len - 1) {
+            let mid_ch = chars[i];
+            if mid_ch == 'v' || mid_ch == 'b' || mid_ch == 'n' || mid_ch == 'm' {
+                let left_s: String = chars[0..i].iter().collect();
+                let right_s: String = chars[(i + 1)..len].iter().collect();
+
+                if (left_s.len() == 1 && left_s != "a" && left_s != "i")
+                    || (right_s.len() == 1 && right_s != "a" && right_s != "i")
+                {
+                    continue;
+                }
+
+                if let (Some(f1), Some(f2)) = (self.trie.get_frequency(&left_s), self.trie.get_frequency(&right_s)) {
+                    if f1 >= 40 && f2 >= 40 {
+                        let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.5;
+                        let freq_score = ((f1 + f2) as f32) * 0.2 + bigram_bonus + 15.0;
+
+                        if freq_score > best_score {
+                            best_score = freq_score;
+                            best_split = Some(format!("{} {}", left_s, right_s));
+                        }
+                    }
+                }
+            }
+        }
+
+        best_split.map(|text| SpaceBeamCandidate {
+            text,
+            is_split: true,
+            score: best_score,
+        })
+    }
+
+    /// Evaluates 2-to-1 token merges for accidental mid-word spacebar insertions (Idea 4 / Loops 10-12).
+    pub fn evaluate_merge_beam(&self, prev_token: &str, current_token: &str) -> Option<SpaceBeamCandidate> {
+        let p_clean = prev_token.trim().to_ascii_lowercase();
+        let c_clean = current_token.trim().to_ascii_lowercase();
+
+        if p_clean.is_empty() || c_clean.is_empty() {
+            return None;
+        }
+
+        let merged = format!("{}{}", p_clean, c_clean);
+        if let Some(m_freq) = self.trie.get_frequency(&merged) {
+            if m_freq >= 120 {
+                let pair_score = self.bigram_pair_score(&p_clean, &c_clean);
+                if pair_score < 40 {
+                    return Some(SpaceBeamCandidate {
+                        text: merged,
+                        is_split: false,
+                        score: m_freq as f32 * 0.5,
+                    });
+                }
+            }
+        }
+        None
+    }
+
     pub fn suggest_with_timing(
         &self,
         raw_token: &str,
