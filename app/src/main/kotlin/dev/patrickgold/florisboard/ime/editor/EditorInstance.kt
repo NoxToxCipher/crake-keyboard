@@ -283,14 +283,38 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         }
 
         val isPhantomSpaceActive = phantomSpace.determine(text)
-        phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
-        return if (isPhantomSpaceActive) {
-            super.commitText("$SPACE$text")
-        } else {
-            super.commitText(text)
-        }.also {
+        val committed = if (isPhantomSpaceActive) "$SPACE$text" else text
+        phantomSpace.setActive(
+            showComposingRegion = false,
+            candidate = candidate,
+            originalText = tokenBeforeCursor.toString(),
+            committedText = committed,
+        )
+        return super.commitText(committed).also {
             updateLastCommitPosition()
         }
+    }
+
+    /**
+     * One backspace immediately after a candidate commit restores what the
+     * user actually typed ("an" -> auto-committed "am" -> backspace -> "an"
+     * again). Returns true when a revert was performed; the caller must
+     * then skip its normal delete. The revert window is the phantom-space
+     * candidate lifecycle — any other input clears it.
+     */
+    fun revertPreviousCommit(): Boolean {
+        if (activeInfo.isRawInputEditor) return false
+        val original = phantomSpace.textForRevert ?: return false
+        val committed = phantomSpace.committedForRevert ?: return false
+        if (original.isEmpty() || committed.isEmpty()) return false
+        // The committed text must still sit before the cursor, or the field
+        // changed under us and blind surgery would corrupt it.
+        if (!activeContent.textBeforeSelection.endsWith(committed)) return false
+        phantomSpace.setInactive()
+        runBlocking {
+            deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = committed.length)
+        }
+        return super.commitText(original)
     }
 
     /**
@@ -643,6 +667,10 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         private val state = AtomicInteger(0)
         var candidateForRevert: SuggestionCandidate? = null
             private set
+        var textForRevert: String? = null
+            private set
+        var committedForRevert: String? = null
+            private set
 
         val isActive: Boolean
             get() = state.get() and F_IS_ACTIVE != 0
@@ -657,6 +685,8 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             showComposingRegion: Boolean,
             stayActiveNextUpdate: Boolean = true,
             candidate: SuggestionCandidate? = null,
+            originalText: String? = null,
+            committedText: String? = null,
         ) {
             state.set(
                 F_IS_ACTIVE
@@ -664,11 +694,15 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                     or (if (stayActiveNextUpdate) F_STAY_ACTIVE_NEXT_UPDATE else 0)
             )
             candidateForRevert = candidate
+            textForRevert = originalText
+            committedForRevert = committedText
         }
 
         fun setInactive() {
             state.set(0)
             candidateForRevert = null
+            textForRevert = null
+            committedForRevert = null
         }
 
         fun setInactiveFromUpdate() {
@@ -677,6 +711,8 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             }
             if ((prevStateValue and F_STAY_ACTIVE_NEXT_UPDATE) == 0) {
                 candidateForRevert = null
+                textForRevert = null
+                committedForRevert = null
             }
         }
     }

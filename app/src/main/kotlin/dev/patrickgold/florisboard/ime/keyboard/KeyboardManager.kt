@@ -447,6 +447,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             it.isManualSelectionModeEnd = false
         }
         revertPreviouslyAcceptedCandidate()
+        // One CHARACTER backspace right after a candidate commit restores
+        // the user's own typed text instead of eating the correction one
+        // letter at a time. A word-unit delete means "get rid of it" and
+        // deletes as before.
+        if (unit == OperationUnit.CHARACTERS && editorInstance.revertPreviousCommit()) {
+            return
+        }
         editorInstance.deleteBackwards(unit)
     }
 
