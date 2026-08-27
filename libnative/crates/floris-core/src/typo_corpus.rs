@@ -8,8 +8,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("abritrary", "arbitrary"),
     ("absense", "absence"),
     ("absorbtion", "absorption"),
-    // "abunch" is "a bunch" run together, NOT "about" — mapping it to a
-    // different word was a silent mis-replacement (the "israeli" class).
     ("abunch", "a bunch"),
     ("acadamy", "academy"),
     ("accellerate", "accelerate"),
@@ -51,9 +49,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("advertisment", "advertisement"),
     ("advertisments", "advertisements"),
     ("adviced", "advised"),
-    // Dictionary junk that blocked its own correction (is_exact starves the
-    // rescue lanes); the corpus outranks the dictionary, so these curated
-    // entries dissolve the block without deleting anything (2026-08-27).
     ("aer", "are"),
     ("aeriel", "aerial"),
     ("agaisnt", "against"),
@@ -523,6 +518,8 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("eventualy", "eventually"),
     ("everyting", "everything"),
     ("evidance", "evidence"),
+    ("evsr", "every"),
+    ("evsruh", "every"),
     ("exagerate", "exaggerate"),
     ("exagerated", "exaggerated"),
     ("exageration", "exaggeration"),
@@ -678,9 +675,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("hou", "you"),
     ("however", "however"),
     ("hows", "how's"),
-    // "hse" is "use" with a u->h adjacent slip ("I always hse them", field
-    // specimen 2026-08-27). Without this the transposition fast-path wins
-    // with "she" purely by pipeline order, not evidence strength.
     ("hse", "use"),
     ("humourous", "humorous"),
     ("hunderd", "hundred"),
@@ -810,6 +804,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("itll", "it'll"),
     ("its", "it's"),
     ("itslef", "itself"),
+    ("itu", "you"),
     ("ive", "I've"),
     ("jeapardy", "jeopardy"),
     ("jewelery", "jewelry"),
@@ -1673,10 +1668,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("throughout", "throughout"),
     ("thru", "through"),
     ("thsi", "this"),
-    // "ti" is a 1-adjacent-slip of "to" (i<->o) and is essentially never a
-    // deliberate English token; prefix completions (time, till) were
-    // blocking the fuzzy path's auto-commit for it ("swipe backwards ti
-    // delete", field specimen 2026-08-27).
     ("ti", "to"),
     ("timeline", "timeline"),
     ("tne", "the"),
@@ -1687,6 +1678,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("tommorrow", "tomorrow"),
     ("tomorrow", "tomorrow"),
     ("tongue", "tongue"),
+    ("tori", "this"),
     ("tou", "you"),
     ("tounge", "tongue"),
     ("tournament", "tournament"),

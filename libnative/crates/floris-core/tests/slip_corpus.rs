@@ -36,6 +36,8 @@ fn engine() -> NlpEngine {
         ("didnt", 245),
         ("swiping", 190),
         ("about", 255),
+        ("every", 245),
+        ("this", 255),
         ("hello", 240),
         ("keyboard", 200),
         ("privacy", 150),
@@ -66,6 +68,9 @@ fn recovers_adjacent_key_slips() {
         ("accuracu", "accuracy"),   // 1 slip (u<->y adjacent key slip from live typing 2026-08-27)
         ("sjsnr", "didn't"),        // 5 adjacent key slips (s<->d, j<->i, s<->d, r<->t from live typing 2026-08-27)
         ("seiping", "swiping"),     // 1 adjacent slip (e<->w from live typing 2026-08-27)
+        ("itu", "you"),             // pronoun slip (i,t,u -> y,o,u from live typing 2026-08-27)
+        ("evsr", "every"),          // adjacent slips (s<->e, r<->y from live typing 2026-08-27)
+        ("tori", "this"),           // slips (o<->h, r<->i, i<->s from live typing 2026-08-27)
     ] {
         let got = top3(&e, typed);
         if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
