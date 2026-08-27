@@ -258,22 +258,39 @@ fn is_qwerty_adjacent(a: char, b: char) -> bool {
     ADJACENCIES.iter().any(|&(k, adj)| k == a && adj.contains(&b))
 }
 
-/// Calculates the millimeter-aware spatial Levenshtein distance between query and target (Idea 7 / Loops 19-21).
+/// Calculates the millimeter-aware spatial Levenshtein distance between query and target
+/// using stack-allocated rolling DP buffers with zero heap allocation (Idea 7 / Loop 21).
+#[inline]
 pub fn spatial_levenshtein_distance(
     query: &str,
     target: &str,
     touch_model: Option<&crate::TouchModel>,
 ) -> f32 {
-    let q_chars: Vec<char> = query.chars().collect();
-    let t_chars: Vec<char> = target.chars().collect();
-    let m = q_chars.len();
-    let n = t_chars.len();
+    if query == target {
+        return 0.0;
+    }
+
+    let mut q_buf = ['\0'; 32];
+    let mut t_buf = ['\0'; 32];
+
+    let mut m = 0;
+    for ch in query.chars() {
+        if m >= 32 { return 32.0; }
+        q_buf[m] = ch;
+        m += 1;
+    }
+
+    let mut n = 0;
+    for ch in target.chars() {
+        if n >= 32 { return 32.0; }
+        t_buf[n] = ch;
+        n += 1;
+    }
 
     if m == 0 { return n as f32; }
     if n == 0 { return m as f32; }
-    if query == target { return 0.0; }
 
-    let mut dp = vec![vec![0.0f32; n + 1]; m + 1];
+    let mut dp = [[0.0f32; 33]; 33];
 
     for i in 0..=m {
         dp[i][0] = i as f32;
@@ -284,14 +301,14 @@ pub fn spatial_levenshtein_distance(
 
     for i in 1..=m {
         for j in 1..=n {
-            let cost = spatial_substitution_cost(q_chars[i - 1], t_chars[j - 1], touch_model);
+            let cost = spatial_substitution_cost(q_buf[i - 1], t_buf[j - 1], touch_model);
             let deletion = dp[i - 1][j] + 1.0;
             let insertion = dp[i][j - 1] + 1.0;
             let substitution = dp[i - 1][j - 1] + cost;
 
             let mut best = deletion.min(insertion).min(substitution);
 
-            if i > 1 && j > 1 && q_chars[i - 1] == t_chars[j - 2] && q_chars[i - 2] == t_chars[j - 1] {
+            if i > 1 && j > 1 && q_buf[i - 1] == t_buf[j - 2] && q_buf[i - 2] == t_buf[j - 1] {
                 let trans_cost = dp[i - 2][j - 2] + 0.6;
                 best = best.min(trans_cost);
             }
