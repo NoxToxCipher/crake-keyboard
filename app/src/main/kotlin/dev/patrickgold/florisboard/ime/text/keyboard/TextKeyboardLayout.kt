@@ -440,6 +440,7 @@ fun TextKeyboardLayout(
         var rosePetalsTriggerTime by remember { mutableStateOf(0L) }
         var xboxAchievementTriggerTime by remember { mutableStateOf(0L) }
         var hiddenHoodedTriggerTime by remember { mutableStateOf(0L) }
+    var serenityGardenTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -627,6 +628,17 @@ fun TextKeyboardLayout(
             }
             if (isHiddenMatch) {
                 hiddenHoodedTriggerTime = System.currentTimeMillis()
+            }
+            // Strict word boundary isolation for Serenity / Anti-Stress triggers
+            val serenityKeys = listOf("stressed", "stress", "sad", "depressed", "anxious", "anxiety", "overwhelmed", "unhappy")
+            val isSerenityMatch = serenityKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isSerenityMatch) {
+                serenityGardenTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -5162,6 +5174,13 @@ fun TextKeyboardLayout(
             }
         }
 
+        val exactSpaceKey = remember(keyboard) {
+            keyboard.keys().asSequence().firstOrNull { key ->
+                key.label?.equals("space", ignoreCase = true) == true ||
+                key.computedData.code == 32
+            }
+        }
+
         // 18. Delayed "Hidden" Hooded Assassin Easter Egg (Fires 8.0s after "hidden" is typed, runs for 3.5s)
         val exactHKey = remember(keyboard) {
             keyboard.keys().asSequence().firstOrNull { key ->
@@ -5377,6 +5396,416 @@ fun TextKeyboardLayout(
                             style = android.graphics.Paint.Style.FILL
                         }
                         drawContext.canvas.nativeCanvas.drawCircle(-3.2f * d, -15.5f * d, 0.9f * d, eyePaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+                }
+            }
+        }
+
+
+        // 19. Serenity Garden, Butterflies & Zen Koi (Sequential 35s Multi-Stage Happiness Cycle)
+        if (serenityGardenTriggerTime > 0L) {
+            val serenityProgress = remember(serenityGardenTriggerTime) { Animatable(0f) }
+            LaunchedEffect(serenityGardenTriggerTime) {
+                serenityProgress.snapTo(0f)
+                serenityProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 35000, easing = LinearEasing),
+                )
+                serenityGardenTriggerTime = 0L
+            }
+            if (serenityProgress.value in 0.0005f..0.9995f) {
+                val progress = serenityProgress.value
+                val elapsedSec = progress * 35.0f
+                val density = LocalDensity.current.density
+                val d = density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // =========================================================================
+                    // STAGE 1: The Subtle Botanical Vine & Blossoms (0.0s - 12.0s)
+                    // =========================================================================
+                    if (elapsedSec in 0.0f..12.0f) {
+                        val growProgress = (elapsedSec / 5.0f).coerceIn(0f, 1f)
+                        val bloomProgress = ((elapsedSec - 5.0f) / 5.0f).coerceIn(0f, 1f)
+                        val stageAlpha = if (elapsedSec > 10.0f) {
+                            (1.0f - (elapsedSec - 10.0f) / 2.0f).coerceIn(0f, 1f)
+                        } else {
+                            (elapsedSec / 0.8f).coerceIn(0f, 1f)
+                        }
+
+                        val stemPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((stageAlpha * 220).toInt().coerceIn(0, 255), 16, 185, 129)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.6f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        val leafPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((stageAlpha * 230).toInt().coerceIn(0, 255), 52, 211, 153)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // Left & Right growing margins
+                        val marginOffset = 6f * d
+                        val totalSegments = 24
+                        val maxSegments = (totalSegments * growProgress).toInt()
+
+                        for (side in 0..1) {
+                            val isLeft = side == 0
+                            val baseX = if (isLeft) marginOffset else (canvasW - marginOffset)
+                            val path = android.graphics.Path()
+                            path.moveTo(baseX, canvasH)
+
+                            for (i in 1..maxSegments) {
+                                val u = i.toFloat() / totalSegments
+                                val py = canvasH - u * (canvasH * 0.92f)
+                                val px = baseX + kotlin.math.sin(u * 14f) * (4.5f * d) * (if (isLeft) 1f else -1f)
+                                path.lineTo(px, py)
+
+                                // Tiny leaf buds unfurling along stem
+                                if (i % 3 == 0) {
+                                    val leafAngle = kotlin.math.sin(u * 10f) * 45f + (if (isLeft) 30f else -30f)
+                                    drawContext.canvas.nativeCanvas.save()
+                                    drawContext.canvas.nativeCanvas.translate(px, py)
+                                    drawContext.canvas.nativeCanvas.rotate(leafAngle)
+                                    val leafRect = android.graphics.RectF(0f, -1.8f * d, 5.5f * d, 1.8f * d)
+                                    drawContext.canvas.nativeCanvas.drawOval(leafRect, leafPaint)
+                                    drawContext.canvas.nativeCanvas.restore()
+                                }
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(path, stemPaint)
+
+                            // Blossoming Flowers (unfurl from 5s to 10s)
+                            if (bloomProgress > 0.05f) {
+                                for (fIdx in 0..4) {
+                                    val fu = 0.2f + fIdx * 0.16f
+                                    if (fu <= growProgress) {
+                                        val fy = canvasH - fu * (canvasH * 0.92f)
+                                        val fx = baseX + kotlin.math.sin(fu * 14f) * (4.5f * d) * (if (isLeft) 1f else -1f)
+                                        val flowerScale = (bloomProgress * (1f + fIdx * 0.05f)).coerceIn(0f, 1f)
+
+                                        drawContext.canvas.nativeCanvas.save()
+                                        drawContext.canvas.nativeCanvas.translate(fx, fy)
+                                        drawContext.canvas.nativeCanvas.scale(flowerScale, flowerScale)
+
+                                        // 5 Blossom Petals (Soft Pink / Lilac Sakura)
+                                        val petalPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                            val petalColor = if (fIdx % 2 == 0) {
+                                                android.graphics.Color.argb((stageAlpha * 240).toInt().coerceIn(0, 255), 244, 114, 182)
+                                            } else {
+                                                android.graphics.Color.argb((stageAlpha * 240).toInt().coerceIn(0, 255), 192, 132, 252)
+                                            }
+                                            color = petalColor
+                                            style = android.graphics.Paint.Style.FILL
+                                        }
+
+                                        for (p in 0 until 5) {
+                                            drawContext.canvas.nativeCanvas.save()
+                                            drawContext.canvas.nativeCanvas.rotate(p * 72f)
+                                            val petalRect = android.graphics.RectF(-1.2f * d, -4.5f * d, 1.2f * d, 0f)
+                                            drawContext.canvas.nativeCanvas.drawOval(petalRect, petalPaint)
+                                            drawContext.canvas.nativeCanvas.restore()
+                                        }
+
+                                        // Golden Blossom Core
+                                        val corePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                            color = android.graphics.Color.argb((stageAlpha * 255).toInt().coerceIn(0, 255), 251, 191, 36)
+                                            style = android.graphics.Paint.Style.FILL
+                                        }
+                                        drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 1.1f * d, corePaint)
+                                        drawContext.canvas.nativeCanvas.restore()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // =========================================================================
+                    // STAGE 2: Richmond Birdwing Butterfly (15.0s - 17.5s) - Left to Right
+                    // =========================================================================
+                    if (elapsedSec in 15.0f..17.5f) {
+                        val bf1U = ((elapsedSec - 15.0f) / 2.5f).coerceIn(0f, 1f)
+                        val bf1Alpha = (kotlin.math.sin(bf1U * Math.PI.toFloat()) * 1.3f).coerceIn(0f, 1f)
+                        val startX = -25f * d
+                        val endX = canvasW + 25f * d
+                        val currentX = startX + bf1U * (endX - startX)
+                        val currentY = (canvasH * 0.42f) + kotlin.math.sin(bf1U * 4f * Math.PI.toFloat()) * (16f * d)
+
+                        val wingFlap = kotlin.math.cos(bf1U * 18f * Math.PI.toFloat()) // Realistic wing flap
+                        val wingSpan = (12f * d) * (0.35f + 0.65f * kotlin.math.abs(wingFlap))
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(currentX, currentY)
+                        drawContext.canvas.nativeCanvas.rotate(12f + kotlin.math.cos(bf1U * 4f * Math.PI.toFloat()) * 15f)
+
+                        // Richmond Birdwing: Velvet Black + Emerald Green Stripes
+                        val blackWing = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 18, 18, 22)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val emeraldStripe = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 16, 185, 129)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val goldAccent = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 240).toInt().coerceIn(0, 255), 245, 158, 11)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // Forewings
+                        val forewingPath = android.graphics.Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(-wingSpan, -8f * d)
+                            quadTo(-wingSpan * 0.6f, -14f * d, 0f, -4f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(forewingPath, blackWing)
+
+                        val rightForewing = android.graphics.Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(wingSpan, -8f * d)
+                            quadTo(wingSpan * 0.6f, -14f * d, 0f, -4f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(rightForewing, blackWing)
+
+                        // Emerald Iridescent Markings
+                        drawContext.canvas.nativeCanvas.drawCircle(-wingSpan * 0.45f, -7f * d, 2.2f * d, emeraldStripe)
+                        drawContext.canvas.nativeCanvas.drawCircle(wingSpan * 0.45f, -7f * d, 2.2f * d, emeraldStripe)
+
+                        // Hindwings with golden glow
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-wingSpan * 0.7f, -2f * d, -1f * d, 7f * d), goldAccent)
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(1f * d, -2f * d, wingSpan * 0.7f, 7f * d), goldAccent)
+
+                        // Body & Antennae
+                        val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf1Alpha * 255).toInt().coerceIn(0, 255), 10, 10, 12)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(-1f * d, -7f * d, 1f * d, 6f * d), 1f * d, 1f * d, bodyPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // =========================================================================
+                    // STAGE 3: Ulysses Butterfly (18.0s - 21.0s) - Right to Left
+                    // =========================================================================
+                    if (elapsedSec in 18.0f..21.0f) {
+                        val bf2U = ((elapsedSec - 18.0f) / 3.0f).coerceIn(0f, 1f)
+                        val bf2Alpha = (kotlin.math.sin(bf2U * Math.PI.toFloat()) * 1.3f).coerceIn(0f, 1f)
+                        val startX = canvasW + 25f * d
+                        val endX = -25f * d
+                        val currentX = startX + bf2U * (endX - startX)
+                        val currentY = (canvasH * 0.36f) + kotlin.math.sin(bf2U * 3f * Math.PI.toFloat() + 1.2f) * (20f * d)
+
+                        val wingFlap = kotlin.math.cos(bf2U * 16f * Math.PI.toFloat())
+                        val wingSpan = (13f * d) * (0.35f + 0.65f * kotlin.math.abs(wingFlap))
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(currentX, currentY)
+                        drawContext.canvas.nativeCanvas.rotate(-15f - kotlin.math.cos(bf2U * 3f * Math.PI.toFloat()) * 12f)
+
+                        // Ulysses: Deep Velvet Black Borders + Glowing Electric Sapphire Cyan Core
+                        val ulyssesBlack = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf2Alpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val electricBlue = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf2Alpha * 255).toInt().coerceIn(0, 255), 0, 229, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val royalBlue = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf2Alpha * 255).toInt().coerceIn(0, 255), 2, 132, 199)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // Black Wing Outer Perimeter
+                        val leftWingPath = android.graphics.Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(-wingSpan, -9f * d)
+                            quadTo(-wingSpan * 0.7f, -15f * d, 0f, -4f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(leftWingPath, ulyssesBlack)
+
+                        val rightWingPath = android.graphics.Path().apply {
+                            moveTo(0f, 0f)
+                            lineTo(wingSpan, -9f * d)
+                            quadTo(wingSpan * 0.7f, -15f * d, 0f, -4f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(rightWingPath, ulyssesBlack)
+
+                        // Brilliant Electric Blue Glowing Core
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-wingSpan * 0.75f, -10f * d, -1.5f * d, -2f * d), electricBlue)
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(1.5f * d, -10f * d, wingSpan * 0.75f, -2f * d), electricBlue)
+
+                        // Swallowtail Hindwings
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-wingSpan * 0.65f, -1f * d, -1f * d, 8f * d), royalBlue)
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(1f * d, -1f * d, wingSpan * 0.65f, 8f * d), royalBlue)
+
+                        // Swallowtail extension tails
+                        val tailPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = ulyssesBlack.color
+                            strokeWidth = 1.2f * d
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(-wingSpan * 0.4f, 7f * d, -wingSpan * 0.5f, 11f * d, tailPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(wingSpan * 0.4f, 7f * d, wingSpan * 0.5f, 11f * d, tailPaint)
+
+                        // Stardust trail sparkles behind Ulysses
+                        val sparklePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((bf2Alpha * 200).toInt().coerceIn(0, 255), 56, 189, 248)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        for (sp in 0 until 4) {
+                            val sx = (sp * 6f * d) + 4f * d
+                            val sy = kotlin.math.sin(bf2U * 10f + sp) * (4f * d)
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, (1.8f - sp * 0.35f) * d, sparklePaint)
+                        }
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // =========================================================================
+                    // STAGE 4: Swarm of Sunshine Yellow Butterflies (24.0s - 27.5s) - Corner Stream
+                    // =========================================================================
+                    if (elapsedSec in 24.0f..27.5f) {
+                        val swarmU = ((elapsedSec - 24.0f) / 3.5f).coerceIn(0f, 1f)
+                        val swarmAlpha = (kotlin.math.sin(swarmU * Math.PI.toFloat()) * 1.3f).coerceIn(0f, 1f)
+
+                        val yellowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((swarmAlpha * 255).toInt().coerceIn(0, 255), 253, 224, 71)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val yellowGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((swarmAlpha * 230).toInt().coerceIn(0, 255), 234, 179, 8)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        for (yb in 0..5) {
+                            val ybOffset = yb * 0.14f
+                            val ybProgress = (swarmU * 1.4f - ybOffset).coerceIn(0f, 1f)
+                            if (ybProgress in 0.01f..0.99f) {
+                                val cornerStartX = canvasW + 15f * d
+                                val cornerStartY = canvasH + 10f * d
+                                val cornerEndX = canvasW * 0.15f
+                                val cornerEndY = -20f * d
+
+                                // Playful swirling arc
+                                val curX = cornerStartX + ybProgress * (cornerEndX - cornerStartX) + kotlin.math.sin(ybProgress * 8f + yb) * (14f * d)
+                                val curY = cornerStartY + ybProgress * (cornerEndY - cornerStartY) + kotlin.math.cos(ybProgress * 6f + yb) * (12f * d)
+
+                                val yWingFlap = kotlin.math.cos(ybProgress * 22f * Math.PI.toFloat() + yb)
+                                val ySpan = (6.5f * d) * (0.35f + 0.65f * kotlin.math.abs(yWingFlap))
+
+                                drawContext.canvas.nativeCanvas.save()
+                                drawContext.canvas.nativeCanvas.translate(curX, curY)
+                                drawContext.canvas.nativeCanvas.rotate(-35f + kotlin.math.sin(ybProgress * 8f + yb) * 20f)
+
+                                // Tiny Yellow Wings
+                                drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-ySpan, -5f * d, -0.6f * d, 0f), yellowPaint)
+                                drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(0.6f * d, -5f * d, ySpan, 0f), yellowPaint)
+                                drawContext.canvas.nativeCanvas.drawCircle(-ySpan * 0.4f, -2.5f * d, 1f * d, yellowGlow)
+                                drawContext.canvas.nativeCanvas.drawCircle(ySpan * 0.4f, -2.5f * d, 1f * d, yellowGlow)
+
+                                drawContext.canvas.nativeCanvas.restore()
+                            }
+                        }
+                    }
+
+                    // =========================================================================
+                    // STAGE 5: Zen Calico Koi in the Spacebar (28.0s - 34.5s)
+                    // =========================================================================
+                    if (elapsedSec in 28.0f..34.5f) {
+                        val koiU = ((elapsedSec - 28.0f) / 6.5f).coerceIn(0f, 1f)
+                        val koiAlpha = if (koiU < 0.15f) {
+                            (koiU / 0.15f).coerceIn(0f, 1f)
+                        } else if (koiU > 0.85f) {
+                            (1.0f - (koiU - 0.85f) / 0.15f).coerceIn(0f, 1f)
+                        } else {
+                            1.0f
+                        }
+
+                        val spaceBounds = exactSpaceKey?.visibleBounds
+                        val sLeft = spaceBounds?.left ?: (canvasW * 0.25f)
+                        val sRight = spaceBounds?.right ?: (canvasW * 0.75f)
+                        val sTop = spaceBounds?.top ?: (canvasH * 0.80f)
+                        val sBottom = spaceBounds?.bottom ?: (canvasH * 0.98f)
+                        val sWidth = sRight - sLeft
+                        val sCenterY = (sTop + sBottom) / 2f
+
+                        val koiStartX = sLeft - 20f * d
+                        val koiEndX = sRight + 20f * d
+                        val koiX = koiStartX + koiU * (koiEndX - koiStartX)
+                        val undulation = kotlin.math.sin(koiU * 16f * Math.PI.toFloat())
+                        val koiY = sCenterY + undulation * (2.8f * d)
+                        val koiAngle = kotlin.math.cos(koiU * 16f * Math.PI.toFloat()) * 14f
+
+                        // 1. Concentric Bioluminescent Water Ripples along Spacebar
+                        val ripplePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((koiAlpha * 120).toInt().coerceIn(0, 255), 0, 229, 255)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.1f * d
+                        }
+                        for (r in 0..2) {
+                            val rU = (koiU * 5f + r * 0.33f) % 1f
+                            val rRadius = (6f + rU * 18f) * d
+                            ripplePaint.alpha = ((1f - rU) * koiAlpha * 100).toInt().coerceIn(0, 255)
+                            drawContext.canvas.nativeCanvas.drawCircle(koiX - (r * 12f * d), koiY, rRadius, ripplePaint)
+                        }
+
+                        // 2. Calico Kohaku Koi Fish Body
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(koiX, koiY)
+                        drawContext.canvas.nativeCanvas.rotate(koiAngle)
+
+                        // Translucent Flowing Fins
+                        val finPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((koiAlpha * 180).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val finUndulate = kotlin.math.sin(koiU * 24f * Math.PI.toFloat()) * (2f * d)
+
+                        // Pectoral Fins
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-2f * d, -8f * d + finUndulate, 4f * d, -3f * d), finPaint)
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-2f * d, 3f * d, 4f * d, 8f * d - finUndulate), finPaint)
+
+                        // Sinuous Undulating Caudal Tail Fin
+                        val tailPath = android.graphics.Path().apply {
+                            moveTo(-9f * d, 0f)
+                            lineTo(-17f * d, -5f * d - finUndulate * 1.5f)
+                            quadTo(-14f * d, 0f, -17f * d, 5f * d + finUndulate * 1.5f)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(tailPath, finPaint)
+
+                        // Pearlescent White Body
+                        val bodyWhite = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((koiAlpha * 255).toInt().coerceIn(0, 255), 248, 250, 252)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val koiBodyRect = android.graphics.RectF(-10f * d, -4f * d, 9f * d, 4f * d)
+                        drawContext.canvas.nativeCanvas.drawOval(koiBodyRect, bodyWhite)
+
+                        // Vibrant Orange/Crimson Kohaku Markings
+                        val orangeMarking = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((koiAlpha * 255).toInt().coerceIn(0, 255), 234, 88, 12)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(2f * d, -3f * d, 7f * d, 3f * d), orangeMarking)
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-5f * d, -3.2f * d, 0f, 2.5f * d), orangeMarking)
+
+                        // Black Sumi Ink Spot
+                        val sumiInk = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((koiAlpha * 255).toInt().coerceIn(0, 255), 30, 41, 59)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(-2f * d, 1.5f * d, 1.2f * d, sumiInk)
 
                         drawContext.canvas.nativeCanvas.restore()
                     }
