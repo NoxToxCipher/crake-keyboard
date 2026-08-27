@@ -441,6 +441,7 @@ fun TextKeyboardLayout(
         var xboxAchievementTriggerTime by remember { mutableStateOf(0L) }
         var hiddenHoodedTriggerTime by remember { mutableStateOf(0L) }
     var serenityGardenTriggerTime by remember { mutableStateOf(0L) }
+    var sniperDudeTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -639,6 +640,17 @@ fun TextKeyboardLayout(
             }
             if (isSerenityMatch) {
                 serenityGardenTriggerTime = System.currentTimeMillis()
+            }
+            // Strict word boundary isolation for Sniper triggers
+            val sniperKeys = listOf("snipe", "snipes", "sniper", "sniped", "sniping", "headshot", "360 noscope", "awp")
+            val isSniperMatch = sniperKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isSniperMatch) {
+                sniperDudeTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -5809,6 +5821,289 @@ fun TextKeyboardLayout(
 
                         drawContext.canvas.nativeCanvas.restore()
                     }
+                }
+            }
+        }
+
+
+        // 20. Tactical Crouching Sniper on Fret 3 (Aims 3.0s with laser, shoots off-screen left, shell ejects)
+        if (sniperDudeTriggerTime > 0L) {
+            val sniperProgress = remember(sniperDudeTriggerTime) { Animatable(0f) }
+            LaunchedEffect(sniperDudeTriggerTime) {
+                sniperProgress.snapTo(0f)
+                sniperProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 4200, easing = LinearEasing),
+                )
+                sniperDudeTriggerTime = 0L
+            }
+            if (sniperProgress.value in 0.001f..0.999f) {
+                val progress = sniperProgress.value
+                val elapsedSec = progress * 4.2f
+                val density = LocalDensity.current.density
+                val d = density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    val masterAlpha = if (elapsedSec > 3.8f) {
+                        (1.0f - (elapsedSec - 3.8f) / 0.4f).coerceIn(0f, 1f)
+                    } else if (elapsedSec < 0.25f) {
+                        (elapsedSec / 0.25f).coerceIn(0f, 1f)
+                    } else {
+                        1.0f
+                    }
+
+                    // Calculate 3rd Fret Line Y (Divider line above bottom spacebar row)
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val fret3Y = (canvasH / rowCount) * (rowCount - 1)
+                    val sniperBaseX = canvasW * 0.84f
+
+                    // Breathing & Aiming sway during 0s - 3s
+                    val aimSwayY = if (elapsedSec < 3.0f) {
+                        kotlin.math.sin(elapsedSec * 2.5f * Math.PI.toFloat()) * (1.2f * d)
+                    } else {
+                        0f
+                    }
+
+                    // Recoil Kickback impulse at 3.0s
+                    val recoilX = if (elapsedSec in 3.0f..3.35f) {
+                        val rProgress = (elapsedSec - 3.0f) / 0.35f
+                        kotlin.math.sin(rProgress * Math.PI.toFloat()) * (7f * d)
+                    } else {
+                        0f
+                    }
+
+                    val sniperX = sniperBaseX + recoilX
+                    val sniperY = fret3Y - 1f * d
+
+                    // -----------------------------------------------------------------
+                    // 1. Red Laser Sight Beam (0.0s - 3.0s, disappears on gunshot)
+                    // -----------------------------------------------------------------
+                    val barrelTipX = sniperX - 22f * d
+                    val barrelTipY = sniperY - 5.5f * d + aimSwayY
+
+                    if (elapsedSec < 3.0f) {
+                        val laserAlpha = (masterAlpha * 0.85f).coerceIn(0f, 1f)
+                        val laserBeam = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((laserAlpha * 230).toInt().coerceIn(0, 255), 239, 68, 68)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.0f * d
+                        }
+                        val laserGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((laserAlpha * 80).toInt().coerceIn(0, 255), 255, 0, 80)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 2.4f * d
+                        }
+
+                        val targetX = -50f * d
+                        val targetY = barrelTipY + aimSwayY * 2f
+
+                        drawContext.canvas.nativeCanvas.drawLine(barrelTipX, barrelTipY, targetX, targetY, laserGlow)
+                        drawContext.canvas.nativeCanvas.drawLine(barrelTipX, barrelTipY, targetX, targetY, laserBeam)
+
+                        // Scope lens reflection / glint
+                        val glintPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val glintPulse = (kotlin.math.sin(elapsedSec * 6f) * 0.5f + 0.5f)
+                        if (glintPulse > 0.4f) {
+                            drawContext.canvas.nativeCanvas.drawCircle(sniperX - 9f * d, sniperY - 8.5f * d, 1.2f * d, glintPaint)
+                        }
+                    }
+
+                    // -----------------------------------------------------------------
+                    // 2. Gunshot: Explosive Muzzle Flash & Supersonic Tracer (3.0s - 3.35s)
+                    // -----------------------------------------------------------------
+                    if (elapsedSec in 3.0f..3.35f) {
+                        val shotU = (elapsedSec - 3.0f) / 0.35f
+
+                        // Muzzle Flash
+                        if (shotU < 0.35f) {
+                            val flashScale = (1.0f - shotU / 0.35f)
+                            val flashOuter = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = android.graphics.Color.argb((flashScale * 255).toInt().coerceIn(0, 255), 245, 158, 11)
+                                style = android.graphics.Paint.Style.FILL
+                            }
+                            val flashCore = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = android.graphics.Color.argb((flashScale * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                                style = android.graphics.Paint.Style.FILL
+                            }
+                            val flashPath = android.graphics.Path().apply {
+                                val fx = barrelTipX
+                                val fy = barrelTipY
+                                val fw = 14f * d * flashScale
+                                moveTo(fx, fy - 5f * d * flashScale)
+                                lineTo(fx - fw, fy)
+                                lineTo(fx, fy + 5f * d * flashScale)
+                                lineTo(fx + 3f * d * flashScale, fy)
+                                close()
+                            }
+                            drawContext.canvas.nativeCanvas.drawPath(flashPath, flashOuter)
+                            drawContext.canvas.nativeCanvas.drawCircle(barrelTipX - 3f * d, barrelTipY, 3.5f * d * flashScale, flashCore)
+                        }
+
+                        // Supersonic Glowing Tracer Bullet (Rips right to left)
+                        val tracerU = (shotU / 0.7f).coerceIn(0f, 1f)
+                        val tracerStartX = barrelTipX
+                        val tracerEndX = -60f * d
+                        val tracerHeadX = tracerStartX + tracerU * (tracerEndX - tracerStartX)
+                        val tracerTailX = (tracerHeadX + 45f * d).coerceAtMost(tracerStartX)
+
+                        val tracerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(255, 254, 240, 138)
+                            strokeWidth = 2.2f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        val tracerGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(160, 234, 88, 12)
+                            strokeWidth = 4.5f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(tracerHeadX, barrelTipY, tracerTailX, barrelTipY, tracerGlow)
+                        drawContext.canvas.nativeCanvas.drawLine(tracerHeadX, barrelTipY, tracerTailX, barrelTipY, tracerPaint)
+
+                        // Dissipating Muzzle Smoke
+                        val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(((1f - shotU) * 110).toInt().coerceIn(0, 255), 203, 213, 225)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        for (sm in 0..2) {
+                            val smX = barrelTipX - (sm * 6f * d) - shotU * (12f * d)
+                            val smY = barrelTipY - (sm * 2f * d) - shotU * (6f * d)
+                            drawContext.canvas.nativeCanvas.drawCircle(smX, smY, (3f + sm * 1.5f + shotU * 6f) * d, smokePaint)
+                        }
+                    }
+
+                    // -----------------------------------------------------------------
+                    // 3. Brass Cartridge Shell Ejection (3.05s - 3.7s)
+                    // -----------------------------------------------------------------
+                    if (elapsedSec in 3.05f..3.7f) {
+                        val shellU = (elapsedSec - 3.05f) / 0.65f
+                        val chamberX = sniperX - 6f * d
+                        val chamberY = sniperY - 6f * d
+
+                        // Parabolic arc upward and to the right
+                        val shellX = chamberX + shellU * (14f * d)
+                        val shellY = chamberY - kotlin.math.sin(shellU * Math.PI.toFloat()) * (12f * d) + shellU * (8f * d)
+                        val shellAngle = shellU * 720f
+
+                        val shellPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 251, 191, 36)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(shellX, shellY)
+                        drawContext.canvas.nativeCanvas.rotate(shellAngle)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(-2f * d, -0.9f * d, 2f * d, 0.9f * d), 0.5f * d, 0.5f * d, shellPaint)
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // -----------------------------------------------------------------
+                    // 4. Tactical Sniper Stickman / Soldier Body & Rifle
+                    // -----------------------------------------------------------------
+                    val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val bodyStroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 2.2f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val gearPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 30, 41, 59)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val riflePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 10, 10, 14)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(sniperX, sniperY)
+
+                    // A. Legs & Crouch / Prone Knees on 3rd Fret Line
+                    // Back Leg (folded under)
+                    drawContext.canvas.nativeCanvas.drawLine(6f * d, 0f, 10f * d, 0f, bodyStroke)
+                    drawContext.canvas.nativeCanvas.drawLine(10f * d, 0f, 4f * d, -4f * d, bodyStroke)
+                    // Front Leg (braced)
+                    drawContext.canvas.nativeCanvas.drawLine(2f * d, 0f, -3f * d, 0f, bodyStroke)
+                    drawContext.canvas.nativeCanvas.drawLine(-3f * d, 0f, 0f, -5f * d, bodyStroke)
+
+                    // B. Torso (Leaning forward into rifle stock)
+                    val torsoPath = android.graphics.Path().apply {
+                        moveTo(4f * d, -4f * d)
+                        lineTo(-4f * d, -6.5f * d + aimSwayY * 0.4f)
+                        lineTo(-3f * d, -11f * d + aimSwayY * 0.6f)
+                        lineTo(5f * d, -7f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(torsoPath, bodyPaint)
+
+                    // Tactical Backpack / Vest
+                    drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(3f * d, -10f * d, 8f * d, -5f * d), 1.5f * d, 1.5f * d, gearPaint)
+
+                    // C. Head with Tactical Ghillie / Helmet & Visor
+                    val headCenterY = -12.5f * d + aimSwayY * 0.7f
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, headCenterY, 3.8f * d, bodyPaint)
+                    // Helmet / Cap visor facing left
+                    val visorPath = android.graphics.Path().apply {
+                        moveTo(-2.5f * d, headCenterY - 2.5f * d)
+                        lineTo(-6.5f * d, headCenterY - 1f * d)
+                        lineTo(-2.5f * d, headCenterY)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(visorPath, gearPaint)
+
+                    // Glowing Tactical Cyan Eye/Optic
+                    val opticEye = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 0, 229, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(-2.2f * d, headCenterY - 0.5f * d, 0.8f * d, opticEye)
+
+                    // D. High-Caliber Sniper Rifle & Bipod
+                    val rifleY = -5.5f * d + aimSwayY
+
+                    // Stock & Receiver
+                    drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(1f * d, rifleY - 1.5f * d, 7f * d, rifleY + 1.2f * d), 1f * d, 1f * d, riflePaint)
+                    // Chamber & Grip
+                    drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(-8f * d, rifleY - 1.2f * d, 1f * d, rifleY + 1.2f * d), riflePaint)
+                    // Long Precision Heavy Barrel
+                    drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(-22f * d, rifleY - 0.7f * d, -8f * d, rifleY + 0.7f * d), riflePaint)
+                    // Muzzle Brake
+                    drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(-23.5f * d, rifleY - 1.2f * d, -22f * d, rifleY + 1.2f * d), riflePaint)
+
+                    // High-Power Optic Scope
+                    val scopeY = rifleY - 2.8f * d
+                    drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(-10f * d, scopeY - 1.2f * d, -2f * d, scopeY + 1.2f * d), 0.8f * d, 0.8f * d, riflePaint)
+                    // Scope Mounts
+                    drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(-8.5f * d, scopeY + 0.8f * d, -7.5f * d, rifleY - 1.0f * d), riflePaint)
+                    drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(-4.5f * d, scopeY + 0.8f * d, -3.5f * d, rifleY - 1.0f * d), riflePaint)
+
+                    // Bipod resting on Fret 3
+                    val bipodPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = riflePaint.color
+                        strokeWidth = 1.1f * d
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+                    drawContext.canvas.nativeCanvas.drawLine(-14f * d, rifleY + 0.7f * d, -16f * d, 0f, bipodPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(-14f * d, rifleY + 0.7f * d, -12f * d, 0f, bipodPaint)
+
+                    // Arms & Hands gripping the rifle
+                    drawContext.canvas.nativeCanvas.drawLine(-2f * d, headCenterY + 4f * d, -5f * d, rifleY + 1f * d, bodyStroke)
+                    drawContext.canvas.nativeCanvas.drawLine(-1f * d, headCenterY + 4f * d, 2f * d, rifleY + 0.5f * d, bodyStroke)
+
+                    drawContext.canvas.nativeCanvas.restore()
                 }
             }
         }
