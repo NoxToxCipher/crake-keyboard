@@ -46,6 +46,9 @@ pub struct GlideMatch {
     pub word: String,
     pub score: f32,
     pub dtw_distance: f32,
+    /// Unigram frequency of the matched word, so commit policy can tell a
+    /// junk-band shape-fit from a real word.
+    pub frequency: u32,
 }
 
 /// Simplifies a touch trajectory using the Ramer-Douglas-Peucker (RDP) algorithm.
@@ -320,6 +323,7 @@ impl GlideEngine {
                         word,
                         score: total_score,
                         dtw_distance: dtw_dist,
+                        frequency: freq,
                     });
                 }
             }
@@ -327,6 +331,24 @@ impl GlideEngine {
 
         // Sort by lowest score (lowest DTW distance + frequency boost)
         matches.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Junk never wins a coin flip: glide auto-commits its top-1, and
+        // real device traces (2026-08-27) had 60-band junk beating real
+        // words by whisker margins ("upi" over "uni" by 2.8, "opi" over
+        // "ohio" by 10.8). If the winner is below the solid-word floor and
+        // a real word sits within the margin, the real word leads. A rare
+        // word that wins by a LANDSLIDE (distinct shape, no real word
+        // nearby) still wins — that is a genuine rare-word glide.
+        const COMMIT_MIN_FREQ: u32 = 150;
+        const JUNK_RESCUE_MARGIN: f32 = 12.0;
+        if matches.first().is_some_and(|m| m.frequency < COMMIT_MIN_FREQ) {
+            if let Some(pos) = matches.iter().position(|m| m.frequency >= COMMIT_MIN_FREQ) {
+                if matches[pos].score - matches[0].score <= JUNK_RESCUE_MARGIN {
+                    let rescued = matches.remove(pos);
+                    matches.insert(0, rescued);
+                }
+            }
+        }
         matches.truncate(max_results);
 
         // Contractions are unglideable (no apostrophe key), so their bare

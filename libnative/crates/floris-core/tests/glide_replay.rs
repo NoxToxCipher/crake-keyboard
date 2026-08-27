@@ -101,6 +101,15 @@ fn replay_captured_device_traces() {
             !results.is_empty(),
             "trace {i}: engine returned nothing for a real stroke"
         );
+        eprintln!(
+            "  trace {i} prev='{prev}' scores: {}",
+            results
+                .iter()
+                .take(6)
+                .map(|m| format!("{}={:.2}", m.word, m.score))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
         let device_first = captured_top.split(',').next().unwrap_or("");
         let now_first = results.first().map(|m| m.word.as_str()).unwrap_or("");
         total += 1;
