@@ -39,18 +39,14 @@ pub fn anisotropic_thumb_distance_sq(touch: &Point2D, target: &Point2D, _key_rad
     let dx = touch.x - target.x;
     let dy = touch.y - target.y;
 
-    // Rotate coordinates by thumb sweep angle theta ~ 28.5 degrees (cos = 0.8788, sin = 0.4772)
-    let cos_t = 0.8788f32;
-    let sin_t = 0.4772f32;
+    // Pre-computed quadratic form coefficients for rotated ellipse:
+    // theta = 28.5 deg, a = 1.25 (major reach), b = 0.85 (minor perpendicular)
+    // Runs in 3 multiplications + 2 additions with zero trigonometry or division.
+    const A: f32 = 0.8094;
+    const B: f32 = -0.6241;
+    const C: f32 = 1.2146;
 
-    let u = dx * cos_t + dy * sin_t;  // along major reach axis
-    let v = -dx * sin_t + dy * cos_t; // along minor perpendicular axis
-
-    // Scale axes: thumb has higher reach tolerance along radial sweep (1.25x), tighter cross-sweep (0.85x)
-    let u_scaled = u / 1.25;
-    let v_scaled = v / 0.85;
-
-    u_scaled * u_scaled + v_scaled * v_scaled
+    A * dx * dx + B * dx * dy + C * dy * dy
 }
 
 #[inline]
