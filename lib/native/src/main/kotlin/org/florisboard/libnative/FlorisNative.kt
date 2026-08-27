@@ -205,6 +205,21 @@ object FlorisNative {
         letterPredictionMemo = null
     }
 
+    /**
+     * Memo-only variant for latency-critical callers (the touch-down
+     * handler): returns the cached predictions when they match the given
+     * state, or null WITHOUT crossing JNI. Callers fall back to their
+     * non-predictive path on null; a background warmer keeps the memo
+     * fresh between keystrokes.
+     */
+    fun predictNextLetterWordsCached(prefix: String, prevWord: String): Map<Char, String>? {
+        if (!isLoaded) return null
+        letterPredictionMemo?.let { (p, pw, cached) ->
+            if (p == prefix && pw == prevWord) return cached
+        }
+        return null
+    }
+
     fun predictNextLetterWords(prefix: String = "", prevWord: String = ""): Map<Char, String> {
         if (!isLoaded) return emptyMap()
         letterPredictionMemo?.let { (p, pw, cached) ->

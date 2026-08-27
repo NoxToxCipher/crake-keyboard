@@ -142,6 +142,58 @@ import kotlin.math.sqrt
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @OptIn(ExperimentalComposeUiApi::class)
+
+// Easter-egg trigger vocabularies, hoisted to file level so the
+// per-keystroke trigger scan allocates nothing.
+private val triggerDelimitersWithEmpty = listOf("", " ", ".", "!", ",", "?", "\n")
+private val triggerDelimiters = listOf(" ", ".", "!", ",", "?", "\n")
+private val bbTriggerKeys = listOf(
+    "blackberry bold", "blackberry priv", "blackberry q10",
+    "blackberry passport", "blackberry classic", "blackberry 9900",
+    "blackberry key2", "rim blackberry"
+)
+private val eclectusKeysHoisted = listOf("eclectus", "ecky", "eckies", "roratus")
+private val sunConureKeysHoisted = listOf("sun conure", "sunconure", "conure")
+private val soccerKeysHoisted = listOf("soccer", "football", "futbol")
+private val rainKeysHoisted = listOf("rain", "rainy", "raining", "rainfall", "rainstorm")
+private val mangoKeysHoisted = listOf("mango", "mangoes", "mangos")
+private val chiefKeysHoisted = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan", "cortana")
+private val skateKeysHoisted = listOf("rink", "skating", "iceskating", "ice skating", "skate", "figure skating")
+private val berryKeysHoisted = listOf("berry", "berries", "strawberry", "blueberry", "raspberry", "blackberry")
+private val fullTwKeysHoisted = listOf("tribalwars", "tribal wars", "tribal_wars")
+private val shortTwKeysHoisted = listOf("tw")
+private val bawenKeysHoisted = listOf("bawen")
+private val pubgKeysHoisted = listOf("pubg", "airdrop", "pochinki", "chicken dinner", "winner winner")
+private val luciaKeysHoisted = listOf("lucia")
+private val dukuKeysHoisted = listOf("duku", "langsat", "longkong")
+private val carKeysHoisted = listOf("drive", "car", "driving", "cars", "driver", "drives", "drove", "aston martin", "aston")
+private val cryptoKeysHoisted = listOf(
+                "btc", "bitcoin", "eth", "ethereum", "sol", "solana",
+                "arb", "arbitrum", "atom", "cosmos hub", "cosmos",
+                "rune", "thorchain", "xmr", "monero", "ltc", "litecoin",
+                "to the moon", "crypto"
+            )
+private val murmurKeysHoisted = listOf("murmur", "flock", "murmuration", "starlings")
+private val lunaKeysHoisted = listOf("terra", "luna", "ust", "lunc", "do kwon", "terra luna", "terra usd")
+private val sundaeKeysHoisted = listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait")
+private val nobleTrainKeysHoisted = listOf("noble train", "nobletrain", "noble_train", "sniping trains")
+private val regularTrainKeysHoisted = listOf("train", "trains", "choo choo", "choochoo", "locomotive", "steam train")
+private val louieKeysHoisted = listOf("louie", "pitty", "pitbull", "red nose", "rednose", "red nose pitty")
+private val fullAiKeysHoisted = listOf("artificial intelligence", "irobot", "i, robot", "ns5", "ns-5", "sonny", "viki", "three laws")
+private val shortAiKeysHoisted = listOf("ai")
+private val androidKeysHoisted = listOf("android", "bugdroid", "green dude", "google android", "apk")
+private val loveKeysHoisted = listOf("i love you", "iloveyou", "love you", "i <3 you", "i love u")
+private val xboxKeysHoisted = listOf("xbox", "xbox 360", "series x", "series s", "xbox one", "game pass", "achievement unlocked", "gamertag", "majornelson")
+private val hiddenKeysHoisted = listOf("hidden", "assassin", "hooded figure", "ninja")
+private val serenityKeysHoisted = listOf(
+                "serenity", "zen garden",
+                "stressed", "stress", "sad", "depressed", "anxious",
+                "anxiety", "overwhelmed", "unhappy",
+            )
+private val sniperKeysHoisted = listOf("snipe", "snipes", "sniper", "sniped", "sniping", "headshot", "360 noscope", "awp")
+private val thorKeysHoisted = listOf("thor", "mjolnir", "god of thunder", "asgard", "odinson")
+private val mushuKeysHoisted = listOf("mushu", "mulan", "mulsn", "cri-kee", "dishonor on your cow", "dragon", "great stone dragon")
+
 @Composable
 fun TextKeyboardLayout(
     modifier: Modifier = Modifier,
@@ -454,24 +506,35 @@ fun TextKeyboardLayout(
     var sniperDudeTriggerTime by remember { mutableStateOf(0L) }
     var thorTriggerTime by remember { mutableStateOf(0L) }
     var mushuTriggerTime by remember { mutableStateOf(0L) }
+        // Per-key egg layers (BlackBerry keycap flip, egg wobble, sun conure
+        // perch): detected once here, consumed by every TextKeyButton via
+        // parameters.
+        var eggKeyTriggerTime by remember { mutableStateOf(0L) }
+        var sunConureKeyTriggerTime by remember { mutableStateOf(0L) }
+        var bbKeyTriggerTime by remember { mutableStateOf(0L) }
+        var lastKeyLayerSignature by remember { mutableStateOf("") }
         LaunchedEffect(activeContent) {
-            val tb = activeContent.textBeforeSelection.toString().lowercase()
+            // Bounded scan: no trigger phrase exceeds 24 characters, so the
+            // last 64 are exact-equivalent for every endsWith/equality
+            // matcher below while keeping per-keystroke cost O(1) instead
+            // of O(text window).
+            val tb = activeContent.textBeforeSelection.takeLast(64).toString().lowercase()
             val comp = activeContent.composingText.lowercase()
-            val eclectusKeys = listOf("eclectus", "ecky", "eckies", "roratus")
+            val eclectusKeys = eclectusKeysHoisted
             if (eclectusKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 if (prefs.easterEggs.fire(EasterEgg.ECLECTUS_FLIGHT)) eclectusFlightTriggerTime = System.currentTimeMillis()
             }
-            val sunConureKeys = listOf("sun conure", "sunconure", "conure")
+            val sunConureKeys = sunConureKeysHoisted
             if (sunConureKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureFlightTriggerTime = System.currentTimeMillis()
             }
-            val soccerKeys = listOf("soccer", "football", "futbol")
+            val soccerKeys = soccerKeysHoisted
             if (soccerKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 if (prefs.easterEggs.fire(EasterEgg.SOCCER_ROLL)) soccerRollTriggerTime = System.currentTimeMillis()
             }
-            val rainKeys = listOf("rain", "rainy", "raining", "rainfall", "rainstorm")
+            val rainKeys = rainKeysHoisted
             val isRainMatch = rainKeys.any { k ->
-                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimitersWithEmpty
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
                 }
@@ -479,13 +542,13 @@ fun TextKeyboardLayout(
             if (isRainMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.SPACE_RAIN)) spaceRainTriggerTime = System.currentTimeMillis()
             }
-            val mangoKeys = listOf("mango", "mangoes", "mangos")
+            val mangoKeys = mangoKeysHoisted
             if (mangoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 if (prefs.easterEggs.fire(EasterEgg.MANGO_PULSE)) mangoPulseTriggerTime = System.currentTimeMillis()
             }
-            val chiefKeys = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan", "cortana")
+            val chiefKeys = chiefKeysHoisted
             val isChiefMatch = chiefKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -493,19 +556,19 @@ fun TextKeyboardLayout(
             if (isChiefMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.MASTER_CHIEF_RUN)) masterChiefRunTriggerTime = System.currentTimeMillis()
             }
-            val skateKeys = listOf("rink", "skating", "iceskating", "ice skating", "skate", "figure skating")
+            val skateKeys = skateKeysHoisted
             if (skateKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 if (prefs.easterEggs.fire(EasterEgg.ICE_SKATE_SWIRL)) iceSkateSwirlTriggerTime = System.currentTimeMillis()
             }
-            val berryKeys = listOf("berry", "berries", "strawberry", "blueberry", "raspberry", "blackberry")
+            val berryKeys = berryKeysHoisted
             if (berryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 if (prefs.easterEggs.fire(EasterEgg.BERRIES_FLOW)) berriesFlowTriggerTime = System.currentTimeMillis()
             }
-            val fullTwKeys = listOf("tribalwars", "tribal wars", "tribal_wars")
-            val shortTwKeys = listOf("tw")
+            val fullTwKeys = fullTwKeysHoisted
+            val shortTwKeys = shortTwKeysHoisted
             val isTwFullMatch = fullTwKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }
             val isTwShortMatch = shortTwKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb == "$k$d"
                 }
@@ -513,26 +576,26 @@ fun TextKeyboardLayout(
             if (isTwFullMatch || isTwShortMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.TRIBAL_WARS)) tribalwarsTriggerTime = System.currentTimeMillis()
             }
-            val bawenKeys = listOf("bawen")
+            val bawenKeys = bawenKeysHoisted
             if (bawenKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 if (prefs.easterEggs.fire(EasterEgg.BAWEN_CAT)) bawenCatTriggerTime = System.currentTimeMillis()
             }
-            val pubgKeys = listOf("pubg", "airdrop", "pochinki", "chicken dinner", "winner winner")
+            val pubgKeys = pubgKeysHoisted
             if (pubgKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 if (prefs.easterEggs.fire(EasterEgg.PUBG_PARACHUTE)) pubgParachuteTriggerTime = System.currentTimeMillis()
             }
-            val luciaKeys = listOf("lucia")
+            val luciaKeys = luciaKeysHoisted
             if (luciaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 if (prefs.easterEggs.fire(EasterEgg.LUCIA_BOBA)) luciaBobaTriggerTime = System.currentTimeMillis()
             }
-            val dukuKeys = listOf("duku", "langsat", "longkong")
+            val dukuKeys = dukuKeysHoisted
             if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 if (prefs.easterEggs.fire(EasterEgg.DUKU_FRUIT)) dukuFruitTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for car so compound words like 'cardboard', 'scar', 'sidecar' never trigger it!
-            val carKeys = listOf("drive", "car", "driving", "cars", "driver", "drives", "drove", "aston martin", "aston")
+            val carKeys = carKeysHoisted
             val isCarMatch = carKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -540,14 +603,9 @@ fun TextKeyboardLayout(
             if (isCarMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.CAR_DRIVE)) carDriveTriggerTime = System.currentTimeMillis()
             }
-            val cryptoKeys = listOf(
-                "btc", "bitcoin", "eth", "ethereum", "sol", "solana",
-                "arb", "arbitrum", "atom", "cosmos hub", "cosmos",
-                "rune", "thorchain", "xmr", "monero", "ltc", "litecoin",
-                "to the moon", "crypto"
-            )
+            val cryptoKeys = cryptoKeysHoisted
             val isCryptoMatch = cryptoKeys.any { k ->
-                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimitersWithEmpty
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
                 }
@@ -555,14 +613,14 @@ fun TextKeyboardLayout(
             if (isCryptoMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.CRYPTO_ROCKET)) cryptoRocketTriggerTime = System.currentTimeMillis()
             }
-            val murmurKeys = listOf("murmur", "flock", "murmuration", "starlings")
+            val murmurKeys = murmurKeysHoisted
             if (murmurKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 if (prefs.easterEggs.fire(EasterEgg.MURMUR_FLOCK)) murmurFlockTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for LUNA/UST so words like 'just', 'must', 'dust', 'trust' never trigger it!
-            val lunaKeys = listOf("terra", "luna", "ust", "lunc", "do kwon", "terra luna", "terra usd")
+            val lunaKeys = lunaKeysHoisted
             val isLunaMatch = lunaKeys.any { k ->
-                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimitersWithEmpty
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
                 }
@@ -570,21 +628,21 @@ fun TextKeyboardLayout(
             if (isLunaMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.LUNA_CRASH)) lunaCrashTriggerTime = System.currentTimeMillis()
             }
-            val sundaeKeys = listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait")
+            val sundaeKeys = sundaeKeysHoisted
             if (sundaeKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 if (prefs.easterEggs.fire(EasterEgg.SUNDAE)) sundaeTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for train so words like 'training', 'trainer', 'strain', 'restrain' never trigger it!
-            val nobleTrainKeys = listOf("noble train", "nobletrain", "noble_train", "sniping trains")
-            val regularTrainKeys = listOf("train", "trains", "choo choo", "choochoo", "locomotive", "steam train")
+            val nobleTrainKeys = nobleTrainKeysHoisted
+            val regularTrainKeys = regularTrainKeysHoisted
             val isNobleTrainMatch = nobleTrainKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
             }
             val isRegularTrainMatch = regularTrainKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -596,15 +654,15 @@ fun TextKeyboardLayout(
                 isNobleTrainMode = false
                 if (prefs.easterEggs.fire(EasterEgg.TRAIN)) trainTriggerTime = System.currentTimeMillis()
             }
-            val louieKeys = listOf("louie", "pitty", "pitbull", "red nose", "rednose", "red nose pitty")
+            val louieKeys = louieKeysHoisted
             if (louieKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 if (prefs.easterEggs.fire(EasterEgg.LOUIE_PAWS)) louiePawsTriggerTime = System.currentTimeMillis()
             }
-            val fullAiKeys = listOf("artificial intelligence", "irobot", "i, robot", "ns5", "ns-5", "sonny", "viki", "three laws")
-            val shortAiKeys = listOf("ai")
+            val fullAiKeys = fullAiKeysHoisted
+            val shortAiKeys = shortAiKeysHoisted
             val isAiFullMatch = fullAiKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }
             val isAiShortMatch = shortAiKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb == "$k$d"
                 }
@@ -612,18 +670,18 @@ fun TextKeyboardLayout(
             if (isAiFullMatch || isAiShortMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.IROBOT)) irobotTriggerTime = System.currentTimeMillis()
             }
-            val androidKeys = listOf("android", "bugdroid", "green dude", "google android", "apk")
+            val androidKeys = androidKeysHoisted
             if (androidKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 if (prefs.easterEggs.fire(EasterEgg.ANDROID_BUGDROID)) androidBugdroidTriggerTime = System.currentTimeMillis()
             }
-            val loveKeys = listOf("i love you", "iloveyou", "love you", "i <3 you", "i love u")
+            val loveKeys = loveKeysHoisted
             if (loveKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") || tb.endsWith("$it❤️") || tb.endsWith("$it🌹") }) {
                 if (prefs.easterEggs.fire(EasterEgg.ROSE_PETALS)) rosePetalsTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Xbox
-            val xboxKeys = listOf("xbox", "xbox 360", "series x", "series s", "xbox one", "game pass", "achievement unlocked", "gamertag", "majornelson")
+            val xboxKeys = xboxKeysHoisted
             val isXboxMatch = xboxKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -632,9 +690,9 @@ fun TextKeyboardLayout(
                 if (prefs.easterEggs.fire(EasterEgg.XBOX_ACHIEVEMENT)) xboxAchievementTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for 'hidden' (fires 8s later)
-            val hiddenKeys = listOf("hidden", "assassin", "hooded figure", "ninja")
+            val hiddenKeys = hiddenKeysHoisted
             val isHiddenMatch = hiddenKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -648,13 +706,9 @@ fun TextKeyboardLayout(
             // per-egg opt-out as every other egg (visible in Settings after
             // first trigger). Matching is on-device, in-process, unstored
             // and untransmitted.
-            val serenityKeys = listOf(
-                "serenity", "zen garden",
-                "stressed", "stress", "sad", "depressed", "anxious",
-                "anxiety", "overwhelmed", "unhappy",
-            )
+            val serenityKeys = serenityKeysHoisted
             val isSerenityMatch = serenityKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -663,9 +717,9 @@ fun TextKeyboardLayout(
                 if (prefs.easterEggs.fire(EasterEgg.SERENITY_GARDEN)) serenityGardenTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Sniper triggers
-            val sniperKeys = listOf("snipe", "snipes", "sniper", "sniped", "sniping", "headshot", "360 noscope", "awp")
+            val sniperKeys = sniperKeysHoisted
             val isSniperMatch = sniperKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
@@ -674,9 +728,9 @@ fun TextKeyboardLayout(
                 if (prefs.easterEggs.fire(EasterEgg.SNIPER_DUDE)) sniperDudeTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Thor (Case-insensitive, never triggers on Thorchain)
-            val thorKeys = listOf("thor", "mjolnir", "god of thunder", "asgard", "odinson")
+            val thorKeys = thorKeysHoisted
             val isThorMatch = thorKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimiters
                 delimiters.any { d ->
                     tb.equals("$k$d", ignoreCase = true) ||
                     tb.endsWith(" $k$d", ignoreCase = true) ||
@@ -688,9 +742,9 @@ fun TextKeyboardLayout(
                 if (prefs.easterEggs.fire(EasterEgg.THOR)) thorTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Mushu the Dragon (Disney's Mulan)
-            val mushuKeys = listOf("mushu", "mulan", "mulsn", "cri-kee", "dishonor on your cow", "dragon", "great stone dragon")
+            val mushuKeys = mushuKeysHoisted
             val isMushuMatch = mushuKeys.any { k ->
-                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                val delimiters = triggerDelimitersWithEmpty
                 delimiters.any { d ->
                     tb.equals("$k$d", ignoreCase = true) ||
                     tb.endsWith(" $k$d", ignoreCase = true) ||
@@ -700,6 +754,31 @@ fun TextKeyboardLayout(
             }
             if (isMushuMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.MUSHU)) mushuTriggerTime = System.currentTimeMillis()
+            }
+            // Per-key egg layers, hoisted out of TextKeyButton (previously
+            // every key button re-ran these scans on each content change).
+            val keyLayerSignature = "$tb::$comp"
+            if (keyLayerSignature != lastKeyLayerSignature) {
+                val isBbMatch = bbTriggerKeys.any { k ->
+                    triggerDelimitersWithEmpty.any { d ->
+                        tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
+                    }
+                }
+                if (isBbMatch) {
+                    lastKeyLayerSignature = keyLayerSignature
+                    if (prefs.easterEggs.fire(EasterEgg.BLACKBERRY)) bbKeyTriggerTime = System.currentTimeMillis()
+                }
+                val isEggWord = tb.endsWith("egg") || tb.endsWith("egg ") || comp == "egg"
+                if (isEggWord) {
+                    lastKeyLayerSignature = keyLayerSignature
+                    if (prefs.easterEggs.fire(EasterEgg.EGG_WORD)) eggKeyTriggerTime = System.currentTimeMillis()
+                }
+                val combined = "$tb $comp"
+                val isSunConure = combined.contains("sun conure") || combined.contains("sunconure") || combined.contains("sun con ure")
+                if (isSunConure) {
+                    lastKeyLayerSignature = keyLayerSignature
+                    if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureKeyTriggerTime = System.currentTimeMillis()
+                }
             }
         }
 
@@ -739,6 +818,19 @@ fun TextKeyboardLayout(
                 }
             } else {
                 emptyMap()
+            }
+        }
+        // Keeps the letter-prediction memo warm for the touch-down handler's
+        // adaptive hitboxes when flick previews are off (the produceState
+        // above warms it otherwise). Runs off the UI thread; result unused.
+        val adaptiveHitboxEnabled by prefs.keyboard.adaptiveHitboxExpansion.collectAsState()
+        LaunchedEffect(currentWord, prevWord, adaptiveHitboxEnabled, flickPredictionsEnabled) {
+            if (adaptiveHitboxEnabled && !flickPredictionsEnabled &&
+                org.florisboard.libnative.FlorisNative.isAvailable()
+            ) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord, prevWord)
+                }
             }
         }
         val infiniteTransition = rememberInfiniteTransition(label = "FretPulseTransition")
@@ -927,6 +1019,10 @@ fun TextKeyboardLayout(
                 textKey, evaluator, desiredKey,
                 debugShowTouchBoundaries,
                 hideHint = hasFlick,
+                eggTriggerTime = eggKeyTriggerTime,
+                sunConureTriggerTime = sunConureKeyTriggerTime,
+                bbTriggerTime = bbKeyTriggerTime,
+                spaceRainTriggerTime = spaceRainTriggerTime,
             )
         }
 
@@ -7128,6 +7224,10 @@ private fun TextKeyButton(
     desiredKey: TextKey,
     debugShowTouchBoundaries: Boolean,
     hideHint: Boolean = false,
+    eggTriggerTime: Long = 0L,
+    sunConureTriggerTime: Long = 0L,
+    bbTriggerTime: Long = 0L,
+    spaceRainTriggerTime: Long = 0L,
 ) = with(LocalDensity.current) {
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
@@ -7164,39 +7264,16 @@ private fun TextKeyButton(
         }
     }
 
-    var eggTriggerTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
-    var lastEggSignature by remember { mutableStateOf("") }
+    // Trigger detection for the per-key egg layers happens ONCE in the
+    // parent layout (it already scans the text for the other eggs) and
+    // arrives here via the trigger-time parameters. Previously every key
+    // button re-scanned the full text-before-cursor itself on every
+    // content change — ~66 redundant scans per keystroke.
     val eggAlphaAnim = remember { Animatable(0f) }
-
-    var sunConureTriggerTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
-    var lastSunConureSignature by remember { mutableStateOf("") }
     val sunConurePulseAlpha = remember { Animatable(0f) }
-
     // BlackBerry Physical Keycap 3D Flip Easter Egg (15.8s: 0.8s 3D flip, 5s physical mode, 10s smooth fade)
-    var bbTriggerTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
-    var lastBbSignature by remember { mutableStateOf("") }
     val bbProgress = remember { Animatable(0f) }
 
-    LaunchedEffect(activeContent) {
-        val tb = activeContent.textBeforeSelection.toString().lowercase()
-        val comp = activeContent.composingText.lowercase()
-        val bbKeys = listOf(
-            "blackberry bold", "blackberry priv", "blackberry q10",
-            "blackberry passport", "blackberry classic", "blackberry 9900",
-            "blackberry key2", "rim blackberry"
-        )
-        val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
-        val isBbMatch = bbKeys.any { k ->
-            delimiters.any { d ->
-                tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
-            }
-        }
-        val signature = "$tb::$comp"
-        if (isBbMatch && signature != lastBbSignature) {
-            lastBbSignature = signature
-            if (prefs.easterEggs.fire(EasterEgg.BLACKBERRY)) bbTriggerTime = System.currentTimeMillis()
-        }
-    }
 
     LaunchedEffect(bbTriggerTime) {
         if (bbTriggerTime > 0L) {
@@ -7205,29 +7282,9 @@ private fun TextKeyButton(
                 targetValue = 1f,
                 animationSpec = tween(durationMillis = 15800, easing = LinearEasing),
             )
-            bbTriggerTime = 0L
         }
     }
 
-    LaunchedEffect(activeContent) {
-        val textBefore = activeContent.textBeforeSelection.toString()
-        val composing = activeContent.composingText
-        val isEgg = textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
-            textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)
-
-        val signature = "$textBefore::$composing"
-        if (isEgg && signature != lastEggSignature) {
-            lastEggSignature = signature
-            if (prefs.easterEggs.fire(EasterEgg.EGG_WORD)) eggTriggerTime = System.currentTimeMillis()
-        }
-
-        val combined = "$textBefore $composing".lowercase()
-        val isSunConure = combined.contains("sun conure") || combined.contains("sunconure") || combined.contains("sun con ure")
-        if (isSunConure && signature != lastSunConureSignature) {
-            lastSunConureSignature = signature
-            if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureTriggerTime = System.currentTimeMillis()
-        }
-    }
 
     LaunchedEffect(sunConureTriggerTime) {
         if (sunConureTriggerTime > 0L) {
@@ -7474,21 +7531,12 @@ private fun TextKeyButton(
 
         // Spacebar Rain Easter Egg (10 seconds smooth fade-in, rain droplets + ripples, and fade-out)
         if (key.computedData.code == KeyCode.SPACE) {
-            val isRainActive = remember(activeContent) {
-                val tb = activeContent.textBeforeSelection.toString().lowercase()
-                val comp = activeContent.composingText.lowercase()
-                val keys = listOf("rain", "rainy", "raining", "rainfall", "rainstorm")
-                keys.any { k ->
-                    val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
-                    delimiters.any { d ->
-                        tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
-                    }
-                }
-            }
+            // Rain detection lives in the parent layout (spaceRainTriggerTime,
+            // already egg-gated); this key only animates it.
             var rainStartTime by remember { mutableStateOf(0L) }
-            LaunchedEffect(isRainActive) {
-                if (isRainActive) {
-                    rainStartTime = System.currentTimeMillis()
+            LaunchedEffect(spaceRainTriggerTime) {
+                if (spaceRainTriggerTime > 0L) {
+                    rainStartTime = spaceRainTriggerTime
                 }
             }
 
@@ -8035,12 +8083,17 @@ private class TextKeyboardLayoutController(
                 textBefore.trimEnd()
             }
             val prevWord = beforePrefix.takeLastWhile { it.isLetter() || it == '\'' }
-            val predictedLetters = if (org.florisboard.libnative.FlorisNative.isAvailable()) {
-                org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix, prevWord).keys
+            // Memo-only on the touch path: a cold memo means one tap lands
+            // with plain hitboxes instead of paying a synchronous native
+            // prediction before the key can even register. The background
+            // warmer below keeps the memo fresh between keystrokes.
+            val predictedLetters = org.florisboard.libnative.FlorisNative
+                .predictNextLetterWordsCached(prefix, prevWord)?.keys
+            if (predictedLetters != null) {
+                keyboard.getKeyForPosAdaptive(touchX, touchY, predictedLetters)
             } else {
-                emptySet()
+                keyboard.getKeyForPos(touchX, touchY)
             }
-            keyboard.getKeyForPosAdaptive(touchX, touchY, predictedLetters)
         } else {
             keyboard.getKeyForPos(touchX, touchY)
         }
