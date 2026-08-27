@@ -518,8 +518,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("eventualy", "eventually"),
     ("everyting", "everything"),
     ("evidance", "evidence"),
-    // "evsr" is "ever" with a single adjacent s->e slip (same length);
-    // "every" also needs an insertion, so the nearer word wins.
     ("evsr", "ever"),
     ("evsruh", "every"),
     ("exagerate", "exaggerate"),
@@ -1817,6 +1815,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("working", "working"),
     ("workng", "working"),
     ("workong", "working"),
+    ("worthds", "words"),
     ("writing", "writing"),
     ("written", "written"),
     ("xan", "can"),

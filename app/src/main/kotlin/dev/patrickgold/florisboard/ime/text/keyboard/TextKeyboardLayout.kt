@@ -507,8 +507,15 @@ fun TextKeyboardLayout(
             if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 dukuFruitTriggerTime = System.currentTimeMillis()
             }
+            // Strict word boundary isolation for car so compound words like 'cardboard', 'scar', 'sidecar' never trigger it!
             val carKeys = listOf("drive", "car", "driving", "cars", "driver", "drives", "drove", "aston martin", "aston")
-            if (carKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+            val isCarMatch = carKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isCarMatch) {
                 carDriveTriggerTime = System.currentTimeMillis()
             }
             val cryptoKeys = listOf(
