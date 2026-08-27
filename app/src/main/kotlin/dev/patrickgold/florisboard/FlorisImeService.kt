@@ -64,6 +64,7 @@ import dev.patrickgold.florisboard.lib.util.debugSummarize
 import dev.patrickgold.florisboard.lib.util.launchActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import org.florisboard.lib.android.AndroidInternalR
 import org.florisboard.lib.android.AndroidVersion
@@ -309,7 +310,7 @@ class FlorisImeService : LifecycleInputMethodService() {
             prefs.localization.displayKeyboardLabelsInSubtypeLanguage.asFlow(),
         ) { systemLocales, subtype, shouldUseSubtypeLanguage ->
             systemLocales to (if (shouldUseSubtypeLanguage) subtype.primaryLocale else null)
-        }.collectIn(lifecycleScope) { (systemLocales, subtypeLocale) ->
+        }.distinctUntilChanged().collectIn(lifecycleScope) { (systemLocales, subtypeLocale) ->
             val config = Configuration().apply {
                 setToDefaults()
                 if (subtypeLocale != null) {
