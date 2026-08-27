@@ -3,6 +3,7 @@
 
 pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("abandonned", "abandoned"),
+    ("abd", "and"),
     ("aberation", "aberration"),
     ("abilties", "abilities"),
     ("abritrary", "arbitrary"),
@@ -851,6 +852,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("livlyhood", "livelihood"),
     ("ln", "on"),
     ("lonelyness", "loneliness"),
+    ("looke", "look"),
     ("loosly", "loosely"),
     ("loyality", "loyalty"),
     ("luggage", "luggage"),

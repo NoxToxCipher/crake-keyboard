@@ -438,6 +438,7 @@ fun TextKeyboardLayout(
         var irobotTriggerTime by remember { mutableStateOf(0L) }
         var androidBugdroidTriggerTime by remember { mutableStateOf(0L) }
         var rosePetalsTriggerTime by remember { mutableStateOf(0L) }
+        var xboxAchievementTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -597,6 +598,17 @@ fun TextKeyboardLayout(
             val loveKeys = listOf("i love you", "iloveyou", "love you", "i <3 you", "i love u")
             if (loveKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") || tb.endsWith("$it❤️") || tb.endsWith("$it🌹") }) {
                 rosePetalsTriggerTime = System.currentTimeMillis()
+            }
+            // Strict word boundary isolation for Xbox
+            val xboxKeys = listOf("xbox", "xbox 360", "series x", "series s", "xbox one", "game pass", "halo", "master chief", "achievement unlocked", "gamertag")
+            val isXboxMatch = xboxKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isXboxMatch) {
+                xboxAchievementTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -4962,6 +4974,171 @@ fun TextKeyboardLayout(
                         val pAlpha = (kotlin.math.sin(pu * Math.PI.toFloat()) * masterAlpha).coerceIn(0f, 1f)
                         pollenPaint.alpha = (pAlpha * 200).toInt().coerceIn(0, 255)
                         drawContext.canvas.nativeCanvas.drawCircle(px, py, 1.2f * density, pollenPaint)
+                    }
+                }
+            }
+        }
+
+        // 17. Subtle Integrated Xbox Achievement Unlocked Pop-Up (3.6s)
+        if (xboxAchievementTriggerTime > 0L) {
+            val xboxProgress = remember(xboxAchievementTriggerTime) { Animatable(0f) }
+            LaunchedEffect(xboxAchievementTriggerTime) {
+                xboxProgress.snapTo(0f)
+                xboxProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3600, easing = LinearEasing),
+                )
+                xboxAchievementTriggerTime = 0L
+            }
+            if (xboxProgress.value in 0.001f..0.999f) {
+                val totalMs = 3600f
+                val currentMs = xboxProgress.value * totalMs
+                val density = LocalDensity.current.density
+                val progress = xboxProgress.value
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    // Master Alpha (Smooth entrance 0..0.12, sustained 0.12..0.78, smooth dissolve 0.78..1.0)
+                    val masterAlpha = when {
+                        progress < 0.12f -> (progress / 0.12f).coerceIn(0f, 1f)
+                        progress > 0.78f -> ((1f - progress) / 0.22f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+
+                    if (masterAlpha > 0.01f) {
+                        val topFretY = 16f * density
+                        val centerX = canvasW / 2f
+
+                        // 1. Subtle Fret Laser Sheen along top bar
+                        val sheenProg = ((progress * 1.8f) % 1.4f) - 0.2f
+                        val sx = canvasW * sheenProg
+                        val sheenPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            shader = android.graphics.LinearGradient(
+                                sx - 60f * density, topFretY, sx + 60f * density, topFretY,
+                                intArrayOf(
+                                    android.graphics.Color.argb(0, 16, 124, 16),
+                                    android.graphics.Color.argb((masterAlpha * 140).toInt().coerceIn(0, 255), 82, 176, 67),
+                                    android.graphics.Color.argb(0, 16, 124, 16)
+                                ),
+                                floatArrayOf(0f, 0.5f, 1f),
+                                android.graphics.Shader.TileMode.CLAMP
+                            )
+                            strokeWidth = 1.8f * density
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(0f, topFretY, canvasW, topFretY, sheenPaint)
+
+                        // 2. Compact Matte Achievement Pill
+                        val pillWidth = if (progress < 0.2f) {
+                            val u = (progress / 0.2f).coerceIn(0f, 1f)
+                            val bounce = kotlin.math.sin(u * Math.PI.toFloat() * 0.5f)
+                            (32f + bounce * 170f) * density
+                        } else {
+                            202f * density
+                        }
+                        val pillHeight = 22f * density
+                        val pillLeft = centerX - pillWidth / 2f
+                        val pillTop = topFretY - pillHeight / 2f
+                        val pillRight = centerX + pillWidth / 2f
+                        val pillBottom = topFretY + pillHeight / 2f
+                        val cornerR = pillHeight / 2f
+
+                        val pillBgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 230).toInt().coerceIn(0, 255), 13, 31, 18)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val pillBorderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 210).toInt().coerceIn(0, 255), 16, 124, 16)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.1f * density
+                        }
+
+                        val pillRect = android.graphics.RectF(pillLeft, pillTop, pillRight, pillBottom)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(pillRect, cornerR, cornerR, pillBgPaint)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(pillRect, cornerR, cornerR, pillBorderPaint)
+
+                        // 3. Miniature Glowing Xbox 360 Sphere Icon on left of pill
+                        val orbCenterX = pillLeft + 12f * density
+                        val orbCenterY = topFretY
+                        val orbR = 7f * density
+
+                        // Orb Body
+                        val orbPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 24, 26, 27)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(orbCenterX, orbCenterY, orbR, orbPaint)
+
+                        // 4 Quadrant LED Arcs
+                        val ledRingPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.4f * density
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        val arcRect = android.graphics.RectF(orbCenterX - orbR + 0.8f * density, orbCenterY - orbR + 0.8f * density, orbCenterX + orbR - 0.8f * density, orbCenterY + orbR - 0.8f * density)
+                        val qProgress = (progress / 0.25f).coerceIn(0f, 1f)
+
+                        for (q in 0 until 4) {
+                            val qStartAngle = q * 90f + 12f
+                            val qSweep = 66f
+                            val isLit = if (progress < 0.25f) qProgress >= (q * 0.25f) else true
+                            val qAlpha = if (isLit) (masterAlpha * 255).toInt() else (masterAlpha * 40).toInt()
+                            ledRingPaint.color = android.graphics.Color.argb(qAlpha.coerceIn(0, 255), 82, 176, 67)
+                            drawContext.canvas.nativeCanvas.drawArc(arcRect, qStartAngle, qSweep, false, ledRingPaint)
+                        }
+
+                        // 3D Xbox "X" Core
+                        val xPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 240, 240, 240)
+                            strokeWidth = 1.2f * density
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+                        val xr = 3.6f * density
+                        drawContext.canvas.nativeCanvas.drawLine(orbCenterX - xr * 0.7f, orbCenterY - xr * 0.7f, orbCenterX + xr * 0.7f, orbCenterY + xr * 0.7f, xPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(orbCenterX + xr * 0.7f, orbCenterY - xr * 0.7f, orbCenterX - xr * 0.7f, orbCenterY + xr * 0.7f, xPaint)
+
+                        // 4. Achievement Text & Gamerscore (Rendered when pill is unfolded)
+                        if (progress > 0.12f) {
+                            val textAlpha = ((progress - 0.12f) / 0.1f).coerceIn(0f, 1f) * masterAlpha
+
+                            // Gamerscore G icon
+                            val gBadgeX = orbCenterX + 16f * density
+                            val gPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = android.graphics.Color.argb((textAlpha * 255).toInt().coerceIn(0, 255), 82, 176, 67)
+                                textSize = 9.5f * density
+                                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                                textAlign = android.graphics.Paint.Align.LEFT
+                            }
+                            drawContext.canvas.nativeCanvas.drawText("(G) 1000G", gBadgeX, topFretY + 3.4f * density, gPaint)
+
+                            // "Achievement Unlocked" Text
+                            val titlePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = android.graphics.Color.argb((textAlpha * 240).toInt().coerceIn(0, 255), 255, 255, 255)
+                                textSize = 9f * density
+                                typeface = android.graphics.Typeface.DEFAULT
+                                textAlign = android.graphics.Paint.Align.LEFT
+                            }
+                            drawContext.canvas.nativeCanvas.drawText("Achievement Unlocked", gBadgeX + 46f * density, topFretY + 3.2f * density, titlePaint)
+                        }
+
+                        // 5. Micro Emerald Sparkles
+                        val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((masterAlpha * 190).toInt().coerceIn(0, 255), 155, 240, 11)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        for (s in 0 until 6) {
+                            val su = (progress * 1.5f + s * 0.18f) % 1f
+                            val sx = pillLeft + (s * 32f * density) % pillWidth
+                            val sy = pillTop - su * (14f * density)
+                            val sa = kotlin.math.sin(su * Math.PI.toFloat()) * masterAlpha
+                            sparkPaint.alpha = (sa * 220).toInt().coerceIn(0, 255)
+                            drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 1.1f * density, sparkPaint)
+                        }
                     }
                 }
             }
