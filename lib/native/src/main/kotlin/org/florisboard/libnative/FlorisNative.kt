@@ -303,7 +303,7 @@ object FlorisNative {
         return nativeReassembleSyncBundle(keyHex, frames.toTypedArray())
     }
 
-    data class GlidePoint(val x: Float, val y: Float)
+    data class GlidePoint(val x: Float, val y: Float, val timestamp: Long = 0L)
 
     fun glideSetLayout(
         codes: IntArray,

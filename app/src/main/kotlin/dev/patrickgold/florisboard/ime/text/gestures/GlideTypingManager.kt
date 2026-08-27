@@ -77,15 +77,15 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
 
     override fun onGlideAddPoint(point: GlideTypingGesture.Detector.Position) {
         val normalized = GlideTypingGesture.Detector.Position(point.x, point.y)
+        val time = System.currentTimeMillis()
 
         synchronized(gesturePoints) {
-            gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y))
+            gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y, time))
         }
         this.glideTypingClassifier.addGesturePoint(normalized)
 
-        val time = System.currentTimeMillis()
         if (prefs.glide.showPreview.get() && time - lastTime > prefs.glide.previewRefreshDelay.get()) {
-            updateSuggestionsAsync(1, false) {}
+            updateSuggestionsAsync(1, false)
             lastTime = time
         }
     }
@@ -193,8 +193,12 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                     // Never in incognito - typed content stays unlogged there.
                     if (BuildConfig.DEBUG && !keyboardManager.activeState.isIncognitoMode) {
                         val top = suggestions.take(3).joinToString(",")
+                        val startT = pts.firstOrNull()?.timestamp ?: 0L
                         pts.chunked(150).forEachIndexed { ci, chunk ->
-                            val line = chunk.joinToString(";") { "${it.x.toInt()}:${it.y.toInt()}" }
+                            val line = chunk.joinToString(";") {
+                                val relT = if (it.timestamp > 0L) (it.timestamp - startT).coerceAtLeast(0) else 0L
+                                "${it.x.toInt()}:${it.y.toInt()}:$relT"
+                            }
                             Log.i("CrakeGlideTrace", "pts $ci $line")
                         }
                         Log.i(
