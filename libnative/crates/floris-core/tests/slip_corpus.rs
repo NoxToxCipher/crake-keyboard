@@ -623,3 +623,30 @@ fn seven_char_three_slip_stays_suggestion_only() {
         r.candidates
     );
 }
+
+/// A single adjacent slip on a 5+ char word punches through prefix filler:
+/// "pleade" was heading with the completion "pleaded" and committing the
+/// raw typo ("Pleade commit", field specimen 2026-08-27). Short tokens
+/// keep the strict rule — deliberate prefixes like "co" are 2-4 chars.
+/// NOTE: adjacency here comes from the live layout on device (union-table
+/// fallback in tests is wider — the Dvorak leak).
+#[test]
+fn single_slip_punches_prefix_filler_on_long_words() {
+    let mut e = engine();
+    for (w, f) in [("please", 250), ("pleaded", 170), ("pleaded's", 60)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let r = e.suggest_with_context("pleade", "", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "please", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect, "'pleade' -> please must auto-commit");
+    // 2-char prefixes stay sacred: "co" (if it were a non-word) class —
+    // approximated by asserting the length gate via a 4-char token.
+    let r = e.suggest_with_context("plea", "", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.is_autocorrect && c.word != "plea"),
+        "4-char prefix-y tokens never punch through: {:?}",
+        r.candidates
+    );
+}

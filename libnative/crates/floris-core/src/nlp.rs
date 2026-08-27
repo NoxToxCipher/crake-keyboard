@@ -1020,16 +1020,33 @@ impl NlpEngine {
                     // silently committing 60-band "dona" instead. Below
                     // the floor the word stays a plain suggestion and the
                     // literal is what space commits.
+                    // Prefix filler must not starve the strongest class of
+                    // correction: a SINGLE adjacent slip at equal length on
+                    // a 5+ char word ("pleade" -> please was heading with
+                    // "pleaded" and committing the raw typo, field specimen
+                    // 2026-08-27). Short tokens keep the strict empty-list
+                    // rule: "co"/"ex"-style deliberate prefixes are 2-4
+                    // chars and must never be punched through.
+                    let punches_filler = !claimed_before_completions
+                        && candidates.iter().all(|c| !c.is_autocorrect)
+                        && is_neighbor
+                        && fc.distance == 1
+                        && trimmed_lower.chars().count() >= 5;
                     let should_autocorrect = !is_exact
                         && !is_capitalized
                         && !has_edge_apostrophe
                         && (fc.distance <= 2 || is_neighbor)
                         && fc.frequency >= AUTOCOMMIT_MIN_FREQ
-                        && candidates.is_empty();
-                    candidates.push(RankedCandidate {
+                        && (candidates.is_empty() || punches_filler);
+                    let rc = RankedCandidate {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
-                    });
+                    };
+                    if rc.is_autocorrect && !candidates.is_empty() {
+                        candidates.insert(0, rc);
+                    } else {
+                        candidates.push(rc);
+                    }
                 }
             }
 
