@@ -1847,13 +1847,37 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("zealous", "zealous"),
 ];
 
-/// Looks up a typographical error in the Wikipedia corpus in O(log N) time using binary search.
+/// Looks up a typographical error in the Wikipedia corpus in O(log N) time using zero-allocation binary search.
 #[inline]
 pub fn lookup_common_typo(query: &str) -> Option<&'static str> {
-    let query_lower = query.to_lowercase();
-    match WIKIPEDIA_COMMON_TYPOS.binary_search_by_key(&query_lower.as_str(), |&(k, _)| k) {
-        Ok(idx) => Some(WIKIPEDIA_COMMON_TYPOS[idx].1),
-        Err(_) => None,
+    if query.is_ascii() {
+        match WIKIPEDIA_COMMON_TYPOS.binary_search_by(|&(k, _)| {
+            let mut it1 = k.bytes();
+            let mut it2 = query.bytes();
+            loop {
+                match (it1.next(), it2.next()) {
+                    (Some(b1), Some(b2)) => {
+                        let c1 = b1.to_ascii_lowercase();
+                        let c2 = b2.to_ascii_lowercase();
+                        if c1 != c2 {
+                            return c1.cmp(&c2);
+                        }
+                    }
+                    (None, None) => return std::cmp::Ordering::Equal,
+                    (None, Some(_)) => return std::cmp::Ordering::Less,
+                    (Some(_), None) => return std::cmp::Ordering::Greater,
+                }
+            }
+        }) {
+            Ok(idx) => Some(WIKIPEDIA_COMMON_TYPOS[idx].1),
+            Err(_) => None,
+        }
+    } else {
+        let query_lower = query.to_lowercase();
+        match WIKIPEDIA_COMMON_TYPOS.binary_search_by_key(&query_lower.as_str(), |&(k, _)| k) {
+            Ok(idx) => Some(WIKIPEDIA_COMMON_TYPOS[idx].1),
+            Err(_) => None,
+        }
     }
 }
 
