@@ -604,3 +604,37 @@ fn comprehensive_glided_contractions_battery() {
 
     assert!(failures.is_empty(), "Contraction glide failures:\n{}", failures.join("\n"));
 }
+
+
+/// Kinematic inflection testing (Loop 2/18):
+/// A straight-line fast transit from c -> a -> t must output "cat", NOT "cart" (which requires
+/// an intentional detour or dwell at 'r'). When the user deliberately visits 'r', "cart" wins.
+#[test]
+fn kinematics_inflections_separate_swipe_through_accidental_keys() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for (w, f) in [("cat", 245), ("cart", 240), ("pat", 240), ("part", 245)] {
+        nlp.trie.insert(w, f);
+    }
+    let mut rng = Lcg(0xCA7_C0DE);
+
+    // 1. Direct swipe for "cat" (c -> a -> t)
+    let trace_cat = synth_trace(&glide, "cat", &mut rng).expect("trace cat");
+    let res_cat = glide.match_gesture(&trace_cat, &nlp.trie, 3);
+    assert_eq!(
+        res_cat.first().map(|m| m.word.as_str()),
+        Some("cat"),
+        "direct swipe for 'cat' must yield 'cat', got {:?}",
+        res_cat.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+
+    // 2. Deliberate detour swipe for "cart" (c -> a -> r -> t)
+    let trace_cart = synth_trace(&glide, "cart", &mut rng).expect("trace cart");
+    let res_cart = glide.match_gesture(&trace_cart, &nlp.trie, 3);
+    assert_eq!(
+        res_cart.first().map(|m| m.word.as_str()),
+        Some("cart"),
+        "deliberate detour swipe for 'cart' must yield 'cart', got {:?}",
+        res_cart.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+}
