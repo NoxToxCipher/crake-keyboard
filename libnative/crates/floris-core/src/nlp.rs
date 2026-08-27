@@ -923,7 +923,7 @@ impl NlpEngine {
 
         let chars: Vec<char> = clean.chars().collect();
 
-        // 1. Direct split: clean = L1 + L2 (e.g. "inorder" -> "in order", "aswell" -> "as well")
+        // 1. Direct split: clean = L1 + L2 (0 edits, e.g. "inorder" -> "in order", "aswell" -> "as well")
         for i in 1..len {
             let left_s: String = chars[0..i].iter().collect();
             let right_s: String = chars[i..len].iter().collect();
@@ -936,8 +936,10 @@ impl NlpEngine {
 
             if let (Some(f1), Some(f2)) = (self.trie.get_frequency(&left_s), self.trie.get_frequency(&right_s)) {
                 if f1 >= 30 && f2 >= 30 {
-                    let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.4;
-                    let freq_score = ((f1 + f2) as f32) * 0.15 + bigram_bonus;
+                    let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
+                    let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
+                    let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.6;
+                    let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 30.0;
 
                     let single_freq = self.trie.get_frequency(&clean).unwrap_or(0);
                     if single_freq < 150 && freq_score > best_score {
@@ -948,7 +950,7 @@ impl NlpEngine {
             }
         }
 
-        // 2. Bottom-row spacebar substitution: clean = L1 + [v,b,n,m] + L2
+        // 2. Bottom-row spacebar substitution: clean = L1 + [v,b,n,m] + L2 (1 deletion edit)
         // e.g. "gotnto" -> "got to", "inborder" -> "in order"
         for i in 1..(len - 1) {
             let mid_ch = chars[i];
@@ -964,8 +966,10 @@ impl NlpEngine {
 
                 if let (Some(f1), Some(f2)) = (self.trie.get_frequency(&left_s), self.trie.get_frequency(&right_s)) {
                     if f1 >= 40 && f2 >= 40 {
-                        let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.5;
-                        let freq_score = ((f1 + f2) as f32) * 0.2 + bigram_bonus + 15.0;
+                        let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
+                        let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
+                        let bigram_bonus = self.bigram_pair_score(&left_s, &right_s) as f32 * 0.6;
+                        let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 15.0;
 
                         if freq_score > best_score {
                             best_score = freq_score;
