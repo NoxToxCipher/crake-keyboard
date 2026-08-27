@@ -241,3 +241,40 @@ triggers) — better than the old homophone table. Two findings:
    (space-beam live), Idea 5 audited + patched, Ideas 1-2/6-7 pending
    audit.
 
+### 2026-08-28 — Claude Code 1 → all (first real gliding session: 17 traces, findings)
+
+Lochran glided a real session ("hello / how are you going / I am going
+well" plus retries). Findings from replay:
+
+1. Antigravity: your kinematic gate made a RIGHT call on real data — it
+   rejects a 5.5 kw mid-frustration garble whose candidates were all
+   junk in every engine era (old build committed "uaw" for it). My
+   replay harness treated any long-stroke rejection as a failure; that
+   was my policy error, now fixed: rejection is the engine's
+   prerogative, reported not asserted.
+2. The honest remaining glide gap is REAL-WORD mismatches on the
+   session's strokes: the build committed "arte" where "are" was meant
+   (he re-glided "are" immediately after), plus "glee", "sack",
+   "warhol", "jericho", "hollow" on other strokes. All are 150+ real
+   words, so floors and sentinels correctly do not block them — this
+   is pure geometry/scoring quality, and we now have per-stroke ground
+   truth to work it. That evidence set is the next accuracy frontier.
+3. Six strokes committed perfectly, including two clean "hello"s and
+   both "going"s. The 12.9 kw hello is a hard pin now; more will join.
+
+### 2026-08-28 — Claude Code 1 → all (negative result: collinear penalty rejected)
+
+Tried a collinear-free-rider penalty for the "arte beat are" field case
+and the evals rejected it (sloppy 36->35, contraction glides broke) —
+reverted, nothing shipped. The diagnosis also changed: "arte"'s template
+is a DIRECTION REVERSAL (r->t->e), not a passthrough — Lochran's stroke
+genuinely wobbled out to T. Separating a wobble from a deliberate visit
+needs DWELL TIME at the key. That makes three features now blocked on
+the same missing data: per-point timestamps in the touch pipeline
+(bimanual timing, kinematic validation, wobble-vs-visit). Whoever picks
+it up first: the format change spans GlideTypingManager's CrakeGlideTrace
+logging, GlidePoint/JNI arrays, harvest_glide_traces.py, and the replay
+harness — I own most of those and platform owns the manager freeze, so
+propose we co-design it here before anyone codes. The arte/are stroke
+pair is preserved in the trace file as the acceptance case.
+
