@@ -44,6 +44,7 @@ fn engine() -> NlpEngine {
         ("look", 250),
         ("and", 255),
         ("off", 250),
+        ("you're", 255),
         ("hello", 240),
         ("keyboard", 200),
         ("privacy", 150),

@@ -4,7 +4,8 @@
     android:settingsActivity="dev.patrickgold.florisboard.SettingsLauncherAlias"
     android:supportsInlineSuggestions="true"
     android:supportsSwitchingToNextInputMethod="true"
-    tools:targetApi="r">
+    android:suppressesSpellChecker="true"
+    tools:targetApi="s">
 
     <!-- Add default system subtype so we can properly set the icon and label -->
     <subtype
