@@ -588,6 +588,7 @@ impl NlpEngine {
     /// instead of freezing on old ones.
     
     /// Records an explicitly rejected / backspaced autocorrect to suppress sticky typos (Idea 6 / Loops 16-18).
+    #[inline]
     pub fn record_rejected_correction(&mut self, typo: &str, wrong_suggestion: &str) {
         let t = typo.trim().to_ascii_lowercase();
         let w = wrong_suggestion.trim().to_ascii_lowercase();
@@ -597,9 +598,12 @@ impl NlpEngine {
         }
     }
 
-    /// Checks whether a suggestion has been repeatedly rejected by the user.
+    /// Checks whether a suggestion has been repeatedly rejected by the user with zero-allocation fast path.
     #[inline]
     pub fn is_rejected_correction(&self, typo: &str, candidate: &str) -> bool {
+        if self.rejected_corrections.is_empty() {
+            return false;
+        }
         let t = typo.trim().to_ascii_lowercase();
         let c = candidate.trim().to_ascii_lowercase();
         if let Some(&rejections) = self.rejected_corrections.get(&(t, c)) {
@@ -609,6 +613,7 @@ impl NlpEngine {
     }
 
     /// Learns a word with recency epoch tracking (Idea 6 / Loops 16-18).
+    #[inline]
     pub fn learn_word_with_decay(&mut self, word: &str, freq: u32, current_epoch: u64) {
         self.learn_word(word, freq);
         let trimmed = word.trim().to_ascii_lowercase();
@@ -617,23 +622,24 @@ impl NlpEngine {
         }
     }
 
-    /// Decays transient learned words that have not been reinforced within `half_life` epochs (Idea 6 / Loops 16-18).
+    /// Decays transient learned words that have not been reinforced within `half_life` epochs in a single retain pass (Idea 6 / Loop 18).
+    #[inline]
     pub fn decay_learned_entries(&mut self, current_epoch: u64, half_life: u64) {
-        let mut words_to_remove = Vec::new();
-        for (word, &epoch) in &self.word_epochs {
+        if self.word_epochs.is_empty() {
+            return;
+        }
+        let learned_ref = &mut self.learned_words;
+        self.word_epochs.retain(|word, &mut epoch| {
             if current_epoch > epoch && (current_epoch - epoch) >= half_life {
-                // If the word was only learned weakly (freq < 150), decay and remove it
-                if let Some(&freq) = self.learned_words.get(word) {
+                if let Some(&freq) = learned_ref.get(word) {
                     if freq <= 140 {
-                        words_to_remove.push(word.clone());
+                        learned_ref.remove(word);
+                        return false;
                     }
                 }
             }
-        }
-        for w in words_to_remove {
-            self.learned_words.remove(&w);
-            self.word_epochs.remove(&w);
-        }
+            true
+        });
     }
 
     pub fn record_personal_bigram(&mut self, prev: &str, next: &str) {
