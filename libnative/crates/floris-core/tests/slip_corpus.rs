@@ -516,3 +516,16 @@ fn triple_runs_collapse_instead_of_splitting() {
         r.candidates
     );
 }
+
+/// Deleting dictionary junk unlocked "hse", but the transposition
+/// fast-path then won with "she" by pipeline order alone; the field
+/// specimen ("I always hse them") says "use" — a u->h adjacent slip —
+/// so the curated corpus decides.
+#[test]
+fn hse_autocommits_to_use() {
+    let e = engine();
+    let r = e.suggest_with_context("hse", "always", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "use", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect);
+}

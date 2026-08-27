@@ -673,6 +673,10 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("hou", "you"),
     ("however", "however"),
     ("hows", "how's"),
+    // "hse" is "use" with a u->h adjacent slip ("I always hse them", field
+    // specimen 2026-08-27). Without this the transposition fast-path wins
+    // with "she" purely by pipeline order, not evidence strength.
+    ("hse", "use"),
     ("humourous", "humorous"),
     ("hunderd", "hundred"),
     ("hurricance", "hurricane"),
