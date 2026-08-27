@@ -198,3 +198,55 @@ fn filtered_prefix_search_orders_and_filters() {
     assert_eq!(words[0], "zqand", "{got:?}");
     assert_eq!(&words[1..3], &["zqale", "zqalt"], "freq tie -> lex asc: {got:?}");
 }
+
+
+#[test]
+fn v3_blobs_round_trip_all_learned_state_including_adaptive_decay_and_rejections() {
+    let mut engine = NlpEngine::new();
+    engine.learn_word_with_decay("crake", 180, 100);
+    engine.record_personal_correction("thay", "that");
+    engine.record_personal_bigram("crake", "keyboard");
+    engine.record_rejected_correction("idk", "ink");
+    engine.record_rejected_correction("idk", "ink");
+
+    let blob = engine.export_learned();
+
+    let mut restored_engine = NlpEngine::new();
+    let count = restored_engine.import_learned(&blob).expect("successful import");
+    assert!(count >= 1);
+    assert_eq!(restored_engine.trie.get_frequency("crake"), Some(153));
+    assert_eq!(restored_engine.get_personal_correction("thay").as_deref(), Some("that"));
+    assert!(restored_engine.bigram_pair_score("crake", "keyboard") >= 140);
+    assert!(restored_engine.is_rejected_correction("idk", "ink"));
+}
+
+#[test]
+fn app_update_dictionary_upgrade_preserves_user_words_and_boosts() {
+    let mut initial = NlpEngine::new();
+    initial.corpus_insert("common", 150);
+    initial.trie.insert("common", 150);
+
+    // User types "mycustomword" and boosts "common"
+    initial.learn_word("mycustomword", 120);
+    initial.learn_word("common", 100);
+    let blob = initial.export_learned();
+
+    // App is updated: new APK ships updated dictionary with new words and rebalanced frequencies
+    let mut updated_apk_engine = NlpEngine::new();
+    updated_apk_engine.corpus_insert("common", 160); // base frequency was raised in update
+    updated_apk_engine.trie.insert("common", 160);
+    updated_apk_engine.corpus_insert("newly_added_word", 140);
+    updated_apk_engine.trie.insert("newly_added_word", 140);
+
+    // Engine restores user's saved state
+    let count = updated_apk_engine.import_learned(&blob).expect("successful import");
+    assert!(count >= 2);
+
+    // Verification:
+    // 1. User custom word is intact
+    assert!(updated_apk_engine.trie.get_frequency("mycustomword").unwrap() >= 120);
+    // 2. Frequency of common word was NOT demoted to old value, takes max(160, boost)
+    assert!(updated_apk_engine.trie.get_frequency("common").unwrap() >= 160);
+    // 3. New words shipped in the update are intact
+    assert_eq!(updated_apk_engine.trie.get_frequency("newly_added_word"), Some(140));
+}

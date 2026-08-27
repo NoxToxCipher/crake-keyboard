@@ -712,12 +712,28 @@ impl NlpEngine {
             .collect();
         // Keep the most-used pairs when over the cap.
         state.bigrams.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
+        
+        state.rejected = self
+            .rejected_corrections
+            .iter()
+            .map(|((t, w), &n)| (t.clone(), w.clone(), n))
+            .collect();
+        state.rejected.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
+
+        state.word_epochs = self
+            .word_epochs
+            .iter()
+            .map(|(w, &ep)| (w.clone(), ep))
+            .collect();
+        state.word_epochs.sort();
+
         state.serialize()
     }
 
     /// Restores learned state from a CRKL blob: learned words re-enter the
-    /// trie and correction habits their counters. Returns how many words
-    /// were restored; a corrupt blob restores nothing and errors.
+    /// trie, correction habits, personal bigrams, rejected corrections, and
+    /// decay epochs. Returns how many words were restored; a corrupt blob
+    /// restores nothing and errors.
     pub fn import_learned(&mut self, data: &[u8]) -> Result<usize, crate::persist::LearnedError> {
         let state = crate::persist::LearnedState::parse(data)?;
         let count = state.words.len();
@@ -738,6 +754,14 @@ impl NlpEngine {
         for (w1, w2, n) in state.bigrams {
             let slot = self.personal_bigrams.entry((w1, w2)).or_insert(0);
             *slot = (*slot).max(n);
+        }
+        for (typo, wrong, n) in state.rejected {
+            let slot = self.rejected_corrections.entry((typo, wrong)).or_insert(0);
+            *slot = (*slot).max(n);
+        }
+        for (word, epoch) in state.word_epochs {
+            let slot = self.word_epochs.entry(word).or_insert(0);
+            *slot = (*slot).max(epoch);
         }
         Ok(count)
     }
