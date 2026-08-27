@@ -17,6 +17,8 @@
 package dev.patrickgold.florisboard.ime.text.gestures
 
 import android.content.Context
+import android.util.Log
+import dev.patrickgold.florisboard.BuildConfig
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.ime.keyboard.KeyData
@@ -100,6 +102,19 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                 val widths = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.width }
                 val heights = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.height }
                 FlorisNative.glideSetLayout(codes, chars, xs, ys, widths, heights)
+                // Debug builds narrate the layout so a captured trace can be
+                // replayed against the exact geometry it was drawn on.
+                if (BuildConfig.DEBUG) {
+                    val desc = buildString {
+                        for (i in letterKeys.indices) {
+                            if (i > 0) append(',')
+                            append(chars[i]).append(':')
+                            append(xs[i].toInt()).append(':').append(ys[i].toInt()).append(':')
+                            append(widths[i].toInt()).append(':').append(heights[i].toInt())
+                        }
+                    }
+                    Log.i("CrakeGlideTrace", "layout $desc")
+                }
             }
 
             glideTypingClassifier.setLayout(keys, subtypeManager.activeSubtype)
@@ -117,6 +132,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     private fun updateSuggestionsAsync(maxSuggestionsToShow: Int, commit: Boolean, callback: (Boolean) -> Unit) {
         scope.launch(Dispatchers.Default) {
             val pts = synchronized(gesturePoints) { gesturePoints.toList() }
+            var prevWordForTrace = ""
             val nativeSuggestions = if (FlorisNative.isAvailable() && pts.size >= 2) {
                 // Previous committed word, so the native matcher can blend
                 // sentence context (bigram LM) into gesture scoring.
@@ -124,6 +140,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                     .trimEnd()
                     .takeLastWhile { it.isLetter() || it == '\'' }
                     .toString()
+                prevWordForTrace = prevWord
                 FlorisNative.glideMatch(pts, MAX_SUGGESTION_COUNT, prevWord)
             } else {
                 emptyList()
@@ -149,6 +166,21 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
 
                 nlpManager.suggestDirectly(suggestionList)
                 if (commit && suggestions.isNotEmpty()) {
+                    // Debug builds capture the committed stroke: the real
+                    // thumb traces the synthetic eval cannot imagine, turned
+                    // into replayable specimens (adb logcat -s CrakeGlideTrace).
+                    // Never in incognito - typed content stays unlogged there.
+                    if (BuildConfig.DEBUG && !keyboardManager.activeState.isIncognitoMode) {
+                        val top = suggestions.take(3).joinToString(",")
+                        pts.chunked(150).forEachIndexed { ci, chunk ->
+                            val line = chunk.joinToString(";") { "${it.x.toInt()}:${it.y.toInt()}" }
+                            Log.i("CrakeGlideTrace", "pts $ci $line")
+                        }
+                        Log.i(
+                            "CrakeGlideTrace",
+                            "commit prev=\"$prevWordForTrace\" top=$top n=${pts.size}"
+                        )
+                    }
                     keyboardManager.commitGesture(suggestions.first())
                 }
                 callback.invoke(true)
