@@ -5423,13 +5423,13 @@ fun TextKeyboardLayout(
                 serenityProgress.snapTo(0f)
                 serenityProgress.animateTo(
                     targetValue = 1f,
-                    animationSpec = tween(durationMillis = 35000, easing = LinearEasing),
+                    animationSpec = tween(durationMillis = 52000, easing = LinearEasing),
                 )
                 serenityGardenTriggerTime = 0L
             }
             if (serenityProgress.value in 0.00001f..0.99999f) {
                 val progress = serenityProgress.value
-                val elapsedSec = progress * 35.0f
+                val elapsedSec = progress * 52.0f
                 val density = LocalDensity.current.density
                 val d = density
 
@@ -5440,68 +5440,90 @@ fun TextKeyboardLayout(
                     val canvasH = this.size.height
 
                     // =========================================================================
-                    // STAGE 1: The Subtle Botanical Vine & Blossoms (0.0s - 12.0s)
+                    // STAGE 1: Smooth Botanical Vine (All the way to top) & Blossoms (0.0s - 12.0s)
                     // =========================================================================
                     if (elapsedSec in 0.0f..12.0f) {
-                        val growProgress = (elapsedSec / 5.0f).coerceIn(0f, 1f)
-                        val bloomProgress = ((elapsedSec - 5.0f) / 5.0f).coerceIn(0f, 1f)
+                        // Smooth, continuous sub-pixel growth curve
+                        val rawGrow = (elapsedSec / 5.0f).coerceIn(0f, 1f)
+                        val growProgress = (1.0f - kotlin.math.cos(rawGrow * Math.PI.toFloat())) * 0.5f
+                        val rawBloom = ((elapsedSec - 5.0f) / 5.0f).coerceIn(0f, 1f)
+                        val bloomProgress = (1.0f - kotlin.math.cos(rawBloom * Math.PI.toFloat())) * 0.5f
+
                         val stageAlpha = if (elapsedSec > 10.0f) {
                             (1.0f - (elapsedSec - 10.0f) / 2.0f).coerceIn(0f, 1f)
                         } else if (elapsedSec < 0.5f) {
-                            (0.3f + (elapsedSec / 0.5f) * 0.7f).coerceIn(0f, 1f)
+                            (0.35f + (elapsedSec / 0.5f) * 0.65f).coerceIn(0f, 1f)
                         } else {
                             1.0f
                         }
 
                         val stemPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((stageAlpha * 220).toInt().coerceIn(0, 255), 16, 185, 129)
+                            color = android.graphics.Color.argb((stageAlpha * 230).toInt().coerceIn(0, 255), 16, 185, 129)
                             style = android.graphics.Paint.Style.STROKE
                             strokeWidth = 1.6f * d
                             strokeCap = android.graphics.Paint.Cap.ROUND
                         }
                         val leafPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((stageAlpha * 230).toInt().coerceIn(0, 255), 52, 211, 153)
+                            color = android.graphics.Color.argb((stageAlpha * 240).toInt().coerceIn(0, 255), 52, 211, 153)
                             style = android.graphics.Paint.Style.FILL
                         }
 
-                        // Left & Right growing margins
+                        // Left & Right growing margins climbing all the way to top (y = 2dp)
                         val marginOffset = 6f * d
-                        val totalSegments = 24
-                        val maxSegments = (totalSegments * growProgress).toInt()
+                        val totalSteps = 60
+                        val currentSteps = (totalSteps * growProgress).toInt().coerceAtLeast(1)
 
                         for (side in 0..1) {
                             val isLeft = side == 0
+                            val sign = if (isLeft) 1f else -1f
                             val baseX = if (isLeft) marginOffset else (canvasW - marginOffset)
                             val path = android.graphics.Path()
                             path.moveTo(baseX, canvasH)
 
-                            for (i in 1..maxSegments) {
-                                val u = i.toFloat() / totalSegments
-                                val py = canvasH - u * (canvasH * 0.92f)
-                                val px = baseX + kotlin.math.sin(u * 14f) * (4.5f * d) * (if (isLeft) 1f else -1f)
+                            for (i in 1..currentSteps) {
+                                val u = i.toFloat() / totalSteps
+                                // Climbs 100% of height all the way to top edge + curves gently inward at top
+                                val py = canvasH - u * (canvasH - 3f * d)
+                                val px = if (u < 0.85f) {
+                                    baseX + kotlin.math.sin(u * 14f) * (4.5f * d) * sign
+                                } else {
+                                    // Gentle inward flourish along top corner fret
+                                    val topU = (u - 0.85f) / 0.15f
+                                    baseX + kotlin.math.sin(u * 14f) * (4.5f * d) * sign + (topU * 16f * d * sign)
+                                }
                                 path.lineTo(px, py)
 
-                                // Tiny leaf buds unfurling along stem
-                                if (i % 3 == 0) {
-                                    val leafAngle = kotlin.math.sin(u * 10f) * 45f + (if (isLeft) 30f else -30f)
-                                    drawContext.canvas.nativeCanvas.save()
-                                    drawContext.canvas.nativeCanvas.translate(px, py)
-                                    drawContext.canvas.nativeCanvas.rotate(leafAngle)
-                                    val leafRect = android.graphics.RectF(0f, -1.8f * d, 5.5f * d, 1.8f * d)
-                                    drawContext.canvas.nativeCanvas.drawOval(leafRect, leafPaint)
-                                    drawContext.canvas.nativeCanvas.restore()
+                                // Smooth leaf buds unfurling progressively
+                                if (i % 6 == 0) {
+                                    val leafU = i.toFloat() / totalSteps
+                                    val leafAge = ((growProgress - leafU) / 0.2f).coerceIn(0f, 1f)
+                                    if (leafAge > 0.05f) {
+                                        val leafAngle = kotlin.math.sin(u * 10f) * 45f + (30f * sign)
+                                        drawContext.canvas.nativeCanvas.save()
+                                        drawContext.canvas.nativeCanvas.translate(px, py)
+                                        drawContext.canvas.nativeCanvas.rotate(leafAngle)
+                                        drawContext.canvas.nativeCanvas.scale(leafAge, leafAge)
+                                        val leafRect = android.graphics.RectF(0f, -1.8f * d, 5.5f * d, 1.8f * d)
+                                        drawContext.canvas.nativeCanvas.drawOval(leafRect, leafPaint)
+                                        drawContext.canvas.nativeCanvas.restore()
+                                    }
                                 }
                             }
                             drawContext.canvas.nativeCanvas.drawPath(path, stemPaint)
 
-                            // Blossoming Flowers (unfurl from 5s to 10s)
-                            if (bloomProgress > 0.05f) {
-                                for (fIdx in 0..4) {
-                                    val fu = 0.2f + fIdx * 0.16f
+                            // Blossoming Flowers (unfurl from 5s to 10s smoothly)
+                            if (bloomProgress > 0.02f) {
+                                for (fIdx in 0..5) {
+                                    val fu = 0.15f + fIdx * 0.15f
                                     if (fu <= growProgress) {
-                                        val fy = canvasH - fu * (canvasH * 0.92f)
-                                        val fx = baseX + kotlin.math.sin(fu * 14f) * (4.5f * d) * (if (isLeft) 1f else -1f)
-                                        val flowerScale = (bloomProgress * (1f + fIdx * 0.05f)).coerceIn(0f, 1f)
+                                        val fy = canvasH - fu * (canvasH - 3f * d)
+                                        val fx = if (fu < 0.85f) {
+                                            baseX + kotlin.math.sin(fu * 14f) * (4.5f * d) * sign
+                                        } else {
+                                            val topU = (fu - 0.85f) / 0.15f
+                                            baseX + kotlin.math.sin(fu * 14f) * (4.5f * d) * sign + (topU * 16f * d * sign)
+                                        }
+                                        val flowerScale = (bloomProgress * (1f + fIdx * 0.04f)).coerceIn(0f, 1f)
 
                                         drawContext.canvas.nativeCanvas.save()
                                         drawContext.canvas.nativeCanvas.translate(fx, fy)
@@ -5917,6 +5939,129 @@ fun TextKeyboardLayout(
                             style = android.graphics.Paint.Style.FILL
                         }
                         drawContext.canvas.nativeCanvas.drawCircle(-2f * d, 1.5f * d, 1.2f * d, sumiInk)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // =========================================================================
+                    // STAGE 6: Accurate Cute Capybara Trotting on Middle Fret (45.0s - 49.8s)
+                    // =========================================================================
+                    if (elapsedSec in 45.0f..49.8f) {
+                        val capyU = ((elapsedSec - 45.0f) / 4.8f).coerceIn(0f, 1f)
+                        val capyAlpha = (kotlin.math.sin(capyU * Math.PI.toFloat()) * 1.4f).coerceIn(0f, 1f)
+
+                        // Trots across the Middle Fret Line (Fret 2: exactly midway across keyboard)
+                        val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                        val middleFretY = (canvasH / rowCount) * 2f
+                        val startX = -35f * d
+                        val endX = canvasW + 35f * d
+                        val currentX = startX + capyU * (endX - startX)
+
+                        // 4-beat trot gait cycle
+                        val trotPhase = capyU * 32f * Math.PI.toFloat()
+                        val trotBobY = kotlin.math.abs(kotlin.math.sin(trotPhase)) * (1.2f * d)
+                        val capyY = middleFretY - 0.5f * d - trotBobY
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(currentX, capyY)
+
+                        // Color Palette (Warm Cinnamon & Tan Capybara Fur)
+                        val bodyDark = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 255).toInt().coerceIn(0, 255), 120, 53, 15) // #78350F
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val bodyMid = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 255).toInt().coerceIn(0, 255), 146, 64, 14) // #92400E
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val bodyTan = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 255).toInt().coerceIn(0, 255), 180, 83, 9) // #B45309
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val muzzleCream = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 255).toInt().coerceIn(0, 255), 217, 119, 6) // #D97706
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val darkFeature = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 255).toInt().coerceIn(0, 255), 69, 26, 3) // #451A03
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val eyeSpecular = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val shadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((capyAlpha * 90).toInt().coerceIn(0, 255), 0, 0, 0)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        // 1. Soft ground shadow on Fret 2
+                        drawContext.canvas.nativeCanvas.drawOval(android.graphics.RectF(-14f * d, 0f, 14f * d, 2.2f * d), shadowPaint)
+
+                        // 2. Short, Sturdy Trotting Legs (Alternating 4-beat gait)
+                        val legFrontL = kotlin.math.sin(trotPhase) * (4f * d)
+                        val legFrontR = -kotlin.math.sin(trotPhase) * (4f * d)
+                        val legBackL = -kotlin.math.sin(trotPhase) * (4f * d)
+                        val legBackR = kotlin.math.sin(trotPhase) * (4f * d)
+
+                        val legPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = bodyDark.color
+                            strokeWidth = 2.2f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                            style = android.graphics.Paint.Style.STROKE
+                        }
+
+                        // Back Legs (Behind body)
+                        drawContext.canvas.nativeCanvas.drawLine(-8f * d, -4f * d, -8f * d + legBackR, 0f, legPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(6f * d, -4f * d, 6f * d + legFrontR, 0f, legPaint)
+
+                        // 3. Barrel-Shaped Stout Robust Capybara Body
+                        val bodyRect = android.graphics.RectF(-13f * d, -11f * d, 7f * d, -2f * d)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(bodyRect, 5.5f * d, 4.5f * d, bodyMid)
+                        // Lighter underbelly tone
+                        val bellyRect = android.graphics.RectF(-10f * d, -6f * d, 4f * d, -2.5f * d)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(bellyRect, 3f * d, 2f * d, bodyTan)
+
+                        // 4. Fore Legs (In front of body)
+                        drawContext.canvas.nativeCanvas.drawLine(-9f * d, -4f * d, -9f * d + legBackL, 0f, legPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(5f * d, -4f * d, 5f * d + legFrontL, 0f, legPaint)
+
+                        // 5. Classic Blunt, Squarish Capybara Head & Snout
+                        val headBob = kotlin.math.sin(trotPhase * 0.5f) * (0.8f * d)
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(7f * d, -8f * d + headBob)
+
+                        // Robust squarish head profile
+                        val headPath = android.graphics.Path().apply {
+                            moveTo(-2f * d, -4f * d)
+                            lineTo(6f * d, -3.5f * d) // High forehead
+                            quadTo(8f * d, -3f * d, 8.5f * d, -0.5f * d) // Blunt squarish nose tip
+                            lineTo(8.5f * d, 2.5f * d) // Deep muzzle
+                            quadTo(6f * d, 3.5f * d, -1f * d, 2f * d) // Jawline
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(headPath, bodyMid)
+
+                        // Muzzle highlight
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(3f * d, -1.5f * d, 8.2f * d, 2.8f * d), 1.5f * d, 1.5f * d, muzzleCream)
+
+                        // High-Set Dark Nostrils
+                        drawContext.canvas.nativeCanvas.drawCircle(7.6f * d, -0.8f * d, 0.7f * d, darkFeature)
+
+                        // High-Set Dark Button Eye with White Specular Glint
+                        drawContext.canvas.nativeCanvas.drawCircle(3.2f * d, -2.2f * d, 1.1f * d, darkFeature)
+                        drawContext.canvas.nativeCanvas.drawCircle(3.0f * d, -2.5f * d, 0.4f * d, eyeSpecular)
+
+                        // Small Rounded Ear set high on back of head
+                        val earPath = android.graphics.Path().apply {
+                            moveTo(-1.5f * d, -3.5f * d)
+                            quadTo(-1.8f * d, -6.5f * d, 0.5f * d, -6f * d)
+                            quadTo(1f * d, -3.8f * d, 0f, -3.2f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(earPath, darkFeature)
+
+                        drawContext.canvas.nativeCanvas.restore()
 
                         drawContext.canvas.nativeCanvas.restore()
                     }
