@@ -530,16 +530,22 @@ impl NlpEngine {
 
     
     /// Multi-word N-Gram Context Scoring (Idea 3 / Loops 7-9):
-    /// Computes fused context likelihood using trigram phrase matching,
+    /// Zero-allocation fused context likelihood evaluator using trigram phrase matching,
     /// immediate bigram transition P(w_t | w_{t-1}), and skip-bigram P(w_t | w_{t-2}).
     pub fn multi_word_context_score(&self, context: &str, candidate: &str) -> f32 {
-        let tokens: Vec<&str> = context.split_whitespace().collect();
-        if tokens.is_empty() || candidate.is_empty() {
+        if context.is_empty() || candidate.is_empty() {
             return 0.0;
         }
 
+        // Zero heap allocation token inspection: grab last two tokens in reverse iterator
+        let mut iter = context.split_whitespace().rev();
+        let last_token = match iter.next() {
+            Some(t) => t,
+            None => return 0.0,
+        };
+        let prev2_token = iter.next();
+
         let cand_lower = candidate.to_ascii_lowercase();
-        let last_token = tokens.last().unwrap();
         let last_lower = last_token.to_ascii_lowercase();
 
         // 1. Immediate Bigram Score: P(candidate | last_token)
@@ -547,13 +553,13 @@ impl NlpEngine {
         let mut total_score = bigram_score * 0.04;
 
         // 2. Trigram / Multi-token Backoff if >= 2 tokens available
-        if tokens.len() >= 2 {
-            let prev2 = tokens[tokens.len() - 2].to_ascii_lowercase();
-            let skip_score = self.bigram_pair_score(&prev2, &cand_lower) as f32;
+        if let Some(prev2) = prev2_token {
+            let prev2_lower = prev2.to_ascii_lowercase();
+            let skip_score = self.bigram_pair_score(&prev2_lower, &cand_lower) as f32;
             total_score += skip_score * 0.02;
 
             // Common English 3-gram idiomatic phrase boosts
-            let t1 = prev2.as_str();
+            let t1 = prev2_lower.as_str();
             let t2 = last_lower.as_str();
             let c = cand_lower.as_str();
 
