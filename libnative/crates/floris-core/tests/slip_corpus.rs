@@ -45,6 +45,7 @@ fn engine() -> NlpEngine {
         ("and", 255),
         ("off", 250),
         ("richmond", 240),
+        ("mulan", 240),
         ("you're", 255),
         ("hello", 240),
         ("keyboard", 200),

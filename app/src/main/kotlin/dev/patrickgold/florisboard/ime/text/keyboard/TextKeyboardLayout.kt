@@ -443,6 +443,7 @@ fun TextKeyboardLayout(
     var serenityGardenTriggerTime by remember { mutableStateOf(0L) }
     var sniperDudeTriggerTime by remember { mutableStateOf(0L) }
     var thorTriggerTime by remember { mutableStateOf(0L) }
+    var mushuTriggerTime by remember { mutableStateOf(0L) }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -666,6 +667,20 @@ fun TextKeyboardLayout(
             }
             if (isThorMatch) {
                 thorTriggerTime = System.currentTimeMillis()
+            }
+            // Strict word boundary isolation for Mushu the Dragon (Disney's Mulan)
+            val mushuKeys = listOf("mushu", "mulan", "mulsn", "cri-kee", "dishonor on your cow", "dragon", "great stone dragon")
+            val isMushuMatch = mushuKeys.any { k ->
+                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb.equals("$k$d", ignoreCase = true) ||
+                    tb.endsWith(" $k$d", ignoreCase = true) ||
+                    tb.endsWith("\n$k$d", ignoreCase = true) ||
+                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isMushuMatch) {
+                mushuTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -6749,6 +6764,311 @@ fun TextKeyboardLayout(
                         drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(hX - 4.5f * d, hY - 3.5f * d, hX + 4.5f * d, hY - 0.7f * d), silverBevel)
                         drawContext.canvas.nativeCanvas.drawCircle(hX, hY - 2.1f * d, 1.3f * d, runeCyan)
                     }
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+
+        // 22. Authentic Mushu the Dragon (Disney's Mulan) Serpentine Flight & Fire Breath (3.8s)
+        if (mushuTriggerTime > 0L) {
+            val mushuProgress = remember(mushuTriggerTime) { Animatable(0f) }
+            LaunchedEffect(mushuTriggerTime) {
+                mushuProgress.snapTo(0f)
+                mushuProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3800, easing = LinearEasing),
+                )
+                mushuTriggerTime = 0L
+            }
+            if (mushuProgress.value in 0.001f..0.999f) {
+                val progress = mushuProgress.value
+                val elapsedSec = progress * 3.8f
+                val density = LocalDensity.current.density
+                val d = density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+
+                    val masterAlpha = when {
+                        progress < 0.06f -> (progress / 0.06f).coerceIn(0f, 1f)
+                        progress > 0.92f -> ((1f - progress) / 0.08f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+
+                    // Sinuous Dragon Flight Path across keyboard (Left to Right)
+                    val startX = -65f * d
+                    val endX = canvasW + 65f * d
+                    val currentHeadX = startX + progress * (endX - startX)
+                    val baseFlightY = canvasH * 0.42f
+                    val undulationY = kotlin.math.sin(progress * 7f * Math.PI.toFloat()) * (24f * d)
+                    val headY = baseFlightY + undulationY
+
+                    // -------------------------------------------------------------
+                    // 1. Celestial Dragon Clouds & Golden Sparks Trail
+                    // -------------------------------------------------------------
+                    val cloudPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 110).toInt().coerceIn(0, 255), 254, 240, 138)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val redSmokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 70).toInt().coerceIn(0, 255), 239, 68, 68)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+
+                    for (c in 0 until 7) {
+                        val cu = (c * 0.14f)
+                        val trailDist = (c + 1) * 12f * d
+                        val trailX = currentHeadX - trailDist
+                        val trailY = baseFlightY + kotlin.math.sin((progress - cu * 0.2f) * 7f * Math.PI.toFloat()) * (24f * d) + (c % 2 * 4f * d)
+                        val cloudR = (4f + (c % 3) * 2.5f) * d
+                        drawContext.canvas.nativeCanvas.drawCircle(trailX, trailY, cloudR, redSmokePaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(trailX - 2f * d, trailY - 1f * d, cloudR * 0.7f, cloudPaint)
+                    }
+
+                    // -------------------------------------------------------------
+                    // 2. Mushu's Fire Puffs (Fiery Dragon Breath every ~1.2s)
+                    // -------------------------------------------------------------
+                    val fireCycle = (elapsedSec % 1.2f)
+                    if (fireCycle < 0.45f) {
+                        val fireU = fireCycle / 0.45f
+                        val fireStartX = currentHeadX + 22f * d
+                        val fireStartY = headY - 2f * d
+
+                        val flameOuter = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(((1f - fireU) * masterAlpha * 240).toInt().coerceIn(0, 255), 239, 68, 68)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val flameInner = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(((1f - fireU) * masterAlpha * 255).toInt().coerceIn(0, 255), 251, 191, 36)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val flameCore = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(((1f - fireU) * masterAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+
+                        val flameDist = fireU * (28f * d)
+                        val flameX = fireStartX + flameDist
+                        val flameY = fireStartY - kotlin.math.sin(fireU * Math.PI.toFloat()) * (4f * d)
+                        val flameR = (3f + fireU * 8f) * d
+
+                        drawContext.canvas.nativeCanvas.drawCircle(flameX, flameY, flameR, flameOuter)
+                        drawContext.canvas.nativeCanvas.drawCircle(flameX - 2f * d, flameY, flameR * 0.65f, flameInner)
+                        drawContext.canvas.nativeCanvas.drawCircle(flameX - 4f * d, flameY, flameR * 0.35f, flameCore)
+                    }
+
+                    // -------------------------------------------------------------
+                    // 3. Mushu Serpentine Body Kinematics (S-Curve Dragon Anatomy)
+                    // -------------------------------------------------------------
+                    // Color Palette (Official Disney Model)
+                    val mushuRed = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 225, 29, 72) // #E11D48
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val mushuDarkRed = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 159, 18, 57) // #9F1239
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val yellowBelly = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 254, 240, 138) // #FEF08A
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val cyanHorns = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 6, 182, 212) // #06B6D4
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val eyeYellow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 253, 224, 71) // #FDE047
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val eyePupil = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42) // #0F172A
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val whiskerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 190, 18, 60)
+                        strokeWidth = 1.1f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+
+                    // Multi-Segment Serpentine Spine Coordinates
+                    val spineSegments = 16
+                    val spinePoints = ArrayList<Pair<Float, Float>>()
+
+                    for (s in 0..spineSegments) {
+                        val su = s.toFloat() / spineSegments
+                        val segProgress = progress - su * 0.10f
+                        val segX = startX + segProgress * (endX - startX)
+                        val segY = baseFlightY + kotlin.math.sin(segProgress * 7f * Math.PI.toFloat()) * (24f * d)
+                        spinePoints.add(Pair(segX, segY))
+                    }
+
+                    // A. Dorsal Spines (Cyan/Turquoise Spikes along back)
+                    val spineSpikePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = cyanHorns.color
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    for (s in 2 until spineSegments - 2) {
+                        val pt = spinePoints[s]
+                        val nextPt = spinePoints[s - 1]
+                        val dx = nextPt.first - pt.first
+                        val dy = nextPt.second - pt.second
+                        val ang = kotlin.math.atan2(dy, dx)
+                        val spikeHeight = (3.5f - s * 0.15f).coerceAtLeast(1.5f) * d
+
+                        drawContext.canvas.nativeCanvas.save()
+                        drawContext.canvas.nativeCanvas.translate(pt.first, pt.second)
+                        drawContext.canvas.nativeCanvas.rotate(ang * 180f / Math.PI.toFloat())
+                        val spikePath = android.graphics.Path().apply {
+                            moveTo(0f, -2.5f * d)
+                            lineTo(-2f * d, -2.5f * d - spikeHeight)
+                            lineTo(2f * d, -2.5f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(spikePath, spineSpikePaint)
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+
+                    // B. Main Red Serpentine Body (Continuous segmented ribbon)
+                    val bodyStroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = mushuRed.color
+                        strokeWidth = 6.5f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        strokeJoin = android.graphics.Paint.Join.ROUND
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+                    val bodyUnderlay = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = yellowBelly.color
+                        strokeWidth = 2.4f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        strokeJoin = android.graphics.Paint.Join.ROUND
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+
+                    val bodyPath = android.graphics.Path().apply {
+                        moveTo(spinePoints[0].first, spinePoints[0].second)
+                        for (s in 1 until spinePoints.size) {
+                            lineTo(spinePoints[s].first, spinePoints[s].second)
+                        }
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(bodyPath, bodyStroke)
+
+                    // Yellow Underbelly Ribbon
+                    val bellyPath = android.graphics.Path().apply {
+                        moveTo(spinePoints[0].first, spinePoints[0].second + 2f * d)
+                        for (s in 1 until spinePoints.size - 2) {
+                            lineTo(spinePoints[s].first, spinePoints[s].second + 2.2f * d)
+                        }
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(bellyPath, bodyUnderlay)
+
+                    // C. Fluffy Flame Tail Tip (Segment 15-16)
+                    val tailEnd = spinePoints.last()
+                    val tailAngle = kotlin.math.sin(progress * 14f) * 25f
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(tailEnd.first, tailEnd.second)
+                    drawContext.canvas.nativeCanvas.rotate(tailAngle)
+
+                    val tailTuftPath = android.graphics.Path().apply {
+                        moveTo(0f, 0f)
+                        quadTo(-6f * d, -5f * d, -12f * d, -2f * d)
+                        quadTo(-8f * d, 0f, -14f * d, 4f * d)
+                        quadTo(-6f * d, 3f * d, 0f, 0f)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(tailTuftPath, mushuDarkRed)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // D. 4 Slender Dragon Legs & 3-Toed Claws
+                    val legStroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = mushuRed.color
+                        strokeWidth = 2.0f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                        style = android.graphics.Paint.Style.STROKE
+                    }
+                    // Forelegs (Near segment 3)
+                    val forePt = spinePoints[3]
+                    val legPhase1 = progress * 24f
+                    drawContext.canvas.nativeCanvas.drawLine(forePt.first, forePt.second, forePt.first + kotlin.math.cos(legPhase1) * (6f * d), forePt.second + 6f * d, legStroke)
+                    drawContext.canvas.nativeCanvas.drawLine(forePt.first - 3f * d, forePt.second, forePt.first - 3f * d - kotlin.math.cos(legPhase1) * (6f * d), forePt.second + 6f * d, legStroke)
+
+                    // Hindlegs (Near segment 10)
+                    val hindPt = spinePoints[10]
+                    drawContext.canvas.nativeCanvas.drawLine(hindPt.first, hindPt.second, hindPt.first - kotlin.math.sin(legPhase1) * (6f * d), hindPt.second + 6f * d, legStroke)
+                    drawContext.canvas.nativeCanvas.drawLine(hindPt.first - 3f * d, hindPt.second, hindPt.first - 3f * d + kotlin.math.sin(legPhase1) * (6f * d), hindPt.second + 6f * d, legStroke)
+
+                    // -------------------------------------------------------------
+                    // 4. Mushu's Iconic Expressive Head & Snout
+                    // -------------------------------------------------------------
+                    val headPt = spinePoints[0]
+                    val headTilt = kotlin.math.cos(progress * 7f * Math.PI.toFloat()) * 18f
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(headPt.first, headPt.second)
+                    drawContext.canvas.nativeCanvas.rotate(headTilt)
+
+                    // A. Antler Horns (Cyan / Blue Stylized Antlers)
+                    val hornPathLeft = android.graphics.Path().apply {
+                        moveTo(-2f * d, -4f * d)
+                        quadTo(-6f * d, -11f * d, -4f * d, -14f * d)
+                        lineTo(-3f * d, -11f * d)
+                        quadTo(-1f * d, -12f * d, 0f, -14f * d)
+                        lineTo(-1f * d, -8f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(hornPathLeft, cyanHorns)
+
+                    // B. Head Dome & Elongated Snout
+                    val headJawPath = android.graphics.Path().apply {
+                        moveTo(-4f * d, 1f * d)
+                        lineTo(10f * d, 2f * d) // Upper snout
+                        quadTo(12f * d, 0f, 13f * d, -3f * d) // Nose bridge
+                        lineTo(4f * d, -4f * d) // Forehead
+                        lineTo(-4f * d, -3f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(headJawPath, mushuRed)
+
+                    // Under-snout / Lower Jaw
+                    val lowerJaw = android.graphics.Path().apply {
+                        moveTo(0f, 2f * d)
+                        lineTo(8f * d, 3.5f * d)
+                        lineTo(10f * d, 2f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(lowerJaw, yellowBelly)
+
+                    // C. Expressive Big Eyes (Yellow Sclera + Dark Pupils)
+                    drawContext.canvas.nativeCanvas.drawCircle(3f * d, -5.5f * d, 2.5f * d, eyeYellow)
+                    drawContext.canvas.nativeCanvas.drawCircle(4f * d, -5.5f * d, 1.2f * d, eyePupil)
+                    drawContext.canvas.nativeCanvas.drawCircle(4.3f * d, -6f * d, 0.4f * d, yellowBelly)
+
+                    // D. Flowing Whiskers (Trailing majestically in the wind)
+                    val whiskerFlutter = kotlin.math.sin(progress * 28f) * (4f * d)
+                    val whiskerPathTop = android.graphics.Path().apply {
+                        moveTo(10f * d, -1f * d)
+                        quadTo(4f * d, 4f * d + whiskerFlutter, -6f * d, 3f * d - whiskerFlutter)
+                    }
+                    val whiskerPathBot = android.graphics.Path().apply {
+                        moveTo(9f * d, 1f * d)
+                        quadTo(3f * d, 7f * d - whiskerFlutter, -8f * d, 6f * d + whiskerFlutter)
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(whiskerPathTop, whiskerPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(whiskerPathBot, whiskerPaint)
+
+                    // E. Dragon Teeth & Tongue
+                    val toothPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(8.5f * d, 2.2f * d, 0.7f * d, toothPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(6.5f * d, 2.2f * d, 0.7f * d, toothPaint)
 
                     drawContext.canvas.nativeCanvas.restore()
                 }
