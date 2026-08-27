@@ -8187,17 +8187,26 @@ private class TextKeyboardLayoutController(
         val initialKey = pointer.initialKey ?: return false
         val activeKey = pointer.activeKey
         flogDebug(LogTopic.TEXT_KEYBOARD_VIEW)
-        cancelGlideActive()
 
         return when (initialKey.computedData.code) {
-            KeyCode.DELETE -> handleDeleteSwipe(event)
-            KeyCode.SPACE, KeyCode.CJK_SPACE -> handleSpaceSwipe(event)
+            KeyCode.DELETE -> {
+                cancelGlideActive()
+                handleDeleteSwipe(event)
+            }
+            KeyCode.SPACE, KeyCode.CJK_SPACE -> {
+                cancelGlideActive()
+                handleSpaceSwipe(event)
+            }
             else -> when {
                 (initialKey.computedData.code == KeyCode.SHIFT && activeKey?.computedData?.code == KeyCode.SPACE ||
                     initialKey.computedData.code == KeyCode.SHIFT && activeKey?.computedData?.code == KeyCode.CJK_SPACE) &&
-                    event.type == SwipeGesture.Type.TOUCH_MOVE -> handleSpaceSwipe(event)
+                    event.type == SwipeGesture.Type.TOUCH_MOVE -> {
+                    cancelGlideActive()
+                    handleSpaceSwipe(event)
+                }
                 initialKey.computedData.code == KeyCode.SHIFT && activeKey?.computedData?.code != KeyCode.SHIFT &&
                     event.type == SwipeGesture.Type.TOUCH_UP -> {
+                    cancelGlideActive()
                     activeKey?.let {
                         inputEventDispatcher.sendUp(popupUiController.getActiveKeyData(it) ?: it.computedDataOnDown)
                     }
