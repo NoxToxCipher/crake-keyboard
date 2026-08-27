@@ -92,3 +92,29 @@ fn learned_words_and_habits_survive_a_restart() {
     assert!(second.import_learned(&blob).is_ok());
     assert!(second.import_learned(b"garbage").is_err());
 }
+
+/// The learned stores never outgrow their persistence caps: at capacity a
+/// new entry evicts the least-used one, so serialize() never truncates —
+/// without this, export sorted alphabetically and every restart silently
+/// forgot the user's w-z words first.
+#[test]
+fn learned_words_evict_weakest_at_capacity_not_the_alphabet_tail() {
+    let mut e = NlpEngine::new();
+    for i in 0..floris_core::persist::MAX_LEARNED_WORDS {
+        // learn each filler once (freq path gives them all the same base)
+        e.learn_word(&format!("filler{i:04}"), 100);
+    }
+    // one word the user actually uses a lot
+    for _ in 0..10 {
+        e.learn_word("zzzfavourite", 100);
+    }
+    // capacity holds, and the well-used z-word survives an export
+    let blob = e.export_learned();
+    let mut fresh = NlpEngine::new();
+    let restored = fresh.import_learned(&blob).expect("import");
+    assert!(restored <= floris_core::persist::MAX_LEARNED_WORDS as usize);
+    assert!(
+        fresh.trie.get_frequency("zzzfavourite").is_some(),
+        "the used word must survive persistence even at capacity"
+    );
+}

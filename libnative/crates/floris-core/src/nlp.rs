@@ -272,6 +272,22 @@ impl NlpEngine {
         if trimmed.len() < 2 || trimmed.chars().count() > crate::persist::MAX_TOKEN_LEN {
             return;
         }
+        // At capacity a NEW word evicts the least-used learned word (freq
+        // encodes use via the +3 growth). Without this the map outgrew the
+        // persistence cap and serialize() truncated the ALPHABETICAL tail —
+        // every restart silently forgot the user's w-z words first.
+        if !self.learned_words.contains_key(&trimmed)
+            && self.learned_words.len() >= crate::persist::MAX_LEARNED_WORDS as usize
+        {
+            if let Some(weakest) = self
+                .learned_words
+                .iter()
+                .min_by_key(|(_, &f)| f)
+                .map(|(k, _)| k.clone())
+            {
+                self.learned_words.remove(&weakest);
+            }
+        }
         let base = self.corpus_freq(&trimmed).max(freq.min(150));
         let ceiling = base.saturating_add(30).min(255);
         let current = self.trie.get_frequency(&trimmed).unwrap_or(0);
@@ -419,6 +435,20 @@ impl NlpEngine {
         let intended = intended.trim().to_ascii_lowercase();
         if typo.is_empty() || intended.is_empty() || typo == intended {
             return;
+        }
+        // Same capacity discipline as learned words and personal bigrams:
+        // a new typo key evicts the typo whose best mapping is weakest.
+        if !self.personal_corrections.contains_key(&typo)
+            && self.personal_corrections.len() >= crate::persist::MAX_CORRECTIONS as usize
+        {
+            if let Some(weakest) = self
+                .personal_corrections
+                .iter()
+                .min_by_key(|(_, targets)| targets.values().max().copied().unwrap_or(0))
+                .map(|(k, _)| k.clone())
+            {
+                self.personal_corrections.remove(&weakest);
+            }
         }
         let counter = self.personal_corrections.entry(typo.clone()).or_default();
         let count = counter.entry(intended.clone()).or_insert(0);
