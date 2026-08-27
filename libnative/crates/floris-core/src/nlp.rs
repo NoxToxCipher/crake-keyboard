@@ -1767,6 +1767,13 @@ impl NlpEngine {
             // state (measured 2026-08-27); typos keep the full budget.
             let max_units = if is_exact {
                 2
+            } else if trimmed_lower.len() < 3 {
+                // 1-2 char inputs are the widest queries the engine serves
+                // (every backspace step lands here) and their only pinned
+                // deep correction is the 2-unit class ("nt" -> my).
+                // Budget 3 at this length bought nothing but latency
+                // (platform handoff, 2026-08-28).
+                2
             } else if trimmed_lower.len() <= 4 {
                 3
             } else {
