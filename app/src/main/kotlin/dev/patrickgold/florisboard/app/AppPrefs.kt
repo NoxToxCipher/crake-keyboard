@@ -19,6 +19,9 @@ package dev.patrickgold.florisboard.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import dev.patrickgold.florisboard.app.settings.theme.ColorPreferenceSerializer
 import dev.patrickgold.florisboard.app.settings.theme.DisplayKbdAfterDialogs
 import dev.patrickgold.florisboard.app.settings.theme.SnyggLevel
@@ -250,20 +253,24 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         fun fire(egg: EasterEgg): Boolean {
             val discoveredCsv = discovered.get()
             if (!EasterEggs.isDiscovered(discoveredCsv, egg)) {
-                discovered.setSync(EasterEggs.withId(discoveredCsv, egg.id))
+                CoroutineScope(Dispatchers.IO).launch {
+                    discovered.set(EasterEggs.withId(discoveredCsv, egg.id))
+                }
             }
             return EasterEggs.isEnabled(disabled.get(), egg)
         }
 
         fun setEggEnabled(egg: EasterEgg, enabled: Boolean) {
             val disabledCsv = disabled.get()
-            disabled.setSync(
-                if (enabled) {
-                    EasterEggs.withoutId(disabledCsv, egg.id)
-                } else {
-                    EasterEggs.withId(disabledCsv, egg.id)
-                }
-            )
+            CoroutineScope(Dispatchers.IO).launch {
+                disabled.set(
+                    if (enabled) {
+                        EasterEggs.withoutId(disabledCsv, egg.id)
+                    } else {
+                        EasterEggs.withId(disabledCsv, egg.id)
+                    }
+                )
+            }
         }
     }
 
