@@ -443,6 +443,7 @@ fun TextKeyboardLayout(
     var serenityGardenTriggerTime by remember { mutableStateOf(0L) }
     var sniperDudeTriggerTime by remember { mutableStateOf(0L) }
     var thorTriggerTime by remember { mutableStateOf(0L) }
+    var lastThorTriggeredText by remember { mutableStateOf("") }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -661,7 +662,8 @@ fun TextKeyboardLayout(
                     tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
             }
-            if (isThorMatch) {
+            if (isThorMatch && tb != lastThorTriggeredText) {
+                lastThorTriggeredText = tb
                 thorTriggerTime = System.currentTimeMillis()
             }
         }
@@ -6365,7 +6367,7 @@ fun TextKeyboardLayout(
         }
 
 
-        // 21. Mini Mighty Thor Superhero Landing & Lightning Hammer Strike (3.5s)
+        // 21. High-Definition Mini Mighty Thor Superhero Landing & Lightning Hammer Strike (3.5s)
         if (thorTriggerTime > 0L) {
             val thorProgress = remember(thorTriggerTime) { Animatable(0f) }
             LaunchedEffect(thorTriggerTime) {
@@ -6374,7 +6376,6 @@ fun TextKeyboardLayout(
                     targetValue = 1f,
                     animationSpec = tween(durationMillis = 3500, easing = LinearEasing),
                 )
-                thorTriggerTime = 0L
             }
             if (thorProgress.value in 0.0001f..0.9999f) {
                 val progress = thorProgress.value
@@ -6400,37 +6401,44 @@ fun TextKeyboardLayout(
                     val centerX = canvasW / 2f
 
                     // -------------------------------------------------------------
-                    // STAGE A: Bifrost Comet Descent (0.0s - 0.45s)
+                    // STAGE A: Dynamic Diagonal Descent From The Right (0.0s - 0.45s)
                     // -------------------------------------------------------------
                     val landingTime = 0.45f
                     val isLanded = elapsedSec >= landingTime
 
-                    val thorY = if (!isLanded) {
-                        val fallU = (elapsedSec / landingTime).coerceIn(0f, 1f)
-                        val fallEase = fallU * fallU // Accelerate downwards
-                        -40f * d + fallEase * (bottomFretY + 40f * d)
-                    } else {
-                        bottomFretY
-                    }
+                    val startX = centerX + 85f * d // Enters diagonally from the upper right
+                    val startY = -40f * d
 
-                    // Shimmering Bifrost Rainbow / Cyan Atmospheric Trail during descent
+                    val currentThorX: Float
+                    val currentThorY: Float
+
                     if (!isLanded) {
-                        val bifrostPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        val fallU = (elapsedSec / landingTime).coerceIn(0f, 1f)
+                        val fallEase = fallU * fallU // Powerful gravitational comet dive
+                        currentThorX = startX + fallEase * (centerX - startX)
+                        currentThorY = startY + fallEase * (bottomFretY - startY)
+
+                        // Shimmering Diagonal Bifrost Comet Trail
+                        val bifrostTrail = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             shader = android.graphics.LinearGradient(
-                                centerX, -20f * d, centerX, thorY,
+                                startX, startY, currentThorX, currentThorY,
                                 intArrayOf(
                                     android.graphics.Color.argb(0, 0, 229, 255),
-                                    android.graphics.Color.argb(180, 59, 130, 246),
-                                    android.graphics.Color.argb(240, 255, 255, 255)
+                                    android.graphics.Color.argb(160, 59, 130, 246),
+                                    android.graphics.Color.argb(220, 234, 179, 8),
+                                    android.graphics.Color.argb(255, 255, 255, 255)
                                 ),
-                                floatArrayOf(0f, 0.7f, 1f),
+                                floatArrayOf(0f, 0.4f, 0.8f, 1f),
                                 android.graphics.Shader.TileMode.CLAMP
                             )
-                            strokeWidth = 6f * d
+                            strokeWidth = 5.5f * d
                             style = android.graphics.Paint.Style.STROKE
                             strokeCap = android.graphics.Paint.Cap.ROUND
                         }
-                        drawContext.canvas.nativeCanvas.drawLine(centerX, -10f * d, centerX, thorY - 10f * d, bifrostPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(startX, startY, currentThorX, currentThorY - 12f * d, bifrostTrail)
+                    } else {
+                        currentThorX = centerX
+                        currentThorY = bottomFretY
                     }
 
                     // -------------------------------------------------------------
@@ -6438,18 +6446,27 @@ fun TextKeyboardLayout(
                     // -------------------------------------------------------------
                     if (elapsedSec in 0.45f..1.2f) {
                         val impactU = (elapsedSec - 0.45f) / 0.75f
-                        val shockRadius = impactU * (canvasW * 0.45f)
+                        val shockRadius = impactU * (canvasW * 0.48f)
                         val shockAlpha = ((1f - impactU) * masterAlpha).coerceIn(0f, 1f)
 
-                        // Radial expanding shockwave ring along bottom fret
+                        // Dual Expanding Shockwave Rings
                         val shockPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((shockAlpha * 220).toInt().coerceIn(0, 255), 0, 229, 255)
+                            color = android.graphics.Color.argb((shockAlpha * 230).toInt().coerceIn(0, 255), 0, 229, 255)
                             style = android.graphics.Paint.Style.STROKE
                             strokeWidth = (3.5f * (1f - impactU * 0.6f)) * d
                         }
+                        val outerShock = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((shockAlpha * 140).toInt().coerceIn(0, 255), 254, 240, 138)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = (1.8f * (1f - impactU * 0.6f)) * d
+                        }
                         drawContext.canvas.nativeCanvas.drawOval(
-                            android.graphics.RectF(centerX - shockRadius, bottomFretY - shockRadius * 0.3f, centerX + shockRadius, bottomFretY + shockRadius * 0.3f),
+                            android.graphics.RectF(centerX - shockRadius, bottomFretY - shockRadius * 0.28f, centerX + shockRadius, bottomFretY + shockRadius * 0.28f),
                             shockPaint
+                        )
+                        drawContext.canvas.nativeCanvas.drawOval(
+                            android.graphics.RectF(centerX - shockRadius * 1.12f, bottomFretY - shockRadius * 0.32f, centerX + shockRadius * 1.12f, bottomFretY + shockRadius * 0.32f),
+                            outerShock
                         )
 
                         // Golden/Cyan Ground Impact Flash at landing point
@@ -6459,7 +6476,7 @@ fun TextKeyboardLayout(
                                 color = android.graphics.Color.argb((flashScale * 255).toInt().coerceIn(0, 255), 255, 255, 255)
                                 style = android.graphics.Paint.Style.FILL
                             }
-                            drawContext.canvas.nativeCanvas.drawCircle(centerX, bottomFretY - 4f * d, 18f * d * flashScale, flashPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(centerX, bottomFretY - 4f * d, 22f * d * flashScale, flashPaint)
                         }
                     }
 
@@ -6473,18 +6490,18 @@ fun TextKeyboardLayout(
                         val boltPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             color = android.graphics.Color.argb((lightningAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
                             style = android.graphics.Paint.Style.STROKE
-                            strokeWidth = 1.4f * d
+                            strokeWidth = 1.5f * d
                             strokeCap = android.graphics.Paint.Cap.ROUND
                         }
                         val glowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((lightningAlpha * 180).toInt().coerceIn(0, 255), 0, 229, 255)
+                            color = android.graphics.Color.argb((lightningAlpha * 190).toInt().coerceIn(0, 255), 0, 229, 255)
                             style = android.graphics.Paint.Style.STROKE
-                            strokeWidth = 3.8f * d
+                            strokeWidth = 4.2f * d
                             strokeCap = android.graphics.Paint.Cap.ROUND
                         }
 
                         // Generate 6 Jagged Forked Lightning Bolts originating from Mjolnir on ground
-                        val hammerGroundX = centerX + 7f * d
+                        val hammerGroundX = centerX + 9f * d
                         val hammerGroundY = bottomFretY - 2f * d
 
                         for (bIdx in 0..5) {
@@ -6492,16 +6509,16 @@ fun TextKeyboardLayout(
                             val boltPath = android.graphics.Path().apply {
                                 moveTo(hammerGroundX, hammerGroundY)
                                 val dirSign = if (bIdx % 2 == 0) 1f else -1f
-                                val reachW = (45f + (bIdx % 3) * 35f) * d
-                                val reachH = (20f + (bIdx % 2) * 28f) * d
+                                val reachW = (50f + (bIdx % 3) * 38f) * d
+                                val reachH = (22f + (bIdx % 2) * 30f) * d
 
                                 var cx = hammerGroundX
                                 var cy = hammerGroundY
                                 val segments = 5
                                 for (s in 1..segments) {
                                     val su = s.toFloat() / segments
-                                    val jitterX = ((seed * (s + 1) * 31) % 19 - 9) * 0.8f * d
-                                    val jitterY = ((seed * (s + 2) * 43) % 15 - 7) * 0.8f * d
+                                    val jitterX = ((seed * (s + 1) * 31) % 19 - 9) * 0.9f * d
+                                    val jitterY = ((seed * (s + 2) * 43) % 15 - 7) * 0.9f * d
                                     cx = hammerGroundX + (su * reachW * dirSign) + jitterX
                                     cy = hammerGroundY - (su * reachH) + jitterY
                                     lineTo(cx, cy)
@@ -6511,7 +6528,7 @@ fun TextKeyboardLayout(
                             drawContext.canvas.nativeCanvas.drawPath(boltPath, boltPaint)
                         }
 
-                        // Sparkle Electric Sparks along bottom fret
+                        // Crackling Electric Sparks along bottom fret
                         val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             color = android.graphics.Color.argb((lightningAlpha * 255).toInt().coerceIn(0, 255), 224, 242, 254)
                             style = android.graphics.Paint.Style.FILL
@@ -6520,42 +6537,54 @@ fun TextKeyboardLayout(
                             val sparkU = ((elapsedSec * 8f + sp * 0.12f) % 1f)
                             val sparkX = centerX + (sp - 4) * (18f * d) + kotlin.math.sin(sparkU * 20f) * (6f * d)
                             val sparkY = bottomFretY - kotlin.math.sin(sparkU * Math.PI.toFloat()) * (12f * d)
-                            drawContext.canvas.nativeCanvas.drawCircle(sparkX, sparkY, (0.8f + (sp % 3) * 0.4f) * d, sparkPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(sparkX, sparkY, (0.9f + (sp % 3) * 0.4f) * d, sparkPaint)
                         }
                     }
 
                     // -------------------------------------------------------------
-                    // STAGE D: Mini Mighty Thor Hero Figure & Mjolnir
+                    // STAGE D: High-Definition Mini Mighty Thor (Clean Vector Hero Figure)
                     // -------------------------------------------------------------
                     drawContext.canvas.nativeCanvas.save()
-                    drawContext.canvas.nativeCanvas.translate(centerX, thorY)
+                    drawContext.canvas.nativeCanvas.translate(currentThorX, currentThorY)
 
                     // Hero Pose Interpolation:
-                    // 0.45s - 1.8s: 3-point superhero landing (one fist on ground, head down)
+                    // 0.45s - 1.8s: 3-point superhero landing (fist slammed on ground)
                     // 1.8s - 3.2s: Proud Asgardian champion stand (lifts Mjolnir skyward)
                     val isHeroRise = elapsedSec >= 1.8f
                     val riseU = if (isHeroRise) ((elapsedSec - 1.8f) / 0.5f).coerceIn(0f, 1f) else 0f
                     val riseEase = (1f - kotlin.math.cos(riseU * Math.PI.toFloat())) * 0.5f
 
-                    // Palette (Thor Classic Asgardian Hero)
+                    // Palette (High-Contrast Hero Character Art)
                     val armorNavy = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42) // #0F172A
                         style = android.graphics.Paint.Style.FILL
                     }
                     val armorSilver = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 203, 213, 225) // #CBD5E1
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 226, 232, 240) // #E2E8F0
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val silverBevel = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 148, 163, 184) // #94A3B8
                         style = android.graphics.Paint.Style.FILL
                     }
                     val capeCrimson = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 225, 29, 72) // #E11D48
                         style = android.graphics.Paint.Style.FILL
                     }
+                    val capeShadow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 159, 18, 57) // #9F1239
+                        style = android.graphics.Paint.Style.FILL
+                    }
                     val hairGold = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 251, 191, 36) // #FBBF24
                         style = android.graphics.Paint.Style.FILL
                     }
+                    val hairShadow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 217, 119, 6) // #D97706
+                        style = android.graphics.Paint.Style.FILL
+                    }
                     val mjolnirSteel = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 148, 163, 184) // #94A3B8
+                        color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 100, 116, 139) // #64748B
                         style = android.graphics.Paint.Style.FILL
                     }
                     val runeCyan = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -6567,95 +6596,156 @@ fun TextKeyboardLayout(
                         style = android.graphics.Paint.Style.FILL
                     }
 
-                    // 1. Billowing Crimson Superhero Cape
-                    val capeBillow = kotlin.math.sin(elapsedSec * 10f) * (2f * d)
-                    val capePath = android.graphics.Path().apply {
-                        moveTo(-3f * d, -14f * d - riseEase * (4f * d))
-                        lineTo(-14f * d + capeBillow, -2f * d)
-                        quadTo(-8f * d, 2f * d, -2f * d, -4f * d)
+                    // 1. Billowing Royal Crimson Cape (Layered 3D Folds)
+                    val capeBillow = kotlin.math.sin(elapsedSec * 9f) * (3f * d)
+                    val capeBackPath = android.graphics.Path().apply {
+                        moveTo(-4f * d, -15f * d - riseEase * (5f * d))
+                        lineTo(-18f * d + capeBillow, -1f * d)
+                        quadTo(-9f * d, 3f * d, -2f * d, -3f * d)
                         close()
                     }
-                    drawContext.canvas.nativeCanvas.drawPath(capePath, capeCrimson)
+                    drawContext.canvas.nativeCanvas.drawPath(capeBackPath, capeShadow)
 
-                    // 2. Legs & Boots (Superhero Crouch or Standing Stride)
+                    val capeFrontPath = android.graphics.Path().apply {
+                        moveTo(-3f * d, -14f * d - riseEase * (5f * d))
+                        lineTo(-15f * d + capeBillow * 0.8f, -2f * d)
+                        quadTo(-7f * d, 2f * d, -1f * d, -4f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(capeFrontPath, capeCrimson)
+
+                    // 2. Legs & Boots (Armored superhero landing / standing stance)
                     val legStroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = armorNavy.color
-                        strokeWidth = 2.4f * d
+                        strokeWidth = 2.8f * d
                         strokeCap = android.graphics.Paint.Cap.ROUND
                         style = android.graphics.Paint.Style.STROKE
                     }
-                    if (riseEase < 0.5f) {
-                        // 3-point superhero landing stance
-                        drawContext.canvas.nativeCanvas.drawLine(-5f * d, -4f * d, -8f * d, 0f, legStroke)
-                        drawContext.canvas.nativeCanvas.drawLine(3f * d, -4f * d, 5f * d, -1f * d, legStroke)
-                    } else {
-                        // Proud standing hero stance
-                        drawContext.canvas.nativeCanvas.drawLine(-3f * d, -6f * d, -4f * d, 0f, legStroke)
-                        drawContext.canvas.nativeCanvas.drawLine(3f * d, -6f * d, 4f * d, 0f, legStroke)
+                    val bootSilver = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = armorSilver.color
+                        style = android.graphics.Paint.Style.FILL
                     }
 
-                    // 3. Torso & Asgardian Scale Armor (With 6 Circular Discs)
-                    val torsoY = -12f * d - riseEase * (5f * d)
-                    val torsoRect = android.graphics.RectF(-4.5f * d, torsoY, 4.5f * d, torsoY + 7f * d)
-                    drawContext.canvas.nativeCanvas.drawRoundRect(torsoRect, 2f * d, 2f * d, armorNavy)
+                    if (riseEase < 0.5f) {
+                        // Superhero 3-point landing: rear leg braced back, front leg bent under
+                        drawContext.canvas.nativeCanvas.drawLine(-6f * d, -5f * d, -10f * d, 0f, legStroke)
+                        drawContext.canvas.nativeCanvas.drawLine(3f * d, -5f * d, 6f * d, -1f * d, legStroke)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(-12f * d, -1.8f * d, -8f * d, 0.5f * d), 1f * d, 1f * d, bootSilver)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(4f * d, -2.8f * d, 8f * d, -0.5f * d), 1f * d, 1f * d, bootSilver)
+                    } else {
+                        // Proud champion standing posture
+                        drawContext.canvas.nativeCanvas.drawLine(-3.5f * d, -7f * d, -4.5f * d, 0f, legStroke)
+                        drawContext.canvas.nativeCanvas.drawLine(3.5f * d, -7f * d, 4.5f * d, 0f, legStroke)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(-6f * d, -2f * d, -3f * d, 0.5f * d), 1f * d, 1f * d, bootSilver)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(3f * d, -2f * d, 6f * d, 0.5f * d), 1f * d, 1f * d, bootSilver)
+                    }
 
-                    // 4 Silver Armor Discs
-                    drawContext.canvas.nativeCanvas.drawCircle(-2.2f * d, torsoY + 2f * d, 1.1f * d, armorSilver)
-                    drawContext.canvas.nativeCanvas.drawCircle(2.2f * d, torsoY + 2f * d, 1.1f * d, armorSilver)
-                    drawContext.canvas.nativeCanvas.drawCircle(-2.2f * d, torsoY + 5f * d, 1.1f * d, armorSilver)
-                    drawContext.canvas.nativeCanvas.drawCircle(2.2f * d, torsoY + 5f * d, 1.1f * d, armorSilver)
+                    // 3. Torso & Iconic Asgardian Scale Armor (6 Circular Discs with Bevels)
+                    val torsoY = -13f * d - riseEase * (5.5f * d)
+                    val torsoRect = android.graphics.RectF(-5.5f * d, torsoY, 5.5f * d, torsoY + 8f * d)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(torsoRect, 2.5f * d, 2.5f * d, armorNavy)
 
-                    // 4. Head, Golden Hair, Winged Helmet
-                    val headY = torsoY - 4.5f * d
-                    // Face
-                    drawContext.canvas.nativeCanvas.drawCircle(0f, headY, 3.2f * d, skinPaint)
-                    // Flowing Golden Locks
-                    drawContext.canvas.nativeCanvas.drawCircle(-3.2f * d, headY + 1f * d, 1.8f * d, hairGold)
-                    drawContext.canvas.nativeCanvas.drawCircle(3.2f * d, headY + 1f * d, 1.8f * d, hairGold)
+                    // Golden Asgardian Belt / Girdle of Strength (Megingjörð)
+                    val beltRect = android.graphics.RectF(-5.2f * d, torsoY + 7f * d, 5.2f * d, torsoY + 8.4f * d)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(beltRect, 0.8f * d, 0.8f * d, hairGold)
 
-                    // Silver Helmet
-                    val helmetRect = android.graphics.RectF(-3.2f * d, headY - 3.2f * d, 3.2f * d, headY)
-                    drawContext.canvas.nativeCanvas.drawRoundRect(helmetRect, 2f * d, 2f * d, armorSilver)
+                    // The 6 Iconic Embossed Silver Armor Discs
+                    val discOffsets = listOf(
+                        Pair(-2.8f * d, torsoY + 2.2f * d),
+                        Pair(2.8f * d, torsoY + 2.2f * d),
+                        Pair(-2.8f * d, torsoY + 4.6f * d),
+                        Pair(2.8f * d, torsoY + 4.6f * d),
+                        Pair(-2.8f * d, torsoY + 6.8f * d),
+                        Pair(2.8f * d, torsoY + 6.8f * d)
+                    )
+                    for ((dx, dy) in discOffsets) {
+                        drawContext.canvas.nativeCanvas.drawCircle(dx, dy, 1.4f * d, silverBevel)
+                        drawContext.canvas.nativeCanvas.drawCircle(dx, dy, 1.1f * d, armorSilver)
+                    }
 
-                    // Helmet Wings
+                    // 4. Head, Flowing Golden Hair & Winged Silver Helmet
+                    val headY = torsoY - 5.5f * d
+
+                    // Flowing Norse Golden Hair cascading over shoulders
+                    val hairLeft = android.graphics.Path().apply {
+                        moveTo(-2.5f * d, headY - 2f * d)
+                        quadTo(-6.5f * d, headY + 3f * d, -4.5f * d, headY + 7.5f * d)
+                        lineTo(-2f * d, headY + 5.5f * d)
+                        close()
+                    }
+                    val hairRight = android.graphics.Path().apply {
+                        moveTo(2.5f * d, headY - 2f * d)
+                        quadTo(6.5f * d, headY + 3f * d, 4.5f * d, headY + 7.5f * d)
+                        lineTo(2f * d, headY + 5.5f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(hairLeft, hairShadow)
+                    drawContext.canvas.nativeCanvas.drawPath(hairRight, hairShadow)
+                    drawContext.canvas.nativeCanvas.drawCircle(-3.6f * d, headY + 2f * d, 2.2f * d, hairGold)
+                    drawContext.canvas.nativeCanvas.drawCircle(3.6f * d, headY + 2f * d, 2.2f * d, hairGold)
+
+                    // Hero Face & Jawline
+                    val faceRect = android.graphics.RectF(-3.4f * d, headY - 3.4f * d, 3.4f * d, headY + 3.4f * d)
+                    drawContext.canvas.nativeCanvas.drawRoundRect(faceRect, 3f * d, 3f * d, skinPaint)
+
+                    // Polished Silver Winged Helmet
+                    val helmetPath = android.graphics.Path().apply {
+                        moveTo(-3.8f * d, headY)
+                        cubicTo(-3.8f * d, headY - 5.5f * d, 3.8f * d, headY - 5.5f * d, 3.8f * d, headY)
+                        lineTo(3.8f * d, headY - 1f * d)
+                        lineTo(-3.8f * d, headY - 1f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(helmetPath, armorSilver)
+
+                    // Wing Crests on Helmet (Left & Right Swept-Back Wings)
                     val leftWing = android.graphics.Path().apply {
-                        moveTo(-2.8f * d, headY - 1f * d)
-                        lineTo(-6.5f * d, headY - 6f * d)
-                        lineTo(-2.5f * d, headY - 3.5f * d)
+                        moveTo(-3.4f * d, headY - 1.5f * d)
+                        lineTo(-8.5f * d, headY - 8.5f * d)
+                        lineTo(-3.2f * d, headY - 4.5f * d)
                         close()
                     }
                     val rightWing = android.graphics.Path().apply {
-                        moveTo(2.8f * d, headY - 1f * d)
-                        lineTo(6.5f * d, headY - 6f * d)
-                        lineTo(2.5f * d, headY - 3.5f * d)
+                        moveTo(3.4f * d, headY - 1.5f * d)
+                        lineTo(8.5f * d, headY - 8.5f * d)
+                        lineTo(3.2f * d, headY - 4.5f * d)
                         close()
                     }
                     drawContext.canvas.nativeCanvas.drawPath(leftWing, armorSilver)
                     drawContext.canvas.nativeCanvas.drawPath(rightWing, armorSilver)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, headY - 2.8f * d, 1.2f * d, silverBevel) // Center crest gem
 
-                    // Glowing Cyan God of Thunder Eyes
-                    drawContext.canvas.nativeCanvas.drawCircle(-1.2f * d, headY + 0.2f * d, 0.7f * d, runeCyan)
-                    drawContext.canvas.nativeCanvas.drawCircle(1.2f * d, headY + 0.2f * d, 0.7f * d, runeCyan)
+                    // Piercing Glowing Blue God of Thunder Eyes
+                    drawContext.canvas.nativeCanvas.drawCircle(-1.5f * d, headY + 0.5f * d, 0.85f * d, runeCyan)
+                    drawContext.canvas.nativeCanvas.drawCircle(1.5f * d, headY + 0.5f * d, 0.85f * d, runeCyan)
+                    drawContext.canvas.nativeCanvas.drawCircle(-1.5f * d, headY + 0.3f * d, 0.35f * d, armorSilver)
+                    drawContext.canvas.nativeCanvas.drawCircle(1.5f * d, headY + 0.3f * d, 0.35f * d, armorSilver)
 
-                    // 5. Legendary Hammer Mjolnir
+                    // 5. Legendary Hammer Mjolnir (High-Detail Uru Mallet with Runes)
                     if (riseEase < 0.5f) {
-                        // Mjolnir slammed into ground on right side
-                        val hX = 7f * d
-                        val hY = -2f * d
-                        // Handle
-                        drawContext.canvas.nativeCanvas.drawLine(hX, hY - 7f * d, hX, hY, legStroke)
-                        // Heavy Hammer Head (Slammed flat on fret line)
-                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(hX - 4.5f * d, hY - 3.5f * d, hX + 4.5f * d, hY), 1.2f * d, 1.2f * d, mjolnirSteel)
-                        // Glowing Rune Inscriptions
-                        drawContext.canvas.nativeCanvas.drawCircle(hX, hY - 1.8f * d, 0.9f * d, runeCyan)
+                        // Slammed firmly on fret line at right side
+                        val hX = 8.5f * d
+                        val hY = -1.5f * d
+                        // Leather-wrapped Handle
+                        drawContext.canvas.nativeCanvas.drawLine(hX, hY - 8.5f * d, hX, hY, legStroke)
+                        drawContext.canvas.nativeCanvas.drawCircle(hX, hY - 8.5f * d, 1.2f * d, armorSilver) // Pommel
+                        // Heavy Beveled Uru Hammer Head
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(hX - 5.5f * d, hY - 4.2f * d, hX + 5.5f * d, hY), 1.2f * d, 1.2f * d, mjolnirSteel)
+                        drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(hX - 4.5f * d, hY - 3.5f * d, hX + 4.5f * d, hY - 0.7f * d), silverBevel)
+                        // Glowing Norse Rune Engravings
+                        drawContext.canvas.nativeCanvas.drawCircle(hX, hY - 2.1f * d, 1.1f * d, runeCyan)
                     } else {
-                        // Lifts Mjolnir High into the Sky
-                        val hX = 8f * d
-                        val hY = torsoY - 10f * d * riseEase
-                        drawContext.canvas.nativeCanvas.drawLine(4f * d, torsoY + 2f * d, hX, hY + 4f * d, legStroke)
-                        drawContext.canvas.nativeCanvas.drawLine(hX, hY + 4f * d, hX, hY, legStroke)
-                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(hX - 4.5f * d, hY - 3.5f * d, hX + 4.5f * d, hY), 1.2f * d, 1.2f * d, mjolnirSteel)
-                        drawContext.canvas.nativeCanvas.drawCircle(hX, hY - 1.8f * d, 1.1f * d, runeCyan)
+                        // Proudly Raised Toward the Heavens
+                        val hX = 9.5f * d
+                        val hY = torsoY - 12f * d * riseEase
+                        // Arm thrusting upward
+                        drawContext.canvas.nativeCanvas.drawLine(4.5f * d, torsoY + 2f * d, hX, hY + 5f * d, legStroke)
+                        drawContext.canvas.nativeCanvas.drawLine(hX, hY + 5f * d, hX, hY, legStroke)
+                        drawContext.canvas.nativeCanvas.drawCircle(hX, hY + 5.5f * d, 1.2f * d, armorSilver)
+                        // Uru Hammer Head Glowing in the Sky
+                        drawContext.canvas.nativeCanvas.drawRoundRect(android.graphics.RectF(hX - 5.5f * d, hY - 4.2f * d, hX + 5.5f * d, hY), 1.2f * d, 1.2f * d, mjolnirSteel)
+                        drawContext.canvas.nativeCanvas.drawRect(android.graphics.RectF(hX - 4.5f * d, hY - 3.5f * d, hX + 4.5f * d, hY - 0.7f * d), silverBevel)
+                        drawContext.canvas.nativeCanvas.drawCircle(hX, hY - 2.1f * d, 1.3f * d, runeCyan)
                     }
 
                     drawContext.canvas.nativeCanvas.restore()
