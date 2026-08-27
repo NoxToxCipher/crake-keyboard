@@ -5207,6 +5207,43 @@ private fun TextKeyButton(
     var lastSunConureSignature by remember { mutableStateOf("") }
     val sunConurePulseAlpha = remember { Animatable(0f) }
 
+    // BlackBerry Physical Keycap 3D Flip Easter Egg (15.8s: 0.8s 3D flip, 5s physical mode, 10s smooth fade)
+    var bbTriggerTime by remember { androidx.compose.runtime.mutableLongStateOf(0L) }
+    var lastBbSignature by remember { mutableStateOf("") }
+    val bbProgress = remember { Animatable(0f) }
+
+    LaunchedEffect(activeContent) {
+        val tb = activeContent.textBeforeSelection.toString().lowercase()
+        val comp = activeContent.composingText.lowercase()
+        val bbKeys = listOf(
+            "blackberry bold", "blackberry priv", "blackberry q10",
+            "blackberry passport", "blackberry classic", "blackberry 9900",
+            "blackberry key2", "rim blackberry"
+        )
+        val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+        val isBbMatch = bbKeys.any { k ->
+            delimiters.any { d ->
+                tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
+            }
+        }
+        val signature = "$tb::$comp"
+        if (isBbMatch && signature != lastBbSignature) {
+            lastBbSignature = signature
+            bbTriggerTime = System.currentTimeMillis()
+        }
+    }
+
+    LaunchedEffect(bbTriggerTime) {
+        if (bbTriggerTime > 0L) {
+            bbProgress.snapTo(0f)
+            bbProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 15800, easing = LinearEasing),
+            )
+            bbTriggerTime = 0L
+        }
+    }
+
     LaunchedEffect(activeContent) {
         val textBefore = activeContent.textBeforeSelection.toString()
         val composing = activeContent.composingText
@@ -5273,13 +5310,44 @@ private fun TextKeyButton(
     val size = remember(key, desiredKey) {
         key.visibleBounds.size.toDpSize()
     }
+
+    val keyBounds = key.visibleBounds
+    val staggerMs = remember(keyBounds) {
+        ((keyBounds.center.x * 0.4f + keyBounds.center.y * 0.6f) % 280f)
+    }
+    val elapsedMs = bbProgress.value * 15800f
+    val localMs = (elapsedMs - staggerMs).coerceAtLeast(0f)
+
+    // 1. 3D Keycap Flip Angle (0 to 650ms)
+    val flipAngle = if (bbProgress.value > 0f && localMs in 0f..650f) {
+        val u = (localMs / 650f)
+        kotlin.math.sin(u * Math.PI.toFloat()) * 180f
+    } else {
+        0f
+    }
+
+    // 2. Physical Key Opacity: 5s pure physical look (localMs 600..5600), then 10s slow fade (5600..15600)
+    val physicalAlpha = when {
+        bbProgress.value <= 0f -> 0f
+        localMs < 300f -> (localMs / 300f).coerceIn(0f, 1f)
+        localMs <= 5600f -> 1f
+        localMs <= 15600f -> (1f - (localMs - 5600f) / 10000f).coerceIn(0f, 1f)
+        else -> 0f
+    }
+
     SnyggBox(
         FlorisImeUi.Key.elementName,
         attributes = attributes,
         selector = selector,
         modifier = Modifier
             .requiredSize(size)
-            .absoluteOffset { key.visibleBounds.topLeft.toIntOffset() },
+            .absoluteOffset { key.visibleBounds.topLeft.toIntOffset() }
+            .graphicsLayer {
+                if (flipAngle != 0f) {
+                    rotationX = flipAngle
+                    cameraDistance = 14f * density
+                }
+            },
     ) {
         val isTelPadKey = key.computedData.type == KeyType.NUMERIC && evaluator.keyboard.mode == KeyboardMode.PHONE
 
@@ -5335,6 +5403,108 @@ private fun TextKeyButton(
                         shape = RoundedCornerShape(6.dp),
                     )
             )
+        }
+
+        // Authentic BlackBerry Bold / Classic Sculpted Physical Keycap Overlay
+        if (physicalAlpha > 0.005f) {
+            val keyLabel = key.label ?: ""
+            val isLeftHandKey = keyBounds.center.x < (keyBounds.width * 5f)
+
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier.matchParentSize()
+            ) {
+                val canvasW = this.size.width
+                val canvasH = this.size.height
+                val d = density
+
+                val cornerRadius = 4.5f * d
+
+                // 1. Outer Chrome Bezel / Frame Accent
+                val chromePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb((physicalAlpha * 240).toInt().coerceIn(0, 255), 180, 185, 190)
+                    style = android.graphics.Paint.Style.STROKE
+                    strokeWidth = 1.2f * d
+                }
+                val keyRect = android.graphics.RectF(0.8f * d, 0.8f * d, canvasW - 0.8f * d, canvasH - 0.8f * d)
+                drawContext.canvas.nativeCanvas.drawRoundRect(keyRect, cornerRadius, cornerRadius, chromePaint)
+
+                // 2. Sculpted Obsidian Keycap Body (Deep Gloss Resin with Ergonomic Top-Light Highlight)
+                val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    shader = android.graphics.LinearGradient(
+                        0f, 0f, 0f, canvasH,
+                        intArrayOf(
+                            android.graphics.Color.argb((physicalAlpha * 255).toInt().coerceIn(0, 255), 45, 48, 52),
+                            android.graphics.Color.argb((physicalAlpha * 255).toInt().coerceIn(0, 255), 20, 22, 25),
+                            android.graphics.Color.argb((physicalAlpha * 255).toInt().coerceIn(0, 255), 12, 13, 15)
+                        ),
+                        floatArrayOf(0f, 0.45f, 1f),
+                        android.graphics.Shader.TileMode.CLAMP
+                    )
+                    style = android.graphics.Paint.Style.FILL
+                }
+                drawContext.canvas.nativeCanvas.drawRoundRect(keyRect, cornerRadius, cornerRadius, bodyPaint)
+
+                // 3. Ergonomic Sculpted Thumb Wave / Bevel Crest (Signature BlackBerry Bold angled slope)
+                val bevelPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb((physicalAlpha * 110).toInt().coerceIn(0, 255), 255, 255, 255)
+                    style = android.graphics.Paint.Style.STROKE
+                    strokeWidth = 1.0f * d
+                }
+                val bevelPath = android.graphics.Path().apply {
+                    if (isLeftHandKey) {
+                        moveTo(cornerRadius, 2.5f * d)
+                        lineTo(canvasW - cornerRadius * 1.5f, 4.5f * d)
+                    } else {
+                        moveTo(cornerRadius * 1.5f, 4.5f * d)
+                        lineTo(canvasW - cornerRadius, 2.5f * d)
+                    }
+                }
+                drawContext.canvas.nativeCanvas.drawPath(bevelPath, bevelPaint)
+
+                // 4. Horizontal Metallic Chrome Fret Strip at Top Edge of Key
+                val fretPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb((physicalAlpha * 160).toInt().coerceIn(0, 255), 210, 215, 220)
+                    style = android.graphics.Paint.Style.FILL
+                }
+                val fretRect = android.graphics.RectF(cornerRadius * 0.8f, 1.2f * d, canvasW - cornerRadius * 0.8f, 2.4f * d)
+                drawContext.canvas.nativeCanvas.drawRoundRect(fretRect, 0.6f * d, 0.6f * d, fretPaint)
+
+                // 5. Classic High-Contrast Pearl White Typography
+                if (keyLabel.isNotBlank()) {
+                    val textPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((physicalAlpha * 255).toInt().coerceIn(0, 255), 248, 250, 252)
+                        textSize = (if (keyLabel.length > 1) 11.5f else 15.5f) * d
+                        typeface = android.graphics.Typeface.DEFAULT_BOLD
+                        textAlign = android.graphics.Paint.Align.CENTER
+                    }
+                    val textY = canvasH / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+                    drawContext.canvas.nativeCanvas.drawText(keyLabel, canvasW / 2f, textY, textPaint)
+
+                    // 6. Iconic BlackBerry Alt Red/Orange Digits (W=1, E=2, R=3, S=4, D=5, F=6, Z=7, X=8, C=9, M=0)
+                    val altChar = when (keyLabel.uppercase()) {
+                        "W" -> "1"
+                        "E" -> "2"
+                        "R" -> "3"
+                        "S" -> "4"
+                        "D" -> "5"
+                        "F" -> "6"
+                        "Z" -> "7"
+                        "X" -> "8"
+                        "C" -> "9"
+                        "M" -> "0"
+                        else -> null
+                    }
+                    if (altChar != null) {
+                        val altPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((physicalAlpha * 240).toInt().coerceIn(0, 255), 244, 63, 94)
+                            textSize = 8.5f * d
+                            typeface = android.graphics.Typeface.DEFAULT_BOLD
+                            textAlign = android.graphics.Paint.Align.RIGHT
+                        }
+                        drawContext.canvas.nativeCanvas.drawText(altChar, canvasW - 4.5f * d, 10.5f * d, altPaint)
+                    }
+                }
+            }
         }
 
         // Spacebar Rain Easter Egg (10 seconds smooth fade-in, rain droplets + ripples, and fade-out)
