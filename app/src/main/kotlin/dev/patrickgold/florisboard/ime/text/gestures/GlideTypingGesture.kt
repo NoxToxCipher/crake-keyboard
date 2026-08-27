@@ -85,7 +85,16 @@ class GlideTypingGesture {
                         if (pointerData.isActuallyGesture == null) {
                             // evaluate whether is actually a gesture
                             val dist = ViewUtils.px2dp(pointerData.positions[0].dist(pos))
-                            val triggerSlop = (keySize * 0.35f).coerceIn(10f, 18f)
+                            // A glide must clearly LEAVE its starting key:
+                            // all 10 device-captured junk commits were fast
+                            // taps sliding 0.35-0.63 key-widths (measured
+                            // 2026-08-27), while the shortest real glide
+                            // ("ok", one vertical hop) nets ~1.76. The old
+                            // 0.35-key slop, ceiling-capped at 18dp, let
+                            // every sloppy tap become a word commit. 0.85
+                            // key-widths sits in the measured gap; no
+                            // ceiling, or tall keys reintroduce the leak.
+                            val triggerSlop = (keySize * 0.85f).coerceAtLeast(24f)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
                             val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
