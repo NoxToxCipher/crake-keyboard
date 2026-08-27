@@ -1315,29 +1315,38 @@ impl NlpEngine {
         max_suggestions: usize,
     ) -> SuggestionResult {
         let mut result = self.suggest(raw_token, max_suggestions);
-        if raw_token.len() >= 2 {
-            let raw_chars: Vec<char> = raw_token.chars().collect();
-            for i in 0..(raw_chars.len() - 1) {
-                let hand1 = get_key_hand(raw_chars[i]);
-                let hand2 = get_key_hand(raw_chars[i + 1]);
-                if hand1 != Hand::Unknown && hand2 != Hand::Unknown && hand1 != hand2 {
-                    let mut swapped = raw_chars.clone();
-                    swapped.swap(i, i + 1);
-                    let candidate_str: String = swapped.into_iter().collect();
+        if raw_token.len() >= 2 && raw_token.len() <= 32 {
+            let mut raw_buf = ['\0'; 32];
+            let mut raw_len = 0;
+            for ch in raw_token.chars() {
+                if raw_len < 32 {
+                    raw_buf[raw_len] = ch;
+                    raw_len += 1;
+                }
+            }
+            if raw_len >= 2 {
+                for i in 0..(raw_len - 1) {
+                    let hand1 = get_key_hand(raw_buf[i]);
+                    let hand2 = get_key_hand(raw_buf[i + 1]);
+                    if hand1 != Hand::Unknown && hand2 != Hand::Unknown && hand1 != hand2 {
+                        raw_buf.swap(i, i + 1);
+                        let candidate_str: String = raw_buf[..raw_len].iter().collect();
+                        raw_buf.swap(i, i + 1);
 
-                    if self.trie.contains(&candidate_str) && is_bimanual_transposition(raw_token, &candidate_str, timestamps) {
-                        if let Some(pos) = result.candidates.iter().position(|c| c.word == candidate_str) {
-                            let mut cand = result.candidates.remove(pos);
-                            cand.is_autocorrect = true;
-                            result.candidates.insert(0, cand);
-                        } else {
-                            result.candidates.insert(0, RankedCandidate {
-                                word: candidate_str,
-                                is_autocorrect: true,
-                            });
-                            result.candidates.truncate(max_suggestions);
+                        if self.trie.contains(&candidate_str) && is_bimanual_transposition(raw_token, &candidate_str, timestamps) {
+                            if let Some(pos) = result.candidates.iter().position(|c| c.word == candidate_str) {
+                                let mut cand = result.candidates.remove(pos);
+                                cand.is_autocorrect = true;
+                                result.candidates.insert(0, cand);
+                            } else {
+                                result.candidates.insert(0, RankedCandidate {
+                                    word: candidate_str,
+                                    is_autocorrect: true,
+                                });
+                                result.candidates.truncate(max_suggestions);
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
