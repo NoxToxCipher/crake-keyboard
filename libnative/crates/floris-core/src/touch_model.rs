@@ -46,11 +46,11 @@ impl ContactPatch {
     /// the capacitive smear and thumb-roll tilt vector.
     #[inline]
     pub fn corrected_apex(&self) -> (f32, f32) {
-        if !self.x.is_finite() || !self.y.is_finite() {
+        if !self.x.is_finite() || !self.y.is_finite() || !self.major.is_finite() || !self.minor.is_finite() || !self.orientation.is_finite() {
             return (self.x, self.y);
         }
         let eccentricity = (self.major - self.minor).max(0.0);
-        if eccentricity <= 0.001 || !self.orientation.is_finite() {
+        if eccentricity <= 0.001 {
             return (self.x, self.y);
         }
 
