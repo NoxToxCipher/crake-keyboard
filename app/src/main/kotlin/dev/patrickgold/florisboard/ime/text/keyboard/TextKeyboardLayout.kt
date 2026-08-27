@@ -469,8 +469,14 @@ fun TextKeyboardLayout(
             if (mangoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
                 mangoPulseTriggerTime = System.currentTimeMillis()
             }
-            val chiefKeys = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan")
-            if (chiefKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            val chiefKeys = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan", "cortana")
+            val isChiefMatch = chiefKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isChiefMatch) {
                 masterChiefRunTriggerTime = System.currentTimeMillis()
             }
             val skateKeys = listOf("rink", "skating", "iceskating", "ice skating", "skate", "figure skating")
@@ -601,7 +607,7 @@ fun TextKeyboardLayout(
                 rosePetalsTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Xbox
-            val xboxKeys = listOf("xbox", "xbox 360", "series x", "series s", "xbox one", "game pass", "halo", "master chief", "achievement unlocked", "gamertag")
+            val xboxKeys = listOf("xbox", "xbox 360", "series x", "series s", "xbox one", "game pass", "achievement unlocked", "gamertag", "majornelson")
             val isXboxMatch = xboxKeys.any { k ->
                 val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
                 delimiters.any { d ->
