@@ -190,7 +190,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     ): SpellingResult {
         if (word.isBlank()) return SpellingResult.unspecified()
         ensureLoaded()
-        val suggestions = FlorisNative.suggest(word, maxSuggestionCount)
+        // Nearest preceding word (when the spell checker provides sentence
+        // context) lets the bigram re-ranker order replacements sensibly.
+        val prev = precedingWords.firstOrNull().orEmpty()
+        val suggestions = FlorisNative.suggest(word, maxSuggestionCount, prev)
         val wordList = suggestions.map { it.text }
         return if (wordList.any { it.equals(word, ignoreCase = true) }) {
             SpellingResult.validWord()

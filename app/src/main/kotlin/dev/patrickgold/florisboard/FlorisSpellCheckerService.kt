@@ -89,10 +89,19 @@ class FlorisSpellCheckerService : SpellCheckerService() {
             spellingSubtype: Subtype,
             textInfos: Array<out TextInfo>,
             suggestionsLimit: Int,
+            sequentialWords: Boolean = false,
         ): Array<SpellingResult> = runBlocking {
             val retInfos = Array(textInfos.size) { n ->
                 val word = textInfos[n].text ?: ""
-                async { nlpManager.spell(spellingSubtype, word, emptyList(), emptyList(), suggestionsLimit) }
+                // Sequential batches are consecutive words of one sentence,
+                // so the previous element IS the preceding word — context
+                // the engine's re-ranker can use for better replacements.
+                val preceding = if (sequentialWords && n > 0) {
+                    listOfNotNull(textInfos[n - 1].text?.takeIf { it.isNotBlank() })
+                } else {
+                    emptyList()
+                }
+                async { nlpManager.spell(spellingSubtype, word, preceding, emptyList(), suggestionsLimit) }
             }
             Array(textInfos.size) { n ->
                 retInfos[n].await().apply {
@@ -127,7 +136,7 @@ class FlorisSpellCheckerService : SpellCheckerService() {
             setupSpellingIfNecessary()
             val spellingSubtype = cachedSpellingSubtype ?: return emptyArray()
 
-            return spellMultiple(spellingSubtype, textInfos, suggestionsLimit)
+            return spellMultiple(spellingSubtype, textInfos, suggestionsLimit, sequentialWords)
                 .sendToDebugOverlayIfEnabled(textInfos)
                 .map { it.suggestionsInfo }
         }
