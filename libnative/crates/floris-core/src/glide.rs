@@ -40,6 +40,10 @@ pub struct KeyInfo {
     pub height: f32,
 }
 
+/// Words below this unigram floor never auto-commit from a glide; a result
+/// set with no word at or above it is display-only (the stray-flick guard).
+pub const GLIDE_COMMIT_MIN_FREQ: u32 = 150;
+
 /// A classified gesture match candidate.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GlideMatch {
@@ -339,10 +343,9 @@ impl GlideEngine {
         // a real word sits within the margin, the real word leads. A rare
         // word that wins by a LANDSLIDE (distinct shape, no real word
         // nearby) still wins — that is a genuine rare-word glide.
-        const COMMIT_MIN_FREQ: u32 = 150;
         const JUNK_RESCUE_MARGIN: f32 = 12.0;
-        if matches.first().is_some_and(|m| m.frequency < COMMIT_MIN_FREQ) {
-            if let Some(pos) = matches.iter().position(|m| m.frequency >= COMMIT_MIN_FREQ) {
+        if matches.first().is_some_and(|m| m.frequency < GLIDE_COMMIT_MIN_FREQ) {
+            if let Some(pos) = matches.iter().position(|m| m.frequency >= GLIDE_COMMIT_MIN_FREQ) {
                 if matches[pos].score - matches[0].score <= JUNK_RESCUE_MARGIN {
                     let rescued = matches.remove(pos);
                     matches.insert(0, rescued);

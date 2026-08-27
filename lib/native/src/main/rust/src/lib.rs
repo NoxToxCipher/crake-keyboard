@@ -898,8 +898,18 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
         Err(_) => return empty_array,
     };
 
+    // Stray-flick guard: when NOTHING in the result set is a solid word,
+    // the whole set is display-only. A leading empty string is the
+    // documented sentinel — the Kotlin side shows the words but commits
+    // nothing (device traces 2026-08-27: short flicks committed junk like
+    // "oui"/"upi" because every candidate was junk).
+    let commit_safe = matches
+        .iter()
+        .any(|m| m.frequency >= floris_core::glide::GLIDE_COMMIT_MIN_FREQ);
+    let offset: usize = if commit_safe { 0 } else { 1 };
+
     let result_array = match env.new_object_array(
-        matches.len() as jint,
+        (matches.len() + offset) as jint,
         string_class,
         JString::default(),
     ) {
@@ -907,9 +917,14 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
         Err(_) => return empty_array,
     };
 
+    if !commit_safe {
+        if let Ok(jstr) = env.new_string("") {
+            let _ = env.set_object_array_element(&result_array, 0, jstr);
+        }
+    }
     for (i, m) in matches.iter().enumerate() {
         if let Ok(jstr) = env.new_string(&m.word) {
-            let _ = env.set_object_array_element(&result_array, i as jint, jstr);
+            let _ = env.set_object_array_element(&result_array, (i + offset) as jint, jstr);
         }
     }
 

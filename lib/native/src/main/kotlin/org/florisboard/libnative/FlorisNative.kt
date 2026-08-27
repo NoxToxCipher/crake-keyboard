@@ -276,11 +276,22 @@ object FlorisNative {
         nativeGlideSetLayout(codes, chars, xs, ys, widths, heights)
     }
 
-    fun glideMatch(points: List<GlidePoint>, maxResults: Int = 5, prevWord: String = ""): List<String> {
-        if (!isLoaded || points.size < 2) return emptyList()
+    /** Glide match result: candidate words plus whether the best one is a
+     * solid word safe to auto-commit. A display-only set (all junk-band
+     * shape fits) must never be committed over the user's stroke. */
+    data class GlideResult(val words: List<String>, val commitSafe: Boolean)
+
+    fun glideMatch(points: List<GlidePoint>, maxResults: Int = 5, prevWord: String = ""): GlideResult {
+        if (!isLoaded || points.size < 2) return GlideResult(emptyList(), false)
         val xs = FloatArray(points.size) { points[it].x }
         val ys = FloatArray(points.size) { points[it].y }
-        return nativeGlideMatch(xs, ys, maxResults, prevWord).toList()
+        val raw = nativeGlideMatch(xs, ys, maxResults, prevWord).toList()
+        // Leading empty string is the native sentinel for "display-only".
+        return if (raw.firstOrNull() == "") {
+            GlideResult(raw.drop(1), commitSafe = false)
+        } else {
+            GlideResult(raw, commitSafe = raw.isNotEmpty())
+        }
     }
 
     @JvmStatic

@@ -150,14 +150,20 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                 prevWordForTrace = prevWord
                 FlorisNative.glideMatch(pts, MAX_SUGGESTION_COUNT, prevWord)
             } else {
-                emptyList()
+                FlorisNative.GlideResult(emptyList(), false)
             }
 
-            val suggestions = if (nativeSuggestions.isNotEmpty()) {
-                nativeSuggestions
+            // A native display-only set (no solid word anywhere - the
+            // stray-flick guard) shows suggestions but commits nothing.
+            val commitSafe: Boolean
+            val suggestions = if (nativeSuggestions.words.isNotEmpty()) {
+                commitSafe = nativeSuggestions.commitSafe
+                nativeSuggestions.words
             } else if (glideTypingClassifier.ready) {
+                commitSafe = true
                 glideTypingClassifier.getSuggestions(MAX_SUGGESTION_COUNT, true)
             } else {
+                commitSafe = false
                 emptyList()
             }
 
@@ -172,7 +178,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                 }
 
                 nlpManager.suggestDirectly(suggestionList)
-                if (commit && suggestions.isNotEmpty()) {
+                if (commit && commitSafe && suggestions.isNotEmpty()) {
                     // Debug builds capture the committed stroke: the real
                     // thumb traces the synthetic eval cannot imagine, turned
                     // into replayable specimens (adb logcat -s CrakeGlideTrace).
