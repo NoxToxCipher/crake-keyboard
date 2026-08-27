@@ -987,6 +987,20 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPred
 }
 
 #[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRecordRejectedCorrection(
+    mut env: JNIEnv,
+    _class: JClass,
+    typo: JString,
+    wrong_suggestion: JString,
+) {
+    let t = env.get_string(&typo).map(|s| s.to_str().unwrap_or("").to_string()).unwrap_or_default();
+    let w = env.get_string(&wrong_suggestion).map(|s| s.to_str().unwrap_or("").to_string()).unwrap_or_default();
+    if let Ok(mut engine) = NLP_ENGINE.write() {
+        engine.record_rejected_correction(&t, &w);
+    }
+}
+
+#[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRecordPersonalCorrection(
     mut env: JNIEnv,
     _class: JClass,

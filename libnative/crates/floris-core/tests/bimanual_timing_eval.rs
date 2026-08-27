@@ -64,3 +64,37 @@ fn no_timestamps_means_no_transposition_claim() {
     // mismatched length is equally not evidence
     assert!(!is_bimanual_transposition("teh", "the", &[0, 100]));
 }
+
+/// The rejection loop closed end-to-end: two backspace-revert rejections
+/// of (typo, wrong word) and that pair never auto-commits again, through
+/// EVERY lane. The word remains a plain tappable suggestion.
+#[test]
+fn two_rejections_retire_an_autocorrect_pair() {
+    let mut nlp = floris_core::NlpEngine::new();
+    // "worls" -> world auto-commits normally (fuzzy lane)
+    let before = nlp.suggest_with_context("worls", "", 5);
+    assert!(
+        before.candidates.iter().any(|c| c.word == "world" && c.is_autocorrect),
+        "premise: worls -> world auto-commits: {:?}",
+        before.candidates
+    );
+    nlp.record_rejected_correction("worls", "world");
+    let once = nlp.suggest_with_context("worls", "", 5);
+    assert!(
+        once.candidates.iter().any(|c| c.word == "world" && c.is_autocorrect),
+        "one rejection is not yet a verdict: {:?}",
+        once.candidates
+    );
+    nlp.record_rejected_correction("worls", "world");
+    let after = nlp.suggest_with_context("worls", "", 5);
+    assert!(
+        !after.candidates.iter().any(|c| c.word == "world" && c.is_autocorrect),
+        "two rejections retire the pair: {:?}",
+        after.candidates
+    );
+    assert!(
+        after.candidates.iter().any(|c| c.word == "world"),
+        "the word stays tappable: {:?}",
+        after.candidates
+    );
+}

@@ -354,6 +354,17 @@ object FlorisNative {
     ): Array<String>
 
     @JvmStatic
+    /** The user rejected this correction for this typed token (backspace
+     * revert). Two rejections and the engine stops auto-committing that
+     * pair; the word stays a plain suggestion. */
+    fun recordRejectedCorrection(typo: String, wrongSuggestion: String) {
+        if (!isLoaded) return
+        nativeNlpRecordRejectedCorrection(typo.trim(), wrongSuggestion.trim())
+    }
+
+    @JvmStatic
+    private external fun nativeNlpRecordRejectedCorrection(typo: String, wrongSuggestion: String)
+
     fun recordPersonalCorrection(typo: String, intended: String) {
         if (!isLoaded || typo.isBlank() || intended.isBlank() || typo.equals(intended, ignoreCase = true)) return
         nativeNlpRecordPersonalCorrection(typo.trim(), intended.trim())

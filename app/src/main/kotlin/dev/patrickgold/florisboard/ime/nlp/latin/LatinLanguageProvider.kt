@@ -395,6 +395,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         if (lastPrevToken.isNotEmpty()) {
             FlorisNative.recordPersonalBigram(lastPrevToken, originalText)
         }
+        // And the negative half: the correction they took back is a
+        // rejection of (typed, suggested). Twice and it stops
+        // auto-committing for that token.
+        FlorisNative.recordRejectedCorrection(originalText, candidate.text.toString())
         persistLearnedState()
     }
 

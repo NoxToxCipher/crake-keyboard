@@ -2002,6 +2002,19 @@ impl NlpEngine {
             }
         }
 
+        // The user's spoken: a correction they have rejected twice (via
+        // backspace revert) never auto-commits for that typed token again.
+        // One gate here covers every lane — corpus, fuzzy, homophone,
+        // rescues — instead of each lane consulting separately. The word
+        // stays visible as a plain suggestion.
+        if !self.rejected_corrections.is_empty() {
+            for c in candidates.iter_mut() {
+                if c.is_autocorrect && self.is_rejected_correction(&trimmed_lower, &c.word) {
+                    c.is_autocorrect = false;
+                }
+            }
+        }
+
         if candidates.len() > max_candidates {
             // The literal typed word must survive the display cut (the
             // stage-8 contract): completion-rich tokens ("ti" -> time,
