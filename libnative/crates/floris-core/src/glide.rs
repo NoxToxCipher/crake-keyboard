@@ -273,22 +273,19 @@ impl GlideEngine {
 
         for &start_ch in &start_chars {
             let prefix = start_ch.to_string();
-            // Pull a deep, frequency-sorted pool and keep only words whose
-            // LAST letter is reachable from where the finger lifted, THEN cap.
-            // Filtering after a 250-word frequency cut starved recall: any
-            // word outside its start letter's frequency top-250 could never
-            // be glided at all, and most of that 250 had unreachable endings.
-            let pool = trie.prefix_search(&prefix, 1500);
-            let viable = pool
-                .into_iter()
-                .filter(|(word, _)| {
-                    word.len() >= 2
-                        && word
-                            .chars()
-                            .last()
-                            .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
-                })
-                .take(300);
+            // Top 300 VIABLE words (end letter reachable from where the
+            // finger lifted), filtered during the trie walk. The old shape
+            // pulled 1500 frequency-sorted clones and filtered after —
+            // 1.27ms per start letter on the mid-gesture preview path, and
+            // any viable word below the frequency cut was unglidable.
+            let viable = trie.prefix_search_filtered(&prefix, 300, |word| {
+                word.len() >= 2
+                    && word
+                        .chars()
+                        .last()
+                        .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
+            });
+            let viable = viable.into_iter();
 
             for (word, freq) in viable {
                 // Build ideal keypath for the word
