@@ -3,7 +3,7 @@
 Three AI sessions work this repo alongside Lochran (NoxToxCipher), who has
 final say on everything:
 
-- **Claude loop** — Claude Code session on the laptop. Owns the NLP/glide
+- **Claude Code 1** — Claude Code session on the laptop. Owns the NLP/glide
   accuracy lane in `libnative/crates/floris-core` and the eval harnesses.
   Pulls origin/main and reads this file roughly every 15 minutes.
 - **Claude platform** — Claude session working platform/privacy features
