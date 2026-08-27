@@ -761,11 +761,13 @@ impl NlpEngine {
                 is_autocorrect: true,
             });
         } else if let Some(typo_fix) = lookup_common_typo(&trimmed_lower) {
-            // 3. Wikipedia 1,770+ Misspelling Corpus instant O(log N) lookup
+            // 3. Wikipedia 1,770+ Misspelling Corpus instant O(L log N) lookup.
+            // Internal uppercase means a deliberate abbreviation, not a slip:
+            // "CNA"/"HSE"/"YoY" stay typed; sentence-start "Teh" still fixes.
             let formatted = Self::apply_casing(trimmed, typo_fix);
             candidates.push(RankedCandidate {
                 word: formatted,
-                is_autocorrect: true,
+                is_autocorrect: !has_internal_uppercase,
             });
         } else if let Some(&(_, contraction)) = CONTRACTIONS.iter().find(|&&(k, _)| k == trimmed_lower) {
             // 4. Known contraction handling:

@@ -51,6 +51,10 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("advertisment", "advertisement"),
     ("advertisments", "advertisements"),
     ("adviced", "advised"),
+    // Dictionary junk that blocked its own correction (is_exact starves the
+    // rescue lanes); the corpus outranks the dictionary, so these curated
+    // entries dissolve the block without deleting anything (2026-08-27).
+    ("aer", "are"),
     ("aeriel", "aerial"),
     ("agaisnt", "against"),
     ("aganist", "against"),
@@ -288,6 +292,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("claerly", "clearly"),
     ("clasic", "classic"),
     ("clasical", "classical"),
+    ("cna", "can"),
     ("coallition", "coalition"),
     ("coctail", "cocktail"),
     ("colaborate", "collaborate"),
@@ -1674,6 +1679,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     // delete", field specimen 2026-08-27).
     ("ti", "to"),
     ("timeline", "timeline"),
+    ("tne", "the"),
     ("tobacco", "tobacco"),
     ("today", "today"),
     ("together", "together"),
@@ -1681,6 +1687,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("tommorrow", "tomorrow"),
     ("tomorrow", "tomorrow"),
     ("tongue", "tongue"),
+    ("tou", "you"),
     ("tounge", "tongue"),
     ("tournament", "tournament"),
     ("towards", "towards"),

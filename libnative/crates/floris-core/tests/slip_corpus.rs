@@ -552,3 +552,33 @@ fn prefix_filler_does_not_starve_transposition_rescue() {
         );
     }
 }
+
+/// Curated corpus entries dissolve dictionary junk that blocked its own
+/// correction ("tou" was Lochran's "fir tou" specimen; aer/tne/cna are the
+/// same class). All-caps input is a deliberate abbreviation and is never
+/// force-flipped; sentence-start capitalization still corrects.
+#[test]
+fn junk_blockers_dissolve_and_abbreviations_survive() {
+    let e = engine();
+    for (typed, expected) in [("tou", "you"), ("aer", "are"), ("tne", "the"), ("cna", "can")] {
+        let r = e.suggest_with_context(typed, "", 5);
+        let head = r.candidates.first().expect("candidates");
+        assert_eq!(head.word, expected, "'{typed}': {:?}", r.candidates);
+        assert!(head.is_autocorrect, "'{typed}' must auto-commit");
+    }
+    let r = e.suggest_with_context("CNA", "", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.is_autocorrect),
+        "all-caps CNA is an abbreviation, never flipped: {:?}",
+        r.candidates
+    );
+    // Sentence-start "Teh": the literal leads (capitalized-input rule) but
+    // "The" still carries the auto-commit flag — commit goes by flag, not
+    // position.
+    let r = e.suggest_with_context("Teh", "", 5);
+    assert!(
+        r.candidates.iter().any(|c| c.word == "The" && c.is_autocorrect),
+        "sentence-start still corrects: {:?}",
+        r.candidates
+    );
+}
