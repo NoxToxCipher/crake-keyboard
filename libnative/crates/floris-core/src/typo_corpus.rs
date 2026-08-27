@@ -1066,6 +1066,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("overrule", "overrule"),
     ("overrun", "overrun"),
     ("overwrite", "overwrite"),
+    ("oxcur", "occur"),
     ("pallete", "palette"),
     ("pallette", "palette"),
     ("pamphlet", "pamphlet"),

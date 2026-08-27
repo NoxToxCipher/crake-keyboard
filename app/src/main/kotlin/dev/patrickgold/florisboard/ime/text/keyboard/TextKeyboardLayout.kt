@@ -630,12 +630,12 @@ fun TextKeyboardLayout(
             if (isHiddenMatch) {
                 hiddenHoodedTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for Serenity / Anti-Stress triggers
+            // Comprehensive & Instant word boundary matching for Serenity / Anti-Stress triggers
             val serenityKeys = listOf("stressed", "stress", "sad", "depressed", "anxious", "anxiety", "overwhelmed", "unhappy")
             val isSerenityMatch = serenityKeys.any { k ->
-                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                tb == k || tb.endsWith(" $k") || tb.endsWith("\n$k") || comp == k ||
+                listOf(" ", ".", "!", ",", "?", "\n", "...", "🥺", "😢", "😭", "💔").any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d")
                 }
             }
             if (isSerenityMatch) {
@@ -5427,7 +5427,7 @@ fun TextKeyboardLayout(
                 )
                 serenityGardenTriggerTime = 0L
             }
-            if (serenityProgress.value in 0.0005f..0.9995f) {
+            if (serenityProgress.value in 0.00001f..0.99999f) {
                 val progress = serenityProgress.value
                 val elapsedSec = progress * 35.0f
                 val density = LocalDensity.current.density
@@ -5447,8 +5447,10 @@ fun TextKeyboardLayout(
                         val bloomProgress = ((elapsedSec - 5.0f) / 5.0f).coerceIn(0f, 1f)
                         val stageAlpha = if (elapsedSec > 10.0f) {
                             (1.0f - (elapsedSec - 10.0f) / 2.0f).coerceIn(0f, 1f)
+                        } else if (elapsedSec < 0.5f) {
+                            (0.3f + (elapsedSec / 0.5f) * 0.7f).coerceIn(0f, 1f)
                         } else {
-                            (elapsedSec / 0.8f).coerceIn(0f, 1f)
+                            1.0f
                         }
 
                         val stemPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
