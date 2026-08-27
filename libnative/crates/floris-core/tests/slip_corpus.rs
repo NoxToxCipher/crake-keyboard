@@ -652,3 +652,41 @@ fn single_slip_punches_prefix_filler_on_long_words() {
         r.candidates
     );
 }
+
+/// Capitalized tokens never auto-flip through ANY lane — REJECTED design
+/// pin (sweep 2026-08-27): sentence-start fuzzy autocorrect flipped 9/53
+/// real names including Crake -> Drake and Shrike -> Strike, and the sweep
+/// exposed pre-existing capitalized flips in the splitter ("Fieldmark" ->
+/// "Field mark") and the transposition fast-path ("Kye" -> Key). Curated
+/// corpus entries remain the only capitalized fixes ("Teh" -> The).
+#[test]
+fn capitalized_tokens_never_autoflip_outside_the_corpus() {
+    let mut e = engine();
+    for (w, f) in [
+        ("please", 250),
+        ("pleaded", 170),
+        ("key", 250),
+        ("field", 240),
+        ("mark", 235),
+        ("anti", 200),
+        ("gravity", 210),
+    ] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    for typed in ["Pleade", "Kye", "Fieldmark", "Antigravity", "Crake"] {
+        let r = e.suggest_with_context(typed, "", 5);
+        assert!(
+            !r.candidates.iter().any(|c| c.is_autocorrect),
+            "'{typed}' must never auto-flip: {:?}",
+            r.candidates
+        );
+    }
+    // the curated lane still fixes sentence-start typos
+    let r = e.suggest_with_context("Teh", "", 5);
+    assert!(
+        r.candidates.iter().any(|c| c.word == "The" && c.is_autocorrect),
+        "corpus capitalized fix must survive: {:?}",
+        r.candidates
+    );
+}

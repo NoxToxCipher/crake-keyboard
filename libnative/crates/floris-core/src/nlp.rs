@@ -803,6 +803,10 @@ impl NlpEngine {
             // ("adblock" -> "adb lock", "doona" -> "do ona", "tradies" ->
             // "tra dies", sweep 2026-08-27).
             const SPLIT_MIN_HALF_FREQ: u32 = 150;
+            // Capitalized tokens are names until proven otherwise: the
+            // splitter was committing "Loch ran", "Field mark" and
+            // "Anti gravity" (sweep 2026-08-27).
+            let split_cap_blocked = trimmed.chars().next().is_some_and(|c| c.is_uppercase());
             // A triple letter run is burst territory ("helllo"), never a
             // missing space: splitting won ("hell lo") because the splitter
             // runs first and both halves are real words. Let stage 5c
@@ -811,7 +815,9 @@ impl NlpEngine {
                 .as_bytes()
                 .windows(3)
                 .any(|w| w[0] == w[1] && w[1] == w[2]);
-            for split_idx in (2..trimmed_lower.len() - 1).take_while(|_| !has_triple_run) {
+            for split_idx in
+                (2..trimmed_lower.len() - 1).take_while(|_| !has_triple_run && !split_cap_blocked)
+            {
                 let left = &trimmed_lower[..split_idx];
                 let right = &trimmed_lower[split_idx..];
                 if self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
@@ -935,6 +941,7 @@ impl NlpEngine {
                         // alone don't block the rescue.
                         is_autocorrect: !claimed_before_completions
                             && !has_internal_uppercase
+                            && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
                             && candidates.iter().all(|c| !c.is_autocorrect)
                             && f >= AUTOCOMMIT_MIN_FREQ,
                     };
@@ -959,6 +966,7 @@ impl NlpEngine {
                             word: formatted,
                             is_autocorrect: !claimed_before_completions
                                 && !has_internal_uppercase
+                                && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
                                 && candidates.iter().all(|c| !c.is_autocorrect)
                                 && f >= AUTOCOMMIT_MIN_FREQ,
                         };
@@ -1032,6 +1040,14 @@ impl NlpEngine {
                         && is_neighbor
                         && fc.distance == 1
                         && trimmed_lower.chars().count() >= 5;
+                    // Sentence-start capitalized autocorrect was TRIED and
+                    // REJECTED by evidence (sweep 2026-08-27): a 53-name
+                    // sweep flipped 9, including Crake -> Drake and
+                    // Shrike -> Strike (the latter only via the union
+                    // table's Dvorak adjacency). Unigram + adjacency cannot
+                    // separate names from typos at a sentence boundary;
+                    // capitalized fixes stay curated corpus entries only
+                    // ("Teh" -> The still works through branch 3).
                     let should_autocorrect = !is_exact
                         && !is_capitalized
                         && !has_edge_apostrophe
