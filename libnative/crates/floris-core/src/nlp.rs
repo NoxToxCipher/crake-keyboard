@@ -846,20 +846,40 @@ impl NlpEngine {
             let t2 = last_lower.as_str();
             let c = cand_lower.as_str();
 
-            let is_trigram_match = match (t1, t2, c) {
-                ("thank", "you", "so") | ("thank", "you", "very") | ("thank", "you", "much") | ("thank", "you", "all") => true,
-                ("how", "are", "you") | ("how", "are", "things") => true,
-                ("let", "me", "know") | ("let", "me", "see") | ("let", "me", "tell") => true,
-                ("in", "order", "to") => true,
-                ("as", "well", "as") | ("as", "soon", "as") | ("as", "far", "as") => true,
-                ("on", "the", "other") | ("on", "the", "way") => true,
-                ("at", "the", "same") | ("at", "the", "moment") | ("at", "the", "end") => true,
-                ("see", "you", "later") | ("see", "you", "soon") | ("see", "you", "there") => true,
-                ("have", "a", "good") | ("have", "a", "great") | ("have", "a", "nice") => true,
-                ("i", "am", "going") | ("i", "am", "doing") | ("i", "am", "not") | ("i", "am", "sure") => true,
-                ("you", "want", "to") | ("you", "need", "to") | ("you", "have", "to") => true,
-                _ => false,
-            };
+            let is_trigram_match = matches!(
+                (t1, t2, c),
+                ("thank", "you", "so")
+                    | ("thank", "you", "very")
+                    | ("thank", "you", "much")
+                    | ("thank", "you", "all")
+                    | ("how", "are", "you")
+                    | ("how", "are", "things")
+                    | ("let", "me", "know")
+                    | ("let", "me", "see")
+                    | ("let", "me", "tell")
+                    | ("in", "order", "to")
+                    | ("as", "well", "as")
+                    | ("as", "soon", "as")
+                    | ("as", "far", "as")
+                    | ("on", "the", "other")
+                    | ("on", "the", "way")
+                    | ("at", "the", "same")
+                    | ("at", "the", "moment")
+                    | ("at", "the", "end")
+                    | ("see", "you", "later")
+                    | ("see", "you", "soon")
+                    | ("see", "you", "there")
+                    | ("have", "a", "good")
+                    | ("have", "a", "great")
+                    | ("have", "a", "nice")
+                    | ("i", "am", "going")
+                    | ("i", "am", "doing")
+                    | ("i", "am", "not")
+                    | ("i", "am", "sure")
+                    | ("you", "want", "to")
+                    | ("you", "need", "to")
+                    | ("you", "have", "to")
+            );
 
             if is_trigram_match {
                 total_score += 8.0;
@@ -1080,7 +1100,7 @@ impl NlpEngine {
             && chars[1].is_uppercase() 
             && chars[2..].iter().all(|&c| !c.is_alphabetic() || c.is_lowercase());
 
-        let is_first_upper = chars.first().map_or(false, |c| c.is_uppercase());
+        let is_first_upper = chars.first().is_some_and(|c| c.is_uppercase());
 
         if is_all_upper {
             candidate.to_uppercase()
@@ -1112,7 +1132,7 @@ impl NlpEngine {
         let clean = token.trim().to_ascii_lowercase();
         let bytes = clean.as_bytes();
         let len = bytes.len();
-        if len < 3 || len > 24 || !clean.is_ascii() {
+        if !(3..=24).contains(&len) || !clean.is_ascii() {
             return None;
         }
 
@@ -1993,7 +2013,7 @@ impl NlpEngine {
                     .filter(|fc| fc.distance == 1 && fc.frequency >= CONTEXT_SLIP_MIN_FREQ)
                     .filter_map(|fc| {
                         let score = self.bigram_pair_score(&prev_lower, &fc.word);
-                        (score >= CONTEXT_SLIP_MIN_SCORE).then(|| (fc.word, score))
+                        (score >= CONTEXT_SLIP_MIN_SCORE).then_some((fc.word, score))
                     })
                     .collect();
                 if let [(winner, _)] = attested.as_slice() {
@@ -2360,10 +2380,8 @@ pub const HOMOPHONE_CONTEXT_RULES: &[(&[&str], &str, &str)] = &[
         let prev = prev_word.trim().to_ascii_lowercase();
         let cand = candidate.trim().to_ascii_lowercase();
         for &(context_keywords, wrong_form, correct_form) in Self::HOMOPHONE_CONTEXT_RULES {
-            if cand == wrong_form {
-                if context_keywords.iter().any(|&k| k == prev) {
-                    return Some(correct_form);
-                }
+            if cand == wrong_form && context_keywords.iter().any(|&k| k == prev) {
+                return Some(correct_form);
             }
         }
         None
@@ -2440,7 +2458,7 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
                 }
             }
         }
-        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        scored.sort_by_key(|b| std::cmp::Reverse(b.0));
         let mut out: Vec<String> = Vec::with_capacity(max);
         for (_, w) in scored {
             let display = contraction_display(w).unwrap_or(w);
@@ -2473,7 +2491,7 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
                 }
             }
 
-            candidates.sort_by(|a, b| b.2.cmp(&a.2));
+            candidates.sort_by_key(|b| std::cmp::Reverse(b.2));
             candidates.truncate(6);
             return candidates.into_iter().map(|(ch, word, _)| (ch, word)).collect();
         }
@@ -2511,7 +2529,7 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
                 scored.select_nth_unstable_by(TOP, |a, b| b.0.cmp(&a.0));
                 scored.truncate(TOP);
             }
-            scored.sort_by(|a, b| b.0.cmp(&a.0));
+            scored.sort_by_key(|b| std::cmp::Reverse(b.0));
             for (_, w) in scored {
                 if let Some(first_ch) = w.chars().next() {
                     let ch_lower = first_ch.to_ascii_lowercase();
@@ -2525,17 +2543,15 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
 
         if result_map.is_empty() {
             if let Some(&(_, next_words)) = Self::BIGRAM_TRANSITIONS.iter().find(|&&(k, _)| k == prev_trimmed) {
-            for &w in next_words {
-                if let Some(first_ch) = w.chars().next() {
-                    let ch_lower = first_ch.to_ascii_lowercase();
-                    if !result_map.contains_key(&ch_lower) {
-                        result_map.insert(ch_lower, w.to_string());
+                for &w in next_words {
+                    if let Some(first_ch) = w.chars().next() {
+                        let ch_lower = first_ch.to_ascii_lowercase();
+                        result_map.entry(ch_lower).or_insert_with(|| w.to_string());
+                    }
+                    if result_map.len() >= 6 {
+                        break;
                     }
                 }
-                if result_map.len() >= 6 {
-                    break;
-                }
-            }
             }
         }
 
@@ -2543,9 +2559,7 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
         if result_map.is_empty() {
             for &(w, ch) in Self::SENTENCE_STARTERS {
                 let ch_lower = ch.to_ascii_lowercase();
-                if !result_map.contains_key(&ch_lower) {
-                    result_map.insert(ch_lower, w.to_string());
-                }
+                result_map.entry(ch_lower).or_insert_with(|| w.to_string());
                 if result_map.len() >= 6 {
                     break;
                 }
