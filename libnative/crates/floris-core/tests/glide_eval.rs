@@ -516,3 +516,91 @@ fn context_rescues_the_coffee_code_corridor() {
         with_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
     );
 }
+
+
+/// Comprehensive test battery for glide contraction expansion across all major English contractions:
+/// bare swipe traces must automatically surface their apostrophized canonical forms.
+#[test]
+fn comprehensive_glided_contractions_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    
+    let contraction_pairs = [
+        ("dont", "don't"),
+        ("cant", "can't"),
+        ("wont", "won't"),
+        ("didnt", "didn't"),
+        ("doesnt", "doesn't"),
+        ("isnt", "isn't"),
+        ("arent", "aren't"),
+        ("wasnt", "wasn't"),
+        ("werent", "weren't"),
+        ("hasnt", "hasn't"),
+        ("havent", "haven't"),
+        ("hadnt", "hadn't"),
+        ("couldnt", "couldn't"),
+        ("shouldnt", "shouldn't"),
+        ("wouldnt", "wouldn't"),
+        ("mustnt", "mustn't"),
+        ("neednt", "needn't"),
+        ("mightnt", "mightn't"),
+        ("couldve", "could've"),
+        ("shouldve", "should've"),
+        ("wouldve", "would've"),
+        ("mightve", "might've"),
+        ("mustve", "must've"),
+        ("im", "I'm"),
+        ("ive", "I've"),
+        ("youre", "you're"),
+        ("youve", "you've"),
+        ("youll", "you'll"),
+        ("youd", "you'd"),
+        ("theyre", "they're"),
+        ("theyve", "they've"),
+        ("theyll", "they'll"),
+        ("theyd", "they'd"),
+        ("weve", "we've"),
+        ("itll", "it'll"),
+        ("itd", "it'd"),
+        ("whats", "what's"),
+        ("thats", "that's"),
+        ("theres", "there's"),
+        ("heres", "here's"),
+        ("wheres", "where's"),
+        ("hows", "how's"),
+        ("whos", "who's"),
+        ("whys", "why's"),
+        ("lets", "let's"),
+        ("yall", "y'all"),
+        ("cmon", "c'mon"),
+        ("maam", "ma'am"),
+        ("oclock", "o'clock"),
+        ("somethings", "something's"),
+        ("everythings", "everything's"),
+        ("nothings", "nothing's"),
+        ("someones", "someone's"),
+        ("everyones", "everyone's"),
+        ("aint", "ain't"),
+    ];
+
+    for &(bare, _) in &contraction_pairs {
+        nlp.trie.insert(bare, 255);
+    }
+
+    let mut rng = Lcg(0x5EED_C0DE);
+    let mut failures = Vec::new();
+
+    for &(bare, expected_apostrophized) in &contraction_pairs {
+        if let Some(trace) = synth_trace(&glide, bare, &mut rng) {
+            let results = glide.match_gesture(&trace, &nlp.trie, 3);
+            let in_top = results.iter().take(3).any(|m| m.word == expected_apostrophized);
+            if !in_top {
+                failures.push(format!("Bare '{bare}' expected '{expected_apostrophized}' in top-3, got {:?}", results.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()));
+            }
+        } else {
+            failures.push(format!("Failed to synthesize keypath for '{bare}'"));
+        }
+    }
+
+    assert!(failures.is_empty(), "Contraction glide failures:\n{}", failures.join("\n"));
+}

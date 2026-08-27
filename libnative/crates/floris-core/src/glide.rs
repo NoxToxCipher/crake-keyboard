@@ -174,6 +174,9 @@ impl GlideEngine {
         let mut path = Vec::with_capacity(word.len());
         for ch in word.chars() {
             let ch_lower = ch.to_ascii_lowercase();
+            if ch_lower == '\'' || ch_lower == '’' || ch_lower == '‘' || ch_lower == '-' {
+                continue;
+            }
             match self.key_centers.get(&ch_lower) {
                 Some(&pt) => {
                     // Deduplicate consecutive identical keys (e.g. 'll' or 'ee')
@@ -279,9 +282,11 @@ impl GlideEngine {
             // 1.27ms per start letter on the mid-gesture preview path, and
             // any viable word below the frequency cut was unglidable.
             let viable = trie.prefix_search_filtered(&prefix, 300, |word| {
-                word.len() >= 2
+                let clean_len = word.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-').count();
+                clean_len >= 2
                     && word
                         .chars()
+                        .filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-')
                         .last()
                         .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
             });
@@ -356,7 +361,7 @@ impl GlideEngine {
         // user actually means: "dont" -> "don't". Real-word bares ("were",
         // "wont") are untouched by contraction_display.
         for m in &mut matches {
-            if let Some(display) = crate::nlp::contraction_display(&m.word) {
+            if let Some(display) = crate::nlp::canonicalize_contraction(&m.word) {
                 m.word = display.to_string();
             }
         }
