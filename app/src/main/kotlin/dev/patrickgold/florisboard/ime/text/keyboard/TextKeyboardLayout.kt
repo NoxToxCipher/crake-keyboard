@@ -6375,6 +6375,16 @@ private class TextKeyboardLayoutController(
             initSelectionEnd = editorInstance.activeContent.selection.end
         } else {
             pointer.activeKey = null
+            // A fast glide often starts BETWEEN keys; with no initialKey the
+            // glide detector's character-start guard silently killed every
+            // such stroke (field report 2026-08-27: glide stopped
+            // triggering). Resolve the stroke's origin to the nearest key
+            // for glide purposes only — activeKey stays null, so nothing is
+            // pressed. Misses nearest a functional key resolve to null,
+            // keeping the backward delete-word swipe decoupled from glide.
+            if (pointer.initialKey == null && keyboard.mode == KeyboardMode.CHARACTERS) {
+                pointer.initialKey = keyboard.getKeyForPosAdaptive(touchX, touchY, emptySet())
+            }
         }
     }
 
