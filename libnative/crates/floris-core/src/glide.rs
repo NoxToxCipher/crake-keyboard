@@ -257,6 +257,71 @@ pub fn get_double_letter_chars(word: &str) -> Vec<char> {
     doubles
 }
 
+
+/// Trims accidental touchdown and liftoff hardware touch hooks (Idea 5 / Loops 13-15).
+/// Touch hardware frequently introduces 1-2 sample acute backward/lateral flick artifacts
+/// as the finger lands and rolls off the screen. Trims these in O(1) before RDP simplification.
+pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32) -> &'a [Point2D] {
+    if points.len() < 6 {
+        return points;
+    }
+
+    let mut start_idx = 0;
+    let mut end_idx = points.len();
+
+    let max_hook_dist = key_radius * 0.45;
+
+    // 1. Takeoff Hook Cleanup:
+    let p0 = points[0];
+    let p1 = points[1];
+    let p3 = points[3];
+    let d01 = p0.distance(&p1);
+
+    if d01 <= max_hook_dist {
+        let v_init = (p1.x - p0.x, p1.y - p0.y);
+        let v_body = (p3.x - p1.x, p3.y - p1.y);
+        let mag_init = (v_init.0 * v_init.0 + v_init.1 * v_init.1).sqrt();
+        let mag_body = (v_body.0 * v_body.0 + v_body.1 * v_body.1).sqrt();
+
+        if mag_init > 1.0 && mag_body > 1.0 {
+            let dot = v_init.0 * v_body.0 + v_init.1 * v_body.1;
+            let cos_theta = dot / (mag_init * mag_body);
+            // Sharp acute reversal (>98 degrees) over tiny distance
+            if cos_theta < -0.15 {
+                start_idx = 1;
+            }
+        }
+    }
+
+    // 2. Liftoff Hook Cleanup:
+    let pn = points[end_idx - 1];
+    let pn_1 = points[end_idx - 2];
+    let pn_3 = points[end_idx - 4];
+    let d_end = pn.distance(&pn_1);
+
+    if d_end <= max_hook_dist {
+        let v_tail = (pn.x - pn_1.x, pn.y - pn_1.y);
+        let v_prev = (pn_1.x - pn_3.x, pn_1.y - pn_3.y);
+        let mag_tail = (v_tail.0 * v_tail.0 + v_tail.1 * v_tail.1).sqrt();
+        let mag_prev = (v_prev.0 * v_prev.0 + v_prev.1 * v_prev.1).sqrt();
+
+        if mag_tail > 1.0 && mag_prev > 1.0 {
+            let dot = v_tail.0 * v_prev.0 + v_tail.1 * v_prev.1;
+            let cos_theta = dot / (mag_tail * mag_prev);
+            // Sharp acute flick upon finger release
+            if cos_theta < -0.15 {
+                end_idx -= 1;
+            }
+        }
+    }
+
+    if end_idx > start_idx + 1 {
+        &points[start_idx..end_idx]
+    } else {
+        points
+    }
+}
+
 pub fn simplify_rdp(points: &[Point2D], epsilon: f32) -> Vec<Point2D> {
     if points.len() <= 2 {
         return points.to_vec();
@@ -448,9 +513,12 @@ impl GlideEngine {
             return Vec::new();
         }
 
+        // 0. Dynamic Takeoff & Landing Hook Trimming (Idea 5 / Loops 13-15)
+        let cleaned_path = trim_takeoff_and_landing_hooks(raw_path, self.average_key_radius);
+
         // 1. Simplify touch curve using RDP (epsilon proportional to key radius)
         let rdp_epsilon = (self.average_key_radius * 0.35).max(10.0);
-        let simplified_gesture = simplify_rdp(raw_path, rdp_epsilon);
+        let simplified_gesture = simplify_rdp(cleaned_path, rdp_epsilon);
         if simplified_gesture.len() < 2 {
             return Vec::new();
         }
@@ -477,8 +545,8 @@ impl GlideEngine {
         }
 
         // 2b. Extract kinematics (corners and dwell points) and micro-loops from the raw trace
-        let inflections = extract_inflections(raw_path, self.average_key_radius);
-        let double_loops = detect_double_letter_loops(raw_path, self.average_key_radius);
+        let inflections = extract_inflections(cleaned_path, self.average_key_radius);
+        let double_loops = detect_double_letter_loops(cleaned_path, self.average_key_radius);
         let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
 
         // 3. Collect candidate words from Radix Trie matching start characters
