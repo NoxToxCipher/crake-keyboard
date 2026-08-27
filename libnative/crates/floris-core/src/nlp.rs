@@ -586,6 +586,42 @@ impl NlpEngine {
         total_score
     }
 
+    
+    /// Computes normalized next-character probability priors based on Trie completions and Bigram LM (Idea 1 / Loops 1-3).
+    pub fn predict_next_char_probabilities(&self, prefix: &str) -> Vec<(char, f32)> {
+        if prefix.is_empty() {
+            // Default unigram starter distribution for common English letters
+            return vec![
+                ('t', 0.16), ('a', 0.12), ('o', 0.10), ('s', 0.09), ('w', 0.08),
+                ('h', 0.07), ('i', 0.07), ('b', 0.05), ('c', 0.05), ('m', 0.04),
+            ];
+        }
+
+        let mut counts = std::collections::HashMap::new();
+        let completions = self.trie.prefix_search(prefix, 40);
+        let prefix_len = prefix.chars().count();
+
+        for (word, freq) in completions {
+            let word_chars: Vec<char> = word.chars().collect();
+            if word_chars.len() > prefix_len {
+                let next_ch = word_chars[prefix_len].to_ascii_lowercase();
+                if next_ch.is_alphabetic() {
+                    *counts.entry(next_ch).or_insert(0.0f32) += freq as f32;
+                }
+            }
+        }
+
+        let total: f32 = counts.values().sum();
+        if total <= 0.0 {
+            return Vec::new();
+        }
+
+        let mut results: Vec<(char, f32)> = counts.into_iter().map(|(c, weight)| (c, weight / total)).collect();
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(8);
+        results
+    }
+
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
         self.touch_model = model;
     }

@@ -34,7 +34,7 @@ pub use glide::{
     detect_double_letter_loops, simplify_rdp, trim_takeoff_and_landing_hooks, GlideEngine,
     GlideMatch, KeyInfo, Point2D,
 };
-pub use hit_test::{HitTester, KeyRect};
+pub use hit_test::{HitTester, KeyRect, ProbabilisticHit};
 pub use touch_model::TouchModel;
 pub use nlp::{NlpEngine, SuggestionResult};
 pub use shorthand::{lookup_shorthand, ShorthandEntry, SHORTHAND_LEXICON};

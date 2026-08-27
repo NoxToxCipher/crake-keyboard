@@ -42,6 +42,19 @@ pub const MAX_OFFSET_KEYS: u32 = 256;
 /// a generation so a comparison against a stale layout (another keyboard page
 /// was laid out since) can be detected and skipped rather than miscounted.
 ///
+/// A candidate key hit scored with spatial Gaussian proximity and LM probability priors (Idea 1 / Loops 1-3).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProbabilisticHit {
+    pub index: usize,
+    pub character: char,
+    pub probability: f32,
+    pub score: f32,
+}
+
+/// Holds the most recently uploaded keyboard layout. Uploads are stamped with
+/// a generation so a comparison against a stale layout (another keyboard page
+/// was laid out since) can be detected and skipped rather than miscounted.
+///
 /// Also the accumulation point for PER-KEY TOUCH OFFSETS: every in-bounds
 /// hit updates an exponential moving average of where the user's finger
 /// lands relative to that key's centre. Keyed by the key's character (not
@@ -169,6 +182,99 @@ impl HitTester {
 
     /// First key containing the point, in upload order — `None` mirrors
     /// Kotlin's null (no key hit).
+
+    /// Evaluates a touch position with dynamic LM character priors, expanding the effective capture
+    /// area of high-probability keys and shrinking unlikely keys.
+    pub fn probabilistic_hit(
+        &self,
+        x: f32,
+        y: f32,
+        priors: &[(char, f32)],
+    ) -> Option<usize> {
+        self.rank_hits(x, y, priors, 1).first().map(|h| h.index)
+    }
+
+    /// Returns ranked candidate key hits based on spatial Gaussian proximity, learned touch offsets,
+    /// and dynamic LM priors.
+    pub fn rank_hits(
+        &self,
+        x: f32,
+        y: f32,
+        priors: &[(char, f32)],
+        max_results: usize,
+    ) -> Vec<ProbabilisticHit> {
+        if self.keys.is_empty() || !x.is_finite() || !y.is_finite() {
+            return Vec::new();
+        }
+
+        let geometric_hit = self.hit(x, y);
+        let mut candidates = Vec::with_capacity(self.keys.len().min(8));
+
+        for (idx, rect) in self.keys.iter().enumerate() {
+            let ch = self.chars.get(idx).copied().unwrap_or(' ');
+            let (off_x, off_y) = if ch != ' ' {
+                self.offset_for(ch)
+            } else {
+                (0.0, 0.0)
+            };
+
+            let cx = (rect.left + rect.right) * 0.5 + off_x;
+            let cy = (rect.top + rect.bottom) * 0.5 + off_y;
+            let width = (rect.right - rect.left).max(1.0);
+            let height = (rect.bottom - rect.top).max(1.0);
+            let key_radius = (width + height) * 0.25;
+
+            let dx = x - cx;
+            let dy = y - cy;
+            let dist_sq = dx * dx + dy * dy;
+
+            // Only consider keys within 1.85x key radius of the touch
+            let max_reach_sq = (key_radius * 1.85).powi(2);
+            if dist_sq <= max_reach_sq {
+                let sigma = key_radius * 0.45;
+                let spatial_score = (-dist_sq / (2.0 * sigma * sigma)).exp();
+
+                // Look up LM prior (default 0.05 if not in top predictions)
+                let prior = priors
+                    .iter()
+                    .find(|(c, _)| c.to_ascii_lowercase() == ch.to_ascii_lowercase())
+                    .map(|(_, p)| *p)
+                    .unwrap_or(0.02);
+
+                // Probabilistic hit score: spatial Gaussian * (1.0 + gamma * LM prior)
+                // Geometric containment provides an initial anchor boost
+                let containment_bonus = if rect.contains(x, y) { 1.25 } else { 1.0 };
+                let final_score = spatial_score * (1.0 + 1.2 * prior) * containment_bonus;
+
+                candidates.push(ProbabilisticHit {
+                    index: idx,
+                    character: ch,
+                    probability: prior,
+                    score: final_score,
+                });
+            }
+        }
+
+        // Fallback to geometric hit if spatial Gaussian found no candidate within reach
+        if candidates.is_empty() {
+            if let Some(idx) = geometric_hit {
+                let ch = self.chars.get(idx).copied().unwrap_or(' ');
+                return vec![ProbabilisticHit {
+                    index: idx,
+                    character: ch,
+                    probability: 1.0,
+                    score: 1.0,
+                }];
+            }
+            return Vec::new();
+        }
+
+        // Sort descending by final score
+        candidates.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        candidates.truncate(max_results);
+        candidates
+    }
+
     pub fn hit(&self, x: f32, y: f32) -> Option<usize> {
         self.keys.iter().position(|k| k.contains(x, y))
     }
