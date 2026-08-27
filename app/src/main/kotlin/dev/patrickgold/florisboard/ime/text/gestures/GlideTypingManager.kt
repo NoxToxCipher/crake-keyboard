@@ -196,7 +196,17 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
 
             // A native display-only set (no solid word anywhere - the
             // stray-flick guard) shows suggestions but commits nothing.
-            val commitSafe = nativeSuggestions.commitSafe
+            // Duration gate on top: field flicks travel 4-6 key-widths in
+            // 61-103ms (~70 kw/s — physically impossible for a thumb
+            // glide; real glides run 300-600ms). Distance triggers cannot
+            // catch them; the clock can. Under 150ms nothing commits.
+            val strokeDurationMs = synchronized(gesturePoints) {
+                if (gesturePoints.size >= 2) {
+                    gesturePoints.last().timestamp - gesturePoints.first().timestamp
+                } else 0L
+            }
+            val commitSafe = nativeSuggestions.commitSafe &&
+                (!commit || strokeDurationMs >= 150L)
             val suggestions = nativeSuggestions.words
 
             withContext(Dispatchers.Main) {
