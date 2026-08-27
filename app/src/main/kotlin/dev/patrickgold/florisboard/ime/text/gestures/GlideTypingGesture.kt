@@ -125,28 +125,30 @@ class GlideTypingGesture {
                 }
                 MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_POINTER_UP -> {
+                    val wasGesture = pointerData.isActuallyGesture == true
                     val upPointerIndex = if (event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
                         event.actionIndex
                     } else {
                         event.findPointerIndex(pointerId)
                     }
                     if (upPointerIndex >= 0 && event.getPointerId(upPointerIndex) == pointerId) {
-                        if (pointerData.isActuallyGesture == true) {
+                        if (wasGesture) {
                             listeners.forEach { listener -> listener.onGlideComplete(pointerData) }
                         }
                     }
                     resetState()
-                    return false
+                    return wasGesture
                 }
                 MotionEvent.ACTION_CANCEL -> {
-                    if (pointerData.isActuallyGesture == true) {
+                    val wasGesture = pointerData.isActuallyGesture == true
+                    if (wasGesture) {
                         listeners.forEach { it.onGlideCancelled() }
                     }
                     resetState()
+                    return wasGesture
                 }
                 else -> return false
             }
-            return false
         }
 
         fun registerListener(listener: Listener) {

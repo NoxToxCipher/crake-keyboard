@@ -346,6 +346,10 @@ fun TextKeyboardLayout(
                 }
                 desiredKey.visibleBounds.applyFrom(desiredKey.touchBounds).deflateBy(keyMarginH, keyMarginV)
                 keyboard.layout(keyboardWidth, keyboardHeight, desiredKey, true)
+                if (glideEnabled && keyboard.mode == KeyboardMode.CHARACTERS) {
+                    val keys = keyboard.keys().asSequence().toList()
+                    glideTypingManager.setLayout(keys)
+                }
             }
         }
 
@@ -7857,8 +7861,10 @@ private class TextKeyboardLayoutController(
                 }
                 if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
                     pointerMap.clear()
+                    isGliding = false
+                } else {
+                    isGliding = true
                 }
-                isGliding = true
                 return
             }
         }
