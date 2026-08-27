@@ -156,14 +156,13 @@ pub fn extract_inflections(points: &[Point2D], key_radius: f32) -> Vec<Inflectio
         let d_prev = p_prev.distance(&p_curr);
         let d_next = p_curr.distance(&p_next);
 
-        // Angle between incoming and outgoing vectors
         let dx1 = p_curr.x - p_prev.x;
         let dy1 = p_curr.y - p_prev.y;
         let dx2 = p_next.x - p_curr.x;
         let dy2 = p_next.y - p_curr.y;
 
-        let mag1 = (dx1 * dx1 + dy1 * dy1).sqrt();
-        let mag2 = (dx2 * dx2 + dy2 * dy2).sqrt();
+        let mag1 = d_prev;
+        let mag2 = d_next;
 
         let mut is_corner = false;
         let mut is_dwell = false;
