@@ -517,15 +517,28 @@ fun TextKeyboardLayout(
                 "rune", "thorchain", "xmr", "monero", "ltc", "litecoin",
                 "to the moon", "crypto"
             )
-            if (cryptoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            val isCryptoMatch = cryptoKeys.any { k ->
+                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isCryptoMatch) {
                 cryptoRocketTriggerTime = System.currentTimeMillis()
             }
             val murmurKeys = listOf("murmur", "flock", "murmuration", "starlings")
             if (murmurKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 murmurFlockTriggerTime = System.currentTimeMillis()
             }
-            val lunaKeys = listOf("terra", "luna", "ust", "lunc", "do kwon")
-            if (lunaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            // Strict word boundary isolation for LUNA/UST so words like 'just', 'must', 'dust', 'trust' never trigger it!
+            val lunaKeys = listOf("terra", "luna", "ust", "lunc", "do kwon", "terra luna", "terra usd")
+            val isLunaMatch = lunaKeys.any { k ->
+                val delimiters = listOf("", " ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isLunaMatch) {
                 lunaCrashTriggerTime = System.currentTimeMillis()
             }
             val sundaeKeys = listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait")
