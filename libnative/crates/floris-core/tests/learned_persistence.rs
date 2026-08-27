@@ -137,3 +137,64 @@ fn boost_path_respects_the_capacity_cap() {
         "boost-learned word must survive persistence at capacity"
     );
 }
+
+/// Personal-bigram capacity: at the cap a NEW pair evicts the weakest
+/// (lowest-count) pair — the store keeps learning forever. (The eviction
+/// predates its test; this pins it.)
+#[test]
+fn personal_bigrams_evict_weakest_at_capacity() {
+    let mut e = NlpEngine::new();
+    // one strong pair, then fill to cap with singles
+    for _ in 0..5 {
+        e.record_personal_bigram("keep", "strong");
+    }
+    let cap = floris_core::persist::MAX_PERSONAL_BIGRAMS as usize;
+    let mut i = 0;
+    while e.export_learned().len() < 1 || i < cap {
+        // fill with distinct single-count pairs up to the cap
+        e.record_personal_bigram(&format!("p{i}"), &format!("n{i}"));
+        i += 1;
+        if i >= cap {
+            break;
+        }
+    }
+    // over-cap insert: a fresh pair must land, evicting a single
+    e.record_personal_bigram("brand", "new");
+    assert!(
+        e.bigram_pair_score("brand", "new") >= 140,
+        "new pair must be recorded at capacity"
+    );
+    assert!(
+        e.bigram_pair_score("keep", "strong") >= 200,
+        "the well-used pair must survive eviction pressure"
+    );
+}
+
+/// prefix_search_filtered contract: frequency-desc then lex-asc ordering,
+/// predicate applied during the walk, limit respected — the glide pool
+/// depends on all three.
+#[test]
+fn filtered_prefix_search_orders_and_filters() {
+    let mut e = NlpEngine::new();
+    for (w, f) in [
+        ("sail", 200u32),
+        ("sale", 240),
+        ("salt", 240),
+        ("same", 100),
+        ("sand", 250),
+        ("send", 250),
+    ] {
+        e.trie.insert(w, f);
+    }
+    // keep only words ending in a vowel-adjacent set {e}
+    let got = e.trie.prefix_search_filtered("sa", 2, |w| w.ends_with('e'));
+    let words: Vec<&str> = got.iter().map(|(w, _)| w.as_str()).collect();
+    // sale(240) beats same(100); salt/sand filtered out; limit 2 but only
+    // matching words count
+    assert_eq!(words, vec!["sale", "same"], "{got:?}");
+    // tie at 240 resolves lexicographically when both pass
+    let got = e.trie.prefix_search_filtered("sa", 3, |w| w.len() == 4);
+    let words: Vec<&str> = got.iter().map(|(w, _)| w.as_str()).collect();
+    assert_eq!(words[0], "sand", "{got:?}");
+    assert_eq!(&words[1..3], &["sale", "salt"], "freq tie -> lex asc: {got:?}");
+}
