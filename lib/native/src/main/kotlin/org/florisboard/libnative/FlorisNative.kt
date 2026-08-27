@@ -239,6 +239,87 @@ object FlorisNative {
         return result
     }
 
+    /**
+     * Runs a stateless composer ("hangul-unicode" or "kana-unicode") over
+     * [preceding] + [toInsert]. Returns the (utf16UnitsToDelete, replacement)
+     * action, or null when the native lib is unavailable or has no action —
+     * callers fall back to plain appending.
+     */
+    fun composerAction(kind: String, preceding: String, toInsert: String): Pair<Int, String>? {
+        if (!isLoaded) return null
+        // A lone surrogate in toInsert (impossible from real key events) has
+        // no composer action; unpaired surrogates in preceding (takeLast can
+        // split an astral char at the window edge) are replaced per-unit so
+        // the valid tail still composes.
+        if (hasUnpairedSurrogate(toInsert)) return null
+        val raw = nativeComposerAction(kind, sanitizeUtf16(preceding), toInsert) ?: return null
+        return decodeComposerAction(raw)
+    }
+
+    /**
+     * Registers a "with-rules" composer rule table. Entries must be passed in
+     * their original (JSON) order: key U+001F value, joined by U+001E.
+     * Returns a handle for [composerActionRules], or -1 when the native lib
+     * is unavailable or the blob is malformed.
+     */
+    fun composerRegisterRules(rulesBlob: String): Long {
+        if (!isLoaded) return -1L
+        return nativeComposerRegisterRules(rulesBlob)
+    }
+
+    fun composerActionRules(handle: Long, preceding: String, toInsert: String): Pair<Int, String>? {
+        if (!isLoaded || handle < 0L) return null
+        if (hasUnpairedSurrogate(toInsert)) return null
+        val raw = nativeComposerActionRules(handle, sanitizeUtf16(preceding), toInsert) ?: return null
+        return decodeComposerAction(raw)
+    }
+
+    private fun hasUnpairedSurrogate(s: String): Boolean {
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            when {
+                c.isHighSurrogate() && i + 1 < s.length && s[i + 1].isLowSurrogate() -> i += 2
+                c.isSurrogate() -> return true
+                else -> i++
+            }
+        }
+        return false
+    }
+
+    /** Replaces each unpaired surrogate with U+FFFD (String::from_utf16_lossy semantics). */
+    private fun sanitizeUtf16(s: String): String {
+        if (!hasUnpairedSurrogate(s)) return s
+        val sb = StringBuilder(s.length)
+        var i = 0
+        while (i < s.length) {
+            val c = s[i]
+            when {
+                c.isHighSurrogate() && i + 1 < s.length && s[i + 1].isLowSurrogate() -> {
+                    sb.append(c).append(s[i + 1])
+                    i += 2
+                }
+                c.isSurrogate() -> {
+                    sb.append('\uFFFD')
+                    i++
+                }
+                else -> {
+                    sb.append(c)
+                    i++
+                }
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun decodeComposerAction(raw: String): Pair<Int, String>? {
+        // The replacement is the last field of a limit-2 split, so pipes
+        // inside composed text survive.
+        val parts = raw.split("|", limit = 2)
+        val n = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        return n to (parts.getOrNull(1) ?: "")
+    }
+
     fun sanitizeUrl(rawUrl: String): String {
         if (!isLoaded || rawUrl.isBlank()) return rawUrl
         return nativeSanitizeUrl(rawUrl)
@@ -403,6 +484,9 @@ object FlorisNative {
     private external fun nativeNlpPredictNextLetterWords(query: String, prevWord: String): Array<String>
 
     @JvmStatic
+    private external fun nativeComposerAction(kind: String, preceding: String, toInsert: String): String?
+    private external fun nativeComposerRegisterRules(rulesBlob: String): Long
+    private external fun nativeComposerActionRules(handle: Long, preceding: String, toInsert: String): String?
     private external fun nativeSanitizeUrl(rawUrl: String): String
 
     @JvmStatic
