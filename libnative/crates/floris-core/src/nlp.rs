@@ -272,28 +272,12 @@ impl NlpEngine {
         if trimmed.len() < 2 || trimmed.chars().count() > crate::persist::MAX_TOKEN_LEN {
             return;
         }
-        // At capacity a NEW word evicts the least-used learned word (freq
-        // encodes use via the +3 growth). Without this the map outgrew the
-        // persistence cap and serialize() truncated the ALPHABETICAL tail —
-        // every restart silently forgot the user's w-z words first.
-        if !self.learned_words.contains_key(&trimmed)
-            && self.learned_words.len() >= crate::persist::MAX_LEARNED_WORDS as usize
-        {
-            if let Some(weakest) = self
-                .learned_words
-                .iter()
-                .min_by_key(|(_, &f)| f)
-                .map(|(k, _)| k.clone())
-            {
-                self.learned_words.remove(&weakest);
-            }
-        }
         let base = self.corpus_freq(&trimmed).max(freq.min(150));
         let ceiling = base.saturating_add(30).min(255);
         let current = self.trie.get_frequency(&trimmed).unwrap_or(0);
         let new_freq = current.max(base).saturating_add(3).min(ceiling.max(current));
         self.trie.insert(&trimmed, new_freq);
-        self.learned_words.insert(trimmed, new_freq);
+        self.insert_learned_capped(trimmed, new_freq);
     }
 
     /// Serializes learned words + personal corrections for persistence.
@@ -330,7 +314,7 @@ impl NlpEngine {
             let current = self.trie.get_frequency(&word).unwrap_or(0);
             let restored = freq.max(current);
             self.trie.insert(&word, restored);
-            self.learned_words.insert(word, restored);
+            self.insert_learned_capped(word, restored);
         }
         for (typo, intended, n) in state.corrections {
             let counter = self.personal_corrections.entry(typo).or_default();
@@ -484,10 +468,30 @@ impl NlpEngine {
             self.trie.boost_or_insert(&trimmed, 15);
             // Boosts are part of what the user taught us — persist them.
             if let Some(freq) = self.trie.get_frequency(&trimmed) {
-                self.learned_words.insert(trimmed.clone(), freq);
+                self.insert_learned_capped(trimmed.clone(), freq);
             }
             self.record_session_word(&trimmed);
         }
+    }
+
+    /// The ONLY door into the persisted learned set: at capacity a NEW word
+    /// evicts the least-used entry (freq encodes use). Without this the map
+    /// outgrew the persistence cap and serialize() truncated the
+    /// ALPHABETICAL tail — every restart forgot the user's w-z words first.
+    fn insert_learned_capped(&mut self, word: String, freq: u32) {
+        if !self.learned_words.contains_key(&word)
+            && self.learned_words.len() >= crate::persist::MAX_LEARNED_WORDS as usize
+        {
+            if let Some(weakest) = self
+                .learned_words
+                .iter()
+                .min_by_key(|(_, &f)| f)
+                .map(|(k, _)| k.clone())
+            {
+                self.learned_words.remove(&weakest);
+            }
+        }
+        self.learned_words.insert(word, freq);
     }
 
     pub fn record_session_word(&mut self, word: &str) {

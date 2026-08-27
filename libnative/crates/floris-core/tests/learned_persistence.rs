@@ -118,3 +118,22 @@ fn learned_words_evict_weakest_at_capacity_not_the_alphabet_tail() {
         "the used word must survive persistence even at capacity"
     );
 }
+
+/// Every door into the learned set is capped — including the boost path
+/// (personal corrections) and import-merge, not just learn_word.
+#[test]
+fn boost_path_respects_the_capacity_cap() {
+    let mut e = NlpEngine::new();
+    for i in 0..floris_core::persist::MAX_LEARNED_WORDS {
+        e.learn_word(&format!("filler{i:04}"), 100);
+    }
+    e.learn_and_boost_word("zzzboosted");
+    let blob = e.export_learned();
+    let mut fresh = NlpEngine::new();
+    let restored = fresh.import_learned(&blob).expect("import");
+    assert!(restored <= floris_core::persist::MAX_LEARNED_WORDS as usize);
+    assert!(
+        fresh.trie.get_frequency("zzzboosted").is_some(),
+        "boost-learned word must survive persistence at capacity"
+    );
+}
