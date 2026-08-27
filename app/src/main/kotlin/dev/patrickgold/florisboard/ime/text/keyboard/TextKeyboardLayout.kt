@@ -75,6 +75,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -706,9 +707,18 @@ fun TextKeyboardLayout(
             }
             beforeCurrent.takeLastWhile { it.isLetter() || it == '\'' }
         }
-        val flickPredictions = remember(currentWord, prevWord, flickPredictionsEnabled) {
-            if (flickPredictionsEnabled && org.florisboard.libnative.FlorisNative.isAvailable()) {
-                org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord, prevWord)
+        // Computed off the UI thread: predictNextLetterWords is a synchronous
+        // native call and must not run inside composition. produceState makes
+        // the result arrive one frame later, which is imperceptible for the
+        // flick overlay.
+        val flickPredictions by androidx.compose.runtime.produceState(
+            initialValue = emptyMap<Char, String>(),
+            currentWord, prevWord, flickPredictionsEnabled,
+        ) {
+            value = if (flickPredictionsEnabled && org.florisboard.libnative.FlorisNative.isAvailable()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord, prevWord)
+                }
             } else {
                 emptyMap()
             }
@@ -732,11 +742,6 @@ fun TextKeyboardLayout(
             ),
             label = "FretPulseSpread"
         )
-
-        val leftCore = (0.5f - pulseSpread).coerceAtLeast(0.05f)
-        val rightCore = (0.5f + pulseSpread).coerceAtMost(0.95f)
-        val leftFade = (leftCore - 0.12f).coerceAtLeast(0f)
-        val rightFade = (rightCore + 0.12f).coerceAtMost(1f)
 
         // Authentic BlackBerry 10 Dual-Tone Metallic Fret Lines (Centered perfectly between rows on all pages)
         // Easter Egg: Quantum Core Power Surge when plugged into power!
@@ -850,19 +855,30 @@ fun TextKeyboardLayout(
                         .fillMaxWidth()
                         .height(1.dp)
                         .absoluteOffset { IntOffset(0, fretY - 1) }
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to Color.Transparent,
-                                    leftFade to themeAccentColor.copy(alpha = 0.12f * fretCyanPulseAlpha),
-                                    leftCore to Color(0x60CBD5E1),
-                                    0.5f to themeAccentColor.copy(alpha = fretCyanPulseAlpha),
-                                    rightCore to Color(0x60CBD5E1),
-                                    rightFade to themeAccentColor.copy(alpha = 0.12f * fretCyanPulseAlpha),
-                                    1.0f to Color.Transparent,
+                        // The animated pulse values are read inside the draw
+                        // phase only: each animation frame redraws this 1dp
+                        // line without recomposing the keyboard body.
+                        .drawBehind {
+                            val pulseAlpha = fretCyanPulseAlpha
+                            val spread = pulseSpread
+                            val leftCore = (0.5f - spread).coerceAtLeast(0.05f)
+                            val rightCore = (0.5f + spread).coerceAtMost(0.95f)
+                            val leftFade = (leftCore - 0.12f).coerceAtLeast(0f)
+                            val rightFade = (rightCore + 0.12f).coerceAtMost(1f)
+                            drawRect(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to Color.Transparent,
+                                        leftFade to themeAccentColor.copy(alpha = 0.12f * pulseAlpha),
+                                        leftCore to Color(0x60CBD5E1),
+                                        0.5f to themeAccentColor.copy(alpha = pulseAlpha),
+                                        rightCore to Color(0x60CBD5E1),
+                                        rightFade to themeAccentColor.copy(alpha = 0.12f * pulseAlpha),
+                                        1.0f to Color.Transparent,
+                                    )
                                 )
                             )
-                        )
+                        }
                 )
                 // Bottom Deep Ambient Shadow Line
                 Box(

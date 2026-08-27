@@ -532,14 +532,6 @@ class NlpManager(context: Context) {
             return false
         }
 
-        override suspend fun getListOfWords(subtype: Subtype): List<String> {
-            return emptyList()
-        }
-
-        override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-            return 0.0
-        }
-
         override suspend fun destroy() {
             // Do nothing
         }

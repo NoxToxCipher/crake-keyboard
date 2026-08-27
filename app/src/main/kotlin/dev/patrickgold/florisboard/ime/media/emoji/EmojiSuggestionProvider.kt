@@ -106,10 +106,6 @@ class EmojiSuggestionProvider(private val context: Context) : SuggestionProvider
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate) = false
 
-    override suspend fun getListOfWords(subtype: Subtype) = emptyList<String>()
-
-    override suspend fun getFrequencyForWord(subtype: Subtype, word: String) = 0.0
-
     override suspend fun destroy() {
         cachedEmojiMappings.invalidateAll()
     }

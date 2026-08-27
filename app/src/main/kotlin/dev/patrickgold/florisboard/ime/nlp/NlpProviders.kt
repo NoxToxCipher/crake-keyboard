@@ -175,29 +175,6 @@ interface SuggestionProvider : NlpProvider {
     suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean
 
     /**
-     * Interop method allowing the glide typing logic to perform its own magic.
-     *
-     * @param subtype Information about the current subtype, primarily used for getting the primary and secondary
-     *  language for correct dictionary selection.
-     *
-     * @return The list of word for the given language(s). If the language is not supported, an empty list should be
-     *  returned.
-     */
-    suspend fun getListOfWords(subtype: Subtype): List<String>
-
-    /**
-     * Interop method allowing the glide typing logic to perform its own magic.
-     *
-     * @param subtype Information about the current subtype, primarily used for getting the primary and secondary
-     *  language for correct dictionary selection.
-     * @param word The word which frequency is requested.
-     *
-     * @return The frequency of [word] as a double precision floating value between 0.0 and 1.0. If [word] does not
-     *  exist, 0.0 should be returned.
-     */
-    suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double
-
-    /**
      * When initializing composing text given a new context, the suggestion engine determines the composing range.
      * The default behavior gets the last word according to the current subtype's primaryLocale.
      * @param subtype The current subtype used to determine word or character boundary.
@@ -282,14 +259,6 @@ object FallbackNlpProvider : SpellingProvider, SuggestionProvider {
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
         return false
-    }
-
-    override suspend fun getListOfWords(subtype: Subtype): List<String> {
-        return emptyList()
-    }
-
-    override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-        return 0.0
     }
 
     override suspend fun destroy() {

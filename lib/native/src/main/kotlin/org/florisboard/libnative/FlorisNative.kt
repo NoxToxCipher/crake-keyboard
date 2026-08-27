@@ -72,23 +72,6 @@ object FlorisNative {
     }
 
     /**
-     * The static dictionary corpus as loaded from the CRKD blob, in blob
-     * order. Empty until [loadDictionaryBlob] has succeeded. Learned words
-     * never appear here — this is the exact contents the JVM word map used
-     * to duplicate.
-     */
-    fun corpusWords(): Array<String> {
-        if (!isLoaded) return emptyArray()
-        return nativeNlpCorpusWords()
-    }
-
-    /** Frequency of a corpus word, 0 when absent (the map-lookup contract). */
-    fun corpusFrequency(word: String): Int {
-        if (!isLoaded || word.isEmpty()) return 0
-        return nativeNlpCorpusFreq(word)
-    }
-
-    /**
      * Uploads a keyboard layout's touch bounds (flat [l,t,r,b] per key) for
      * shadow hit-testing. Returns the layout generation, or -1 on failure.
      */
@@ -368,10 +351,6 @@ object FlorisNative {
     private external fun nativeNlpLoadBigramBlob(data: ByteArray): Int
 
     private external fun nativeNlpSuggestCtx(query: String, prevWord: String, limit: Int): Array<String>
-
-    private external fun nativeNlpCorpusWords(): Array<String>
-
-    private external fun nativeNlpCorpusFreq(word: String): Int
 
     @JvmStatic
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>

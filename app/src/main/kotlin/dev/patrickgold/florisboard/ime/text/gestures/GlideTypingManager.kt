@@ -28,11 +28,11 @@ import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.nlpManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.florisboard.libnative.FlorisNative
-import kotlin.math.min
 
 /**
  * Links [GlideTypingGesture.Detector] with the native Safe Rust DTW
@@ -41,6 +41,11 @@ import kotlin.math.min
 class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     companion object {
         private const val MAX_SUGGESTION_COUNT = 8
+
+        // Bounds the accumulated gesture path (roughly 40+ seconds of touch
+        // events); points beyond this are dropped, like the retired
+        // classifier's own buffer cap.
+        private const val MAX_GESTURE_POINTS = 4096
     }
 
     private val prefs by FlorisPreferenceStore
@@ -52,28 +57,48 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     private val gesturePoints = mutableListOf<FlorisNative.GlidePoint>()
     private var lastTime = System.currentTimeMillis()
 
+    // In-flight preview computation; cancelled whenever a newer preview or
+    // the final commit supersedes it, so a slow preview can never overwrite
+    // the suggestion bar after the gesture has been committed.
+    private var previewJob: Job? = null
+
+    // Geometry last uploaded to the native engine, for skipping identical
+    // re-uploads (the layout call site runs on every recomposition).
+    private var lastCodes: IntArray? = null
+    private var lastChars: String? = null
+    private var lastXs: FloatArray? = null
+    private var lastYs: FloatArray? = null
+    private var lastWidths: FloatArray? = null
+    private var lastHeights: FloatArray? = null
+
     override fun onGlideComplete(data: GlideTypingGesture.Detector.PointerData) {
+        previewJob?.cancel()
         updateSuggestionsAsync(MAX_SUGGESTION_COUNT, true) {
             synchronized(gesturePoints) { gesturePoints.clear() }
         }
     }
 
     override fun onGlideCancelled() {
+        previewJob?.cancel()
         synchronized(gesturePoints) { gesturePoints.clear() }
     }
 
     fun cancelGlide() {
+        previewJob?.cancel()
         synchronized(gesturePoints) { gesturePoints.clear() }
     }
 
     override fun onGlideAddPoint(point: GlideTypingGesture.Detector.Position) {
         synchronized(gesturePoints) {
-            gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y))
+            if (gesturePoints.size < MAX_GESTURE_POINTS) {
+                gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y))
+            }
         }
 
         val time = System.currentTimeMillis()
         if (prefs.glide.showPreview.get() && time - lastTime > prefs.glide.previewRefreshDelay.get()) {
-            updateSuggestionsAsync(1, false) {}
+            previewJob?.cancel()
+            previewJob = updateSuggestionsAsync(1, false) {}
             lastTime = time
         }
     }
@@ -99,6 +124,23 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                 val ys = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.center.y }
                 val widths = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.width }
                 val heights = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.height }
+                // Identical geometry means the engine already has this exact
+                // layout: skip the JNI upload and the NLP write-lock it takes.
+                val geometryUnchanged = codes.contentEquals(lastCodes) &&
+                    chars == lastChars &&
+                    xs.contentEquals(lastXs) &&
+                    ys.contentEquals(lastYs) &&
+                    widths.contentEquals(lastWidths) &&
+                    heights.contentEquals(lastHeights)
+                if (geometryUnchanged) {
+                    return
+                }
+                lastCodes = codes
+                lastChars = chars
+                lastXs = xs
+                lastYs = ys
+                lastWidths = widths
+                lastHeights = heights
                 FlorisNative.glideSetLayout(codes, chars, xs, ys, widths, heights)
                 // Debug builds narrate the layout so a captured trace can be
                 // replayed against the exact geometry it was drawn on.
@@ -125,8 +167,8 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
      * @param callback Called when this function completes. Takes a boolean, which indicates if suggestions
      * were successfully set.
      */
-    private fun updateSuggestionsAsync(maxSuggestionsToShow: Int, commit: Boolean, callback: (Boolean) -> Unit) {
-        scope.launch(Dispatchers.Default) {
+    private fun updateSuggestionsAsync(maxSuggestionsToShow: Int, commit: Boolean, callback: (Boolean) -> Unit): Job {
+        return scope.launch(Dispatchers.Default) {
             val pts = synchronized(gesturePoints) { gesturePoints.toList() }
             var prevWordForTrace = ""
             val nativeSuggestions = if (FlorisNative.isAvailable() && pts.size >= 2) {
@@ -148,10 +190,14 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
             val suggestions = nativeSuggestions.words
 
             withContext(Dispatchers.Main) {
+                // The top candidate is hidden from the bar only when it is
+                // actually being committed; a commit blocked by the
+                // stray-flick guard keeps all candidates visible.
+                val firstShownIndex = if (commit && commitSafe && suggestions.isNotEmpty()) 1 else 0
                 val suggestionList = buildList {
                     suggestions.subList(
-                        1.coerceAtMost(min(commit.compareTo(false), suggestions.size)),
-                        maxSuggestionsToShow.coerceAtMost(suggestions.size)
+                        firstShownIndex,
+                        maxSuggestionsToShow.coerceAtMost(suggestions.size).coerceAtLeast(firstShownIndex)
                     ).map { keyboardManager.fixCase(it) }.forEach {
                         add(WordSuggestionCandidate(it, confidence = 1.0))
                     }
