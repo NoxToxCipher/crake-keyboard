@@ -114,7 +114,7 @@ pub fn retention_sweep(clips: &[ClipMeta], rules: &RetentionRules, now_ms: i64) 
 
     if rules.limit_enabled {
         let mut unpinned: Vec<&ClipMeta> = clips.iter().filter(|c| !c.is_pinned).collect();
-        unpinned.sort_by(|a, b| b.created_at_ms.cmp(&a.created_at_ms));
+        unpinned.sort_by_key(|b| std::cmp::Reverse(b.created_at_ms));
         for clip in unpinned.iter().skip(rules.max_unpinned) {
             push_unique(clip.id, &mut remove);
         }

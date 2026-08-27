@@ -405,29 +405,53 @@ pub fn compute_dtw(path_a: &[Point2D], path_b: &[Point2D]) -> f32 {
         return f32::INFINITY;
     }
 
-    // Two-row DP buffer for optimal memory locality and zero heap churn
-    let mut prev_row = vec![f32::INFINITY; m + 1];
-    let mut curr_row = vec![f32::INFINITY; m + 1];
+    if m <= 31 {
+        let mut prev_row = [f32::INFINITY; 32];
+        let mut curr_row = [f32::INFINITY; 32];
+        prev_row[0] = 0.0;
 
-    prev_row[0] = 0.0;
+        for i in 1..=n {
+            curr_row[0] = f32::INFINITY;
+            let pt_a = path_a[i - 1];
 
-    for i in 1..=n {
-        curr_row[0] = f32::INFINITY;
-        let pt_a = path_a[i - 1];
+            for j in 1..=m {
+                let pt_b = path_b[j - 1];
+                let cost = pt_a.distance(&pt_b);
 
-        for j in 1..=m {
-            let pt_b = path_b[j - 1];
-            let cost = pt_a.distance(&pt_b);
+                let min_prev = prev_row[j].min(curr_row[j - 1]).min(prev_row[j - 1]);
+                curr_row[j] = cost + min_prev;
+            }
 
-            let min_prev = prev_row[j].min(curr_row[j - 1]).min(prev_row[j - 1]);
-            curr_row[j] = cost + min_prev;
+            prev_row[..=m].copy_from_slice(&curr_row[..=m]);
+            curr_row[..=m].fill(f32::INFINITY);
         }
 
-        std::mem::swap(&mut prev_row, &mut curr_row);
-        curr_row.fill(f32::INFINITY);
-    }
+        prev_row[m]
+    } else {
+        // Fallback for unusually long traces
+        let mut prev_row = vec![f32::INFINITY; m + 1];
+        let mut curr_row = vec![f32::INFINITY; m + 1];
 
-    prev_row[m]
+        prev_row[0] = 0.0;
+
+        for i in 1..=n {
+            curr_row[0] = f32::INFINITY;
+            let pt_a = path_a[i - 1];
+
+            for j in 1..=m {
+                let pt_b = path_b[j - 1];
+                let cost = pt_a.distance(&pt_b);
+
+                let min_prev = prev_row[j].min(curr_row[j - 1]).min(prev_row[j - 1]);
+                curr_row[j] = cost + min_prev;
+            }
+
+            std::mem::swap(&mut prev_row, &mut curr_row);
+            curr_row.fill(f32::INFINITY);
+        }
+
+        prev_row[m]
+    }
 }
 
 /// Native Glide Typing Engine managing key geometry and trajectory matching.

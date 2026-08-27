@@ -2387,6 +2387,18 @@ pub const HOMOPHONE_CONTEXT_RULES: &[(&[&str], &str, &str)] = &[
     // ("were" vs "we're" vs "where")
     (&["going", "coming", "trying", "thinking", "hoping", "ready", "done", "excited", "happy", "sorry", "here", "there"], "were", "we're"),
     (&["are", "is", "was", "did", "do", "can", "could", "from", "to"], "we're", "where"),
+
+    // ("loose" vs "lose")
+    (&["will", "to", "not", "dont", "don't", "might", "could", "never", "cannot", "cant", "can't", "gonna"], "loose", "lose"),
+    (&["too", "very", "fitting", "skin", "pants", "change", "threads", "knot"], "lose", "loose"),
+
+    // ("affect" vs "effect")
+    (&["will", "would", "could", "might", "can", "to", "not", "greatly", "directly"], "effect", "affect"),
+    (&["the", "a", "an", "this", "that", "side", "cause", "positive", "negative", "overall"], "affect", "effect"),
+
+    // ("accept" vs "except")
+    (&["to", "will", "would", "please", "can", "cannot", "cant", "can't"], "except", "accept"),
+    (&["all", "everything", "everyone", "nothing", "nobody", "anywhere"], "accept", "except"),
 ];
 
     /// Resolves homophone ambiguity based on preceding word context.

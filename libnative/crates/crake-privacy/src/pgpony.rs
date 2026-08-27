@@ -175,7 +175,7 @@ fn hex_encode(bytes: &[u8]) -> String {
 
 fn hex_decode(s: &str) -> Option<Vec<u8>> {
     let clean = s.trim();
-    if clean.len() % 2 != 0 {
+    if !clean.len().is_multiple_of(2) {
         return None;
     }
     let mut bytes = Vec::with_capacity(clean.len() / 2);
@@ -215,7 +215,7 @@ fn base64_encode(data: &[u8]) -> String {
 
 fn base64_decode(s: &str) -> Option<Vec<u8>> {
     let clean: Vec<u8> = s.bytes().filter(|&b| !b.is_ascii_whitespace()).collect();
-    if clean.len() % 4 != 0 {
+    if !clean.len().is_multiple_of(4) {
         return None;
     }
     let decode_char = |b: u8| -> Option<u8> {
