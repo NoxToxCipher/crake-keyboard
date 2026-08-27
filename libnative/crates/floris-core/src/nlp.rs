@@ -881,6 +881,12 @@ impl NlpEngine {
         // assembled in the same order as before, so behaviour is unchanged.
         let pool_cap = max_candidates + 4;
 
+        // Whether any stage BEFORE prefix completions claimed a candidate:
+        // completions are display filler, and filler must not be able to
+        // veto a downstream auto-commit ("nad" -> and was starved because
+        // "nadia" completes it; same poisoning the "ti" class had).
+        let claimed_before_completions = !candidates.is_empty();
+
         // 6. Prefix completions (completions must NOT auto-commit on space).
         // Completions keep the old display-sized budget: the pool headroom
         // beyond it is reserved for CORRECTION candidates, which are the ones
@@ -902,22 +908,40 @@ impl NlpEngine {
         // 6b. Instant O(1) Transposition & Double-Letter Typo Slip Recovery (Fast-Path)
         if !is_exact && trimmed_lower.len() >= 3 && candidates.len() < pool_cap {
             let chars: Vec<char> = trimmed_lower.chars().collect();
-            // Test adjacent transpositions
+            // Test adjacent transpositions: several swaps can all be real
+            // words ("aer" -> ear AND are), so the MOST FREQUENT one wins,
+            // not the leftmost.
+            let mut best_swap: Option<(String, u32)> = None;
             for i in 0..chars.len() - 1 {
                 let mut swapped = chars.clone();
                 swapped.swap(i, i + 1);
                 let swapped_str: String = swapped.into_iter().collect();
                 if let Some(f) = self.trie.get_frequency(&swapped_str) {
-                    let formatted = Self::apply_casing(trimmed, &swapped_str);
-                    if !contains_word(&candidates, &formatted) {
-                        candidates.push(RankedCandidate {
-                            word: formatted,
-                            // Never auto-commit a junk-band word ("oan" must
-                            // not become "ona"): only solidly real words may
-                            // replace what the user typed.
-                            is_autocorrect: candidates.is_empty() && f >= AUTOCOMMIT_MIN_FREQ,
-                        });
-                        break;
+                    if best_swap.as_ref().is_none_or(|(_, bf)| f > *bf) {
+                        best_swap = Some((swapped_str, f));
+                    }
+                }
+            }
+            if let Some((swapped_str, f)) = best_swap {
+                let formatted = Self::apply_casing(trimmed, &swapped_str);
+                if !contains_word(&candidates, &formatted) {
+                    let rc = RankedCandidate {
+                        word: formatted,
+                        // Never auto-commit a junk-band word ("oan" must
+                        // not become "ona"): only solidly real words may
+                        // replace what the user typed. Prefix completions
+                        // alone don't block the rescue.
+                        is_autocorrect: !claimed_before_completions
+                            && !has_internal_uppercase
+                            && candidates.iter().all(|c| !c.is_autocorrect)
+                            && f >= AUTOCOMMIT_MIN_FREQ,
+                    };
+                    // An auto-commit leads; buried behind completions it
+                    // would fall to the display cut and never fire.
+                    if rc.is_autocorrect {
+                        candidates.insert(0, rc);
+                    } else {
+                        candidates.push(rc);
                     }
                 }
             }
@@ -929,10 +953,18 @@ impl NlpEngine {
                 if let Some(f) = self.trie.get_frequency(&doubled_str) {
                     let formatted = Self::apply_casing(trimmed, &doubled_str);
                     if !contains_word(&candidates, &formatted) {
-                        candidates.push(RankedCandidate {
+                        let rc = RankedCandidate {
                             word: formatted,
-                            is_autocorrect: candidates.is_empty() && f >= AUTOCOMMIT_MIN_FREQ,
-                        });
+                            is_autocorrect: !claimed_before_completions
+                                && !has_internal_uppercase
+                                && candidates.iter().all(|c| !c.is_autocorrect)
+                                && f >= AUTOCOMMIT_MIN_FREQ,
+                        };
+                        if rc.is_autocorrect {
+                            candidates.insert(0, rc);
+                        } else {
+                            candidates.push(rc);
+                        }
                         break;
                     }
                 }

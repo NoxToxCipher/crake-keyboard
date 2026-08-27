@@ -529,3 +529,26 @@ fn hse_autocommits_to_use() {
     assert_eq!(head.word, "use", "got {:?}", r.candidates);
     assert!(head.is_autocorrect);
 }
+
+/// Prefix completions are display filler and must not veto a transposition
+/// rescue: "nad" -> "and" was starved because "nadia" completes it (the
+/// same poisoning "ti" had in the fuzzy lane). The completion stays
+/// suggested; the rescue auto-commits.
+#[test]
+fn prefix_filler_does_not_starve_transposition_rescue() {
+    let mut e = engine();
+    for (w, f) in [("nadia", 160), ("aerial", 190), ("are", 250)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    for (typed, expected) in [("nad", "and"), ("aer", "are")] {
+        let r = e.suggest_with_context(typed, "", 5);
+        let ac = r.candidates.iter().find(|c| c.is_autocorrect);
+        assert_eq!(
+            ac.map(|c| c.word.as_str()),
+            Some(expected),
+            "'{typed}' must rescue to '{expected}': {:?}",
+            r.candidates
+        );
+    }
+}
