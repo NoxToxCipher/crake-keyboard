@@ -101,6 +101,14 @@ impl BigramModel {
     }
 
     /// Quantized log-count score for the pair, `None` when unseen.
+    /// All (prev, next, score) entries whose prev is `id1`, in id order —
+    /// the entries vec is sorted, so this is a binary-searched range.
+    pub fn successors(&self, id1: u32) -> &[(u32, u32, u8)] {
+        let start = self.entries.partition_point(|e| e.0 < id1);
+        let end = self.entries.partition_point(|e| e.0 <= id1);
+        &self.entries[start..end]
+    }
+
     pub fn score(&self, id1: u32, id2: u32) -> Option<u8> {
         self.entries
             .binary_search_by_key(&(id1, id2), |&(a, b, _)| (a, b))

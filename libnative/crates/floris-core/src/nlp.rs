@@ -1601,7 +1601,39 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
         let prev_trimmed = prev_word.trim().to_ascii_lowercase();
         let mut result_map = std::collections::HashMap::new();
 
-        if let Some(&(_, next_words)) = Self::BIGRAM_TRANSITIONS.iter().find(|&&(k, _)| k == prev_trimmed) {
+        // The real language model first: the shipped 244k-pair table knows
+        // successors for tens of thousands of prev words, where the static
+        // hand list below covers ~36. The user's own recorded pairs outrank
+        // web statistics, exactly as in bigram_pair_score.
+        if !prev_trimmed.is_empty() {
+            let mut scored: Vec<(u8, &str)> = Vec::new();
+            for ((p, n), count) in &self.personal_bigrams {
+                if p == &prev_trimmed {
+                    let s = 140u32.saturating_add(count.saturating_mul(15)).min(255) as u8;
+                    scored.push((s, n.as_str()));
+                }
+            }
+            if let Some(&prev_id) = self.word_ids.get(&prev_trimmed) {
+                for &(_, next_id, score) in self.bigrams.successors(prev_id) {
+                    if let Some(w) = self.corpus_words().get(next_id as usize) {
+                        scored.push((score, w.as_str()));
+                    }
+                }
+            }
+            scored.sort_by(|a, b| b.0.cmp(&a.0));
+            for (_, w) in scored {
+                if let Some(first_ch) = w.chars().next() {
+                    let ch_lower = first_ch.to_ascii_lowercase();
+                    result_map.entry(ch_lower).or_insert_with(|| w.to_string());
+                }
+                if result_map.len() >= 6 {
+                    break;
+                }
+            }
+        }
+
+        if result_map.is_empty() {
+            if let Some(&(_, next_words)) = Self::BIGRAM_TRANSITIONS.iter().find(|&&(k, _)| k == prev_trimmed) {
             for &w in next_words {
                 if let Some(first_ch) = w.chars().next() {
                     let ch_lower = first_ch.to_ascii_lowercase();
@@ -1612,6 +1644,7 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
                 if result_map.len() >= 6 {
                     break;
                 }
+            }
             }
         }
 

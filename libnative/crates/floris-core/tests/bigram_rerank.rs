@@ -136,3 +136,30 @@ fn corrupt_table_is_rejected_and_previous_kept() {
     assert!(e.load_bigrams(b"garbage").is_err());
     assert_eq!(e.bigram_count(), 1, "failed load must keep the old table");
 }
+
+/// Word-start letter prediction (adaptive hitboxes) draws on the REAL
+/// language model, not just the ~36-word static list: any prev the table
+/// knows yields its top successors' first letters, and the user's own
+/// recorded pairs outrank web statistics.
+#[test]
+fn letter_prediction_uses_the_real_model_and_personal_pairs() {
+    let mut e = engine();
+    for (w, f) in [("keyboard", 230), ("shortcut", 180), ("layout", 190), ("crake", 30)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let b = blob(&e, &[("keyboard", "shortcut", 190), ("keyboard", "layout", 170)]);
+    e.load_bigrams(&b).unwrap();
+    let preds = e.predict_next_letter_words("", "keyboard");
+    let letters: Vec<char> = preds.iter().map(|(c, _)| *c).collect();
+    assert!(letters.contains(&'s') && letters.contains(&'l'), "LM successors expected: {preds:?}");
+    // personal pair outranks: after the user types "keyboard crake" twice,
+    // 'c' must appear and map to crake
+    e.record_personal_bigram("keyboard", "crake");
+    e.record_personal_bigram("keyboard", "crake");
+    let preds = e.predict_next_letter_words("", "keyboard");
+    assert!(
+        preds.iter().any(|(c, w)| *c == 'c' && w == "crake"),
+        "personal pair must surface: {preds:?}"
+    );
+}
