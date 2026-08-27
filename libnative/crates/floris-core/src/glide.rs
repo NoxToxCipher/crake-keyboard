@@ -170,16 +170,22 @@ pub fn detect_double_letter_loops(points: &[Point2D], key_radius: f32) -> Vec<Po
         return Vec::new();
     }
 
-    let mut loop_centers = Vec::new();
+    let mut loop_centers = Vec::with_capacity(4);
     let max_radius_sq = (key_radius * 1.2).powi(2);
     let min_loop_path = key_radius * 1.1;
     let max_closure_dist_sq = (key_radius * 0.65).powi(2);
 
+    // O(1) prefix distance table for instant sub-path length evaluation
+    let mut cum_dist = Vec::with_capacity(points.len());
+    cum_dist.push(0.0f32);
+    for w in points.windows(2) {
+        cum_dist.push(cum_dist.last().unwrap() + w[0].distance(&w[1]));
+    }
+
     // Scan for sub-paths that travel a significant arc while closing back on themselves
     for i in 0..points.len() {
-        let mut path_len = 0.0f32;
         for j in (i + 3)..points.len().min(i + 16) {
-            path_len += points[j - 1].distance(&points[j]);
+            let path_len = cum_dist[j] - cum_dist[i];
             if path_len >= min_loop_path {
                 let closure_dist_sq = points[i].distance_squared(&points[j]);
                 if closure_dist_sq <= max_closure_dist_sq {
