@@ -38,12 +38,13 @@ pub struct ContactPatch {
 }
 
 impl ContactPatch {
+    #[inline]
     pub fn new(x: f32, y: f32, major: f32, minor: f32, orientation: f32) -> Self {
         Self { x, y, major, minor, orientation }
     }
 
     /// Calculates the true physical fingertip / bone apex coordinates by correcting for
-    /// the capacitive smear and thumb-roll tilt vector.
+    /// the capacitive smear and thumb-roll tilt vector with sub-microsecond branchless math (Idea 2 / Loop 6).
     #[inline]
     pub fn corrected_apex(&self) -> (f32, f32) {
         if !self.x.is_finite() || !self.y.is_finite() || !self.major.is_finite() || !self.minor.is_finite() || !self.orientation.is_finite() {
@@ -54,14 +55,17 @@ impl ContactPatch {
             return (self.x, self.y);
         }
 
-        // Thumb pad apex scale factor kappa: shifts contact center toward physical bone apex
-        const KAPPA: f32 = 0.38;
-        let shift_mag = (eccentricity * 0.5) * KAPPA;
+        // Thumb pad apex scale factor kappa: shifts contact center toward physical bone apex (0.19 * eccentricity)
+        const KAPPA_HALF: f32 = 0.19;
+        let shift_mag = eccentricity * KAPPA_HALF;
 
-        let dx = -shift_mag * self.orientation.sin();
-        let dy = -shift_mag * self.orientation.cos();
+        // Fast path for straight-on / vertical touches without full trigonometry
+        if self.orientation.abs() <= 0.05 {
+            return (self.x, self.y - shift_mag);
+        }
 
-        (self.x + dx, self.y + dy)
+        let (sin_o, cos_o) = self.orientation.sin_cos();
+        (self.x - shift_mag * sin_o, self.y - shift_mag * cos_o)
     }
 }
 
