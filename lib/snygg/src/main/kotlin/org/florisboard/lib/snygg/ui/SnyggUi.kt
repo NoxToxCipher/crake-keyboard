@@ -95,6 +95,14 @@ internal val LocalSnyggPreloadedCustomFontFamilies: ProvidableCompositionLocal<C
         error("ProvideSnyggTheme not called.")
     }
 
+/**
+ * Fallback font family for Snygg-styled text whose stylesheet leaves
+ * `font-family` undefined. Lets the app offer a user font choice while
+ * explicit theme font declarations still win. Null means system default.
+ */
+val LocalSnyggDefaultFontFamily: ProvidableCompositionLocal<FontFamily?> =
+    compositionLocalOf { null }
+
 internal val LocalSnyggParentStyle: ProvidableCompositionLocal<SnyggSinglePropertySet> =
     compositionLocalOf {
         error("ProvideSnyggTheme not called.")
