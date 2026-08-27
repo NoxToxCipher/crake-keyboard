@@ -308,11 +308,23 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         val committed = phantomSpace.committedForRevert ?: return false
         if (original.isEmpty() || committed.isEmpty()) return false
         // The committed text must still sit before the cursor, or the field
-        // changed under us and blind surgery would corrupt it.
-        if (!activeContent.textBeforeSelection.endsWith(committed)) return false
+        // changed under us and blind surgery would corrupt it. The space
+        // that TRIGGERED the auto-commit lands after the word (candidate
+        // commit, then commitChar), so tolerate exactly one trailing space
+        // and take it back out with the correction.
+        val tail = activeContent.textBeforeSelection
+        val extra = when {
+            tail.endsWith(committed) -> 0
+            tail.endsWith("$committed ") -> 1
+            else -> return false
+        }
         phantomSpace.setInactive()
         runBlocking {
-            deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = committed.length)
+            deleteAroundCursor(
+                OperationUnit.CHARACTERS,
+                OperationScope.BEFORE_CURSOR,
+                n = committed.length + extra,
+            )
         }
         return super.commitText(original)
     }
