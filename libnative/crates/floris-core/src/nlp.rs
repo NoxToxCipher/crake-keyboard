@@ -947,6 +947,15 @@ impl NlpEngine {
         self.learned_words.contains_key(&word.trim().to_ascii_lowercase())
     }
 
+    /// Pre-sizes the corpus structures for a known word count (the CRKD
+    /// header carries it), avoiding rehash/regrow churn during the
+    /// startup bulk load.
+    pub fn reserve_corpus(&mut self, additional: usize) {
+        self.corpus_words.reserve(additional);
+        self.word_ids.reserve(additional);
+        self.learned_words.reserve(64);
+    }
+
     pub fn corpus_words(&self) -> &[String] {
         &self.corpus_words
     }

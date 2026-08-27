@@ -295,6 +295,14 @@ class FlorisImeService : LifecycleInputMethodService() {
     override fun onCreate() {
         super.onCreate()
         android.util.Log.i("CrakeStartup", "ime onCreate at +${android.os.SystemClock.elapsedRealtime() - PROCESS_START}ms")
+        // Kick the dictionary preload from the SERVICE's own birth: the
+        // app-boot warming coroutine fired it 220-300ms late on cold
+        // spawns (measured 2026-08-28), which is exactly the window a
+        // fast typist's first suggestions wait in. Idempotent — the
+        // provider's dictLoaded flag makes the second call free.
+        lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { nlpManager.preloadProviders() }
+        }
         FlorisImeServiceReference = WeakReference(this)
         systemLocalesFlow.value = resources.configuration.locales
 

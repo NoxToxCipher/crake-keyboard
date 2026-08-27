@@ -139,6 +139,14 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoad
         Err(_) => return -1,
     };
     if let Ok(mut engine) = NLP_ENGINE.write() {
+        // CRKD header: magic(4) + version(1) + count(u32 LE). Pre-sizing
+        // saves rehash churn across the 49k-word bulk load.
+        if bytes.len() >= 9 {
+            let count = u32::from_le_bytes([bytes[5], bytes[6], bytes[7], bytes[8]]) as usize;
+            if count <= 1_000_000 {
+                engine.reserve_corpus(count);
+            }
+        }
         match floris_core::parse_dict_blob(&bytes, |word, freq| {
             engine.trie.insert(word, freq);
             engine.corpus_insert(word, freq);
