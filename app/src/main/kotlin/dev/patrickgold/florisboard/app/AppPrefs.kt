@@ -383,7 +383,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val swipeVelocityThreshold = int(
             key = "gestures__swipe_velocity_threshold",
-            default = 1900,
+            default = 450,
         )
     }
 
