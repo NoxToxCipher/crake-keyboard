@@ -187,13 +187,21 @@ object FlorisNative {
 
     /** Words most likely to FOLLOW prevWord (personal pairs first, then the
      * shipped language model) — the next-word suggestion row. */
-    fun predictNextWords(prevWord: String, maxResults: Int = 3): List<String> {
+    fun predictNextWords(
+        prevWord: String,
+        maxResults: Int = 3,
+        includePersonal: Boolean = true,
+    ): List<String> {
         if (!isLoaded || prevWord.isBlank()) return emptyList()
-        return nativeNlpPredictNextWords(prevWord, maxResults).toList()
+        return nativeNlpPredictNextWords(prevWord, maxResults, includePersonal).toList()
     }
 
     @JvmStatic
-    private external fun nativeNlpPredictNextWords(prevWord: String, maxResults: Int): Array<String>
+    private external fun nativeNlpPredictNextWords(
+        prevWord: String,
+        maxResults: Int,
+        includePersonal: Boolean,
+    ): Array<String>
 
     fun predictNextLetterWords(prefix: String = "", prevWord: String = ""): Map<Char, String> {
         if (!isLoaded) return emptyMap()

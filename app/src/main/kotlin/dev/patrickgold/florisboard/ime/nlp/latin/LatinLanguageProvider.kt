@@ -227,7 +227,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 .takeLastWhile { it.isLetter() || it == '\'' }
                 .toString()
             if (prevCommitted.isBlank() || !FlorisNative.isAvailable()) return emptyList()
-            return FlorisNative.predictNextWords(prevCommitted, 3).map { word ->
+            // Private sessions predict from the shipped model only: what
+            // this keyboard has learned about its user stays off the
+            // screen the user marked private.
+            return FlorisNative.predictNextWords(
+                prevCommitted,
+                3,
+                includePersonal = !isPrivateSession,
+            ).map { word ->
                 WordSuggestionCandidate(
                     text = word,
                     confidence = 0.5,

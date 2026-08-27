@@ -937,6 +937,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPred
     _class: JClass,
     prev_word: JString,
     max_results: jint,
+    include_personal: jboolean,
 ) -> jobjectArray {
     let empty_array = env
         .new_object_array(0, "java/lang/String", JString::default())
@@ -950,7 +951,11 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPred
 
     let words = {
         if let Ok(engine) = NLP_ENGINE.read() {
-            engine.predict_next_words(&prev, max_results.max(0) as usize)
+            engine.predict_next_words_filtered(
+                &prev,
+                max_results.max(0) as usize,
+                include_personal != 0,
+            )
         } else {
             Vec::new()
         }

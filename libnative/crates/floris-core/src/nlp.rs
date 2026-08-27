@@ -1595,15 +1595,29 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
     /// eligible (the user taught them). Bare contraction forms display
     /// apostrophized.
     pub fn predict_next_words(&self, prev: &str, max: usize) -> Vec<String> {
+        self.predict_next_words_filtered(prev, max, true)
+    }
+
+    /// `include_personal = false` predicts from the shipped model only:
+    /// private (incognito) sessions must not surface the user's learned
+    /// pairs on screen.
+    pub fn predict_next_words_filtered(
+        &self,
+        prev: &str,
+        max: usize,
+        include_personal: bool,
+    ) -> Vec<String> {
         let prev_l = prev.trim().to_lowercase();
         if prev_l.is_empty() || max == 0 {
             return Vec::new();
         }
         let mut scored: Vec<(u8, &str)> = Vec::new();
-        for ((p, n), count) in &self.personal_bigrams {
-            if p == &prev_l {
-                let s = 140u32.saturating_add(count.saturating_mul(15)).min(255) as u8;
-                scored.push((s, n.as_str()));
+        if include_personal {
+            for ((p, n), count) in &self.personal_bigrams {
+                if p == &prev_l {
+                    let s = 140u32.saturating_add(count.saturating_mul(15)).min(255) as u8;
+                    scored.push((s, n.as_str()));
+                }
             }
         }
         if let Some(&prev_id) = self.word_ids.get(&prev_l) {

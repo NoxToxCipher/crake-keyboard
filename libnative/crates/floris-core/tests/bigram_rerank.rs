@@ -235,3 +235,24 @@ fn next_word_prediction_blends_personal_and_shipped() {
     // unknown prev: empty, never panics
     assert!(e.predict_next_words("zzzz", 3).is_empty());
 }
+
+/// Private sessions predict from the shipped model only: learned personal
+/// pairs never surface on a screen the user marked private.
+#[test]
+fn private_prediction_excludes_personal_pairs() {
+    let mut e = engine();
+    for (w, f) in [("keyboard", 230), ("shortcut", 180), ("crake", 160)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let b = blob(&e, &[("keyboard", "shortcut", 190)]);
+    e.load_bigrams(&b).unwrap();
+    for _ in 0..5 {
+        e.record_personal_bigram("keyboard", "crake");
+    }
+    let normal = e.predict_next_words_filtered("keyboard", 3, true);
+    assert!(normal.iter().any(|w| w == "crake"), "{normal:?}");
+    let private = e.predict_next_words_filtered("keyboard", 3, false);
+    assert!(!private.iter().any(|w| w == "crake"), "personal pair leaked: {private:?}");
+    assert!(private.iter().any(|w| w == "shortcut"), "shipped LM still predicts: {private:?}");
+}
