@@ -8415,11 +8415,25 @@ private class TextKeyboardLayoutController(
                 else -> false
             }
             SwipeGesture.Type.TOUCH_UP -> {
-                if (event.direction == SwipeGesture.Direction.LEFT &&
-                    prefs.gestures.deleteKeySwipeLeft.get() == SwipeAction.DELETE_WORD
+                if (event.direction == SwipeGesture.Direction.LEFT ||
+                    event.direction == SwipeGesture.Direction.UP_LEFT ||
+                    event.direction == SwipeGesture.Direction.DOWN_LEFT
                 ) {
-                    keyboardManager.executeSwipeAction(prefs.gestures.deleteKeySwipeLeft.get())
-                    true
+                    when (val action = prefs.gestures.deleteKeySwipeLeft.get()) {
+                        SwipeAction.DELETE_WORD,
+                        SwipeAction.DELETE_CHARACTER -> {
+                            keyboardManager.executeSwipeAction(action)
+                            true
+                        }
+                        SwipeAction.DELETE_CHARACTERS_PRECISELY -> {
+                            val selection = editorInstance.activeContent.selection
+                            if (!selection.isSelectionMode) {
+                                keyboardManager.executeSwipeAction(SwipeAction.DELETE_WORD)
+                            }
+                            true
+                        }
+                        else -> false
+                    }
                 } else {
                     false
                 }

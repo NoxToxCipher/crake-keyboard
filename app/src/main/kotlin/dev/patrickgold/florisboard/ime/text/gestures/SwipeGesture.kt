@@ -113,9 +113,10 @@ abstract class SwipeGesture {
                 val velocityY = ViewUtils.px2dp(velocityTracker.getYVelocity(pointer.id))
                 flogDebug(LogTopic.GESTURES) { "Velocity: $velocityX $velocityY dp/s" }
                 pointerMap.removeById(pointer.id)
-                val thresholdSpeed = prefs.gestures.swipeVelocityThreshold.get().toDouble()
+                val rawThreshold = prefs.gestures.swipeVelocityThreshold.get().toDouble()
+                val thresholdSpeed = if (rawThreshold > 1000.0) 450.0 else rawThreshold.coerceIn(200.0, 800.0)
                 val thresholdWidth = prefs.gestures.swipeDistanceThreshold.get().dp.value.toDouble()
-                val unitWidth = thresholdWidth / 4.0
+                val unitWidth = (thresholdWidth / 4.0).coerceAtLeast(4.0)
                 return if ((abs(absDiffX) > thresholdWidth || abs(absDiffY) > thresholdWidth) && (abs(velocityX) > thresholdSpeed || abs(velocityY) > thresholdSpeed)) {
                     val direction = detectDirection(absDiffX.toDouble(), absDiffY.toDouble())
                     gesturePointer.absUnitCountX = (absDiffX / unitWidth).toInt()
