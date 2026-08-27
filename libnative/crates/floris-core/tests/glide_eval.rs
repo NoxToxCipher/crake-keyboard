@@ -67,6 +67,8 @@ fn synth_trace(engine: &GlideEngine, word: &str, rng: &mut Lcg) -> Option<Vec<Po
 }
 
 fn eval(words: &[(&str, u32)]) -> (usize, usize, Vec<String>) {
+    // near-misses are printed so a shrinking margin is visible before it
+    // becomes a miss
     let glide = qwerty_engine();
     let mut nlp = NlpEngine::new();
     for &(w, f) in words {
@@ -115,6 +117,32 @@ const EVAL_WORDS: &[(&str, u32)] = &[
     ("fretwork", 25),
     ("bowerbird", 20),
     ("quokka", 15),
+    // Second tranche (2026-08-27): everyday message vocabulary plus
+    // double-letter and short words, the shapes fast thumbs actually glide.
+    ("tomorrow", 235),
+    ("morning", 240),
+    ("message", 230),
+    ("because", 245),
+    ("thanks", 240),
+    ("weekend", 220),
+    ("people", 245),
+    ("little", 235),
+    ("coffee", 225),
+    ("better", 235),
+    ("really", 240),
+    ("working", 230),
+    ("already", 225),
+    ("tonight", 220),
+    ("dinner", 215),
+    ("about", 250),
+    ("would", 250),
+    ("there", 250),
+    ("think", 245),
+    ("phone", 230),
+    ("battery", 200),
+    ("charging", 180),
+    ("security", 190),
+    ("parrot", 90),
 ];
 
 #[test]
@@ -304,7 +332,14 @@ fn glide_recall_on_sloppy_traces() {
                 top1 += 1;
                 top3 += 1;
             }
-            Some(1..=2) => top3 += 1,
+            Some(p @ 1..=2) => {
+                top3 += 1;
+                eprintln!(
+                    "  near-miss (sloppy, pos {p}): '{}' behind {:?}",
+                    word,
+                    results.iter().take(p).map(|m| m.word.as_str()).collect::<Vec<_>>()
+                );
+            }
             _ => misses.push(format!(
                 "'{}' -> {:?}",
                 word,
