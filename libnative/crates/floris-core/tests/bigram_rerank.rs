@@ -204,3 +204,34 @@ fn homophone_flips_require_language_model_agreement() {
         r.candidates
     );
 }
+
+/// Next-word prediction: personal pairs outrank the shipped LM, junk-band
+/// successors never clutter the row, bare contractions display properly.
+#[test]
+fn next_word_prediction_blends_personal_and_shipped() {
+    let mut e = engine();
+    for (w, f) in [("keyboard", 230), ("shortcut", 180), ("layout", 190), ("junkx", 60), ("dont", 200)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let b = blob(&e, &[
+        ("keyboard", "shortcut", 190),
+        ("keyboard", "layout", 170),
+        ("keyboard", "junkx", 250),
+        ("keyboard", "dont", 160),
+    ]);
+    e.load_bigrams(&b).unwrap();
+    let preds = e.predict_next_words("keyboard", 3);
+    assert!(!preds.iter().any(|w| w == "junkx"), "junk never suggested: {preds:?}");
+    assert_eq!(preds.first().map(String::as_str), Some("shortcut"), "{preds:?}");
+    assert!(preds.iter().any(|w| w == "don't"), "contraction displays: {preds:?}");
+    // personal pair takes the lead after two uses (140+30=170 < 190? no —
+    // equals layout; three uses = 185, still < 190; five = 215 leads)
+    for _ in 0..5 {
+        e.record_personal_bigram("keyboard", "layout");
+    }
+    let preds = e.predict_next_words("keyboard", 3);
+    assert_eq!(preds.first().map(String::as_str), Some("layout"), "personal leads: {preds:?}");
+    // unknown prev: empty, never panics
+    assert!(e.predict_next_words("zzzz", 3).is_empty());
+}

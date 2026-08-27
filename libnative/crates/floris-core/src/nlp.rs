@@ -1587,6 +1587,48 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
     ("My", 'm'),
 ];
 
+    /// Next-word prediction for an EMPTY composing region: the words most
+    /// likely to follow `prev`, from the user's own recorded pairs first
+    /// (140+15n scoring, same semantics as bigram_pair_score) and the
+    /// shipped language model second. Junk-band successors are noise in a
+    /// suggestion bar and are floored out; personal pairs are always
+    /// eligible (the user taught them). Bare contraction forms display
+    /// apostrophized.
+    pub fn predict_next_words(&self, prev: &str, max: usize) -> Vec<String> {
+        let prev_l = prev.trim().to_lowercase();
+        if prev_l.is_empty() || max == 0 {
+            return Vec::new();
+        }
+        let mut scored: Vec<(u8, &str)> = Vec::new();
+        for ((p, n), count) in &self.personal_bigrams {
+            if p == &prev_l {
+                let s = 140u32.saturating_add(count.saturating_mul(15)).min(255) as u8;
+                scored.push((s, n.as_str()));
+            }
+        }
+        if let Some(&prev_id) = self.word_ids.get(&prev_l) {
+            for &(_, next_id, score) in self.bigrams.successors(prev_id) {
+                if let Some(w) = self.corpus_words().get(next_id as usize) {
+                    if self.trie.get_frequency(w).unwrap_or(0) >= 150 {
+                        scored.push((score, w.as_str()));
+                    }
+                }
+            }
+        }
+        scored.sort_by(|a, b| b.0.cmp(&a.0));
+        let mut out: Vec<String> = Vec::with_capacity(max);
+        for (_, w) in scored {
+            let display = contraction_display(w).unwrap_or(w);
+            if !out.iter().any(|o| o == display) {
+                out.push(display.to_string());
+            }
+            if out.len() >= max {
+                break;
+            }
+        }
+        out
+    }
+
     /// Predicts the highest-frequency word for each next possible letter key (BlackBerry Flick Predictions).
     /// If prefix is non-empty, predicts prefix completions starting with each letter.
     /// If prefix is empty, predicts contextual next words following `prev_word`.

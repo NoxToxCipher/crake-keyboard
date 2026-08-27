@@ -932,6 +932,47 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
 }
 
 #[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpPredictNextWords(
+    mut env: JNIEnv,
+    _class: JClass,
+    prev_word: JString,
+    max_results: jint,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let prev = env
+        .get_string(&prev_word)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+
+    let words = {
+        if let Ok(engine) = NLP_ENGINE.read() {
+            engine.predict_next_words(&prev, max_results.max(0) as usize)
+        } else {
+            Vec::new()
+        }
+    };
+
+    let string_class = match env.find_class("java/lang/String") {
+        Ok(cls) => cls,
+        Err(_) => return empty_array,
+    };
+    let result_array = match env.new_object_array(words.len() as jint, string_class, JString::default()) {
+        Ok(arr) => arr,
+        Err(_) => return empty_array,
+    };
+    for (i, w) in words.iter().enumerate() {
+        if let Ok(jstr) = env.new_string(w) {
+            let _ = env.set_object_array_element(&result_array, i as jint, jstr);
+        }
+    }
+    result_array.into_raw()
+}
+
+#[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRecordPersonalCorrection(
     mut env: JNIEnv,
     _class: JClass,

@@ -218,7 +218,24 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             else -> content.currentWordText
         }.trim()
 
-        if (query.isBlank()) return emptyList()
+        if (query.isBlank()) {
+            // Nothing being composed: offer NEXT-WORD predictions for the
+            // word just committed (personal pairs outrank the shipped LM).
+            // Plain suggestions only — nothing here may auto-commit.
+            val prevCommitted = content.textBeforeSelection
+                .trimEnd()
+                .takeLastWhile { it.isLetter() || it == '\'' }
+                .toString()
+            if (prevCommitted.isBlank() || !FlorisNative.isAvailable()) return emptyList()
+            return FlorisNative.predictNextWords(prevCommitted, 3).map { word ->
+                WordSuggestionCandidate(
+                    text = word,
+                    confidence = 0.5,
+                    isEligibleForAutoCommit = false,
+                    sourceProvider = this,
+                )
+            }
+        }
 
         // Previous token, for spurious-space repair ("shou kd" -> "should").
         val prevToken = content.textBeforeSelection
