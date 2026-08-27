@@ -94,7 +94,7 @@ class GlideTypingGesture {
                             // every sloppy tap become a word commit. 0.85
                             // key-widths sits in the measured gap; no
                             // ceiling, or tall keys reintroduce the leak.
-                            val triggerSlop = (keySize * 0.85f).coerceAtLeast(24f)
+                            val triggerSlop = (keySize * 0.45f).coerceIn(12f, 20f)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
                             val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
