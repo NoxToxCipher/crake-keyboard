@@ -1,0 +1,118 @@
+//! Replays REAL captured glide traces (harvested from a debug device by
+//! utils/harvest_glide_traces.py) against the engine, on the exact key
+//! geometry each stroke was drawn on. This is the ground-truth companion
+//! to glide_eval's synthetic traces: when the field reports a wrong commit
+//! ("would" -> "writings"), the harvested stroke lands here and the failure
+//! becomes reproducible.
+//!
+//! Line format (pipe-delimited, no serde):
+//!     prev|top1,top2,top3|ch:x:y:w:h,...|x:y;x:y;...
+//! where `top` is what the DEVICE build answered at capture time.
+//!
+//! With no data file the test passes trivially — capture is optional and
+//! device-dependent. With data it asserts the engine still produces
+//! candidates for every stroke and prints a scoreboard comparing current
+//! answers against the captured ones, so an engine change that shifts
+//! real-world behaviour is visible in the test output.
+
+use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
+
+fn parse_layout(s: &str) -> Vec<KeyInfo> {
+    s.split(',')
+        .filter_map(|item| {
+            let p: Vec<&str> = item.split(':').collect();
+            if p.len() != 5 {
+                return None;
+            }
+            let ch = p[0].chars().next()?;
+            Some(KeyInfo {
+                code: ch as i32,
+                character: ch,
+                center: Point2D::new(p[1].parse().ok()?, p[2].parse().ok()?),
+                width: p[3].parse().ok()?,
+                height: p[4].parse().ok()?,
+            })
+        })
+        .collect()
+}
+
+fn parse_points(s: &str) -> Vec<Point2D> {
+    s.split(';')
+        .filter_map(|pair| {
+            let (x, y) = pair.split_once(':')?;
+            Some(Point2D::new(x.parse().ok()?, y.parse().ok()?))
+        })
+        .collect()
+}
+
+#[test]
+fn replay_captured_device_traces() {
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data/glide_traces.txt");
+    let data = match std::fs::read_to_string(path) {
+        Ok(d) => d,
+        Err(_) => {
+            eprintln!("glide replay: no captured traces (tests/data/glide_traces.txt) — skipping");
+            return;
+        }
+    };
+
+    // Real dictionary + bigrams: captured strokes were matched against the
+    // shipped assets, so the replay must be too.
+    let mut nlp = NlpEngine::new();
+    let dict = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../app/src/main/assets/ime/dict/data.crkd"
+    ))
+    .expect("dict blob");
+    floris_core::parse_dict_blob(&dict, |word, freq| {
+        nlp.trie.insert(word, freq);
+        nlp.corpus_insert(word, freq);
+    })
+    .expect("dict parse");
+    let big = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../../app/src/main/assets/ime/dict/bigrams.crkb"
+    ))
+    .expect("bigram blob");
+    nlp.load_bigrams(&big).expect("bigram parse");
+
+    let mut total = 0;
+    let mut agree = 0;
+    for (i, line) in data.lines().enumerate() {
+        let fields: Vec<&str> = line.splitn(4, '|').collect();
+        if fields.len() != 4 {
+            continue;
+        }
+        let (prev, captured_top, layout_s, pts_s) =
+            (fields[0], fields[1], fields[2], fields[3]);
+        let layout = parse_layout(layout_s);
+        let points = parse_points(pts_s);
+        assert!(
+            layout.len() >= 26 && points.len() >= 2,
+            "trace {i}: malformed (keys={}, pts={})",
+            layout.len(),
+            points.len()
+        );
+        let mut engine = GlideEngine::new();
+        engine.set_layout(layout);
+        let ctx = if prev.is_empty() { None } else { Some((&nlp, prev)) };
+        let results = engine.match_gesture_with_context(&points, &nlp.trie, 8, ctx);
+        assert!(
+            !results.is_empty(),
+            "trace {i}: engine returned nothing for a real stroke"
+        );
+        let device_first = captured_top.split(',').next().unwrap_or("");
+        let now_first = results.first().map(|m| m.word.as_str()).unwrap_or("");
+        total += 1;
+        if now_first == device_first {
+            agree += 1;
+        } else {
+            eprintln!(
+                "  trace {i}: device committed '{device_first}', engine now says '{now_first}' \
+                 (top-3 now: {:?}, prev='{prev}')",
+                results.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+            );
+        }
+    }
+    eprintln!("glide replay: {agree}/{total} match the captured device commits");
+}
