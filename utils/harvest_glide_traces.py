@@ -72,8 +72,13 @@ def parse(lines):
             pts = []
             for pair in data.split(";"):
                 xy = pair.split(":")
+                # Format v1: x:y. Format v2: x:y:t where t is milliseconds
+                # since the stroke's first point (u32). Both accepted; v2
+                # is what unblocks dwell/velocity work downstream.
                 if len(xy) == 2:
                     pts.append([float(xy[0]), float(xy[1])])
+                elif len(xy) == 3:
+                    pts.append([float(xy[0]), float(xy[1]), float(xy[2])])
             chunks[int(idx)] = pts
         elif p.startswith("commit "):
             if layout is None or not chunks:
@@ -88,7 +93,9 @@ def parse(lines):
                 lay = ",".join(
                     f"{k['ch']}:{k['x']:g}:{k['y']:g}:{k['w']:g}:{k['h']:g}" for k in layout
                 )
-                pts = ";".join(f"{x:g}:{y:g}" for x, y in points)
+                pts = ";".join(
+                    ":".join(f"{v:g}" for v in pt) for pt in points
+                )
                 yield f"{prev}|{','.join(top)}|{lay}|{pts}"
 
 
