@@ -5,37 +5,52 @@ const STACK_BUFFER_MAX: usize = 32;
 /// Compute Damerau-Levenshtein distance with threshold cutoff.
 /// Returns None if edit distance exceeds max_threshold.
 pub fn damerau_levenshtein_threshold(a: &str, b: &str, max_threshold: usize) -> Option<usize> {
-    let a_chars: Vec<char> = a.chars().collect();
-    let b_chars: Vec<char> = b.chars().collect();
-    let len_a = a_chars.len();
-    let len_b = b_chars.len();
-
-    // Length delta exceeds threshold budget
-    if len_a.abs_diff(len_b) > max_threshold {
-        return None;
-    }
-
-    if len_a == 0 {
-        return (len_b <= max_threshold).then_some(len_b);
-    }
-    if len_b == 0 {
-        return (len_a <= max_threshold).then_some(len_a);
-    }
-
     // Identical string fast-path
     if a == b {
         return Some(0);
     }
 
-    let rows = len_a + 2;
-    let cols = len_b + 2;
-    let max_dist = len_a + len_b;
+    let mut a_buf = ['\0'; 32];
+    let mut a_len = 0;
+    for ch in a.chars() {
+        if a_len < 32 {
+            a_buf[a_len] = ch;
+        }
+        a_len += 1;
+    }
+
+    let mut b_buf = ['\0'; 32];
+    let mut b_len = 0;
+    for ch in b.chars() {
+        if b_len < 32 {
+            b_buf[b_len] = ch;
+        }
+        b_len += 1;
+    }
+
+    // Length delta exceeds threshold budget
+    if a_len.abs_diff(b_len) > max_threshold {
+        return None;
+    }
+
+    if a_len == 0 {
+        return (b_len <= max_threshold).then_some(b_len);
+    }
+    if b_len == 0 {
+        return (a_len <= max_threshold).then_some(a_len);
+    }
+
+    let rows = a_len + 2;
+    let cols = b_len + 2;
+    let max_dist = a_len + b_len;
 
     // Stack-allocated flat matrix for strings <= 30 chars, fallback to flat heap vector for large text
     if rows <= STACK_BUFFER_MAX && cols <= STACK_BUFFER_MAX {
         let mut matrix = [0usize; STACK_BUFFER_MAX * STACK_BUFFER_MAX];
-        run_dl_matrix(&a_chars, &b_chars, rows, cols, max_dist, &mut matrix, max_threshold)
+        run_dl_matrix(&a_buf[..a_len], &b_buf[..b_len], rows, cols, max_dist, &mut matrix, max_threshold)
     } else {
+        let a_chars: Vec<char> = a.chars().collect();
+        let b_chars: Vec<char> = b.chars().collect();
         let mut matrix = vec![0usize; rows * cols];
         run_dl_matrix(&a_chars, &b_chars, rows, cols, max_dist, &mut matrix, max_threshold)
     }

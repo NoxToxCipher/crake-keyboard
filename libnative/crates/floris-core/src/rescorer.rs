@@ -22,38 +22,54 @@ use crate::rescorer_weights::{B1, B2, HIDDEN, W1, W2};
 /// same cost table as the trie's weighted fuzzy search, over whatever `near`
 /// relation the engine currently uses (live Gaussian model or fallback).
 pub fn weighted_edit_units(a: &str, b: &str, near: impl Fn(char, char) -> bool) -> usize {
-    let a: Vec<char> = a.chars().collect();
-    let b: Vec<char> = b.chars().collect();
-    if a.is_empty() || b.is_empty() {
-        return 2 * a.len().max(b.len());
+    let mut a_buf = ['\0'; 26];
+    let mut b_buf = ['\0'; 26];
+    let mut a_len = 0;
+    for ch in a.chars() {
+        if a_len >= 25 {
+            return 2 * a.chars().count().max(b.chars().count());
+        }
+        a_buf[a_len] = ch;
+        a_len += 1;
     }
-    if a.len() > 24 || b.len() > 24 {
-        return 2 * a.len().max(b.len());
+    let mut b_len = 0;
+    for ch in b.chars() {
+        if b_len >= 25 {
+            return 2 * a_len.max(b.chars().count());
+        }
+        b_buf[b_len] = ch;
+        b_len += 1;
     }
-    let cols = b.len() + 1;
-    let mut prev_prev: Vec<usize> = vec![0; cols];
-    let mut prev: Vec<usize> = (0..cols).map(|j| j * 2).collect();
-    let mut cur = vec![0usize; cols];
-    for i in 1..=a.len() {
+    if a_len == 0 || b_len == 0 {
+        return 2 * a_len.max(b_len);
+    }
+    let cols = b_len + 1;
+    let mut prev_prev = [0usize; 26];
+    let mut prev = [0usize; 26];
+    for (j, item) in prev.iter_mut().enumerate().take(cols) {
+        *item = j * 2;
+    }
+    let mut cur = [0usize; 26];
+    for i in 1..=a_len {
         cur[0] = i * 2;
-        for j in 1..=b.len() {
-            let sub = if a[i - 1] == b[j - 1] {
+        for j in 1..=b_len {
+            let sub = if a_buf[i - 1] == b_buf[j - 1] {
                 0
-            } else if near(a[i - 1], b[j - 1]) {
+            } else if near(a_buf[i - 1], b_buf[j - 1]) {
                 1
             } else {
                 2
             };
             let mut v = (prev[j] + 2).min(cur[j - 1] + 2).min(prev[j - 1] + sub);
-            if i >= 2 && j >= 2 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1] {
+            if i >= 2 && j >= 2 && a_buf[i - 1] == b_buf[j - 2] && a_buf[i - 2] == b_buf[j - 1] {
                 v = v.min(prev_prev[j - 2] + 2);
             }
             cur[j] = v;
         }
-        std::mem::swap(&mut prev_prev, &mut prev);
-        std::mem::swap(&mut prev, &mut cur);
+        prev_prev[..cols].copy_from_slice(&prev[..cols]);
+        prev[..cols].copy_from_slice(&cur[..cols]);
     }
-    prev[b.len()]
+    prev[b_len]
 }
 
 /// Builds the shared feature vector. `typed` and `cand` are lowercase.

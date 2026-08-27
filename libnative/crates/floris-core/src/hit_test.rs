@@ -232,9 +232,13 @@ impl HitTester {
 
             let dx = x - cx;
             let dy = y - cy;
+            let max_reach = key_radius * 2.0;
+            if dx.abs() > max_reach || dy.abs() > max_reach {
+                continue;
+            }
             let dist_sq = dx * dx + dy * dy;
 
-            let max_reach_sq = (key_radius * 2.0).powi(2);
+            let max_reach_sq = max_reach * max_reach;
             if dist_sq <= max_reach_sq {
                 let sigma = key_radius * 0.65;
                 let spatial_score = (-dist_sq / (2.0 * sigma * sigma)).exp();

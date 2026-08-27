@@ -242,13 +242,37 @@ pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
     ShorthandEntry { code: "~=", expansion: "≈", is_autocorrect: true },
 ];
 
-/// Looks up an SMS/slang shorthand code in O(log N) binary search time.
+/// Looks up an SMS/slang shorthand code in O(log N) binary search time with zero heap allocation.
 #[inline]
 pub fn lookup_shorthand(query: &str) -> Option<ShorthandEntry> {
-    let query_lower = query.to_lowercase();
-    match SHORTHAND_LEXICON.binary_search_by_key(&query_lower.as_str(), |entry| entry.code) {
-        Ok(idx) => Some(SHORTHAND_LEXICON[idx]),
-        Err(_) => None,
+    if query.is_ascii() {
+        match SHORTHAND_LEXICON.binary_search_by(|entry| {
+            let mut it1 = entry.code.bytes();
+            let mut it2 = query.bytes();
+            loop {
+                match (it1.next(), it2.next()) {
+                    (Some(b1), Some(b2)) => {
+                        let c1 = b1.to_ascii_lowercase();
+                        let c2 = b2.to_ascii_lowercase();
+                        if c1 != c2 {
+                            return c1.cmp(&c2);
+                        }
+                    }
+                    (None, None) => return std::cmp::Ordering::Equal,
+                    (None, Some(_)) => return std::cmp::Ordering::Less,
+                    (Some(_), None) => return std::cmp::Ordering::Greater,
+                }
+            }
+        }) {
+            Ok(idx) => Some(SHORTHAND_LEXICON[idx]),
+            Err(_) => None,
+        }
+    } else {
+        let query_lower = query.to_lowercase();
+        match SHORTHAND_LEXICON.binary_search_by_key(&query_lower.as_str(), |entry| entry.code) {
+            Ok(idx) => Some(SHORTHAND_LEXICON[idx]),
+            Err(_) => None,
+        }
     }
 }
 

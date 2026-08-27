@@ -17,6 +17,7 @@ impl Default for BloomFilter {
 
 impl BloomFilter {
     pub fn new(size_bits: usize) -> Self {
+        let size_bits = size_bits.max(64);
         let u64_count = size_bits.div_ceil(64);
         Self {
             bits: vec![0u64; u64_count],
