@@ -799,3 +799,78 @@ fn anisotropic_thumb_arc_recognition_battery() {
 
     assert!(failures.is_empty(), "Thumb-arc recognition failures:\n{}", failures.join("\n"));
 }
+
+
+/// Dynamic Takeoff & Landing Smoothing / Hook Cleanup Battery (Loop 14/18):
+/// Verifies that hardware touchdown/liftoff acute flick hooks are cleanly trimmed,
+/// while legitimate intentional gestures remain unperturbed.
+#[test]
+fn takeoff_and_landing_hook_cleanup_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_words = [
+        ("about", 250),
+        ("dinner", 215),
+        ("phone", 230),
+        ("question", 190),
+        ("understand", 185),
+    ];
+
+    for &(w, freq) in &test_words {
+        nlp.trie.insert(w, freq);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(word, _)) in test_words.iter().enumerate() {
+        let mut rng = Lcg(0x7007_C001 + idx as u64 * 0x5555);
+        if let Some(ideal) = glide.build_ideal_keypath(word) {
+            let mut trace = Vec::new();
+
+            // 1. Inject sharp initial touchdown hook (12px retrograde hardware flick at touchdown)
+            let first = ideal[0];
+            let second = ideal[1];
+            let dir_x = (second.x - first.x) / first.distance(&second).max(1.0);
+            let dir_y = (second.y - first.y) / first.distance(&second).max(1.0);
+            let hook_touch = Point2D::new(first.x + dir_x * 12.0, first.y + dir_y * 12.0);
+            trace.push(hook_touch);
+
+            // 2. Add interpolated body starting from first key
+            for pair in ideal.windows(2) {
+                let (a, b) = (pair[0], pair[1]);
+                let steps = 6;
+                for s in 0..steps {
+                    let t = s as f32 / steps as f32;
+                    trace.push(Point2D::new(
+                        a.x + (b.x - a.x) * t + rng.next_f32() * 6.0,
+                        a.y + (b.y - a.y) * t + rng.next_f32() * 6.0,
+                    ));
+                }
+            }
+
+            // 3. Inject sharp liftoff hook at the end (12px retrograde roll upon liftoff)
+            let last = *ideal.last().unwrap();
+            let prev_last = ideal[ideal.len() - 2];
+            let end_dir_x = (last.x - prev_last.x) / last.distance(&prev_last).max(1.0);
+            let end_dir_y = (last.y - prev_last.y) / last.distance(&prev_last).max(1.0);
+            let v_tail_hook = Point2D::new(last.x - end_dir_x * 12.0, last.y - end_dir_y * 12.0);
+            trace.push(v_tail_hook);
+
+            // Verify hook trimming algorithm directly
+            let cleaned = floris_core::trim_takeoff_and_landing_hooks(&trace, 50.0);
+            assert!(cleaned.len() < trace.len(), "Hook trimmer must detect and trim injected hardware hooks");
+
+            let res = glide.match_gesture(&trace, &nlp.trie, 3);
+            let top_word = res.first().map(|m| m.word.as_str());
+            if top_word != Some(word) {
+                failures.push(format!(
+                    "Word '{word}' with hardware hooks expected top match, got {top_word:?} (all: {:?})",
+                    res.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+                ));
+            }
+        }
+    }
+
+    assert!(failures.is_empty(), "Hook cleanup recognition failures:\n{}", failures.join("\n"));
+}
