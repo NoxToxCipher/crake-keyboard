@@ -525,11 +525,10 @@ impl GlideEngine {
 
                     // Combine DTW geometric closeness with word frequency bonus & kinematics
                     let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
-                    // Sentence-context bonus from the bigram LM (0 without
-                    // context or when the pair is unseen).
+                    // Multi-Word N-Gram Context & Score Fusion (Idea 3 / Loops 7-9):
                     let context_bonus = match context {
                         Some((nlp, prev)) if !prev.is_empty() => {
-                            nlp.bigram_pair_score(prev, &word) as f32 * 0.04
+                            nlp.multi_word_context_score(prev, &word)
                         }
                         _ => 0.0,
                     };
