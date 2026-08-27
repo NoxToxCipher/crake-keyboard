@@ -552,12 +552,25 @@ fun TextKeyboardLayout(
             if (sundaeKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
                 sundaeTriggerTime = System.currentTimeMillis()
             }
+            // Strict word boundary isolation for train so words like 'training', 'trainer', 'strain', 'restrain' never trigger it!
             val nobleTrainKeys = listOf("noble train", "nobletrain", "noble_train", "sniping trains")
             val regularTrainKeys = listOf("train", "trains", "choo choo", "choochoo", "locomotive", "steam train")
-            if (nobleTrainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+            val isNobleTrainMatch = nobleTrainKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            val isRegularTrainMatch = regularTrainKeys.any { k ->
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                }
+            }
+            if (isNobleTrainMatch) {
                 isNobleTrainMode = true
                 trainTriggerTime = System.currentTimeMillis()
-            } else if (regularTrainKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+            } else if (isRegularTrainMatch) {
                 isNobleTrainMode = false
                 trainTriggerTime = System.currentTimeMillis()
             }
