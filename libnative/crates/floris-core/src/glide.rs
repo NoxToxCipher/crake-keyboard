@@ -405,9 +405,10 @@ pub fn compute_dtw(path_a: &[Point2D], path_b: &[Point2D]) -> f32 {
 }
 
 /// Native Glide Typing Engine managing key geometry and trajectory matching.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct GlideEngine {
     key_centers: HashMap<char, Point2D>,
+    adaptive_centroids: HashMap<char, Point2D>,
     key_bounds: Vec<KeyInfo>,
     average_key_radius: f32,
 }
@@ -416,6 +417,7 @@ impl GlideEngine {
     pub fn new() -> Self {
         Self {
             key_centers: HashMap::new(),
+            adaptive_centroids: HashMap::new(),
             key_bounds: Vec::new(),
             average_key_radius: 50.0,
         }
@@ -439,7 +441,45 @@ impl GlideEngine {
     }
 
     /// Returns the center position of a key character if present in layout.
-    pub fn key_center(&self, ch: char) -> Option<Point2D> {
+    
+    /// Adaptively updates the learned centroid of a key based on user touch observations (Idea 6 / Loops 16-18).
+    /// Uses exponential moving average bounded within 0.35x key radius of nominal key center.
+    pub fn adapt_key_centroid(&mut self, ch: char, observed: Point2D) {
+        let ch_lower = ch.to_ascii_lowercase();
+        if let Some(&nominal) = self.key_centers.get(&ch_lower) {
+            let current = self.adaptive_centroids.get(&ch_lower).copied().unwrap_or(nominal);
+            let alpha = 0.05f32;
+            let mut updated = Point2D::new(
+                current.x * (1.0 - alpha) + observed.x * alpha,
+                current.y * (1.0 - alpha) + observed.y * alpha,
+            );
+
+            // Bounded clamp: ensure adaptive center stays within 0.35x key radius of nominal
+            let max_offset = (self.average_key_radius * 0.35).max(5.0);
+            let dx = updated.x - nominal.x;
+            let dy = updated.y - nominal.y;
+            let dist = (dx * dx + dy * dy).sqrt();
+            if dist > max_offset {
+                updated.x = nominal.x + (dx / dist) * max_offset;
+                updated.y = nominal.y + (dy / dist) * max_offset;
+            }
+
+            self.adaptive_centroids.insert(ch_lower, updated);
+        }
+    }
+
+    /// Returns the effective key center (learned adaptive center if available, otherwise nominal).
+    pub fn get_adaptive_key_center(&self, ch: char) -> Option<Point2D> {
+        let ch_lower = ch.to_ascii_lowercase();
+        self.adaptive_centroids.get(&ch_lower).copied().or_else(|| self.key_centers.get(&ch_lower).copied())
+    }
+
+    /// Clears learned adaptive centroids and restores nominal key geometry.
+    pub fn reset_adaptive_centroids(&mut self) {
+        self.adaptive_centroids.clear();
+    }
+
+pub fn key_center(&self, ch: char) -> Option<Point2D> {
         self.key_centers.get(&ch.to_ascii_lowercase()).copied()
     }
 
@@ -451,8 +491,8 @@ impl GlideEngine {
             if ch_lower == '\'' || ch_lower == '’' || ch_lower == '‘' || ch_lower == '-' {
                 continue;
             }
-            match self.key_centers.get(&ch_lower) {
-                Some(&pt) => {
+            match self.get_adaptive_key_center(ch_lower) {
+                Some(pt) => {
                     // Deduplicate consecutive identical keys (e.g. 'll' or 'ee')
                     if path.last() != Some(&pt) {
                         path.push(pt);
