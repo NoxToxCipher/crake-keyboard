@@ -36,13 +36,25 @@ fn parse_layout(s: &str) -> Vec<KeyInfo> {
         .collect()
 }
 
-fn parse_points(s: &str) -> Vec<Point2D> {
-    s.split(';')
-        .filter_map(|pair| {
-            let (x, y) = pair.split_once(':')?;
-            Some(Point2D::new(x.parse().ok()?, y.parse().ok()?))
-        })
-        .collect()
+/// Points parse from v1 "x:y" or v2 "x:y:t" (t = ms since stroke start).
+/// Timestamps ride alongside; geometry callers ignore them until the
+/// dwell/velocity work lands (three features are waiting on them).
+fn parse_points(s: &str) -> (Vec<Point2D>, Vec<u32>) {
+    let mut pts = Vec::new();
+    let mut ts = Vec::new();
+    for triple in s.split(';') {
+        let mut it = triple.split(':');
+        let (Some(x), Some(y)) = (it.next(), it.next()) else { continue };
+        let (Ok(x), Ok(y)) = (x.parse(), y.parse()) else { continue };
+        pts.push(Point2D::new(x, y));
+        if let Some(t) = it.next().and_then(|t| t.parse::<f32>().ok()) {
+            ts.push(t as u32);
+        }
+    }
+    if ts.len() != pts.len() {
+        ts.clear();
+    }
+    (pts, ts)
 }
 
 #[test]
@@ -87,7 +99,7 @@ fn replay_captured_device_traces() {
             (fields[0], fields[1], fields[2], fields[3]);
         let layout = parse_layout(layout_s);
         let key_w = layout.first().map(|k| k.width).unwrap_or(95.0);
-        let points = parse_points(pts_s);
+        let (points, _timestamps) = parse_points(pts_s);
         assert!(
             layout.len() >= 26 && points.len() >= 2,
             "trace {i}: malformed (keys={}, pts={})",
