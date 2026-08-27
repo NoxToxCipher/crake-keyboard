@@ -432,7 +432,7 @@ pub fn resolve_contraction_with_context(
     let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
 
     // 1. Unconditionally safe contractions (never valid conversational non-contractions)
-    if let Some(c) = contraction_display(&clean) {
+    if let Some(c) = canonicalize_contraction(&clean) {
         return Some(c);
     }
 
