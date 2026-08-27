@@ -216,16 +216,16 @@ pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("thatre", "that're"),
     ("thats", "that's"),
     ("thatve", "that've"),
-    ("theyd", "they'd"),
-    ("theydve", "they'd've"),
-    ("theyll", "they'll"),
-    ("theyre", "they're"),
-    ("theyve", "they've"),
     ("thered", "there'd"),
     ("therell", "there'll"),
     ("therere", "there're"),
     ("theres", "there's"),
     ("thereve", "there've"),
+    ("theyd", "they'd"),
+    ("theydve", "they'd've"),
+    ("theyll", "they'll"),
+    ("theyre", "they're"),
+    ("theyve", "they've"),
     ("tis", "'tis"),
     ("twas", "'twas"),
     ("twixt", "'twixt"),
@@ -399,15 +399,34 @@ pub const SAFE_CONTRACTION_BARE: &[&str] = &[
 
 pub const GLIDE_CONTRACTION_BARE: &[&str] = &[
     "cant",
-    "wont",
     "lets",
+    "wont",
 ];
 
 pub fn canonicalize_contraction(word: &str) -> Option<&'static str> {
-    let lower = word.to_ascii_lowercase();
-    let bare: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
-    if SAFE_CONTRACTION_BARE.contains(&bare.as_str()) || GLIDE_CONTRACTION_BARE.contains(&bare.as_str()) {
-        return CONTRACTIONS.iter().find(|(k, _)| *k == bare.as_str()).map(|&(_, c)| c);
+    if word.is_empty() || word.len() > 32 {
+        return None;
+    }
+    let mut bare_buf = [0u8; 32];
+    let mut bare_len = 0;
+    for ch in word.chars() {
+        if ch != '\'' && ch != '’' && ch != '‘' {
+            let lower = ch.to_ascii_lowercase();
+            if lower.is_ascii_alphabetic() {
+                if bare_len < 32 {
+                    bare_buf[bare_len] = lower as u8;
+                    bare_len += 1;
+                }
+            } else {
+                return None;
+            }
+        }
+    }
+    let bare = std::str::from_utf8(&bare_buf[..bare_len]).ok()?;
+    if SAFE_CONTRACTION_BARE.binary_search(&bare).is_ok() || GLIDE_CONTRACTION_BARE.binary_search(&bare).is_ok() {
+        if let Ok(idx) = CONTRACTIONS.binary_search_by_key(&bare, |&(k, _)| k) {
+            return Some(CONTRACTIONS[idx].1);
+        }
     }
     None
 }
@@ -2798,6 +2817,34 @@ mod tests {
             let res = engine.suggest(input, 3);
             assert_eq!(res.candidates[0].word, expected, "Failed for input: {}", input);
             assert_eq!(res.candidates[0].is_autocorrect, should_auto, "Auto-flag wrong for: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_contractions_tables_are_sorted() {
+        for window in CONTRACTIONS.windows(2) {
+            assert!(
+                window[0].0 <= window[1].0,
+                "CONTRACTIONS must be strictly sorted for binary search: {} > {}",
+                window[0].0,
+                window[1].0
+            );
+        }
+        for window in SAFE_CONTRACTION_BARE.windows(2) {
+            assert!(
+                window[0] <= window[1],
+                "SAFE_CONTRACTION_BARE must be sorted for binary search: {} > {}",
+                window[0],
+                window[1]
+            );
+        }
+        for window in GLIDE_CONTRACTION_BARE.windows(2) {
+            assert!(
+                window[0] <= window[1],
+                "GLIDE_CONTRACTION_BARE must be sorted for binary search: {} > {}",
+                window[0],
+                window[1]
+            );
         }
     }
 
