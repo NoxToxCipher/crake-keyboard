@@ -51,3 +51,16 @@ fn test_slow_or_same_hand_transpositions_never_override() {
     let timestamps_same_hand = vec![0, 30];
     assert!(!is_bimanual_transposition("fr", "rf", &timestamps_same_hand));
 }
+
+/// Absent timing data is absent evidence: with no timestamps the bimanual
+/// detector must refuse, otherwise every cross-hand transposition would
+/// qualify unconditionally and valid words like "form" would flip to
+/// "from" the moment this feature is wired (coord review 2026-08-28).
+#[test]
+fn no_timestamps_means_no_transposition_claim() {
+    use floris_core::nlp::is_bimanual_transposition;
+    assert!(!is_bimanual_transposition("form", "from", &[]));
+    assert!(!is_bimanual_transposition("teh", "the", &[]));
+    // mismatched length is equally not evidence
+    assert!(!is_bimanual_transposition("teh", "the", &[0, 100]));
+}

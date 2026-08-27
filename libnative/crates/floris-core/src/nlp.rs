@@ -91,7 +91,11 @@ pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &
         return delta <= 55;
     }
 
-    true
+    // No timing data means no timing evidence: the 55ms window IS the
+    // feature, so absent or mismatched timestamps must never satisfy it.
+    // (Was `true`, which made every cross-hand transposition qualify
+    // unconditionally — coord review 2026-08-28, defect 1.)
+    false
 }
 
 pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
