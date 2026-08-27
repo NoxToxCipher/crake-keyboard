@@ -36,7 +36,7 @@ pub use glide::{
 };
 pub use hit_test::{HitTester, KeyRect, ProbabilisticHit};
 pub use touch_model::{ContactPatch, TouchModel};
-pub use nlp::{get_key_hand, is_bimanual_transposition, Hand, NlpEngine, SpaceBeamCandidate, SuggestionResult};
+pub use nlp::{get_key_hand, is_bimanual_transposition, resolve_contraction_with_context, Hand, NlpEngine, SpaceBeamCandidate, SuggestionResult};
 pub use shorthand::{lookup_shorthand, ShorthandEntry, SHORTHAND_LEXICON};
 pub use trie::{FuzzyCandidate, RadixTrie, TrieNode};
 pub use typo_corpus::{lookup_common_typo, WIKIPEDIA_COMMON_TYPOS};

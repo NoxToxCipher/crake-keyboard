@@ -418,6 +418,92 @@ pub fn contraction_display_for_glide(bare: &str) -> Option<&'static str> {
     canonicalize_contraction(bare)
 }
 
+
+/// Context-gated contraction resolver that disambiguates dual-meaning words
+/// (e.g. `well` vs `we'll`, `were` vs `we're`, `ill` vs `I'll`, `shed` vs `she'd`)
+/// using grammatical triggers from surrounding tokens (Idea 5 / Loops 13-15).
+#[inline]
+pub fn resolve_contraction_with_context(
+    bare: &str,
+    prev_word: Option<&str>,
+    next_word: Option<&str>,
+) -> Option<&'static str> {
+    let lower = bare.to_ascii_lowercase();
+    let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
+
+    // 1. Unconditionally safe contractions (never valid conversational non-contractions)
+    if let Some(c) = contraction_display(&clean) {
+        return Some(c);
+    }
+
+    let prev = prev_word.map(|w| w.trim().to_ascii_lowercase());
+    let next = next_word.map(|w| w.trim().to_ascii_lowercase());
+
+    match clean.as_str() {
+        "well" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "as" | "very" | "so" | "quite" | "pretty" | "how" | "doing" | "done" | "all" | "deep" | "water" | "oil" | "wish" | "said") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "be" | "go" | "see" | "find" | "know" | "take" | "get" | "have" | "make" | "do" | "come" | "call" | "try" | "need" | "tell" | "ask" | "look" | "talk" | "check" | "wait" | "meet") {
+                    return Some("we'll");
+                }
+            }
+            None
+        }
+        "were" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "they" | "we" | "you" | "there" | "who" | "which" | "where" | "that" | "as" | "if") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "going" | "coming" | "doing" | "getting" | "looking" | "waiting" | "excited" | "happy" | "ready" | "sorry" | "back" | "here" | "not" | "all" | "trying" | "living" | "taking") {
+                    return Some("we're");
+                }
+            }
+            None
+        }
+        "ill" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "feel" | "feeling" | "fell" | "seriously" | "terminally" | "mentally" | "physically" | "critically" | "look" | "looked" | "is" | "was") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "be" | "go" | "see" | "find" | "get" | "have" | "make" | "do" | "call" | "tell" | "check" | "let" | "try" | "take" | "ask") {
+                    return Some("I'll");
+                }
+            }
+            None
+        }
+        "shed" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "the" | "a" | "storage" | "garden" | "tool" | "back" | "old" | "build" | "in" | "my" | "his" | "her") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "like" | "love" | "want" | "prefer" | "rather" | "go" | "have" | "be" | "do" | "know" | "think" | "make" | "said") {
+                    return Some("she'd");
+                }
+            }
+            None
+        }
+        "hed" => {
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "like" | "love" | "want" | "prefer" | "rather" | "go" | "have" | "be" | "do" | "know" | "think" | "make" | "said") {
+                    return Some("he'd");
+                }
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
 pub fn contraction_display(bare: &str) -> Option<&'static str> {
     let lower = bare.to_ascii_lowercase();
     let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
@@ -907,9 +993,17 @@ impl NlpEngine {
         }
     }
 
-    
-    /// Suggests completions and autocorrects with bimanual keystroke dynamics and transposition timing analysis (Idea 3 / Loops 7-9).
-    
+    /// Resolves contractions with context-gating on grammatical evidence (Idea 5 / Loops 13-15).
+    #[inline]
+    pub fn resolve_contraction_context(
+        &self,
+        token: &str,
+        prev_word: Option<&str>,
+        next_word: Option<&str>,
+    ) -> Option<&'static str> {
+        resolve_contraction_with_context(token, prev_word, next_word)
+    }
+
     /// Evaluates 1-to-2 token splits and fat-thumb spacebar bottom-row slips on an unspaced token with zero-allocation slicing (Idea 4 / Loop 12).
     #[inline]
     pub fn evaluate_split_beam(&self, token: &str) -> Option<SpaceBeamCandidate> {
