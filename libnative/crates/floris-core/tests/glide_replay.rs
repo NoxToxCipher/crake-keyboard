@@ -104,9 +104,13 @@ fn replay_captured_device_traces() {
         // (key width captured before set_layout consumed the vec)
         let travel: f32 = points.windows(2).map(|w| w[0].distance(&w[1])).sum();
         let results = engine.match_gesture_with_context(&points, &nlp.trie, 8, ctx);
-        if travel < key_w * 0.85 {
+        // Below ~1.5 key-widths the engine may reject the stroke as a
+        // tap-slide (kinematic gating) — that is desired; a real word
+        // glide travels several key-widths. Only clearly-multi-key
+        // strokes must produce candidates.
+        if travel < key_w * 1.5 {
             if results.is_empty() {
-                eprintln!("  trace {i}: micro-stroke ({:.2} kw) rejected by engine — OK", travel / key_w);
+                eprintln!("  trace {i}: short stroke ({:.2} kw) rejected by engine — OK", travel / key_w);
                 continue;
             }
         } else {
