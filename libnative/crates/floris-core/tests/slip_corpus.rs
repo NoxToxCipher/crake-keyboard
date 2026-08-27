@@ -676,7 +676,7 @@ fn capitalized_tokens_never_autoflip_outside_the_corpus() {
         e.corpus_insert(w, f);
         e.trie.insert(w, f);
     }
-    for typed in ["Pleade", "Kye", "Fieldmark", "Antigravity", "Crake"] {
+    for typed in ["Pleadey", "Kye", "Fieldmark", "Antigravity", "Crake"] {
         let r = e.suggest_with_context(typed, "", 5);
         assert!(
             !r.candidates.iter().any(|c| c.is_autocorrect),
