@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.TouchApp
@@ -143,6 +144,45 @@ fun KeyboardScreen() = FlorisScreen {
 
         // 3. DIMENSIONS & SPACING
         CrakeSectionHeader(title = "Dimensions & Geometry", badgeText = "DISPLAY", accentColor = ElectricCyan)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.AspectRatio,
+                        contentDescription = null,
+                        tint = ElectricCyan,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Interactive Keyboard Resizer",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.5.sp,
+                            color = Color.White,
+                        )
+                        Text(
+                            text = "Tap the Resize icon on the keyboard toolbar (Smartbar) to drag handles and adjust height, width, and position",
+                            fontSize = 11.5.sp,
+                            color = TextMuted,
+                        )
+                    }
+                }
+            }
+        }
         DialogSliderPreference(
             primaryPref = prefs.keyboard.fontSizeMultiplierPortrait,
             secondaryPref = prefs.keyboard.fontSizeMultiplierLandscape,

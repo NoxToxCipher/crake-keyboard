@@ -1160,6 +1160,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("plausible", "plausible"),
     ("playwright", "playwright"),
     ("playwrite", "playwright"),
+    ("pleade", "please"),
     ("poetry", "poetry"),
     ("political", "political"),
     ("politician", "politician"),
