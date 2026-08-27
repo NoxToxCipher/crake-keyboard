@@ -693,6 +693,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("identfication", "identification"),
     ("identfy", "identify"),
     ("identicle", "identical"),
+    ("ifbwe", "if we"),
     ("ignorance", "ignorance"),
     ("ignorant", "ignorant"),
     ("illiminate", "eliminate"),
