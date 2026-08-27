@@ -57,6 +57,111 @@ pub struct GlideMatch {
 
 /// Simplifies a touch trajectory using the Ramer-Douglas-Peucker (RDP) algorithm.
 /// Reduces hundreds of noisy touch samples down to essential inflection points.
+
+/// Detected inflection point (corner turn or dwell) along a touch trajectory.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InflectionPoint {
+    pub point: Point2D,
+    /// Importance weight of this inflection (1.0 = normal, >1.5 = sharp corner or dwell)
+    pub weight: f32,
+    pub is_dwell: bool,
+}
+
+/// Extracts kinematic inflection points (corners and speed dips) from raw touch samples.
+pub fn extract_inflections(points: &[Point2D], key_radius: f32) -> Vec<InflectionPoint> {
+    if points.len() <= 2 {
+        return points
+            .iter()
+            .map(|&p| InflectionPoint {
+                point: p,
+                weight: 1.0,
+                is_dwell: false,
+            })
+            .collect();
+    }
+
+    let mut inflections = Vec::new();
+    // Always anchor start point
+    inflections.push(InflectionPoint {
+        point: points[0],
+        weight: 1.5,
+        is_dwell: true,
+    });
+
+    // Compute average step distance
+    let mut total_dist = 0.0;
+    for w in points.windows(2) {
+        total_dist += w[0].distance(&w[1]);
+    }
+    let avg_step = total_dist / (points.len() - 1).max(1) as f32;
+
+    for i in 1..points.len() - 1 {
+        let p_prev = points[i - 1];
+        let p_curr = points[i];
+        let p_next = points[i + 1];
+
+        let d_prev = p_prev.distance(&p_curr);
+        let d_next = p_curr.distance(&p_next);
+
+        // Angle between incoming and outgoing vectors
+        let dx1 = p_curr.x - p_prev.x;
+        let dy1 = p_curr.y - p_prev.y;
+        let dx2 = p_next.x - p_curr.x;
+        let dy2 = p_next.y - p_curr.y;
+
+        let mag1 = (dx1 * dx1 + dy1 * dy1).sqrt();
+        let mag2 = (dx2 * dx2 + dy2 * dy2).sqrt();
+
+        let mut is_corner = false;
+        let mut is_dwell = false;
+        let mut weight = 1.0;
+
+        if mag1 > 1e-4 && mag2 > 1e-4 {
+            let dot = (dx1 * dx2 + dy1 * dy2) / (mag1 * mag2);
+            let angle_rad = dot.clamp(-1.0, 1.0).acos(); // 0 = straight line, PI = complete reversal
+            let angle_deg = angle_rad * (180.0 / std::f32::consts::PI);
+
+            if angle_deg > 35.0 {
+                is_corner = true;
+                weight += (angle_deg / 60.0).clamp(0.5, 2.0);
+            }
+        }
+
+        // Dwell / slow-down detection
+        if d_prev < avg_step * 0.45 && d_next < avg_step * 0.45 {
+            is_dwell = true;
+            weight += 1.0;
+        }
+
+        if is_corner || is_dwell {
+            // Avoid duplicate inflections too close to each other
+            if let Some(last) = inflections.last() {
+                if last.point.distance(&p_curr) < key_radius * 0.45 {
+                    continue;
+                }
+            }
+            inflections.push(InflectionPoint {
+                point: p_curr,
+                weight,
+                is_dwell,
+            });
+        }
+    }
+
+    // Always anchor end point
+    if let Some(&last_pt) = points.last() {
+        if inflections.last().map(|p| p.point.distance(&last_pt)).unwrap_or(100.0) > key_radius * 0.4 {
+            inflections.push(InflectionPoint {
+                point: last_pt,
+                weight: 1.5,
+                is_dwell: true,
+            });
+        }
+    }
+
+    inflections
+}
+
 pub fn simplify_rdp(points: &[Point2D], epsilon: f32) -> Vec<Point2D> {
     if points.len() <= 2 {
         return points.to_vec();
@@ -292,6 +397,9 @@ impl GlideEngine {
             });
             let viable = viable.into_iter();
 
+            // 2b. Extract kinematics (corners and dwell points) from the raw trace
+            let inflections = extract_inflections(raw_path, self.average_key_radius);
+
             for (word, freq) in viable {
                 // Build ideal keypath for the word
                 if let Some(ideal_path) = self.build_ideal_keypath(&word).map(Self::soften_corners) {
@@ -313,7 +421,18 @@ impl GlideEngine {
                         _ => 0.0,
                     };
 
-                    // Combine DTW geometric closeness with word frequency bonus
+                    // Kinematics Inflection Alignment:
+                    // Reward candidates whose interior keys align with detected turn corners/dwells.
+                    // Penalize spurious pass-through letters that have no corner or dwell witness.
+                    let mut kinematics_bonus = 0.0f32;
+                    let radius_match = self.average_key_radius * 1.35;
+                    for key_pt in &ideal_path {
+                        if inflections.iter().any(|inf| inf.point.distance(key_pt) <= radius_match) {
+                            kinematics_bonus += 0.8;
+                        }
+                    }
+
+                    // Combine DTW geometric closeness with word frequency bonus & kinematics
                     let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
                     // Sentence-context bonus from the bigram LM (0 without
                     // context or when the pair is unseen).
@@ -323,7 +442,7 @@ impl GlideEngine {
                         }
                         _ => 0.0,
                     };
-                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus;
+                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus - kinematics_bonus;
 
                     matches.push(GlideMatch {
                         word,
