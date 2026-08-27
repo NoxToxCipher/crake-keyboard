@@ -86,9 +86,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     /**
      * Fast path: the CRKD binary blob (built by utils/gen_dict_blob.py). The
-     * native trie fills from ONE JNI call; the Kotlin map (still consumed by
-     * the legacy glide classifier) fills from a ByteBuffer scan of the same
-     * bytes. Returns false on any failure so the JSON path takes over —
+     * native trie fills from ONE JNI call; the corpus lives native-side only
+     * (the Kotlin glide classifier that used to mirror it is gone).
+     * Returns false on any failure so the JSON path takes over —
      * partial native inserts before a failure are harmless, inserts are
      * idempotent and the JSON path re-covers them.
      */
@@ -101,9 +101,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             val nativeCount = FlorisNative.loadDictionaryBlob(bytes)
             if (nativeCount < 0) return false
             val tNative = SystemClock.elapsedRealtime()
-            // No JVM mirror of the dictionary any more: the native corpus
-            // store serves getListOfWords/getFrequencyForWord instead. The
-            // map stays empty on this path — it only fills on JSON fallback.
+            // No JVM mirror of the dictionary any more: the corpus lives
+            // native-side only. The map stays empty on this path — it only
+            // fills on JSON fallback.
             Log.i(
                 "CrakeStartup",
                 "dict load (blob): assetRead=${tRead - tStart}ms nativeLoad(1 JNI call)=${tNative - tRead}ms " +
@@ -413,19 +413,4 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return false
     }
 
-    override suspend fun getListOfWords(subtype: Subtype): List<String> {
-        ensureLoaded()
-        // The map only holds data on the JSON fallback path; the blob path
-        // keeps the corpus native-side. Same 49,981 words either way.
-        val fromMap = wordData.withLock { it.keys.toList() }
-        if (fromMap.isNotEmpty()) return fromMap
-        return FlorisNative.corpusWords().toList()
-    }
-
-    override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-        ensureLoaded()
-        val fromMap = wordData.withLock { it[word] }
-        if (fromMap != null) return fromMap / 255.0
-        return FlorisNative.corpusFrequency(word) / 255.0
-    }
 }

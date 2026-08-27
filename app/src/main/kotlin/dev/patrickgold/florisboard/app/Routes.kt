@@ -62,6 +62,7 @@ import dev.patrickgold.florisboard.app.settings.dictionary.UserDictionaryScreen
 import dev.patrickgold.florisboard.app.settings.dictionary.UserDictionaryType
 import dev.patrickgold.florisboard.app.settings.gestures.GesturesScreen
 import dev.patrickgold.florisboard.app.settings.keyboard.InputFeedbackScreen
+import dev.patrickgold.florisboard.app.settings.eastereggs.EasterEggsScreen
 import dev.patrickgold.florisboard.app.settings.fonts.FontsScreen
 import dev.patrickgold.florisboard.app.settings.keyboard.KeyboardScreen
 import dev.patrickgold.florisboard.app.settings.localization.LanguagePackManagerScreen
@@ -140,6 +141,10 @@ object Routes {
         @Serializable
         @Deeplink("settings/fonts")
         object Fonts
+
+        @Serializable
+        @Deeplink("settings/easter-eggs")
+        object EasterEggs
 
         @Serializable
         @Deeplink("settings/keyboard")
@@ -328,6 +333,7 @@ object Routes {
             }
 
             composableWithDeepLink(Settings.Fonts::class) { FontsScreen() }
+            composableWithDeepLink(Settings.EasterEggs::class) { EasterEggsScreen() }
             composableWithDeepLink(Settings.Keyboard::class) { KeyboardScreen() }
             composableWithDeepLink(Settings.InputFeedback::class) { InputFeedbackScreen() }
 

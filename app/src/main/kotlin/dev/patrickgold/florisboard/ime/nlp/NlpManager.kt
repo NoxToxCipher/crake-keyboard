@@ -163,6 +163,9 @@ class NlpManager(context: Context) {
     private val providersForceSuggestionOn = mutableMapOf<String, Boolean>()
 
     private val internalSuggestionsGuard = Mutex()
+
+    // The in-flight suggestion computation; superseded by each newer request.
+    private var suggestJob: kotlinx.coroutines.Job? = null
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -286,7 +289,12 @@ class NlpManager(context: Context) {
 
     fun suggest(subtype: Subtype, content: EditorContent) {
         val reqTime = SystemClock.uptimeMillis()
-        scope.launch {
+        // Latest wins: a rapid keystroke burst (backspace repeat especially)
+        // used to stack one full suggestion computation per keystroke — the
+        // reqTime guard discarded stale RESULTS but every superseded job
+        // still ran to completion, saturating the CPU. Cancel it instead.
+        suggestJob?.cancel()
+        suggestJob = scope.launch {
             val emojiSuggestions = when {
                 prefs.emoji.suggestionEnabled.get() -> {
                     emojiSuggestionProvider.suggest(
@@ -375,14 +383,6 @@ class NlpManager(context: Context) {
                 }
             }
         }
-    }
-
-    fun getListOfWords(subtype: Subtype): List<String> {
-        return runBlocking { getSuggestionProvider(subtype).getListOfWords(subtype) }
-    }
-
-    fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-        return runBlocking { getSuggestionProvider(subtype).getFrequencyForWord(subtype, word) }
     }
 
     private fun assembleCandidates() {
@@ -538,14 +538,6 @@ class NlpManager(context: Context) {
                 return true
             }
             return false
-        }
-
-        override suspend fun getListOfWords(subtype: Subtype): List<String> {
-            return emptyList()
-        }
-
-        override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-            return 0.0
         }
 
         override suspend fun destroy() {

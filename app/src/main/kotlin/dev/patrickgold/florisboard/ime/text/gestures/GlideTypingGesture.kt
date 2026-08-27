@@ -35,15 +35,17 @@ class GlideTypingGesture {
      * and ignores additional pointers provided, if any.
      */
     class Detector(context: Context) {
-        private var pointerData: PointerData = PointerData(mutableListOf(), 0)
+        private var pointerData: PointerData = PointerData(mutableListOf())
         private val keySize = ViewUtils.px2dp(context.resources.getDimension(R.dimen.key_width))
         private val listeners: ArrayList<Listener> = arrayListOf()
         private var pointerId: Int = -1
 
         companion object {
-            private const val MAX_DETECT_TIME = 500
-            private const val VELOCITY_THRESHOLD = 0.10 // dp per ms
             private val SWIPE_GESTURE_KEYS = arrayOf(KeyCode.DELETE, KeyCode.SHIFT, KeyCode.SPACE, KeyCode.CJK_SPACE)
+
+            // Bounds the recorded gesture path; matches the manager's cap so
+            // a never-lifted pointer cannot grow the buffer without limit.
+            private const val MAX_GESTURE_POINTS = 4096
         }
 
         /**
@@ -64,10 +66,7 @@ class GlideTypingGesture {
                     }
                     val pointerIndex = event.actionIndex
                     pointerId = event.getPointerId(pointerIndex)
-                    pointerData.apply {
-                        positions.add(Position(event.getX(pointerIndex), event.getY(pointerIndex)))
-                        startTime = System.currentTimeMillis()
-                    }
+                    pointerData.positions.add(Position(event.getX(pointerIndex), event.getY(pointerIndex)))
                     return false
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -81,7 +80,9 @@ class GlideTypingGesture {
                             event.historySize -> Position(event.getX(pointerIndex), event.getY(pointerIndex))
                             else -> Position(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i))
                         }
-                        pointerData.positions.add(pos)
+                        if (pointerData.positions.size < MAX_GESTURE_POINTS) {
+                            pointerData.positions.add(pos)
+                        }
                         if (pointerData.isActuallyGesture == null) {
                             // evaluate whether is actually a gesture
                             val dist = ViewUtils.px2dp(pointerData.positions[0].dist(pos))
@@ -169,7 +170,6 @@ class GlideTypingGesture {
         private fun resetState() {
             pointerData.apply {
                 positions.clear()
-                startTime = 0
                 isActuallyGesture = null
             }
             pointerId = -1
@@ -177,7 +177,6 @@ class GlideTypingGesture {
 
         data class PointerData(
             val positions: MutableList<Position>,
-            var startTime: Long,
             var isActuallyGesture: Boolean? = null,
         )
 

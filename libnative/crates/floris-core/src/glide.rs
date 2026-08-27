@@ -68,6 +68,38 @@ pub struct KeyInfo {
 /// set with no word at or above it is display-only (the stray-flick guard).
 pub const GLIDE_COMMIT_MIN_FREQ: u32 = 150;
 
+/// Folds common Latin diacritics to their ASCII base letter, mirroring the
+/// NFD normalization the retired Kotlin classifier applied. Keyboard layouts
+/// carry ASCII letter keys only, so without folding an accented interior or
+/// final letter makes a word unglideable ("café" would have no key path).
+fn fold_to_ascii(ch: char) -> char {
+    match ch {
+        'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' | 'ā' | 'ă' | 'ą' => 'a',
+        'ç' | 'ć' | 'č' => 'c',
+        'ď' => 'd',
+        'è' | 'é' | 'ê' | 'ë' | 'ē' | 'ĕ' | 'ė' | 'ę' | 'ě' => 'e',
+        'ğ' | 'ģ' => 'g',
+        'ì' | 'í' | 'î' | 'ï' | 'ī' | 'į' | 'ı' => 'i',
+        'ķ' => 'k',
+        'ĺ' | 'ļ' | 'ľ' | 'ł' => 'l',
+        'ñ' | 'ń' | 'ņ' | 'ň' => 'n',
+        'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' | 'ō' | 'ő' => 'o',
+        'ŕ' | 'ř' => 'r',
+        'ś' | 'ş' | 'š' | 'ș' => 's',
+        'ť' | 'ţ' | 'ț' => 't',
+        'ù' | 'ú' | 'û' | 'ü' | 'ū' | 'ŭ' | 'ů' | 'ű' | 'ų' => 'u',
+        'ý' | 'ÿ' => 'y',
+        'ź' | 'ż' | 'ž' => 'z',
+        other => other,
+    }
+}
+
+/// Lowercases (full Unicode, so 'É' -> 'é') and then folds diacritics.
+fn fold_key_char(ch: char) -> char {
+    let lower = ch.to_lowercase().next().unwrap_or(ch);
+    fold_to_ascii(lower)
+}
+
 /// A classified gesture match candidate.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GlideMatch {
@@ -491,7 +523,7 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
     pub fn build_ideal_keypath(&self, word: &str) -> Option<Vec<Point2D>> {
         let mut path = Vec::with_capacity(word.len());
         for ch in word.chars() {
-            let ch_lower = ch.to_ascii_lowercase();
+            let ch_lower = fold_key_char(ch);
             if ch_lower == '\'' || ch_lower == '’' || ch_lower == '‘' || ch_lower == '-' {
                 continue;
             }
@@ -652,7 +684,7 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                         .chars()
                         .filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-')
                         .last()
-                        .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
+                        .is_some_and(|c| end_chars.contains(&fold_key_char(c)))
             });
             let viable = viable.into_iter();
 
@@ -781,24 +813,126 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                 }
             }
         }
-        matches.truncate(max_results);
-
         // Contractions are unglideable (no apostrophe key), so their bare
         // non-word forms match instead. Surface the apostrophized form the
         // user actually means: "dont" -> "don't". Real-word bares ("were",
-        // "wont") are untouched by contraction_display.
-        for m in &mut matches {
+        // "wont") are untouched by canonicalize_contraction. Mapping happens
+        // BEFORE the result cap, and duplicates are dropped wherever they
+        // sit in the ranking (not just adjacent pairs), so a duplicate can
+        // never waste a result slot.
+        let mut deduped: Vec<GlideMatch> = Vec::with_capacity(max_results);
+        for mut m in matches {
+            if deduped.len() == max_results {
+                break;
+            }
             if let Some(display) = crate::nlp::canonicalize_contraction(&m.word) {
                 m.word = display.to_string();
             }
+            if deduped.iter().any(|d| d.word == m.word) {
+                continue;
+            }
+            deduped.push(m);
         }
-        matches.dedup_by(|a, b| a.word == b.word);
-        matches
+        deduped
     }
 }
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn test_fold_key_char() {
+        use super::fold_key_char;
+        assert_eq!(fold_key_char('é'), 'e');
+        assert_eq!(fold_key_char('É'), 'e');
+        assert_eq!(fold_key_char('ü'), 'u');
+        assert_eq!(fold_key_char('ñ'), 'n');
+        assert_eq!(fold_key_char('ç'), 'c');
+        assert_eq!(fold_key_char('A'), 'a');
+        assert_eq!(fold_key_char('z'), 'z');
+        // Unmapped characters pass through unchanged.
+        assert_eq!(fold_key_char('ß'), 'ß');
+        assert_eq!(fold_key_char('\''), '\'');
+    }
+
+    #[test]
+    fn test_accented_word_builds_keypath_and_matches() {
+        let engine = create_mock_qwerty_engine();
+
+        // "café" folds to the c-a-f-e key path.
+        let ideal = engine.build_ideal_keypath("café").expect("café must fold to a key path");
+        assert_eq!(ideal.len(), 4);
+        assert_eq!(ideal[3], engine.key_center('e').unwrap());
+
+        let mut trie = RadixTrie::new();
+        trie.insert("café", 200);
+        trie.insert("cage", 180);
+
+        // Trace along c-a-f-e.
+        let waypoints = ['c', 'a', 'f', 'e'].map(|ch| engine.key_center(ch).unwrap());
+        let mut swipe = Vec::new();
+        for pair in waypoints.windows(2) {
+            for s in 0..8 {
+                let t = s as f32 / 8.0;
+                swipe.push(Point2D::new(
+                    pair[0].x + (pair[1].x - pair[0].x) * t,
+                    pair[0].y + (pair[1].y - pair[0].y) * t,
+                ));
+            }
+        }
+        swipe.push(waypoints[3]);
+
+        // The folding contract: an accented word is a first-class citizen,
+        // scored EXACTLY like its ASCII twin. (Whether this particular
+        // synthetic trace ranks it above "cage" is the scoring lane's
+        // concern, not folding's.)
+        let matches = engine.match_gesture(&swipe, &trie, 3);
+        let accented = matches
+            .iter()
+            .find(|m| m.word == "café")
+            .expect("accented word must be matchable");
+
+        let mut ascii_trie = RadixTrie::new();
+        ascii_trie.insert("cafe", 200);
+        ascii_trie.insert("cage", 180);
+        let ascii_matches = engine.match_gesture(&swipe, &ascii_trie, 3);
+        let ascii_twin = ascii_matches
+            .iter()
+            .find(|m| m.word == "cafe")
+            .expect("ascii twin must be matchable");
+
+        assert_eq!(accented.score, ascii_twin.score, "folding must be score-transparent");
+        assert_eq!(accented.dtw_distance, ascii_twin.dtw_distance);
+        assert_eq!(
+            matches.iter().position(|m| m.word == "café"),
+            ascii_matches.iter().position(|m| m.word == "cafe"),
+            "accented word must rank exactly where its ascii twin ranks"
+        );
+    }
+
+    #[test]
+    fn test_dedup_is_not_positional_and_fills_slots() {
+        // "dont" maps to "don't" via canonicalize_contraction; duplicates
+        // must vanish no matter where they rank, and freed slots go to the
+        // next candidate.
+        let engine = create_mock_qwerty_engine();
+        let mut trie = RadixTrie::new();
+        trie.insert("dont", 200);
+        trie.insert("done", 190);
+        trie.insert("dine", 150);
+
+        let pt_d = engine.key_center('d').unwrap();
+        let pt_o = engine.key_center('o').unwrap();
+        let pt_n = engine.key_center('n').unwrap();
+        let pt_t = engine.key_center('t').unwrap();
+        let swipe = vec![pt_d, pt_o, pt_n, pt_t];
+
+        let matches = engine.match_gesture(&swipe, &trie, 3);
+        let words: Vec<&str> = matches.iter().map(|m| m.word.as_str()).collect();
+        let unique: std::collections::HashSet<&&str> = words.iter().collect();
+        assert_eq!(words.len(), unique.len(), "no duplicate words in results: {words:?}");
+        assert_eq!(matches[0].word, "don't", "bare contraction displays apostrophized: {words:?}");
+    }
+
     use super::*;
 
     fn create_mock_qwerty_engine() -> GlideEngine {
