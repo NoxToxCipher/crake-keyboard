@@ -5157,6 +5157,13 @@ fun TextKeyboardLayout(
         }
 
         // 18. Delayed "Hidden" Hooded Assassin Easter Egg (Fires 8.0s after "hidden" is typed, runs for 3.5s)
+        val exactHKey = remember(keyboard) {
+            keyboard.keys().asSequence().firstOrNull { key ->
+                key.label?.equals("h", ignoreCase = true) == true ||
+                key.computedData.code == 'h'.code ||
+                key.computedData.code == 'H'.code
+            }
+        }
         if (hiddenHoodedTriggerTime > 0L) {
             val hiddenProgress = remember(hiddenHoodedTriggerTime) { Animatable(0f) }
             LaunchedEffect(hiddenHoodedTriggerTime) {
@@ -5181,12 +5188,17 @@ fun TextKeyboardLayout(
                     val canvasH = this.size.height
                     val d = density
 
-                    // H Key location on standard keyboard (approx row 2 center)
-                    val hCenterX = canvasW * 0.55f
-                    val hCenterY = canvasH * 0.48f
-                    val hWidth = canvasW * 0.09f
-                    val hHeight = canvasH * 0.22f
-                    val fretY = canvasH * 0.60f
+                    // Exact physical H Key location dynamically extracted from current device keyboard layout
+                    val hBounds = exactHKey?.visibleBounds
+                    val hLeft = hBounds?.left ?: (canvasW * 0.50f)
+                    val hRight = hBounds?.right ?: (canvasW * 0.60f)
+                    val hTop = hBounds?.top ?: (canvasH * 0.38f)
+                    val hBottom = hBounds?.bottom ?: (canvasH * 0.60f)
+                    val hCenterX = hBounds?.center?.x ?: ((hLeft + hRight) / 2f)
+                    val hCenterY = hBounds?.center?.y ?: ((hTop + hBottom) / 2f)
+                    val hWidth = hRight - hLeft
+                    val hHeight = hBottom - hTop
+                    val fretY = hBottom // The middle fret line right at the base of the H key
 
                     // Master Alpha
                     val masterAlpha = when {
@@ -5201,20 +5213,20 @@ fun TextKeyboardLayout(
                         progress > 0.78f -> (1f - (progress - 0.78f) / 0.22f).coerceIn(0f, 1f)
                         else -> 1f
                     }
-                    val splitOffset = splitFraction * (hWidth * 0.6f)
+                    val splitOffset = splitFraction * (hWidth * 0.52f)
 
                     if (splitFraction > 0.01f) {
-                        // Portal Void inside the split H
+                        // Portal Void inside the split H exactly matching physical key bounds
                         val voidPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((masterAlpha * 250).toInt().coerceIn(0, 255), 8, 8, 12)
+                            color = android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 8, 8, 12)
                             style = android.graphics.Paint.Style.FILL
                         }
-                        val voidRect = android.graphics.RectF(hCenterX - hWidth / 2f, hCenterY - hHeight / 2f, hCenterX + hWidth / 2f, hCenterY + hHeight / 2f)
+                        val voidRect = android.graphics.RectF(hLeft, hTop, hRight, hBottom)
                         drawContext.canvas.nativeCanvas.drawRoundRect(voidRect, 6f * d, 6f * d, voidPaint)
 
                         // Shadow Smoke Wisp from Portal
                         val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((masterAlpha * 120 * splitFraction).toInt().coerceIn(0, 255), 76, 29, 149)
+                            color = android.graphics.Color.argb((masterAlpha * 130 * splitFraction).toInt().coerceIn(0, 255), 76, 29, 149)
                             style = android.graphics.Paint.Style.FILL
                         }
                         for (i in 0 until 5) {
@@ -5224,14 +5236,14 @@ fun TextKeyboardLayout(
                             drawContext.canvas.nativeCanvas.drawCircle(sx, sy, (3f + su * 4f) * d, smokePaint)
                         }
 
-                        // Left Curtain Half (Black/Charcoal Velvet)
+                        // Left Curtain Half (Black/Charcoal Velvet exactly matching left half of H key)
                         val curtainPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                             shader = android.graphics.LinearGradient(
-                                hCenterX - hWidth / 2f - splitOffset, hCenterY,
+                                hLeft - splitOffset, hCenterY,
                                 hCenterX - splitOffset, hCenterY,
                                 intArrayOf(
                                     android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 20, 20, 25),
-                                    android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 35, 35, 42),
+                                    android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 38, 38, 45),
                                     android.graphics.Color.argb((masterAlpha * 255).toInt().coerceIn(0, 255), 15, 15, 20)
                                 ),
                                 floatArrayOf(0f, 0.7f, 1f),
@@ -5240,29 +5252,30 @@ fun TextKeyboardLayout(
                             style = android.graphics.Paint.Style.FILL
                         }
                         val leftRect = android.graphics.RectF(
-                            hCenterX - hWidth / 2f - splitOffset, hCenterY - hHeight / 2f,
-                            hCenterX - splitOffset, hCenterY + hHeight / 2f
+                            hLeft - splitOffset, hTop,
+                            hCenterX - splitOffset, hBottom
                         )
-                        drawContext.canvas.nativeCanvas.drawRoundRect(leftRect, 4f * d, 4f * d, curtainPaint)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(leftRect, 6f * d, 6f * d, curtainPaint)
 
-                        // Right Curtain Half
+                        // Right Curtain Half (Black/Charcoal Velvet exactly matching right half of H key)
                         val rightRect = android.graphics.RectF(
-                            hCenterX + splitOffset, hCenterY - hHeight / 2f,
-                            hCenterX + hWidth / 2f + splitOffset, hCenterY + hHeight / 2f
+                            hCenterX + splitOffset, hTop,
+                            hRight + splitOffset, hBottom
                         )
-                        drawContext.canvas.nativeCanvas.drawRoundRect(rightRect, 4f * d, 4f * d, curtainPaint)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(rightRect, 6f * d, 6f * d, curtainPaint)
 
                         // Split "H" glyph halves on parted curtains
                         val hPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = android.graphics.Color.argb((masterAlpha * 220).toInt().coerceIn(0, 255), 240, 240, 240)
-                            textSize = 14f * d
+                            color = android.graphics.Color.argb((masterAlpha * 240).toInt().coerceIn(0, 255), 245, 245, 245)
+                            textSize = 15f * d
                             typeface = android.graphics.Typeface.DEFAULT_BOLD
                             textAlign = android.graphics.Paint.Align.CENTER
                         }
+                        val hGlyphY = hCenterY + 5.5f * d
                         // Left vertical bar of 'H'
-                        drawContext.canvas.nativeCanvas.drawText("I", hCenterX - splitOffset - 3f * d, hCenterY + 4.5f * d, hPaint)
+                        drawContext.canvas.nativeCanvas.drawText("I", hCenterX - splitOffset - (hWidth * 0.16f), hGlyphY, hPaint)
                         // Right vertical bar of 'H'
-                        drawContext.canvas.nativeCanvas.drawText("I", hCenterX + splitOffset + 3f * d, hCenterY + 4.5f * d, hPaint)
+                        drawContext.canvas.nativeCanvas.drawText("I", hCenterX + splitOffset + (hWidth * 0.16f), hGlyphY, hPaint)
                     }
 
                     // 2. Black Hooded Figure Leaping Out & Sprinting Left on the Fret
