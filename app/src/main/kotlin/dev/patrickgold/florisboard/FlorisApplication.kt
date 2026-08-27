@@ -134,13 +134,11 @@ class FlorisApplication : Application() {
             } catch (_: Throwable) {}
         }
 
-        // 3. Extension and Clipboard initialization
-        extensionManager.value.init()
-        clipboardManager.value.initializeForContext(this)
-
-        // 4. Asynchronous dictionary database warming
+        // 3. Fast asynchronous extension, clipboard, and dictionary initialization
         scope.launch(Dispatchers.IO) {
             try {
+                extensionManager.value.init()
+                clipboardManager.value.initializeForContext(this@FlorisApplication)
                 DictionaryManager.init(this@FlorisApplication)
             } catch (_: Throwable) {}
         }
