@@ -54,6 +54,11 @@ object FlorisNative {
         val isAutocorrect: Boolean,
     )
 
+    data class ClipboardIncoming(
+        val cleanedText: String,
+        val isSensitive: Boolean,
+    )
+
     fun isAvailable(): Boolean = isLoaded
 
     /**
@@ -433,6 +438,110 @@ object FlorisNative {
         if (!isAvailable()) return false
         return nativePgponyIsArmored(text)
     }
+
+    /**
+     * Scrubs incoming clipboard text (invisible characters, URL trackers)
+     * and classifies its sensitivity (Secret Shield + OTP heuristics) in a
+     * single native call — the entry point for the copy path.
+     */
+    fun clipboardProcessText(rawText: String): ClipboardIncoming {
+        if (!isLoaded || rawText.isBlank()) return ClipboardIncoming(rawText, false)
+        val raw = nativeClipboardProcessText(rawText)
+        if (raw.isNullOrEmpty()) return ClipboardIncoming(rawText, false)
+        return ClipboardIncoming(raw.substring(1), raw[0] == '1')
+    }
+
+    /**
+     * Retention sweep over the clipboard history: ids of clips the enabled
+     * rules (size limit / age expiry / sensitive TTL) say to remove.
+     * [flags] carries bit 0 = pinned, bit 1 = sensitive per clip.
+     */
+    fun clipboardRetentionSweep(
+        ids: LongArray,
+        flags: IntArray,
+        createdMs: LongArray,
+        nowMs: Long,
+        limitEnabled: Boolean,
+        maxUnpinned: Int,
+        expiryEnabled: Boolean,
+        expiryAfterMs: Long,
+        sensitiveEnabled: Boolean,
+        sensitiveAfterMs: Long,
+    ): LongArray {
+        if (!isLoaded || ids.isEmpty()) return LongArray(0)
+        return nativeClipboardRetentionSweep(
+            ids, flags, createdMs, nowMs,
+            limitEnabled, maxUnpinned,
+            expiryEnabled, expiryAfterMs,
+            sensitiveEnabled, sensitiveAfterMs,
+        ) ?: LongArray(0)
+    }
+
+    /**
+     * Index of the first history clip duplicating the incoming one, or -1.
+     * [contents] carries the text for text clips and the URI string for
+     * media clips (empty string for absent values).
+     */
+    fun clipboardFindDuplicate(
+        kinds: IntArray,
+        contents: Array<String>,
+        newKind: Int,
+        newContent: String,
+    ): Int {
+        if (!isLoaded || kinds.isEmpty()) return -1
+        return nativeClipboardFindDuplicate(kinds, contents, newKind, newContent)
+    }
+
+    /**
+     * Display group per history clip: 0 pinned, 1 recent, 2 other.
+     * [flags] carries bit 0 = pinned. Returns an empty array when the
+     * native library is unavailable — callers degrade gracefully.
+     */
+    fun clipboardClassifyHistory(flags: IntArray, createdMs: LongArray, nowMs: Long): ByteArray {
+        if (!isLoaded || flags.isEmpty()) return ByteArray(0)
+        return nativeClipboardClassifyHistory(flags, createdMs, nowMs) ?: ByteArray(0)
+    }
+
+    /** AOSP-semantics MIME comparison where [desired] may be a pattern. */
+    fun clipboardCompareMimeTypes(concrete: String, desired: String): Boolean {
+        if (!isLoaded) return desired == "*/*" || concrete == desired
+        return nativeClipboardCompareMimeTypes(concrete, desired)
+    }
+
+    @JvmStatic
+    private external fun nativeClipboardProcessText(rawText: String): String?
+
+    @JvmStatic
+    private external fun nativeClipboardRetentionSweep(
+        ids: LongArray,
+        flags: IntArray,
+        createdMs: LongArray,
+        nowMs: Long,
+        limitEnabled: Boolean,
+        maxUnpinned: Int,
+        expiryEnabled: Boolean,
+        expiryAfterMs: Long,
+        sensitiveEnabled: Boolean,
+        sensitiveAfterMs: Long,
+    ): LongArray?
+
+    @JvmStatic
+    private external fun nativeClipboardFindDuplicate(
+        kinds: IntArray,
+        contents: Array<String>,
+        newKind: Int,
+        newContent: String,
+    ): Int
+
+    @JvmStatic
+    private external fun nativeClipboardClassifyHistory(
+        flags: IntArray,
+        createdMs: LongArray,
+        nowMs: Long,
+    ): ByteArray?
+
+    @JvmStatic
+    private external fun nativeClipboardCompareMimeTypes(concrete: String, desired: String): Boolean
 
     fun toBritishSpelling(word: String): String? {
         if (!isAvailable()) return null

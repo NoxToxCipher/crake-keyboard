@@ -17,18 +17,34 @@
 package dev.patrickgold.florisboard.ime.clipboard
 
 import dev.patrickgold.florisboard.ime.clipboard.provider.ClipboardItem
+import org.florisboard.libnative.FlorisNative
 
 data class ClipboardHistory(val all: List<ClipboardItem>) {
     companion object {
-        private const val RECENT_TIMESPAN_MS = 300_000 // 300 sec = 5 min
+        private const val GROUP_PINNED = 0
+        private const val GROUP_RECENT = 1
+        private const val GROUP_OTHER = 2
 
         val EMPTY = ClipboardHistory(emptyList())
     }
 
-    private val now = System.currentTimeMillis()
+    // Grouping (pinned / recent / other, with the recency window) is decided
+    // by the native clipboard policy engine.
+    private val groups: ByteArray = FlorisNative.clipboardClassifyHistory(
+        flags = IntArray(all.size) { if (all[it].isPinned) 1 else 0 },
+        createdMs = LongArray(all.size) { all[it].creationTimestampMs },
+        nowMs = System.currentTimeMillis(),
+    )
 
-    val pinned = all.filter { it.isPinned }
-    val unpinned = all.filter { !it.isPinned }
-    val recent = unpinned.filter { (now - it.creationTimestampMs) < RECENT_TIMESPAN_MS }
-    val other = unpinned.filter { (now - it.creationTimestampMs) >= RECENT_TIMESPAN_MS }
+    private fun groupOf(index: Int): Int {
+        // Degraded mode without the native library: pinned grouping still
+        // works, everything unpinned counts as recent.
+        if (index >= groups.size) return if (all[index].isPinned) GROUP_PINNED else GROUP_RECENT
+        return groups[index].toInt()
+    }
+
+    val pinned = all.filterIndexed { index, _ -> groupOf(index) == GROUP_PINNED }
+    val unpinned = all.filterIndexed { index, _ -> groupOf(index) != GROUP_PINNED }
+    val recent = all.filterIndexed { index, _ -> groupOf(index) == GROUP_RECENT }
+    val other = all.filterIndexed { index, _ -> groupOf(index) == GROUP_OTHER }
 }
