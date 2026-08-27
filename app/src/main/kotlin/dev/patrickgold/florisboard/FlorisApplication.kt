@@ -157,8 +157,10 @@ class FlorisApplication : Application() {
                 tm.updateActiveTheme()
                 // Pre-load native CRKD dictionary and CRKB bigram blobs
                 nlp.preloadProviders()
-                // Warm native JNI symbol table and Rust engine cache
-                tryOrNull { FlorisNative.nativeSuggest("", "", 1) }
+                // Warm native JNI symbol table and Rust engine cache.
+                // (suggest is the public binding; the raw external it wraps
+                // is private — the previous name here never compiled.)
+                tryOrNull { FlorisNative.suggest("", 1) }
                 EmojiData.get(this@FlorisApplication, FlorisLocale.default())
             } catch (_: Throwable) {}
         }
