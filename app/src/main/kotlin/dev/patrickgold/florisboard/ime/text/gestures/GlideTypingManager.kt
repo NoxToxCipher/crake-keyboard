@@ -93,7 +93,14 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     fun setLayout(keys: List<TextKey>) {
         if (keys.isNotEmpty()) {
             // Populate Native Safe Rust DTW key geometry
-            val letterKeys = keys.filter { (it.data as? KeyData)?.code?.toChar()?.isLetter() == true }
+            // ASCII letters only: isLetter() also admits fullwidth Unicode
+            // glyphs (device evidence 2026-08-27: bottom-row keys labelled
+            // Ｖ and Ｌ entered the glide layout as letters, polluting the
+            // key set and the pitch the slip radius derives from).
+            val letterKeys = keys.filter {
+                val code = (it.data as? KeyData)?.code ?: 0
+                (code >= 'a'.code && code <= 'z'.code) || (code >= 'A'.code && code <= 'Z'.code)
+            }
             if (letterKeys.isNotEmpty()) {
                 val codes = IntArray(letterKeys.size) { (letterKeys[it].data as KeyData).code }
                 val chars = buildString { letterKeys.forEach { append((it.data as KeyData).code.toChar()) } }
