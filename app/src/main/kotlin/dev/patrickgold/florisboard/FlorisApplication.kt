@@ -143,14 +143,16 @@ class FlorisApplication : Application() {
             } catch (_: Throwable) {}
         }
 
-        // 5. Pre-warm critical keyboard engines and dictionary blobs immediately in parallel
+        // 5. Pre-warm critical keyboard engines, layout cache, and dictionary blobs immediately in parallel
         scope.launch(Dispatchers.IO) {
             try {
-                keyboardManager.value
+                val km = keyboardManager.value
                 themeManager.value
                 val nlp = nlpManager.value
-                subtypeManager.value
+                val sm = subtypeManager.value
                 glideTypingManager.value
+                // Pre-load layout and popup cache for active subtype
+                km.layoutManager.preload(sm.activeSubtype)
                 // Pre-load native CRKD dictionary and CRKB bigram blobs
                 nlp.preloadProviders()
                 EmojiData.get(this@FlorisApplication, FlorisLocale.default())

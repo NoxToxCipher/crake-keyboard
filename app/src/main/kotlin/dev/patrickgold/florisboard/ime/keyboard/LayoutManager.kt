@@ -91,6 +91,13 @@ class LayoutManager(context: Context) {
 
     val debugLayoutComputationResultFlow = MutableStateFlow<DebugLayoutComputationResult?>(null)
 
+    suspend fun preload(subtype: Subtype) {
+        runCatching {
+            loadLayoutAsync(LTN(LayoutType.CHARACTERS, subtype.layoutMap.characters), false).await()
+            loadPopupMappingAsync(subtype).await()
+        }
+    }
+
     /**
      * Loads the layout for the specified type and name.
      *
