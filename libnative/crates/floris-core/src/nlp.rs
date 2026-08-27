@@ -1216,29 +1216,31 @@ impl NlpEngine {
 
         let mut best_split = None;
         let mut best_score = -1.0f32;
+        let single_freq = self.trie.get_frequency(&clean).unwrap_or(0);
 
         // 1. Direct split: clean = L1 + L2 (0 edits, e.g. "inorder" -> "in order", "aswell" -> "as well")
-        for i in 1..len {
-            let left_s = &clean[..i];
-            let right_s = &clean[i..];
+        if single_freq < 150 {
+            for i in 1..len {
+                let left_s = &clean[..i];
+                let right_s = &clean[i..];
 
-            if (left_s.len() == 1 && left_s != "a" && left_s != "i")
-                || (right_s.len() == 1 && right_s != "a" && right_s != "i")
-            {
-                continue;
-            }
+                if (left_s.len() == 1 && left_s != "a" && left_s != "i")
+                    || (right_s.len() == 1 && right_s != "a" && right_s != "i")
+                {
+                    continue;
+                }
 
-            if let (Some(f1), Some(f2)) = (self.trie.get_frequency(left_s), self.trie.get_frequency(right_s)) {
-                if f1 >= 30 && f2 >= 30 {
-                    let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
-                    let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
-                    let bigram_bonus = self.bigram_pair_score(left_s, right_s) as f32 * 0.6;
-                    let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 30.0;
+                if let (Some(f1), Some(f2)) = (self.trie.get_frequency(left_s), self.trie.get_frequency(right_s)) {
+                    if f1 >= 30 && f2 >= 30 {
+                        let w1 = if left_s.len() == 1 { f1 as f32 * 0.4 } else { f1 as f32 };
+                        let w2 = if right_s.len() == 1 { f2 as f32 * 0.4 } else { f2 as f32 };
+                        let bigram_bonus = self.bigram_pair_score(left_s, right_s) as f32 * 0.6;
+                        let freq_score = (w1 + w2) * 0.25 + bigram_bonus + 30.0;
 
-                    let single_freq = self.trie.get_frequency(&clean).unwrap_or(0);
-                    if single_freq < 150 && freq_score > best_score {
-                        best_score = freq_score;
-                        best_split = Some(format!("{} {}", left_s, right_s));
+                        if freq_score > best_score {
+                            best_score = freq_score;
+                            best_split = Some(format!("{} {}", left_s, right_s));
+                        }
                     }
                 }
             }
