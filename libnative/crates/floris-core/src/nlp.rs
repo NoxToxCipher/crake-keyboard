@@ -1023,7 +1023,18 @@ impl NlpEngine {
         // budgets stay as they were.
         let is_capitalized = trimmed.chars().next().is_some_and(|c| c.is_uppercase());
         {
-            let max_units = if trimmed_lower.len() <= 4 { 3 } else { 4 };
+            // An EXACT word needs fuzzy only for its close alternatives
+            // (the slot-2 corridors — tine/time, fir/for — are all 1-unit
+            // neighbours; transpositions cost 2). Full-depth fuzzy on
+            // exact words burned ~460us on the most common keystroke
+            // state (measured 2026-08-27); typos keep the full budget.
+            let max_units = if is_exact {
+                2
+            } else if trimmed_lower.len() <= 4 {
+                3
+            } else {
+                4
+            };
             let fuzzy = self.trie.fuzzy_search_weighted(
                 &trimmed_lower,
                 max_units,
