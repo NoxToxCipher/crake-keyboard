@@ -99,7 +99,7 @@ fn replay_captured_device_traces() {
             (fields[0], fields[1], fields[2], fields[3]);
         let layout = parse_layout(layout_s);
         let key_w = layout.first().map(|k| k.width).unwrap_or(95.0);
-        let (points, _timestamps) = parse_points(pts_s);
+        let (points, timestamps) = parse_points(pts_s);
         assert!(
             layout.len() >= 26 && points.len() >= 2,
             "trace {i}: malformed (keys={}, pts={})",
@@ -143,6 +143,33 @@ fn replay_captured_device_traces() {
                 .collect::<Vec<_>>()
                 .join(" ")
         );
+        // v2 traces carry timing: print the dwell profile — time spent
+        // within one key-radius of each layout key — so wobble-vs-visit
+        // hypotheses can be read straight off real strokes.
+        if timestamps.len() == points.len() && points.len() >= 2 {
+            let duration = timestamps.last().unwrap().saturating_sub(timestamps[0]);
+            let mut dwells: Vec<(char, u32)> = Vec::new();
+            let layout_keys = parse_layout(layout_s);
+            for k in &layout_keys {
+                let mut d = 0u32;
+                for w in 0..points.len() - 1 {
+                    if points[w].distance(&k.center) < k.width * 0.6 {
+                        d += timestamps[w + 1].saturating_sub(timestamps[w]);
+                    }
+                }
+                if d > 0 {
+                    dwells.push((k.character, d));
+                }
+            }
+            dwells.sort_by(|a, b| b.1.cmp(&a.1));
+            let top_dwells: Vec<String> =
+                dwells.iter().take(6).map(|(c, d)| format!("{c}:{d}ms")).collect();
+            eprintln!(
+                "  trace {i} timing: {duration}ms total, dwell {}",
+                top_dwells.join(" ")
+            );
+        }
+
         let device_first = captured_top.split(',').next().unwrap_or("");
         let now_first = results.first().map(|m| m.word.as_str()).unwrap_or("");
         total += 1;
