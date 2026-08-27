@@ -664,9 +664,10 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         if timestamps.len() == raw_path.len() && raw_path.len() >= 2 {
             for k in &self.key_bounds {
                 let radius = k.width * 0.6;
+                let radius_sq = radius * radius;
                 let mut d = 0u32;
                 for i in 0..raw_path.len() - 1 {
-                    if raw_path[i].distance(&k.center) < radius {
+                    if raw_path[i].distance_squared(&k.center) < radius_sq {
                         d += timestamps[i + 1].saturating_sub(timestamps[i]);
                     }
                 }
@@ -678,17 +679,16 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
             }
         }
 
-        // 3. Collect candidate words from Radix Trie matching start characters
         let mut matches = Vec::new();
-
+        let mut char_buf = [0u8; 4];
         for &start_ch in &start_chars {
-            let prefix = start_ch.to_string();
+            let prefix = start_ch.encode_utf8(&mut char_buf);
             // Top 300 VIABLE words (end letter reachable from where the
             // finger lifted), filtered during the trie walk. The old shape
             // pulled 1500 frequency-sorted clones and filtered after —
             // 1.27ms per start letter on the mid-gesture preview path, and
             // any viable word below the frequency cut was unglidable.
-            let viable = trie.prefix_search_filtered(&prefix, 300, |word| {
+            let viable = trie.prefix_search_filtered(prefix, 300, |word| {
                 let clean_len = word.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-').count();
                 clean_len >= 2
                     && word
