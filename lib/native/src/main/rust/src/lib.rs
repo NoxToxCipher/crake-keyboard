@@ -1,6 +1,6 @@
 use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
-use jni::objects::{JByteArray, JClass, JFloatArray, JIntArray, JObjectArray, JString};
-use jni::sys::{jboolean, jfloat, jint, jobjectArray, jstring};
+use jni::objects::{JByteArray, JClass, JFloatArray, JIntArray, JLongArray, JObjectArray, JString};
+use jni::sys::{jboolean, jfloat, jint, jlong, jobjectArray, jstring};
 use jni::JNIEnv;
 use once_cell::sync::Lazy;
 use std::sync::RwLock;
@@ -548,11 +548,14 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeMetaScr
 ) -> jstring {
     if let Ok(s) = env.get_string(&raw_text) {
         let res = crake_privacy::metascrub_text(s.to_str().unwrap_or(""));
+        // cleaned_text is the last field and the Kotlin side splits with
+        // limit = 3, so pipes inside the text are safe and must NOT be
+        // escaped (replacing them would corrupt the stored clip).
         let payload = format!(
             "{}|{}|{}",
             res.invisible_chars_removed,
             if res.urls_sanitized { "1" } else { "0" },
-            res.cleaned_text.replace('|', "_")
+            res.cleaned_text
         );
         if let Ok(out) = env.new_string(&payload) {
             return out.into_raw();
@@ -570,11 +573,14 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspect
     if let Ok(s) = env.get_string(&raw_text) {
         let res = crake_privacy::inspect_text(s.to_str().unwrap_or(""));
         let warning = res.warning_message.unwrap_or_default();
+        // redacted_text is the last field of a limit-3 split on the Kotlin
+        // side — leave its pipes intact. Only the middle warning field needs
+        // escaping.
         let payload = format!(
             "{}|{}|{}",
             if res.is_secret_detected { "1" } else { "0" },
             warning.replace('|', "_"),
-            res.redacted_text.replace('|', "_")
+            res.redacted_text
         );
         if let Ok(out) = env.new_string(&payload) {
             return out.into_raw();
@@ -1079,6 +1085,201 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePgponyI
         Err(_) => return 0,
     };
     if crake_privacy::is_pgpony_message(&str_val) {
+        1
+    } else {
+        0
+    }
+}
+
+/// Scrubs incoming clipboard text and classifies its sensitivity in one JNI
+/// crossing. Returns a flag character ('0'/'1' = sensitive) followed by the
+/// cleaned text verbatim — fixed-width prefix, no escaping needed.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeClipboardProcessText(
+    mut env: JNIEnv,
+    _class: JClass,
+    raw_text: JString,
+) -> jstring {
+    if let Ok(s) = env.get_string(&raw_text) {
+        let res = crake_privacy::process_incoming_text(s.to_str().unwrap_or(""));
+        let payload = format!(
+            "{}{}",
+            if res.is_sensitive { '1' } else { '0' },
+            res.cleaned_text
+        );
+        if let Ok(out) = env.new_string(&payload) {
+            return out.into_raw();
+        }
+    }
+    std::ptr::null_mut()
+}
+
+/// Retention sweep over the clipboard history: returns the ids of clips the
+/// enabled rules (size limit / age expiry / sensitive TTL) say to remove.
+/// `flags` carries bit 0 = pinned, bit 1 = sensitive per clip.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeClipboardRetentionSweep(
+    env: JNIEnv,
+    _class: JClass,
+    ids: JLongArray,
+    flags: JIntArray,
+    created_ms: JLongArray,
+    now_ms: jlong,
+    limit_enabled: jboolean,
+    max_unpinned: jint,
+    expiry_enabled: jboolean,
+    expiry_after_ms: jlong,
+    sensitive_enabled: jboolean,
+    sensitive_after_ms: jlong,
+) -> jni::sys::jlongArray {
+    let empty = env
+        .new_long_array(0)
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let len = match env.get_array_length(&ids) {
+        Ok(l) if l >= 0 => l as usize,
+        _ => return empty,
+    };
+    let mut id_buf = vec![0i64; len];
+    let mut flag_buf = vec![0i32; len];
+    let mut created_buf = vec![0i64; len];
+    if env.get_long_array_region(&ids, 0, &mut id_buf).is_err()
+        || env.get_int_array_region(&flags, 0, &mut flag_buf).is_err()
+        || env.get_long_array_region(&created_ms, 0, &mut created_buf).is_err()
+    {
+        return empty;
+    }
+
+    let clips: Vec<crake_privacy::ClipMeta> = (0..len)
+        .map(|i| crake_privacy::ClipMeta {
+            id: id_buf[i],
+            created_at_ms: created_buf[i],
+            is_pinned: flag_buf[i] & 1 != 0,
+            is_sensitive: flag_buf[i] & 2 != 0,
+        })
+        .collect();
+    let rules = crake_privacy::RetentionRules {
+        limit_enabled: limit_enabled != 0,
+        max_unpinned: max_unpinned.max(0) as usize,
+        expiry_enabled: expiry_enabled != 0,
+        expiry_after_ms,
+        sensitive_expiry_enabled: sensitive_enabled != 0,
+        sensitive_expiry_after_ms: sensitive_after_ms,
+    };
+    let removed = crake_privacy::retention_sweep(&clips, &rules, now_ms);
+
+    let Ok(result) = env.new_long_array(removed.len() as jint) else {
+        return empty;
+    };
+    if env.set_long_array_region(&result, 0, &removed).is_err() {
+        return empty;
+    }
+    result.into_raw()
+}
+
+/// Index of the first history clip duplicating the incoming one, or -1.
+/// `contents` carries text for text clips and the URI string for media clips.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeClipboardFindDuplicate(
+    mut env: JNIEnv,
+    _class: JClass,
+    kinds: JIntArray,
+    contents: JObjectArray,
+    new_kind: jint,
+    new_content: JString,
+) -> jint {
+    let len = match env.get_array_length(&kinds) {
+        Ok(l) if l >= 0 => l as usize,
+        _ => return -1,
+    };
+    let mut kind_buf = vec![0i32; len];
+    if env.get_int_array_region(&kinds, 0, &mut kind_buf).is_err() {
+        return -1;
+    }
+    let kinds_u8: Vec<u8> = kind_buf.iter().map(|&k| k.clamp(0, 255) as u8).collect();
+
+    let mut content_strs = Vec::with_capacity(len);
+    for i in 0..len {
+        let Ok(elem) = env.get_object_array_element(&contents, i as jint) else {
+            return -1;
+        };
+        let jstr: JString = elem.into();
+        let s = env
+            .get_string(&jstr)
+            .map(|v| v.to_str().unwrap_or("").to_string())
+            .unwrap_or_default();
+        content_strs.push(s);
+    }
+    let content_refs: Vec<&str> = content_strs.iter().map(|s| s.as_str()).collect();
+
+    let new_content_str = env
+        .get_string(&new_content)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+
+    match crake_privacy::find_duplicate(
+        &kinds_u8,
+        &content_refs,
+        new_kind.clamp(0, 255) as u8,
+        &new_content_str,
+    ) {
+        Some(index) => index.min(jint::MAX as usize) as jint,
+        None => -1,
+    }
+}
+
+/// Assigns each history clip to a display group (0 pinned, 1 recent,
+/// 2 other), returned as one byte per clip. `flags` bit 0 = pinned.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeClipboardClassifyHistory(
+    env: JNIEnv,
+    _class: JClass,
+    flags: JIntArray,
+    created_ms: JLongArray,
+    now_ms: jlong,
+) -> jni::sys::jbyteArray {
+    let empty = env
+        .byte_array_from_slice(&[])
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let len = match env.get_array_length(&flags) {
+        Ok(l) if l >= 0 => l as usize,
+        _ => return empty,
+    };
+    let mut flag_buf = vec![0i32; len];
+    let mut created_buf = vec![0i64; len];
+    if env.get_int_array_region(&flags, 0, &mut flag_buf).is_err()
+        || env.get_long_array_region(&created_ms, 0, &mut created_buf).is_err()
+    {
+        return empty;
+    }
+    let pinned: Vec<bool> = flag_buf.iter().map(|&f| f & 1 != 0).collect();
+    let groups = crake_privacy::classify_history(&pinned, &created_buf, now_ms);
+    env.byte_array_from_slice(&groups)
+        .map(|arr| arr.into_raw())
+        .unwrap_or(empty)
+}
+
+/// AOSP-semantics MIME type comparison where `desired` may be a pattern.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeClipboardCompareMimeTypes(
+    mut env: JNIEnv,
+    _class: JClass,
+    concrete: JString,
+    desired: JString,
+) -> jboolean {
+    let concrete_str = env
+        .get_string(&concrete)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+    let desired_str = env
+        .get_string(&desired)
+        .map(|s| s.to_str().unwrap_or("").to_string())
+        .unwrap_or_default();
+    if crake_privacy::compare_mime_types(&concrete_str, &desired_str) {
         1
     } else {
         0

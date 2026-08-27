@@ -59,62 +59,18 @@ class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
-    fun stripUrlTracking(url: String): String {
-        if (!url.contains("http://") && !url.contains("https://")) return url
-        return runCatching {
-            val uri = android.net.Uri.parse(url)
-            val trackingParams = setOf(
-                "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-                "fbclid", "gclid", "si", "igshid", "ref", "ref_src", "feature", "spm"
-            )
-            val queryNames = uri.queryParameterNames
-            if (queryNames.isNullOrEmpty()) return url
-            val builder = uri.buildUpon().clearQuery()
-            for (param in queryNames) {
-                if (!trackingParams.contains(param.lowercase())) {
-                    for (value in uri.getQueryParameters(param)) {
-                        builder.appendQueryParameter(param, value)
-                    }
-                }
-            }
-            builder.build().toString()
-        }.getOrDefault(url)
-    }
-    private fun isLikelyOtpOrSensitive(text: String): Boolean {
-        val clean = text.trim()
-        // 4 to 8 digit numeric OTP or alphanumeric verification code
-        if (clean.matches(Regex("^[0-9]{4,8}$"))) return true
-        if (clean.matches(Regex("^[A-Za-z0-9]{3,4}-[A-Za-z0-9]{3,4}$"))) return true
-        if (clean.contains("otp", ignoreCase = true) || clean.contains("passcode", ignoreCase = true) || clean.contains("verification code", ignoreCase = true)) return true
-        return false
-    }
         // Ephemeral Auto-Destruct polling interval (2 seconds high resolution)
         private const val INTERVAL = 2 * 1000L
 
         /**
-         * Taken from ClipboardDescription.java from the AOSP
-         *
          * Helper to compare two MIME types, where one may be a pattern.
+         * Decided by the native clipboard policy engine (AOSP semantics).
          * @param concreteType A fully-specified MIME type.
          * @param desiredType A desired MIME type that may be a pattern such as * / *.
          * @return Returns true if the two MIME types match.
          */
         fun compareMimeTypes(concreteType: String, desiredType: String): Boolean {
-            val typeLength = desiredType.length
-            if (typeLength == 3 && desiredType == "*/*") {
-                return true
-            }
-            val slashpos = desiredType.indexOf('/')
-            if (slashpos > 0) {
-                if (typeLength == slashpos + 2 && desiredType[slashpos + 1] == '*') {
-                    if (desiredType.regionMatches(0, concreteType, 0, slashpos + 1)) {
-                        return true
-                    }
-                } else if (desiredType == concreteType) {
-                    return true
-                }
-            }
-            return false
+            return FlorisNative.clipboardCompareMimeTypes(concreteType, desiredType)
         }
     }
 
@@ -236,10 +192,11 @@ class ClipboardManager(
                 if (!isEqual) {
                     var item = ClipboardItem.fromClipData(appContext, systemPrimaryClip, cloneUri = true)
                     if (item.type == ItemType.TEXT && item.text != null) {
-                        val scrubbed = FlorisNative.metascrubText(item.text!!)
-                        val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
-                        val isSensitive = item.isSensitive || shield.isSecretDetected || isLikelyOtpOrSensitive(scrubbed.cleanedText)
-                        item = item.copy(text = scrubbed.cleanedText, isSensitive = isSensitive)
+                        val processed = FlorisNative.clipboardProcessText(item.text!!)
+                        item = item.copy(
+                            text = processed.cleanedText,
+                            isSensitive = item.isSensitive || processed.isSensitive,
+                        )
                     }
                     primaryClip = item
                     insertOrMoveBeginning(item)
@@ -260,10 +217,8 @@ class ClipboardManager(
      * Wraps some plaintext in a ClipData and calls [addNewClip]
      */
     fun addNewPlaintext(newText: String) {
-        val scrubbed = FlorisNative.metascrubText(newText)
-        val shield = FlorisNative.inspectSecret(scrubbed.cleanedText)
-        val isSensitive = shield.isSecretDetected || isLikelyOtpOrSensitive(scrubbed.cleanedText)
-        val newData = ClipboardItem.text(scrubbed.cleanedText).copy(isSensitive = isSensitive)
+        val processed = FlorisNative.clipboardProcessText(newText)
+        val newData = ClipboardItem.text(processed.cleanedText).copy(isSensitive = processed.isSensitive)
         addNewClip(newData)
     }
 
@@ -285,14 +240,14 @@ class ClipboardManager(
      */
     private fun insertOrMoveBeginning(newItem: ClipboardItem) {
         if (prefs.clipboard.historyEnabled.get()) {
-            val historyElement = currentHistory.all.firstOrNull { item ->
-                if (item.type != newItem.type) return@firstOrNull false
-                if (item.type == ItemType.TEXT) {
-                    (item.text ?: "").trim() == (newItem.text ?: "").trim()
-                } else {
-                    item.uri?.toString() == newItem.uri?.toString()
-                }
-            }
+            val history = currentHistory.all
+            val duplicateIndex = FlorisNative.clipboardFindDuplicate(
+                kinds = IntArray(history.size) { history[it].type.value },
+                contents = Array(history.size) { history[it].dedupContent() },
+                newKind = newItem.type.value,
+                newContent = newItem.dedupContent(),
+            )
+            val historyElement = history.getOrNull(duplicateIndex)
             if (historyElement != null) {
                 moveToTheBeginning(
                     oldItem = historyElement,
@@ -310,10 +265,17 @@ class ClipboardManager(
 
     private fun enforceHistoryLimit(clipHistory: ClipboardHistory) {
         if (prefs.clipboard.historySizeLimitEnabled.get()) {
-            val nonPinnedItems = clipHistory.recent + clipHistory.other
-            val nToRemove = nonPinnedItems.size - prefs.clipboard.historySizeLimit.get()
-            if (nToRemove > 0) {
-                val itemsToRemove = nonPinnedItems.asReversed().filterIndexed { n, _ -> n < nToRemove }
+            val removedIds = retentionSweep(
+                clipHistory.all,
+                limitEnabled = true,
+                maxUnpinned = prefs.clipboard.historySizeLimit.get(),
+                expiryEnabled = false,
+                expiryAfterMs = 0,
+                sensitiveEnabled = false,
+                sensitiveAfterMs = 0,
+            )
+            if (removedIds.isNotEmpty()) {
+                val itemsToRemove = clipHistory.all.filter { it.id in removedIds }
                 ioScope.launch {
                     clipHistoryDao?.delete(itemsToRemove)
                 }
@@ -322,16 +284,26 @@ class ClipboardManager(
     }
 
     private fun enforceExpiryDate(clipHistory: ClipboardHistory) {
-        val itemsToRemove = mutableSetOf<ClipboardItem>()
-        if (prefs.clipboard.historyAutoCleanOldEnabled.get()) {
-            val nonPinnedItems = clipHistory.recent + clipHistory.other
-            val expiryTime = System.currentTimeMillis() - (prefs.clipboard.historyAutoCleanOldAfter.get() * 60 * 1000)
-            itemsToRemove.addAll(nonPinnedItems.filter { it.creationTimestampMs < expiryTime })
-        }
-        if (prefs.clipboard.historyAutoCleanSensitiveEnabled.get()) {
-            val sensitiveData = clipHistory.all.filter { it.isSensitive }
-            val expiryTime = System.currentTimeMillis() - (prefs.clipboard.historyAutoCleanSensitiveAfter.get() * 1000)
-            itemsToRemove.addAll(sensitiveData.filter { it.creationTimestampMs < expiryTime })
+        val autoCleanOld = prefs.clipboard.historyAutoCleanOldEnabled.get()
+        val autoCleanSensitive = prefs.clipboard.historyAutoCleanSensitiveEnabled.get()
+        if (!autoCleanOld && !autoCleanSensitive) return
+        val itemsToRemove: Set<ClipboardItem> = if (FlorisNative.isAvailable()) {
+            val removedIds = retentionSweep(
+                clipHistory.all,
+                limitEnabled = false,
+                maxUnpinned = 0,
+                expiryEnabled = autoCleanOld,
+                expiryAfterMs = prefs.clipboard.historyAutoCleanOldAfter.get() * 60_000L,
+                sensitiveEnabled = autoCleanSensitive,
+                sensitiveAfterMs = prefs.clipboard.historyAutoCleanSensitiveAfter.get() * 1_000L,
+            )
+            clipHistory.all.filter { it.id in removedIds }.toSet()
+        } else if (autoCleanSensitive) {
+            // Fail safe without the native policy engine: over-delete
+            // sensitive clips rather than let them linger past their TTL.
+            clipHistory.all.filter { it.isSensitive }.toSet()
+        } else {
+            emptySet()
         }
         if (itemsToRemove.isNotEmpty()) {
             val currentPrimary = primaryClip
@@ -346,6 +318,41 @@ class ClipboardManager(
                 clipHistoryDao?.delete(itemsToRemove.toList())
             }
         }
+    }
+
+    /**
+     * Asks the native clipboard policy engine which history clips the given
+     * retention rules say to remove, returning their ids.
+     */
+    private fun retentionSweep(
+        history: List<ClipboardItem>,
+        limitEnabled: Boolean,
+        maxUnpinned: Int,
+        expiryEnabled: Boolean,
+        expiryAfterMs: Long,
+        sensitiveEnabled: Boolean,
+        sensitiveAfterMs: Long,
+    ): LongArray {
+        return FlorisNative.clipboardRetentionSweep(
+            ids = LongArray(history.size) { history[it].id },
+            flags = IntArray(history.size) { history[it].metaFlags() },
+            createdMs = LongArray(history.size) { history[it].creationTimestampMs },
+            nowMs = System.currentTimeMillis(),
+            limitEnabled = limitEnabled,
+            maxUnpinned = maxUnpinned,
+            expiryEnabled = expiryEnabled,
+            expiryAfterMs = expiryAfterMs,
+            sensitiveEnabled = sensitiveEnabled,
+            sensitiveAfterMs = sensitiveAfterMs,
+        )
+    }
+
+    private fun ClipboardItem.metaFlags(): Int {
+        return (if (isPinned) 1 else 0) or (if (isSensitive) 2 else 0)
+    }
+
+    private fun ClipboardItem.dedupContent(): String {
+        return if (type == ItemType.TEXT) text ?: "" else uri?.toString() ?: ""
     }
 
     private fun moveToTheBeginning(oldItem: ClipboardItem, newItem: ClipboardItem) {

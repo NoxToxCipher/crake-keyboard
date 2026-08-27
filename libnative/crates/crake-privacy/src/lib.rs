@@ -11,6 +11,7 @@
 )]
 
 pub mod boreal_guard;
+pub mod clipboard_policy;
 pub mod ephemeral_clipboard;
 pub mod ffi_guard;
 pub mod intrusion;
@@ -23,6 +24,10 @@ pub mod zeroize_buffer;
 pub mod pgpony;
 
 pub use boreal_guard::{BorealScanner, ThreatMatch, DEFAULT_YARA_RULES};
+pub use clipboard_policy::{
+    classify_clip_text, classify_history, compare_mime_types, find_duplicate,
+    process_incoming_text, retention_sweep, ClipMeta, IncomingClip, RetentionRules,
+};
 pub use ephemeral_clipboard::{EphemeralClip, EphemeralClipboardSentry};
 pub use ffi_guard::{catch_ffi_panic, checked_slice, FfiError};
 pub use intrusion::{open, parse_sealed_records, seal, IntrusionRecord};
