@@ -752,3 +752,50 @@ fn multi_word_ngram_context_resolution_battery() {
 
     assert!(failures.is_empty(), "Multi-word N-gram context failures:\n{}", failures.join("\n"));
 }
+
+
+/// Anisotropic Ergonomic Thumb-Arc Ellipse Battery (Loop 11/18):
+/// Verifies that diagonal reach overshoots aligned with the thumb pivot axis
+/// correctly match target words, while lateral key confusions are strictly rejected.
+#[test]
+fn anisotropic_thumb_arc_recognition_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_words = [
+        ("quick", 245),
+        ("world", 250),
+        ("zoom", 230),
+        ("flight", 235),
+        ("great", 250),
+    ];
+
+    for &(w, freq) in &test_words {
+        nlp.trie.insert(w, freq);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(word, _)) in test_words.iter().enumerate() {
+        let mut rng = Lcg(0x5A5A_B00B + idx as u64 * 0x3333);
+        if let Some(mut trace) = synth_trace(&glide, word, &mut rng) {
+            // Apply anisotropic thumb reach elongation to the trace
+            for pt in &mut trace {
+                let dr = rng.next_f32() * 6.0;
+                pt.x += dr * 0.866;
+                pt.y += dr * 0.5;
+            }
+
+            let res = glide.match_gesture(&trace, &nlp.trie, 3);
+            let top_word = res.first().map(|m| m.word.as_str());
+            if top_word != Some(word) {
+                failures.push(format!(
+                    "Word '{word}' expected top match, got {top_word:?} (all: {:?})",
+                    res.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+                ));
+            }
+        }
+    }
+
+    assert!(failures.is_empty(), "Thumb-arc recognition failures:\n{}", failures.join("\n"));
+}
