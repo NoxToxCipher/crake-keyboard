@@ -279,8 +279,8 @@ impl HitTester {
         let mut candidates = Vec::with_capacity(self.keys.len().min(8));
 
         for (idx, rect) in self.keys.iter().enumerate() {
-            let ch = self.chars.get(idx).copied().unwrap_or(' ');
-            let (off_x, off_y) = if ch != ' ' {
+            let ch = self.chars.get(idx).copied().unwrap_or('\0');
+            let (off_x, off_y) = if ch != '\0' {
                 self.offset_for(ch)
             } else {
                 (0.0, 0.0)
@@ -326,7 +326,7 @@ impl HitTester {
         // Fallback to geometric hit if spatial Gaussian found no candidate within reach
         if candidates.is_empty() {
             if let Some(idx) = geometric_hit {
-                let ch = self.chars.get(idx).copied().unwrap_or(' ');
+                let ch = self.chars.get(idx).copied().unwrap_or('\0');
                 return vec![ProbabilisticHit {
                     index: idx,
                     character: ch,
