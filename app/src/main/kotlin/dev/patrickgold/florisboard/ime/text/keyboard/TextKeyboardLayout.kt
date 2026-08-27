@@ -102,6 +102,7 @@ import dev.patrickgold.florisboard.ime.editor.OperationUnit
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
 import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.keyboard.ComputingEvaluator
+import dev.patrickgold.florisboard.ime.keyboard.EasterEgg
 import dev.patrickgold.florisboard.ime.keyboard.FlorisImeSizing
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.keyboard.SpaceBarMode
@@ -189,7 +190,9 @@ fun TextKeyboardLayout(
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: android.content.Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_POWER_CONNECTED) {
+                if (intent?.action == Intent.ACTION_POWER_CONNECTED &&
+                    prefs.easterEggs.fire(EasterEgg.POWER_SURGE)
+                ) {
                     powerSurgeTrigger++
                 }
             }
@@ -407,8 +410,10 @@ fun TextKeyboardLayout(
         LaunchedEffect(activeContent) {
             val textBefore = activeContent.textBeforeSelection.toString()
             val composing = activeContent.composingText
-            if (textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
-                textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) {
+            if ((textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
+                    textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) &&
+                prefs.easterEggs.fire(EasterEgg.EGG_WORD)
+            ) {
                 isEasterEggActive = true
                 kotlinx.coroutines.delay(10_000L)
                 isEasterEggActive = false
@@ -450,15 +455,15 @@ fun TextKeyboardLayout(
             val comp = activeContent.composingText.lowercase()
             val eclectusKeys = listOf("eclectus", "ecky", "eckies", "roratus")
             if (eclectusKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-                eclectusFlightTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.ECLECTUS_FLIGHT)) eclectusFlightTriggerTime = System.currentTimeMillis()
             }
             val sunConureKeys = listOf("sun conure", "sunconure", "conure")
             if (sunConureKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-                sunConureFlightTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureFlightTriggerTime = System.currentTimeMillis()
             }
             val soccerKeys = listOf("soccer", "football", "futbol")
             if (soccerKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-                soccerRollTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.SOCCER_ROLL)) soccerRollTriggerTime = System.currentTimeMillis()
             }
             val rainKeys = listOf("rain", "rainy", "raining", "rainfall", "rainstorm")
             val isRainMatch = rainKeys.any { k ->
@@ -468,11 +473,11 @@ fun TextKeyboardLayout(
                 }
             }
             if (isRainMatch) {
-                spaceRainTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.SPACE_RAIN)) spaceRainTriggerTime = System.currentTimeMillis()
             }
             val mangoKeys = listOf("mango", "mangoes", "mangos")
             if (mangoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-                mangoPulseTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.MANGO_PULSE)) mangoPulseTriggerTime = System.currentTimeMillis()
             }
             val chiefKeys = listOf("halo", "chief", "masterchief", "master chief", "117", "spartan", "cortana")
             val isChiefMatch = chiefKeys.any { k ->
@@ -482,15 +487,15 @@ fun TextKeyboardLayout(
                 }
             }
             if (isChiefMatch) {
-                masterChiefRunTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.MASTER_CHIEF_RUN)) masterChiefRunTriggerTime = System.currentTimeMillis()
             }
             val skateKeys = listOf("rink", "skating", "iceskating", "ice skating", "skate", "figure skating")
             if (skateKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-                iceSkateSwirlTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.ICE_SKATE_SWIRL)) iceSkateSwirlTriggerTime = System.currentTimeMillis()
             }
             val berryKeys = listOf("berry", "berries", "strawberry", "blueberry", "raspberry", "blackberry")
             if (berryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-                berriesFlowTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.BERRIES_FLOW)) berriesFlowTriggerTime = System.currentTimeMillis()
             }
             val fullTwKeys = listOf("tribalwars", "tribal wars", "tribal_wars")
             val shortTwKeys = listOf("tw")
@@ -502,23 +507,23 @@ fun TextKeyboardLayout(
                 }
             }
             if (isTwFullMatch || isTwShortMatch) {
-                tribalwarsTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.TRIBAL_WARS)) tribalwarsTriggerTime = System.currentTimeMillis()
             }
             val bawenKeys = listOf("bawen")
             if (bawenKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
-                bawenCatTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.BAWEN_CAT)) bawenCatTriggerTime = System.currentTimeMillis()
             }
             val pubgKeys = listOf("pubg", "airdrop", "pochinki", "chicken dinner", "winner winner")
             if (pubgKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
-                pubgParachuteTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.PUBG_PARACHUTE)) pubgParachuteTriggerTime = System.currentTimeMillis()
             }
             val luciaKeys = listOf("lucia")
             if (luciaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
-                luciaBobaTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.LUCIA_BOBA)) luciaBobaTriggerTime = System.currentTimeMillis()
             }
             val dukuKeys = listOf("duku", "langsat", "longkong")
             if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
-                dukuFruitTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.DUKU_FRUIT)) dukuFruitTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for car so compound words like 'cardboard', 'scar', 'sidecar' never trigger it!
             val carKeys = listOf("drive", "car", "driving", "cars", "driver", "drives", "drove", "aston martin", "aston")
@@ -529,7 +534,7 @@ fun TextKeyboardLayout(
                 }
             }
             if (isCarMatch) {
-                carDriveTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.CAR_DRIVE)) carDriveTriggerTime = System.currentTimeMillis()
             }
             val cryptoKeys = listOf(
                 "btc", "bitcoin", "eth", "ethereum", "sol", "solana",
@@ -544,11 +549,11 @@ fun TextKeyboardLayout(
                 }
             }
             if (isCryptoMatch) {
-                cryptoRocketTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.CRYPTO_ROCKET)) cryptoRocketTriggerTime = System.currentTimeMillis()
             }
             val murmurKeys = listOf("murmur", "flock", "murmuration", "starlings")
             if (murmurKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
-                murmurFlockTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.MURMUR_FLOCK)) murmurFlockTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for LUNA/UST so words like 'just', 'must', 'dust', 'trust' never trigger it!
             val lunaKeys = listOf("terra", "luna", "ust", "lunc", "do kwon", "terra luna", "terra usd")
@@ -559,11 +564,11 @@ fun TextKeyboardLayout(
                 }
             }
             if (isLunaMatch) {
-                lunaCrashTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.LUNA_CRASH)) lunaCrashTriggerTime = System.currentTimeMillis()
             }
             val sundaeKeys = listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait")
             if (sundaeKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
-                sundaeTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.SUNDAE)) sundaeTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for train so words like 'training', 'trainer', 'strain', 'restrain' never trigger it!
             val nobleTrainKeys = listOf("noble train", "nobletrain", "noble_train", "sniping trains")
@@ -582,14 +587,14 @@ fun TextKeyboardLayout(
             }
             if (isNobleTrainMatch) {
                 isNobleTrainMode = true
-                trainTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.TRAIN)) trainTriggerTime = System.currentTimeMillis()
             } else if (isRegularTrainMatch) {
                 isNobleTrainMode = false
-                trainTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.TRAIN)) trainTriggerTime = System.currentTimeMillis()
             }
             val louieKeys = listOf("louie", "pitty", "pitbull", "red nose", "rednose", "red nose pitty")
             if (louieKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
-                louiePawsTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.LOUIE_PAWS)) louiePawsTriggerTime = System.currentTimeMillis()
             }
             val fullAiKeys = listOf("artificial intelligence", "irobot", "i, robot", "ns5", "ns-5", "sonny", "viki", "three laws")
             val shortAiKeys = listOf("ai")
@@ -601,15 +606,15 @@ fun TextKeyboardLayout(
                 }
             }
             if (isAiFullMatch || isAiShortMatch) {
-                irobotTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.IROBOT)) irobotTriggerTime = System.currentTimeMillis()
             }
             val androidKeys = listOf("android", "bugdroid", "green dude", "google android", "apk")
             if (androidKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
-                androidBugdroidTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.ANDROID_BUGDROID)) androidBugdroidTriggerTime = System.currentTimeMillis()
             }
             val loveKeys = listOf("i love you", "iloveyou", "love you", "i <3 you", "i love u")
             if (loveKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") || tb.endsWith("$it❤️") || tb.endsWith("$it🌹") }) {
-                rosePetalsTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.ROSE_PETALS)) rosePetalsTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Xbox
             val xboxKeys = listOf("xbox", "xbox 360", "series x", "series s", "xbox one", "game pass", "achievement unlocked", "gamertag", "majornelson")
@@ -620,7 +625,7 @@ fun TextKeyboardLayout(
                 }
             }
             if (isXboxMatch) {
-                xboxAchievementTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.XBOX_ACHIEVEMENT)) xboxAchievementTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for 'hidden' (fires 8s later)
             val hiddenKeys = listOf("hidden", "assassin", "hooded figure", "ninja")
@@ -631,10 +636,19 @@ fun TextKeyboardLayout(
                 }
             }
             if (isHiddenMatch) {
-                hiddenHoodedTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.HIDDEN_HOODED)) hiddenHoodedTriggerTime = System.currentTimeMillis()
             }
-            // Serenity garden trigger (literal keyword only, zero sentiment analysis)
-            val serenityKeys = listOf("serenity", "zen garden")
+            // Serenity / anti-stress garden. Owner ruling 2026-08-27: the
+            // emotional-word matching stays by design — mental wellbeing
+            // outranks the privacy objection here. It is gated by the same
+            // per-egg opt-out as every other egg (visible in Settings after
+            // first trigger). Matching is on-device, in-process, unstored
+            // and untransmitted.
+            val serenityKeys = listOf(
+                "serenity", "zen garden",
+                "stressed", "stress", "sad", "depressed", "anxious",
+                "anxiety", "overwhelmed", "unhappy",
+            )
             val isSerenityMatch = serenityKeys.any { k ->
                 val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
                 delimiters.any { d ->
@@ -642,7 +656,7 @@ fun TextKeyboardLayout(
                 }
             }
             if (isSerenityMatch) {
-                serenityGardenTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.SERENITY_GARDEN)) serenityGardenTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Sniper triggers
             val sniperKeys = listOf("snipe", "snipes", "sniper", "sniped", "sniping", "headshot", "360 noscope", "awp")
@@ -653,7 +667,7 @@ fun TextKeyboardLayout(
                 }
             }
             if (isSniperMatch) {
-                sniperDudeTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.SNIPER_DUDE)) sniperDudeTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Thor (Case-insensitive, never triggers on Thorchain)
             val thorKeys = listOf("thor", "mjolnir", "god of thunder", "asgard", "odinson")
@@ -667,7 +681,7 @@ fun TextKeyboardLayout(
                 }
             }
             if (isThorMatch) {
-                thorTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.THOR)) thorTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Mushu the Dragon (Disney's Mulan)
             val mushuKeys = listOf("mushu", "mulan", "mulsn", "cri-kee", "dishonor on your cow", "dragon", "great stone dragon")
@@ -681,7 +695,7 @@ fun TextKeyboardLayout(
                 }
             }
             if (isMushuMatch) {
-                mushuTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.MUSHU)) mushuTriggerTime = System.currentTimeMillis()
             }
         }
 
@@ -7176,7 +7190,7 @@ private fun TextKeyButton(
         val signature = "$tb::$comp"
         if (isBbMatch && signature != lastBbSignature) {
             lastBbSignature = signature
-            bbTriggerTime = System.currentTimeMillis()
+            if (prefs.easterEggs.fire(EasterEgg.BLACKBERRY)) bbTriggerTime = System.currentTimeMillis()
         }
     }
 
@@ -7200,14 +7214,14 @@ private fun TextKeyButton(
         val signature = "$textBefore::$composing"
         if (isEgg && signature != lastEggSignature) {
             lastEggSignature = signature
-            eggTriggerTime = System.currentTimeMillis()
+            if (prefs.easterEggs.fire(EasterEgg.EGG_WORD)) eggTriggerTime = System.currentTimeMillis()
         }
 
         val combined = "$textBefore $composing".lowercase()
         val isSunConure = combined.contains("sun conure") || combined.contains("sunconure") || combined.contains("sun con ure")
         if (isSunConure && signature != lastSunConureSignature) {
             lastSunConureSignature = signature
-            sunConureTriggerTime = System.currentTimeMillis()
+            if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureTriggerTime = System.currentTimeMillis()
         }
     }
 
