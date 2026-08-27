@@ -444,6 +444,7 @@ impl GlideEngine {
     
     /// Adaptively updates the learned centroid of a key based on user touch observations (Idea 6 / Loops 16-18).
     /// Uses exponential moving average bounded within 0.35x key radius of nominal key center.
+    #[inline]
     pub fn adapt_key_centroid(&mut self, ch: char, observed: Point2D) {
         let ch_lower = ch.to_ascii_lowercase();
         if let Some(&nominal) = self.key_centers.get(&ch_lower) {
@@ -458,8 +459,9 @@ impl GlideEngine {
             let max_offset = (self.average_key_radius * 0.35).max(5.0);
             let dx = updated.x - nominal.x;
             let dy = updated.y - nominal.y;
-            let dist = (dx * dx + dy * dy).sqrt();
-            if dist > max_offset {
+            let dist_sq = dx * dx + dy * dy;
+            if dist_sq > max_offset * max_offset {
+                let dist = dist_sq.sqrt();
                 updated.x = nominal.x + (dx / dist) * max_offset;
                 updated.y = nominal.y + (dy / dist) * max_offset;
             }
@@ -469,12 +471,14 @@ impl GlideEngine {
     }
 
     /// Returns the effective key center (learned adaptive center if available, otherwise nominal).
+    #[inline]
     pub fn get_adaptive_key_center(&self, ch: char) -> Option<Point2D> {
         let ch_lower = ch.to_ascii_lowercase();
         self.adaptive_centroids.get(&ch_lower).copied().or_else(|| self.key_centers.get(&ch_lower).copied())
     }
 
     /// Clears learned adaptive centroids and restores nominal key geometry.
+    #[inline]
     pub fn reset_adaptive_centroids(&mut self) {
         self.adaptive_centroids.clear();
     }
