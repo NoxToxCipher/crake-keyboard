@@ -86,7 +86,14 @@ fn eval(words: &[(&str, u32)]) -> (usize, usize, Vec<String>) {
                 top1 += 1;
                 top3 += 1;
             }
-            Some(1..=2) => top3 += 1,
+            Some(p @ 1..=2) => {
+                top3 += 1;
+                eprintln!(
+                    "  near-miss (clean, pos {p}): '{}' behind {:?}",
+                    word,
+                    results.iter().take(p).map(|m| m.word.as_str()).collect::<Vec<_>>()
+                );
+            }
             _ => misses.push(format!(
                 "'{}' -> {:?}",
                 word,
@@ -452,6 +459,60 @@ fn context_never_hijacks_a_clean_trace() {
         with_ctx.first().map(|m| m.word.as_str()),
         Some("word"),
         "a clean 'word' trace must never be hijacked to 'world' by context: {:?}",
+        with_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+}
+
+/// The coffee/code corridor: doubled letters vanish from a glide (c-o-f-e),
+/// leaving a shape one adjacent via-point from c-o-d-e, and frequency
+/// legitimately favors "code" (238 vs 225). Like the w-o-r-d corridor,
+/// context is the designed disambiguator — pin that it works.
+#[test]
+fn context_rescues_the_coffee_code_corridor() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for &(w, f) in EVAL_WORDS {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    for (w, f) in [("code", 238), ("morning", 240)] {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    let id = |e: &NlpEngine, w: &str| e.corpus_words().iter().position(|c| c == w).unwrap() as u32;
+    let entries = {
+        let mut v = vec![(id(&nlp, "morning"), id(&nlp, "coffee"), 190u8)];
+        v.sort();
+        v
+    };
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"CRKB");
+    blob.push(2);
+    blob.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    blob.extend_from_slice(&(nlp.corpus_words().len() as u32).to_le_bytes());
+    for (a, b, sc) in entries {
+        blob.extend_from_slice(&a.to_le_bytes());
+        blob.extend_from_slice(&b.to_le_bytes());
+        blob.push(sc);
+    }
+    nlp.load_bigrams(&blob).unwrap();
+
+    // Same seeded rng walk as the clean eval so "coffee" gets the exact
+    // trace that near-missed.
+    let mut rng = Lcg(0xC0FFEE);
+    let trace = synth_trace(&glide, "coffee", &mut rng).expect("trace");
+    let no_ctx = glide.match_gesture(&trace, &nlp.trie, 8);
+    let with_ctx = glide.match_gesture_with_context(&trace, &nlp.trie, 8, Some((&nlp, "morning")));
+    // premise guard: the corridor is real — code must be a top-2 contender
+    assert!(
+        no_ctx.iter().take(2).any(|m| m.word == "code"),
+        "premise: code contends without context: {:?}",
+        no_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        with_ctx.first().map(|m| m.word.as_str()),
+        Some("coffee"),
+        "'morning' must rescue coffee: {:?}",
         with_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
     );
 }
