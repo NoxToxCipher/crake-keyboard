@@ -1087,21 +1087,32 @@ impl NlpEngine {
     }
 
     pub fn apply_casing(query: &str, candidate: &str) -> String {
-        let chars: Vec<char> = query.chars().collect();
-        let is_all_upper = chars.len() > 1 && chars.iter().all(|&c| !c.is_alphabetic() || c.is_uppercase());
+        if query.is_empty() || candidate.is_empty() {
+            return candidate.to_string();
+        }
+        let mut chars = ['\0'; 32];
+        let mut len = 0;
+        for ch in query.chars() {
+            if len < 32 {
+                chars[len] = ch;
+            }
+            len += 1;
+        }
+        let slice = &chars[..len.min(32)];
+        let is_all_upper = len > 1 && slice.iter().all(|&c| !c.is_alphabetic() || c.is_uppercase());
         
         // Accidental CapsLock Inversion (e.g. tHIS -> This, hELLO -> Hello)
-        let is_inverted_caps = chars.len() >= 3 
-            && chars[0].is_lowercase() 
-            && chars[1..].iter().all(|&c| !c.is_alphabetic() || c.is_uppercase());
+        let is_inverted_caps = len >= 3 
+            && slice[0].is_lowercase() 
+            && slice[1..].iter().all(|&c| !c.is_alphabetic() || c.is_uppercase());
             
         // Accidental Double-Shift (e.g. THis -> This, HEllo -> Hello)
-        let is_double_shift = chars.len() >= 3 
-            && chars[0].is_uppercase() 
-            && chars[1].is_uppercase() 
-            && chars[2..].iter().all(|&c| !c.is_alphabetic() || c.is_lowercase());
+        let is_double_shift = len >= 3 
+            && slice[0].is_uppercase() 
+            && slice[1].is_uppercase() 
+            && slice[2..].iter().all(|&c| !c.is_alphabetic() || c.is_lowercase());
 
-        let is_first_upper = chars.first().is_some_and(|c| c.is_uppercase());
+        let is_first_upper = slice.first().is_some_and(|c| c.is_uppercase());
 
         if is_all_upper {
             candidate.to_uppercase()
@@ -2510,13 +2521,15 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
             let mut candidates: Vec<(char, String, u32)> = Vec::with_capacity(26);
 
             let valid_next = self.trie.get_valid_next_chars(&trimmed_lower);
+            let mut prefix_buf = trimmed_lower.clone();
             for ch in valid_next {
-                let candidate_prefix = format!("{}{}", trimmed_lower, ch);
-                let matches = self.trie.prefix_search(&candidate_prefix, 1);
+                prefix_buf.push(ch);
+                let matches = self.trie.prefix_search(&prefix_buf, 1);
                 if let Some((word, freq)) = matches.first() {
                     let formatted = Self::apply_casing(trimmed, word);
                     candidates.push((ch, formatted, *freq));
                 }
+                prefix_buf.pop();
             }
 
             candidates.sort_by_key(|b| std::cmp::Reverse(b.2));
@@ -2526,7 +2539,7 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
 
         // Prefix is empty: Predict next words based on preceding context word
         let prev_trimmed = prev_word.trim().to_ascii_lowercase();
-        let mut result_map = std::collections::HashMap::new();
+        let mut results: Vec<(char, String)> = Vec::with_capacity(6);
 
         // The real language model first: the shipped 244k-pair table knows
         // successors for tens of thousands of prev words, where the static
@@ -2561,22 +2574,26 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
             for (_, w) in scored {
                 if let Some(first_ch) = w.chars().next() {
                     let ch_lower = first_ch.to_ascii_lowercase();
-                    result_map.entry(ch_lower).or_insert_with(|| w.to_string());
+                    if !results.iter().any(|(c, _)| *c == ch_lower) {
+                        results.push((ch_lower, w.to_string()));
+                    }
                 }
-                if result_map.len() >= 6 {
+                if results.len() >= 6 {
                     break;
                 }
             }
         }
 
-        if result_map.is_empty() {
+        if results.is_empty() {
             if let Some(&(_, next_words)) = Self::BIGRAM_TRANSITIONS.iter().find(|&&(k, _)| k == prev_trimmed) {
                 for &w in next_words {
                     if let Some(first_ch) = w.chars().next() {
                         let ch_lower = first_ch.to_ascii_lowercase();
-                        result_map.entry(ch_lower).or_insert_with(|| w.to_string());
+                        if !results.iter().any(|(c, _)| *c == ch_lower) {
+                            results.push((ch_lower, w.to_string()));
+                        }
                     }
-                    if result_map.len() >= 6 {
+                    if results.len() >= 6 {
                         break;
                     }
                 }
@@ -2584,17 +2601,19 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
         }
 
         // If no preceding word or insufficient bigrams, fill with high-probability sentence starters
-        if result_map.is_empty() {
+        if results.is_empty() {
             for &(w, ch) in Self::SENTENCE_STARTERS {
                 let ch_lower = ch.to_ascii_lowercase();
-                result_map.entry(ch_lower).or_insert_with(|| w.to_string());
-                if result_map.len() >= 6 {
+                if !results.iter().any(|(c, _)| *c == ch_lower) {
+                    results.push((ch_lower, w.to_string()));
+                }
+                if results.len() >= 6 {
                     break;
                 }
             }
         }
 
-        result_map.into_iter().collect()
+        results
     }
 }
 
