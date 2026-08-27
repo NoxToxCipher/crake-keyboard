@@ -119,11 +119,6 @@ impl TouchModel {
         })
     }
 
-    /// Whether registering `b` while aiming at `a` is a plausible slip on
-    /// this layout. Unknown characters (not on the layout) are never near —
-    /// the caller's fallback table does not apply once a model is loaded,
-    /// because mixing the two would reintroduce the union-graph problem.
-    
     #[inline]
     pub fn get_center(&self, ch: char) -> Option<(f32, f32)> {
         self.centers.get(&ch.to_ascii_lowercase()).copied()

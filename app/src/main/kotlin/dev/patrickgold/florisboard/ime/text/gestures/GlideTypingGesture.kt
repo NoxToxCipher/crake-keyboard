@@ -43,6 +43,20 @@ class GlideTypingGesture {
         companion object {
             private val SWIPE_GESTURE_KEYS = arrayOf(KeyCode.DELETE, KeyCode.SHIFT, KeyCode.SPACE, KeyCode.CJK_SPACE)
 
+            /**
+             * A glide must clearly LEAVE its starting key before it counts.
+             * MEASURED, not chosen: captured tap-slides reach 0.63
+             * key-widths of travel; the shortest real glide nets ~1.76.
+             * 0.85 sits in that gap. The floor guards tiny key sizes;
+             * there is deliberately NO ceiling — a ceiling readmits the
+             * stray band on tall keys (that exact change shipped twice and
+             * caused junk word commits mid-typing both times). Pinned by
+             * GlideTriggerSlopTest; lower only with a velocity gate
+             * validated on v2 timestamped traces, numbers in the commit.
+             */
+            internal fun triggerSlopFor(keySizeDp: Float): Float =
+                (keySizeDp * 0.85f).coerceAtLeast(24f)
+
             // Bounds the recorded gesture path; matches the manager's cap so
             // a never-lifted pointer cannot grow the buffer without limit.
             private const val MAX_GESTURE_POINTS = 4096
@@ -103,7 +117,7 @@ class GlideTypingGesture {
                             // gate validated on v2 timestamped traces FIRST,
                             // then lower this with measurements in the
                             // commit message.
-                            val triggerSlop = (keySize * 0.85f).coerceAtLeast(24f)
+                            val triggerSlop = triggerSlopFor(keySize)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
                             val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)

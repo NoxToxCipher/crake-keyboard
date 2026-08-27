@@ -1,4 +1,4 @@
-﻿use std::cmp::min;
+use std::cmp::min;
 
 const STACK_BUFFER_MAX: usize = 32;
 
@@ -261,6 +261,7 @@ fn is_qwerty_adjacent(a: char, b: char) -> bool {
 /// Calculates the millimeter-aware spatial Levenshtein distance between query and target
 /// using stack-allocated rolling DP buffers with zero heap allocation (Idea 7 / Loop 21).
 #[inline]
+#[allow(clippy::needless_range_loop)]
 pub fn spatial_levenshtein_distance(
     query: &str,
     target: &str,

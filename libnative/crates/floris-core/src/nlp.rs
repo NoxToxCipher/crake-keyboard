@@ -2,8 +2,6 @@ use crate::shorthand::lookup_shorthand;
 use crate::trie::RadixTrie;
 use crate::typo_corpus::lookup_common_typo;
 
-/// Comprehensive lexicon of common English contractions (SCOWL & Wiktionary).
-
 /// Hand assignment for touch keys in bimanual thumb typing (Idea 3 / Loops 7-9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Hand {
@@ -87,7 +85,7 @@ pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &
     if timestamps.len() == raw_len {
         let t1 = timestamps[i];
         let t2 = timestamps[i + 1];
-        let delta = if t2 >= t1 { t2 - t1 } else { t1 - t2 };
+        let delta = t2.abs_diff(t1);
         return delta <= 55;
     }
 
@@ -590,10 +588,6 @@ impl NlpEngine {
         }
     }
 
-    /// Records that the user wrote `next` after `prev`. At the cap, the
-    /// least-used pair is pruned so the store follows current habits
-    /// instead of freezing on old ones.
-    
     /// Records an explicitly rejected / backspaced autocorrect to suppress sticky typos (Idea 6 / Loops 16-18).
     #[inline]
     pub fn record_rejected_correction(&mut self, typo: &str, wrong_suggestion: &str) {
@@ -703,37 +697,44 @@ impl NlpEngine {
 
     /// Serializes learned words + personal corrections for persistence.
     pub fn export_learned(&self) -> Vec<u8> {
-        let mut state = crate::persist::LearnedState::default();
-        state.words = self.learned_words.iter().map(|(w, &f)| (w.clone(), f)).collect();
-        state.words.sort();
+        let mut words: Vec<(String, u32)> = self.learned_words.iter().map(|(w, &f)| (w.clone(), f)).collect();
+        words.sort();
+        let mut corrections = Vec::new();
         for (typo, targets) in &self.personal_corrections {
             for (intended, &n) in targets {
-                state.corrections.push((typo.clone(), intended.clone(), n));
+                corrections.push((typo.clone(), intended.clone(), n));
             }
         }
-        state.corrections.sort();
-        state.bigrams = self
+        corrections.sort();
+        let mut bigrams: Vec<(String, String, u32)> = self
             .personal_bigrams
             .iter()
             .map(|((a, b), &n)| (a.clone(), b.clone(), n))
             .collect();
         // Keep the most-used pairs when over the cap.
-        state.bigrams.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
+        bigrams.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
         
-        state.rejected = self
+        let mut rejected: Vec<(String, String, u32)> = self
             .rejected_corrections
             .iter()
             .map(|((t, w), &n)| (t.clone(), w.clone(), n))
             .collect();
-        state.rejected.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
+        rejected.sort_by(|x, y| y.2.cmp(&x.2).then_with(|| x.cmp(y)));
 
-        state.word_epochs = self
+        let mut word_epochs: Vec<(String, u64)> = self
             .word_epochs
             .iter()
             .map(|(w, &ep)| (w.clone(), ep))
             .collect();
-        state.word_epochs.sort();
+        word_epochs.sort_by(|x, y| y.1.cmp(&x.1).then_with(|| x.cmp(y)));
 
+        let state = crate::persist::LearnedState {
+            words,
+            corrections,
+            bigrams,
+            rejected,
+            word_epochs,
+        };
         state.serialize()
     }
 
@@ -1570,26 +1571,42 @@ impl NlpEngine {
             // missing space: splitting won ("hell lo") because the splitter
             // runs first and both halves are real words. Let stage 5c
             // collapse it instead (sweep 2026-08-27).
-            let has_triple_run = trimmed_lower
-                .as_bytes()
-                .windows(3)
-                .any(|w| w[0] == w[1] && w[1] == w[2]);
-            for split_idx in
-                (2..trimmed_lower.len() - 1).take_while(|_| !has_triple_run && !split_cap_blocked)
-            {
-                let left = &trimmed_lower[..split_idx];
-                let right = &trimmed_lower[split_idx..];
-                if self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
-                    && self.trie.get_frequency(right).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
-                {
-                    let formatted_left = Self::apply_casing(&trimmed[..split_idx], left);
-                    let formatted_right = right.to_string();
-                    let split_phrase = format!("{} {}", formatted_left, formatted_right);
-                    candidates.push(RankedCandidate {
-                        word: split_phrase,
-                        is_autocorrect: true,
-                    });
+            let mut char_iter = trimmed_lower.chars();
+            let mut c1 = char_iter.next();
+            let mut c2 = char_iter.next();
+            let mut has_triple_run = false;
+            for c3 in char_iter {
+                if c1 == c2 && c2 == Some(c3) {
+                    has_triple_run = true;
                     break;
+                }
+                c1 = c2;
+                c2 = Some(c3);
+            }
+            if !has_triple_run && !split_cap_blocked && trimmed_lower.is_ascii() {
+                for (split_idx, _) in trimmed_lower.char_indices().skip(1) {
+                    if split_idx >= trimmed_lower.len() || !trimmed.is_char_boundary(split_idx) {
+                        continue;
+                    }
+                    let left = &trimmed_lower[..split_idx];
+                    let right = &trimmed_lower[split_idx..];
+                    if (left.len() == 1 && left != "a" && left != "i")
+                        || (right.len() == 1 && right != "a" && right != "i")
+                    {
+                        continue;
+                    }
+                    if self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                        && self.trie.get_frequency(right).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                    {
+                        let formatted_left = Self::apply_casing(&trimmed[..split_idx], left);
+                        let formatted_right = right.to_string();
+                        let split_phrase = format!("{} {}", formatted_left, formatted_right);
+                        candidates.push(RankedCandidate {
+                            word: split_phrase,
+                            is_autocorrect: true,
+                        });
+                        break;
+                    }
                 }
             }
             
@@ -1600,10 +1617,7 @@ impl NlpEngine {
             // this file's commit discipline: never for capitalized input,
             // and the winning halves must each be solidly real (>= 150)
             // or the pair attested in the language model.
-            let beam_triple_run = trimmed_lower
-                .as_bytes()
-                .windows(3)
-                .any(|w| w[0] == w[1] && w[1] == w[2]);
+            let beam_triple_run = has_triple_run;
             if candidates.is_empty()
                 && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
                 && trimmed_lower.len() >= 5

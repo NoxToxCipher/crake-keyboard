@@ -149,6 +149,7 @@ impl HitTester {
 
     /// Restores offsets from a CRKT blob; a corrupt blob restores nothing.
     /// Non-finite values are rejected entry-wise (hostile-input posture).
+    #[allow(clippy::result_unit_err)]
     pub fn import_offsets(&mut self, data: &[u8]) -> Result<usize, ()> {
         if data.len() < 9 || data[0..4] != OFFSETS_MAGIC || data[4] != OFFSETS_VERSION {
             return Err(());
@@ -199,9 +200,6 @@ impl HitTester {
         self.generation
     }
 
-    /// First key containing the point, in upload order — `None` mirrors
-    /// Kotlin's null (no key hit).
-
     /// Evaluates a touch position with dynamic LM character priors, expanding the effective capture
     /// area of high-probability keys and shrinking unlikely keys in zero-heap single pass (Idea 1 / Loop 3).
     #[inline]
@@ -243,7 +241,7 @@ impl HitTester {
 
                 let prior = priors
                     .iter()
-                    .find(|(c, _)| c.to_ascii_lowercase() == ch.to_ascii_lowercase())
+                    .find(|(c, _)| c.eq_ignore_ascii_case(&ch))
                     .map(|(_, p)| *p)
                     .unwrap_or(0.02);
 
@@ -303,7 +301,7 @@ impl HitTester {
                 // Look up LM prior (default 0.02 if not in top predictions)
                 let prior = priors
                     .iter()
-                    .find(|(c, _)| c.to_ascii_lowercase() == ch.to_ascii_lowercase())
+                    .find(|(c, _)| c.eq_ignore_ascii_case(&ch))
                     .map(|(_, p)| *p)
                     .unwrap_or(0.02);
 
