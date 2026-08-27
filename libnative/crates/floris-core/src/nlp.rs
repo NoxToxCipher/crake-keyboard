@@ -24,11 +24,58 @@ pub fn get_key_hand(ch: char) -> Hand {
 /// occurring across opposite hands with an inter-keystroke interval under 55ms with zero heap allocation (Idea 3 / Loop 9).
 #[inline]
 pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &[u64]) -> bool {
-    if raw_token.len() != candidate.len() || raw_token.len() < 2 {
+    if raw_token.len() != candidate.len() || raw_token.len() < 2 || raw_token.len() > 32 {
         return false;
     }
 
-    // Stack array for fast zero-allocation char inspection
+    if raw_token.is_ascii() && candidate.is_ascii() {
+        let raw_bytes = raw_token.as_bytes();
+        let cand_bytes = candidate.as_bytes();
+        let len = raw_bytes.len();
+
+        let mut mismatch_idx = None;
+        for i in 0..len {
+            if raw_bytes[i] != cand_bytes[i] {
+                mismatch_idx = Some(i);
+                break;
+            }
+        }
+
+        let Some(i) = mismatch_idx else {
+            return false;
+        };
+
+        if i + 1 >= len {
+            return false;
+        }
+
+        if raw_bytes[i] != cand_bytes[i + 1] || raw_bytes[i + 1] != cand_bytes[i] {
+            return false;
+        }
+
+        for j in (i + 2)..len {
+            if raw_bytes[j] != cand_bytes[j] {
+                return false;
+            }
+        }
+
+        let hand1 = get_key_hand(raw_bytes[i] as char);
+        let hand2 = get_key_hand(raw_bytes[i + 1] as char);
+        if hand1 == Hand::Unknown || hand2 == Hand::Unknown || hand1 == hand2 {
+            return false;
+        }
+
+        if timestamps.len() == len {
+            let t1 = timestamps[i];
+            let t2 = timestamps[i + 1];
+            let delta = t2.abs_diff(t1);
+            return delta <= 55;
+        }
+
+        return false;
+    }
+
+    // Stack array for fast zero-allocation char inspection (Unicode fallback)
     let mut raw_buf = ['\0'; 32];
     let mut cand_buf = ['\0'; 32];
 
