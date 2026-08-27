@@ -134,6 +134,16 @@ fn replay_captured_device_traces() {
         total += 1;
         if now_first == device_first {
             agree += 1;
+            // A long deliberate stroke where device and engine agree is
+            // ground truth: future scoring drift on REAL glides fails
+            // loudly instead of hiding in the agreement ratio. (First
+            // pinned specimen: the 12.9 kw "hello", 2026-08-28.)
+            if travel >= key_w * 5.0 {
+                assert_eq!(
+                    now_first, device_first,
+                    "trace {i}: long real glide drifted from its committed word"
+                );
+            }
         } else {
             eprintln!(
                 "  trace {i}: device committed '{device_first}', engine now says '{now_first}' \
