@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
@@ -307,6 +308,12 @@ fun HomeScreen() = FlorisScreen {
             title = stringRes(R.string.settings__localization__title),
             summary = "Subtypes, dictionaries and multilingual layouts",
             onClick = { navController.navigate(Routes.Settings.Localization) },
+        )
+        CrakeNavTile(
+            icon = Icons.Default.TextFields,
+            title = "Fonts",
+            summary = "Legibility fonts with the evidence behind them",
+            onClick = { navController.navigate(Routes.Settings.Fonts) },
         )
         CrakeNavTile(
             icon = Icons.Outlined.Keyboard,

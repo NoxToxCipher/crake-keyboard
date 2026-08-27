@@ -60,9 +60,18 @@ fun FlorisImeTheme(content: @Composable () -> Unit) {
         FlorisImeUi.Attr.ShiftState to state.inputShiftState.toString(),
     )
 
+    // User font choice fills Snygg's font-family DEFAULT: themes that set
+    // an explicit font-family still win; everything else (key labels,
+    // candidates, popups) renders in the chosen legibility font.
+    val keyboardFontChoice by prefs.fonts.keyboardFont.collectAsState()
+    val keyboardFontFamily = remember(keyboardFontChoice) {
+        CrakeFonts.familyOf(context, keyboardFontChoice)
+    }
+
     MaterialTheme {
         CompositionLocalProvider(
             LocalTextStyle provides TextStyle.Default,
+            org.florisboard.lib.snygg.ui.LocalSnyggDefaultFontFamily provides keyboardFontFamily,
         ) {
             ProvideSnyggTheme(
                 snyggTheme = snyggTheme,

@@ -38,129 +38,291 @@ pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
 
 pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("aint", "ain't"),
-    ("dont", "don't"),
-    ("cant", "can't"),
-    ("wont", "won't"),
-    ("didnt", "didn't"),
-    ("isnt", "isn't"),
+    ("anybodys", "anybody's"),
+    ("anyones", "anyone's"),
+    ("anythings", "anything's"),
     ("arent", "aren't"),
-    ("wasnt", "wasn't"),
-    ("werent", "weren't"),
+    ("cant", "can't"),
+    ("cmon", "c'mon"),
+    ("couldnt", "couldn't"),
+    ("couldntve", "couldn't've"),
+    ("couldve", "could've"),
+    ("darent", "daren't"),
+    ("didnt", "didn't"),
+    ("doesnt", "doesn't"),
+    ("dont", "don't"),
+    ("everybodys", "everybody's"),
+    ("everyones", "everyone's"),
+    ("everythings", "everything's"),
+    ("hadnt", "hadn't"),
+    ("hadntve", "hadn't've"),
     ("hasnt", "hasn't"),
     ("havent", "haven't"),
-    ("hadnt", "hadn't"),
-    ("couldnt", "couldn't"),
-    ("shouldnt", "shouldn't"),
-    ("wouldnt", "wouldn't"),
-    ("mustnt", "mustn't"),
-    ("neednt", "needn't"),
-    ("mightnt", "mightn't"),
-    ("oughtnt", "oughtn't"),
-    ("darent", "daren't"),
-    ("couldve", "could've"),
-    ("shouldve", "should've"),
-    ("wouldve", "would've"),
-    ("mightve", "might've"),
-    ("mustve", "must've"),
-    ("im", "I'm"),
-    ("ive", "I've"),
-    ("ill", "I'll"),
+    ("hed", "he'd"),
+    ("hedve", "he'd've"),
+    ("hell", "he'll"),
+    ("hered", "here'd"),
+    ("herell", "here'll"),
+    ("herere", "here're"),
+    ("heres", "here's"),
+    ("hereve", "here've"),
+    ("hes", "he's"),
+    ("howd", "how'd"),
+    ("howll", "how'll"),
+    ("howre", "how're"),
+    ("hows", "how's"),
+    ("howve", "how've"),
     ("id", "I'd"),
-    ("youre", "you're"),
-    ("youve", "you've"),
-    ("youll", "you'll"),
-    ("youd", "you'd"),
+    ("idve", "I'd've"),
+    ("ill", "I'll"),
+    ("im", "I'm"),
+    ("isnt", "isn't"),
+    ("itd", "it'd"),
+    ("itdve", "it'd've"),
+    ("itll", "it'll"),
+    ("its", "it's"),
+    ("ive", "I've"),
+    ("lets", "let's"),
+    ("maam", "ma'am"),
+    ("mightnt", "mightn't"),
+    ("mightntve", "mightn't've"),
+    ("mightve", "might've"),
+    ("mustnt", "mustn't"),
+    ("mustntve", "mustn't've"),
+    ("mustve", "must've"),
+    ("neednt", "needn't"),
+    ("needntve", "needn't've"),
+    ("nobodys", "nobody's"),
+    ("noones", "no one's"),
+    ("nothings", "nothing's"),
+    ("oclock", "o'clock"),
+    ("ol", "ol'"),
+    ("oughtnt", "oughtn't"),
+    ("shant", "shan't"),
+    ("shed", "she'd"),
+    ("shedve", "she'd've"),
+    ("shell", "she'll"),
+    ("shes", "she's"),
+    ("shouldnt", "shouldn't"),
+    ("shouldntve", "shouldn't've"),
+    ("shouldve", "should've"),
+    ("somebodys", "somebody's"),
+    ("someones", "someone's"),
+    ("somethings", "something's"),
+    ("thatd", "that'd"),
+    ("thatll", "that'll"),
+    ("thatre", "that're"),
+    ("thats", "that's"),
+    ("thatve", "that've"),
+    ("theyd", "they'd"),
+    ("theydve", "they'd've"),
+    ("theyll", "they'll"),
     ("theyre", "they're"),
     ("theyve", "they've"),
-    ("theyll", "they'll"),
-    ("theyd", "they'd"),
-    ("weve", "we've"),
-    ("were", "we're"),
-    ("well", "we'll"),
-    ("wed", "we'd"),
-    ("hes", "he's"),
-    ("shes", "she's"),
-    ("hed", "he'd"),
-    ("shed", "she'd"),
-    ("its", "it's"),
-    ("itll", "it'll"),
-    ("itd", "it'd"),
-    ("whats", "what's"),
-    ("whatll", "what'll"),
-    ("whatd", "what'd"),
-    ("whatre", "what're"),
-    ("whatve", "what've"),
-    ("thats", "that's"),
-    ("thatll", "that'll"),
-    ("thatd", "that'd"),
-    ("theres", "there's"),
-    ("therell", "there'll"),
     ("thered", "there'd"),
+    ("therell", "there'll"),
     ("therere", "there're"),
-    ("heres", "here's"),
-    ("wheres", "where's"),
-    ("wherell", "where'll"),
-    ("whered", "where'd"),
-    ("wherere", "where're"),
-    ("whereve", "where've"),
-    ("hows", "how's"),
-    ("howll", "how'll"),
-    ("howd", "how'd"),
-    ("howre", "how're"),
-    ("howve", "how've"),
-    ("whos", "who's"),
-    ("wholl", "who'll"),
-    ("whod", "who'd"),
-    ("whore", "who're"),
-    ("whove", "who've"),
-    ("whys", "why's"),
-    ("whyll", "why'll"),
-    ("whyd", "why'd"),
-    ("whyre", "why're"),
-    ("whyve", "why've"),
-    ("lets", "let's"),
-    ("yall", "y'all"),
-    ("yalld", "y'all'd"),
-    ("yallve", "y'all've"),
-    ("somethings", "something's"),
-    ("everythings", "everything's"),
-    ("nothings", "nothing's"),
-    ("someones", "someone's"),
-    ("everyones", "everyone's"),
-    ("anyones", "anyone's"),
-    ("somebodys", "somebody's"),
-    ("everybodys", "everybody's"),
-    ("anybodys", "anybody's"),
-    ("cmon", "c'mon"),
-    ("maam", "ma'am"),
-    ("oclock", "o'clock"),
+    ("theres", "there's"),
+    ("thereve", "there've"),
     ("tis", "'tis"),
     ("twas", "'twas"),
+    ("twixt", "'twixt"),
+    ("wasnt", "wasn't"),
+    ("wed", "we'd"),
+    ("wedve", "we'd've"),
+    ("well", "we'll"),
+    ("were", "we're"),
+    ("werent", "weren't"),
+    ("weve", "we've"),
+    ("whatd", "what'd"),
+    ("whatll", "what'll"),
+    ("whatre", "what're"),
+    ("whats", "what's"),
+    ("whatve", "what've"),
+    ("whed", "when'd"),
+    ("whenll", "when'll"),
+    ("whens", "when's"),
+    ("whered", "where'd"),
+    ("wherell", "where'll"),
+    ("wherere", "where're"),
+    ("wheres", "where's"),
+    ("whereve", "where've"),
+    ("whod", "who'd"),
+    ("wholl", "who'll"),
+    ("whore", "who're"),
+    ("whos", "who's"),
+    ("whove", "who've"),
+    ("whyd", "why'd"),
+    ("whyll", "why'll"),
+    ("whyre", "why're"),
+    ("whys", "why's"),
+    ("whyve", "why've"),
+    ("wont", "won't"),
+    ("wouldnt", "wouldn't"),
+    ("wouldntve", "wouldn't've"),
+    ("wouldve", "would've"),
+    ("yall", "y'all"),
+    ("yalld", "y'all'd"),
+    ("yalldve", "y'all'd've"),
+    ("yallll", "y'all'll"),
+    ("yallve", "y'all've"),
+    ("youd", "you'd"),
+    ("youdve", "you'd've"),
+    ("youll", "you'll"),
+    ("youre", "you're"),
+    ("youve", "you've"),
 ];
 
-/// Bare contraction forms that are NOT English words in their own right, so
-/// surfacing them as suggestions is always wrong — the apostrophized form is
-/// what the user means. Deliberately excludes every ambiguous bare form:
-/// were/well/its/ill/id/wont/lets/shed/wed/hell/hes/shes/cant are (or can
-/// be) real words and must never be silently rewritten.
-const SAFE_CONTRACTION_BARE: &[&str] = &[
-    "dont", "didnt", "doesnt", "wasnt", "isnt", "arent", "werent", "youre",
-    "theyre", "ive", "youve", "theyve", "weve", "thats", "whats", "theres",
-    "heres", "wheres", "hows", "whos", "whys", "couldnt", "shouldnt",
-    "wouldnt", "havent", "hasnt", "hadnt", "mustnt", "neednt", "couldve",
-    "shouldve", "wouldve", "mightve", "mustve", "im", "youll", "youd",
-    "theyll", "theyd", "itll", "itd", "yall", "aint",
+pub const SAFE_CONTRACTION_BARE: &[&str] = &[
+    "aint",
+    "anybodys",
+    "anyones",
+    "anythings",
+    "arent",
+    "cmon",
+    "couldnt",
+    "couldntve",
+    "couldve",
+    "darent",
+    "didnt",
+    "doesnt",
+    "dont",
+    "everybodys",
+    "everyones",
+    "everythings",
+    "hadnt",
+    "hadntve",
+    "hasnt",
+    "havent",
+    "hed",
+    "hedve",
+    "hered",
+    "herell",
+    "herere",
+    "heres",
+    "hereve",
+    "howd",
+    "howll",
+    "howre",
+    "hows",
+    "howve",
+    "idve",
+    "im",
+    "isnt",
+    "itd",
+    "itdve",
+    "itll",
+    "ive",
+    "maam",
+    "mightnt",
+    "mightntve",
+    "mightve",
+    "mustnt",
+    "mustntve",
+    "mustve",
+    "neednt",
+    "needntve",
+    "nobodys",
+    "noones",
+    "nothings",
+    "oclock",
+    "oughtnt",
+    "shant",
+    "shedve",
+    "shell",
+    "shouldnt",
+    "shouldntve",
+    "shouldve",
+    "somebodys",
+    "someones",
+    "somethings",
+    "thatd",
+    "thatll",
+    "thatre",
+    "thats",
+    "thatve",
+    "thered",
+    "therell",
+    "therere",
+    "theres",
+    "thereve",
+    "theyd",
+    "theydve",
+    "theyll",
+    "theyre",
+    "theyve",
+    "tis",
+    "twas",
+    "twixt",
+    "wasnt",
+    "wedve",
+    "werent",
+    "weve",
+    "whatd",
+    "whatll",
+    "whatre",
+    "whats",
+    "whatve",
+    "whed",
+    "whenll",
+    "whens",
+    "whered",
+    "wherell",
+    "wherere",
+    "wheres",
+    "whereve",
+    "whod",
+    "wholl",
+    "whos",
+    "whove",
+    "whyd",
+    "whyll",
+    "whyre",
+    "whys",
+    "whyve",
+    "wouldnt",
+    "wouldntve",
+    "wouldve",
+    "yall",
+    "yalld",
+    "yalldve",
+    "yallll",
+    "yallve",
+    "youd",
+    "youdve",
+    "youll",
+    "youre",
+    "youve",
 ];
 
-/// The apostrophized display form for a bare token, when (and only when) the
-/// bare token is a non-word: "dont" -> "don't", "im" -> "I'm". Returns None
-/// for real words ("were", "wont") and unknown tokens.
+pub const GLIDE_CONTRACTION_BARE: &[&str] = &[
+    "cant",
+    "wont",
+    "lets",
+];
+
+pub fn canonicalize_contraction(word: &str) -> Option<&'static str> {
+    let lower = word.to_ascii_lowercase();
+    let bare: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
+    if SAFE_CONTRACTION_BARE.contains(&bare.as_str()) || GLIDE_CONTRACTION_BARE.contains(&bare.as_str()) {
+        return CONTRACTIONS.iter().find(|(k, _)| *k == bare.as_str()).map(|&(_, c)| c);
+    }
+    None
+}
+
+pub fn contraction_display_for_glide(bare: &str) -> Option<&'static str> {
+    canonicalize_contraction(bare)
+}
+
 pub fn contraction_display(bare: &str) -> Option<&'static str> {
-    if !SAFE_CONTRACTION_BARE.contains(&bare) {
+    let lower = bare.to_ascii_lowercase();
+    let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
+    if !SAFE_CONTRACTION_BARE.contains(&clean.as_str()) {
         return None;
     }
-    CONTRACTIONS.iter().find(|(k, _)| *k == bare).map(|&(_, c)| c)
+    CONTRACTIONS.iter().find(|(k, _)| *k == clean.as_str()).map(|&(_, c)| c)
 }
+
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RankedCandidate {
@@ -277,7 +439,7 @@ impl NlpEngine {
         let current = self.trie.get_frequency(&trimmed).unwrap_or(0);
         let new_freq = current.max(base).saturating_add(3).min(ceiling.max(current));
         self.trie.insert(&trimmed, new_freq);
-        self.learned_words.insert(trimmed, new_freq);
+        self.insert_learned_capped(trimmed, new_freq);
     }
 
     /// Serializes learned words + personal corrections for persistence.
@@ -314,7 +476,7 @@ impl NlpEngine {
             let current = self.trie.get_frequency(&word).unwrap_or(0);
             let restored = freq.max(current);
             self.trie.insert(&word, restored);
-            self.learned_words.insert(word, restored);
+            self.insert_learned_capped(word, restored);
         }
         for (typo, intended, n) in state.corrections {
             let counter = self.personal_corrections.entry(typo).or_default();
@@ -364,6 +526,64 @@ impl NlpEngine {
             .map(|&n| 140u32.saturating_add(n.saturating_mul(15)).min(255) as u8)
             .unwrap_or(0);
         shipped.max(personal)
+    }
+
+    
+    /// Multi-word N-Gram Context Scoring (Idea 3 / Loops 7-9):
+    /// Zero-allocation fused context likelihood evaluator using trigram phrase matching,
+    /// immediate bigram transition P(w_t | w_{t-1}), and skip-bigram P(w_t | w_{t-2}).
+    pub fn multi_word_context_score(&self, context: &str, candidate: &str) -> f32 {
+        if context.is_empty() || candidate.is_empty() {
+            return 0.0;
+        }
+
+        // Zero heap allocation token inspection: grab last two tokens in reverse iterator
+        let mut iter = context.split_whitespace().rev();
+        let last_token = match iter.next() {
+            Some(t) => t,
+            None => return 0.0,
+        };
+        let prev2_token = iter.next();
+
+        let cand_lower = candidate.to_ascii_lowercase();
+        let last_lower = last_token.to_ascii_lowercase();
+
+        // 1. Immediate Bigram Score: P(candidate | last_token)
+        let bigram_score = self.bigram_pair_score(&last_lower, &cand_lower) as f32;
+        let mut total_score = bigram_score * 0.04;
+
+        // 2. Trigram / Multi-token Backoff if >= 2 tokens available
+        if let Some(prev2) = prev2_token {
+            let prev2_lower = prev2.to_ascii_lowercase();
+            let skip_score = self.bigram_pair_score(&prev2_lower, &cand_lower) as f32;
+            total_score += skip_score * 0.02;
+
+            // Common English 3-gram idiomatic phrase boosts
+            let t1 = prev2_lower.as_str();
+            let t2 = last_lower.as_str();
+            let c = cand_lower.as_str();
+
+            let is_trigram_match = match (t1, t2, c) {
+                ("thank", "you", "so") | ("thank", "you", "very") | ("thank", "you", "much") | ("thank", "you", "all") => true,
+                ("how", "are", "you") | ("how", "are", "things") => true,
+                ("let", "me", "know") | ("let", "me", "see") | ("let", "me", "tell") => true,
+                ("in", "order", "to") => true,
+                ("as", "well", "as") | ("as", "soon", "as") | ("as", "far", "as") => true,
+                ("on", "the", "other") | ("on", "the", "way") => true,
+                ("at", "the", "same") | ("at", "the", "moment") | ("at", "the", "end") => true,
+                ("see", "you", "later") | ("see", "you", "soon") | ("see", "you", "there") => true,
+                ("have", "a", "good") | ("have", "a", "great") | ("have", "a", "nice") => true,
+                ("i", "am", "going") | ("i", "am", "doing") | ("i", "am", "not") | ("i", "am", "sure") => true,
+                ("you", "want", "to") | ("you", "need", "to") | ("you", "have", "to") => true,
+                _ => false,
+            };
+
+            if is_trigram_match {
+                total_score += 8.0;
+            }
+        }
+
+        total_score
     }
 
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
@@ -420,6 +640,20 @@ impl NlpEngine {
         if typo.is_empty() || intended.is_empty() || typo == intended {
             return;
         }
+        // Same capacity discipline as learned words and personal bigrams:
+        // a new typo key evicts the typo whose best mapping is weakest.
+        if !self.personal_corrections.contains_key(&typo)
+            && self.personal_corrections.len() >= crate::persist::MAX_CORRECTIONS as usize
+        {
+            if let Some(weakest) = self
+                .personal_corrections
+                .iter()
+                .min_by_key(|(_, targets)| targets.values().max().copied().unwrap_or(0))
+                .map(|(k, _)| k.clone())
+            {
+                self.personal_corrections.remove(&weakest);
+            }
+        }
         let counter = self.personal_corrections.entry(typo.clone()).or_default();
         let count = counter.entry(intended.clone()).or_insert(0);
         *count = count.saturating_add(1);
@@ -454,10 +688,30 @@ impl NlpEngine {
             self.trie.boost_or_insert(&trimmed, 15);
             // Boosts are part of what the user taught us — persist them.
             if let Some(freq) = self.trie.get_frequency(&trimmed) {
-                self.learned_words.insert(trimmed.clone(), freq);
+                self.insert_learned_capped(trimmed.clone(), freq);
             }
             self.record_session_word(&trimmed);
         }
+    }
+
+    /// The ONLY door into the persisted learned set: at capacity a NEW word
+    /// evicts the least-used entry (freq encodes use). Without this the map
+    /// outgrew the persistence cap and serialize() truncated the
+    /// ALPHABETICAL tail — every restart forgot the user's w-z words first.
+    fn insert_learned_capped(&mut self, word: String, freq: u32) {
+        if !self.learned_words.contains_key(&word)
+            && self.learned_words.len() >= crate::persist::MAX_LEARNED_WORDS as usize
+        {
+            if let Some(weakest) = self
+                .learned_words
+                .iter()
+                .min_by_key(|(_, &f)| f)
+                .map(|(k, _)| k.clone())
+            {
+                self.learned_words.remove(&weakest);
+            }
+        }
+        self.learned_words.insert(word, freq);
     }
 
     pub fn record_session_word(&mut self, word: &str) {
@@ -989,7 +1243,18 @@ impl NlpEngine {
         // budgets stay as they were.
         let is_capitalized = trimmed.chars().next().is_some_and(|c| c.is_uppercase());
         {
-            let max_units = if trimmed_lower.len() <= 4 { 3 } else { 4 };
+            // An EXACT word needs fuzzy only for its close alternatives
+            // (the slot-2 corridors — tine/time, fir/for — are all 1-unit
+            // neighbours; transpositions cost 2). Full-depth fuzzy on
+            // exact words burned ~460us on the most common keystroke
+            // state (measured 2026-08-27); typos keep the full budget.
+            let max_units = if is_exact {
+                2
+            } else if trimmed_lower.len() <= 4 {
+                3
+            } else {
+                4
+            };
             let fuzzy = self.trie.fuzzy_search_weighted(
                 &trimmed_lower,
                 max_units,
@@ -1608,8 +1873,17 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
         include_personal: bool,
     ) -> Vec<String> {
         let prev_l = prev.trim().to_lowercase();
-        if prev_l.is_empty() || max == 0 {
+        if max == 0 {
             return Vec::new();
+        }
+        if prev_l.is_empty() {
+            // Sentence start (or empty field): the capitalized starters,
+            // same list the letter-prior fallback uses.
+            return Self::SENTENCE_STARTERS
+                .iter()
+                .take(max)
+                .map(|&(w, _)| w.to_string())
+                .collect();
         }
         let mut scored: Vec<(u8, &str)> = Vec::new();
         if include_personal {
@@ -1689,6 +1963,16 @@ pub const SENTENCE_STARTERS: &[(&str, char)] = &[
                         scored.push((score, w.as_str()));
                     }
                 }
+            }
+            // This runs on the TAP path: common prevs ("the", "i") have
+            // thousands of successors and a full sort cost ~100us/call
+            // (measured 2026-08-27, the "no longer zippy" report). Only the
+            // top few dozen can ever survive the 6-distinct-first-letters
+            // cut, so partially select before sorting.
+            const TOP: usize = 32;
+            if scored.len() > TOP {
+                scored.select_nth_unstable_by(TOP, |a, b| b.0.cmp(&a.0));
+                scored.truncate(TOP);
             }
             scored.sort_by(|a, b| b.0.cmp(&a.0));
             for (_, w) in scored {

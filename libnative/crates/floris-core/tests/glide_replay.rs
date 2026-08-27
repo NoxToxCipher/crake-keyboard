@@ -86,6 +86,7 @@ fn replay_captured_device_traces() {
         let (prev, captured_top, layout_s, pts_s) =
             (fields[0], fields[1], fields[2], fields[3]);
         let layout = parse_layout(layout_s);
+        let key_w = layout.first().map(|k| k.width).unwrap_or(95.0);
         let points = parse_points(pts_s);
         assert!(
             layout.len() >= 26 && points.len() >= 2,
@@ -96,11 +97,25 @@ fn replay_captured_device_traces() {
         let mut engine = GlideEngine::new();
         engine.set_layout(layout);
         let ctx = if prev.is_empty() { None } else { Some((&nlp, prev)) };
+        // Micro-strokes (tap-slides) may legitimately return NOTHING now:
+        // kinematic gating rejects them engine-side, which is the desired
+        // defense in depth next to the detector threshold. Only strokes
+        // with real glide extent must produce candidates.
+        // (key width captured before set_layout consumed the vec)
+        let travel: f32 = points.windows(2).map(|w| w[0].distance(&w[1])).sum();
         let results = engine.match_gesture_with_context(&points, &nlp.trie, 8, ctx);
-        assert!(
-            !results.is_empty(),
-            "trace {i}: engine returned nothing for a real stroke"
-        );
+        if travel < key_w * 0.85 {
+            if results.is_empty() {
+                eprintln!("  trace {i}: micro-stroke ({:.2} kw) rejected by engine — OK", travel / key_w);
+                continue;
+            }
+        } else {
+            assert!(
+                !results.is_empty(),
+                "trace {i}: engine returned nothing for a real glide ({:.2} kw)",
+                travel / key_w
+            );
+        }
         eprintln!(
             "  trace {i} prev='{prev}' scores: {}",
             results

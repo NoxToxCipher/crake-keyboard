@@ -93,3 +93,44 @@ fn shipped_fixes_hold_on_shipped_assets() {
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
+
+/// Latency floor-guard on the real assets: the suggest pipeline has grown
+/// many gated stages (rescues, punch-throughs, homophone arbitration) and
+/// nothing was watching the clock. The bound is deliberately generous —
+/// debug builds, CI jitter — it exists to catch a CATASTROPHIC regression
+/// (an ungated trie scan), not to tune against. Baseline printed for eyes.
+#[test]
+fn suggest_latency_stays_sane() {
+    let e = engine();
+    // Mix of shapes: exact words with context (rescue path), typos with
+    // completions (punch-through), merges, short tokens, long chains.
+    let cases: &[(&str, &str)] = &[
+        ("i", "an"),
+        ("", "pleade"),
+        ("", "thoriufhky"),
+        ("the", "keyboard"),
+        ("", "ti"),
+        ("more", "then"),
+        ("", "worls"),
+        ("in", "their"),
+        ("", "glidinf"),
+        ("want", "to"),
+    ];
+    // warm-up
+    for &(p, q) in cases {
+        let _ = e.suggest_with_context(q, p, 5);
+    }
+    let start = std::time::Instant::now();
+    let rounds = 200;
+    for _ in 0..rounds {
+        for &(p, q) in cases {
+            let _ = e.suggest_with_context(q, p, 5);
+        }
+    }
+    let per_call = start.elapsed() / (rounds * cases.len() as u32);
+    eprintln!("suggest latency: {per_call:?} per call (debug build, real assets)");
+    assert!(
+        per_call < std::time::Duration::from_millis(20),
+        "suggest took {per_call:?} per call — a stage lost its gate"
+    );
+}

@@ -51,6 +51,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyHintConfiguration
 import dev.patrickgold.florisboard.ime.text.key.KeyHintMode
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
+import dev.patrickgold.florisboard.ime.theme.CrakeFont
 import dev.patrickgold.florisboard.ime.theme.ThemeMode
 import dev.patrickgold.florisboard.ime.theme.extCoreTheme
 import dev.patrickgold.florisboard.ime.window.ImeWindowConfig
@@ -475,6 +476,18 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val notificationPermissionState = enum(
             key = "internal__notification_permission_state",
             default = NotificationPermissionState.NOT_SET,
+        )
+    }
+
+    val fonts = Fonts()
+    inner class Fonts {
+        val keyboardFont = enum(
+            key = "fonts__keyboard_font",
+            default = CrakeFont.SYSTEM,
+        )
+        val appFont = enum(
+            key = "fonts__app_font",
+            default = CrakeFont.SYSTEM,
         )
     }
 

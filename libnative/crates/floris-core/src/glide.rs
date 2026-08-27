@@ -30,6 +30,30 @@ impl Point2D {
     }
 }
 
+
+/// Anisotropic Ergonomic Thumb-Arc Metric (Idea 4 / Loops 10-12):
+/// Models the biomechanical reach envelope of the human thumb.
+/// The major axis is aligned with natural diagonal thumb sweep (~28.5 degrees).
+#[inline]
+pub fn anisotropic_thumb_distance_sq(touch: &Point2D, target: &Point2D, _key_radius: f32) -> f32 {
+    let dx = touch.x - target.x;
+    let dy = touch.y - target.y;
+
+    // Pre-computed quadratic form coefficients for rotated ellipse:
+    // theta = 28.5 deg, a = 1.25 (major reach), b = 0.85 (minor perpendicular)
+    // Runs in 3 multiplications + 2 additions with zero trigonometry or division.
+    const A: f32 = 0.8094;
+    const B: f32 = -0.6241;
+    const C: f32 = 1.2146;
+
+    A * dx * dx + B * dx * dy + C * dy * dy
+}
+
+#[inline]
+pub fn anisotropic_thumb_distance(touch: &Point2D, target: &Point2D, key_radius: f32) -> f32 {
+    anisotropic_thumb_distance_sq(touch, target, key_radius).sqrt()
+}
+
 /// Metadata about a single keyboard key's geometric layout.
 #[derive(Debug, Clone)]
 pub struct KeyInfo {
@@ -57,6 +81,251 @@ pub struct GlideMatch {
 
 /// Simplifies a touch trajectory using the Ramer-Douglas-Peucker (RDP) algorithm.
 /// Reduces hundreds of noisy touch samples down to essential inflection points.
+
+/// Detected inflection point (corner turn or dwell) along a touch trajectory.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InflectionPoint {
+    pub point: Point2D,
+    /// Importance weight of this inflection (1.0 = normal, >1.5 = sharp corner or dwell)
+    pub weight: f32,
+    pub is_dwell: bool,
+}
+
+/// Extracts kinematic inflection points (corners and speed dips) from raw touch samples.
+pub fn extract_inflections(points: &[Point2D], key_radius: f32) -> Vec<InflectionPoint> {
+    if points.len() <= 2 {
+        return points
+            .iter()
+            .map(|&p| InflectionPoint {
+                point: p,
+                weight: 1.0,
+                is_dwell: false,
+            })
+            .collect();
+    }
+
+    let mut inflections = Vec::new();
+    // Always anchor start point
+    inflections.push(InflectionPoint {
+        point: points[0],
+        weight: 1.5,
+        is_dwell: true,
+    });
+
+    // Compute average step distance
+    let mut total_dist = 0.0;
+    for w in points.windows(2) {
+        total_dist += w[0].distance(&w[1]);
+    }
+    let avg_step = total_dist / (points.len() - 1).max(1) as f32;
+
+    for i in 1..points.len() - 1 {
+        let p_prev = points[i - 1];
+        let p_curr = points[i];
+        let p_next = points[i + 1];
+
+        let d_prev = p_prev.distance(&p_curr);
+        let d_next = p_curr.distance(&p_next);
+
+        // Angle between incoming and outgoing vectors
+        let dx1 = p_curr.x - p_prev.x;
+        let dy1 = p_curr.y - p_prev.y;
+        let dx2 = p_next.x - p_curr.x;
+        let dy2 = p_next.y - p_curr.y;
+
+        let mag1 = (dx1 * dx1 + dy1 * dy1).sqrt();
+        let mag2 = (dx2 * dx2 + dy2 * dy2).sqrt();
+
+        let mut is_corner = false;
+        let mut is_dwell = false;
+        let mut weight = 1.0;
+
+        if mag1 > 1e-4 && mag2 > 1e-4 {
+            let dot = (dx1 * dx2 + dy1 * dy2) / (mag1 * mag2);
+            let angle_rad = dot.clamp(-1.0, 1.0).acos(); // 0 = straight line, PI = complete reversal
+            let angle_deg = angle_rad * (180.0 / std::f32::consts::PI);
+
+            if angle_deg > 35.0 {
+                is_corner = true;
+                weight += (angle_deg / 60.0).clamp(0.5, 2.0);
+            }
+        }
+
+        // Dwell / slow-down detection
+        if d_prev < avg_step * 0.45 && d_next < avg_step * 0.45 {
+            is_dwell = true;
+            weight += 1.0;
+        }
+
+        if is_corner || is_dwell {
+            // Avoid duplicate inflections too close to each other
+            if let Some(last) = inflections.last() {
+                if last.point.distance(&p_curr) < key_radius * 0.45 {
+                    continue;
+                }
+            }
+            inflections.push(InflectionPoint {
+                point: p_curr,
+                weight,
+                is_dwell,
+            });
+        }
+    }
+
+    // Always anchor end point
+    if let Some(&last_pt) = points.last() {
+        if inflections.last().map(|p| p.point.distance(&last_pt)).unwrap_or(100.0) > key_radius * 0.4 {
+            inflections.push(InflectionPoint {
+                point: last_pt,
+                weight: 1.5,
+                is_dwell: true,
+            });
+        }
+    }
+
+    inflections
+}
+
+
+/// Detects micro-loops (closed mini-circles) and hesitation stutters in a gesture trace.
+/// Used to recognize intentional double-letter inputs (e.g. "look", "good", "coffee", "sleep").
+pub fn detect_double_letter_loops(points: &[Point2D], key_radius: f32) -> Vec<Point2D> {
+    if points.len() < 5 {
+        return Vec::new();
+    }
+
+    let mut loop_centers = Vec::with_capacity(4);
+    let max_radius_sq = (key_radius * 1.2).powi(2);
+    let min_loop_path = key_radius * 1.1;
+    let max_closure_dist_sq = (key_radius * 0.65).powi(2);
+
+    // O(1) prefix distance table for instant sub-path length evaluation
+    let mut cum_dist = Vec::with_capacity(points.len());
+    cum_dist.push(0.0f32);
+    for w in points.windows(2) {
+        cum_dist.push(cum_dist.last().unwrap() + w[0].distance(&w[1]));
+    }
+
+    // Scan for sub-paths that travel a significant arc while closing back on themselves
+    for i in 0..points.len() {
+        for j in (i + 3)..points.len().min(i + 16) {
+            let path_len = cum_dist[j] - cum_dist[i];
+            if path_len >= min_loop_path {
+                let closure_dist_sq = points[i].distance_squared(&points[j]);
+                if closure_dist_sq <= max_closure_dist_sq {
+                    // Compute centroid of the loop
+                    let mut cx = 0.0;
+                    let mut cy = 0.0;
+                    for k in i..=j {
+                        cx += points[k].x;
+                        cy += points[k].y;
+                    }
+                    let count = (j - i + 1) as f32;
+                    let center = Point2D::new(cx / count, cy / count);
+
+                    // Ensure all points in loop stay within keycap radius
+                    let mut confined = true;
+                    for k in i..=j {
+                        if points[k].distance_squared(&center) > max_radius_sq {
+                            confined = false;
+                            break;
+                        }
+                    }
+
+                    if confined {
+                        if loop_centers.last().map(|c: &Point2D| c.distance_squared(&center)).unwrap_or(1e6) > max_radius_sq {
+                            loop_centers.push(center);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    loop_centers
+}
+
+/// Checks if a word contains consecutive doubled characters (e.g. "oo", "ee", "ll", "tt").
+pub fn get_double_letter_chars(word: &str) -> Vec<char> {
+    let mut doubles = Vec::new();
+    let chars: Vec<char> = word.chars().map(|c| c.to_ascii_lowercase()).collect();
+    for i in 0..chars.len().saturating_sub(1) {
+        if chars[i] == chars[i + 1] && chars[i].is_alphabetic() {
+            doubles.push(chars[i]);
+        }
+    }
+    doubles
+}
+
+
+/// Trims accidental touchdown and liftoff hardware touch hooks (Idea 5 / Loops 13-15).
+/// Touch hardware frequently introduces 1-2 sample acute backward/lateral flick artifacts
+/// as the finger lands and rolls off the screen. Trims these in O(1) before RDP simplification.
+#[inline]
+pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32) -> &'a [Point2D] {
+    if points.len() < 6 {
+        return points;
+    }
+
+    let mut start_idx = 0;
+    let mut end_idx = points.len();
+
+    let max_hook_dist = key_radius * 0.45;
+    let max_hook_dist_sq = max_hook_dist * max_hook_dist;
+
+    // 1. Takeoff Hook Cleanup:
+    let p0 = points[0];
+    let p1 = points[1];
+    let p3 = points[3];
+    let d01_sq = p0.distance_squared(&p1);
+
+    if d01_sq <= max_hook_dist_sq {
+        let v_init = (p1.x - p0.x, p1.y - p0.y);
+        let v_body = (p3.x - p1.x, p3.y - p1.y);
+        let mag_init_sq = v_init.0 * v_init.0 + v_init.1 * v_init.1;
+        let mag_body_sq = v_body.0 * v_body.0 + v_body.1 * v_body.1;
+
+        if mag_init_sq > 1.0 && mag_body_sq > 1.0 {
+            let dot = v_init.0 * v_body.0 + v_init.1 * v_body.1;
+            let mag_prod = (mag_init_sq * mag_body_sq).sqrt();
+            let cos_theta = dot / mag_prod;
+            // Sharp acute reversal (>98 degrees) over tiny distance
+            if cos_theta < -0.15 {
+                start_idx = 1;
+            }
+        }
+    }
+
+    // 2. Liftoff Hook Cleanup:
+    let pn = points[end_idx - 1];
+    let pn_1 = points[end_idx - 2];
+    let pn_3 = points[end_idx - 4];
+    let d_end_sq = pn.distance_squared(&pn_1);
+
+    if d_end_sq <= max_hook_dist_sq {
+        let v_tail = (pn.x - pn_1.x, pn.y - pn_1.y);
+        let v_prev = (pn_1.x - pn_3.x, pn_1.y - pn_3.y);
+        let mag_tail_sq = v_tail.0 * v_tail.0 + v_tail.1 * v_tail.1;
+        let mag_prev_sq = v_prev.0 * v_prev.0 + v_prev.1 * v_prev.1;
+
+        if mag_tail_sq > 1.0 && mag_prev_sq > 1.0 {
+            let dot = v_tail.0 * v_prev.0 + v_tail.1 * v_prev.1;
+            let mag_prod = (mag_tail_sq * mag_prev_sq).sqrt();
+            let cos_theta = dot / mag_prod;
+            // Sharp acute flick upon finger release
+            if cos_theta < -0.15 {
+                end_idx -= 1;
+            }
+        }
+    }
+
+    if end_idx > start_idx + 1 {
+        &points[start_idx..end_idx]
+    } else {
+        points
+    }
+}
+
 pub fn simplify_rdp(points: &[Point2D], epsilon: f32) -> Vec<Point2D> {
     if points.len() <= 2 {
         return points.to_vec();
@@ -136,9 +405,10 @@ pub fn compute_dtw(path_a: &[Point2D], path_b: &[Point2D]) -> f32 {
 }
 
 /// Native Glide Typing Engine managing key geometry and trajectory matching.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct GlideEngine {
     key_centers: HashMap<char, Point2D>,
+    adaptive_centroids: HashMap<char, Point2D>,
     key_bounds: Vec<KeyInfo>,
     average_key_radius: f32,
 }
@@ -147,6 +417,7 @@ impl GlideEngine {
     pub fn new() -> Self {
         Self {
             key_centers: HashMap::new(),
+            adaptive_centroids: HashMap::new(),
             key_bounds: Vec::new(),
             average_key_radius: 50.0,
         }
@@ -169,13 +440,63 @@ impl GlideEngine {
         self.key_bounds = keys;
     }
 
+    /// Returns the center position of a key character if present in layout.
+    
+    /// Adaptively updates the learned centroid of a key based on user touch observations (Idea 6 / Loops 16-18).
+    /// Uses exponential moving average bounded within 0.35x key radius of nominal key center.
+    #[inline]
+    pub fn adapt_key_centroid(&mut self, ch: char, observed: Point2D) {
+        let ch_lower = ch.to_ascii_lowercase();
+        if let Some(&nominal) = self.key_centers.get(&ch_lower) {
+            let current = self.adaptive_centroids.get(&ch_lower).copied().unwrap_or(nominal);
+            let alpha = 0.05f32;
+            let mut updated = Point2D::new(
+                current.x * (1.0 - alpha) + observed.x * alpha,
+                current.y * (1.0 - alpha) + observed.y * alpha,
+            );
+
+            // Bounded clamp: ensure adaptive center stays within 0.35x key radius of nominal
+            let max_offset = (self.average_key_radius * 0.35).max(5.0);
+            let dx = updated.x - nominal.x;
+            let dy = updated.y - nominal.y;
+            let dist_sq = dx * dx + dy * dy;
+            if dist_sq > max_offset * max_offset {
+                let dist = dist_sq.sqrt();
+                updated.x = nominal.x + (dx / dist) * max_offset;
+                updated.y = nominal.y + (dy / dist) * max_offset;
+            }
+
+            self.adaptive_centroids.insert(ch_lower, updated);
+        }
+    }
+
+    /// Returns the effective key center (learned adaptive center if available, otherwise nominal).
+    #[inline]
+    pub fn get_adaptive_key_center(&self, ch: char) -> Option<Point2D> {
+        let ch_lower = ch.to_ascii_lowercase();
+        self.adaptive_centroids.get(&ch_lower).copied().or_else(|| self.key_centers.get(&ch_lower).copied())
+    }
+
+    /// Clears learned adaptive centroids and restores nominal key geometry.
+    #[inline]
+    pub fn reset_adaptive_centroids(&mut self) {
+        self.adaptive_centroids.clear();
+    }
+
+pub fn key_center(&self, ch: char) -> Option<Point2D> {
+        self.key_centers.get(&ch.to_ascii_lowercase()).copied()
+    }
+
     /// Builds the ideal ideal keypath trajectory for a given candidate word.
     pub fn build_ideal_keypath(&self, word: &str) -> Option<Vec<Point2D>> {
         let mut path = Vec::with_capacity(word.len());
         for ch in word.chars() {
             let ch_lower = ch.to_ascii_lowercase();
-            match self.key_centers.get(&ch_lower) {
-                Some(&pt) => {
+            if ch_lower == '\'' || ch_lower == '’' || ch_lower == '‘' || ch_lower == '-' {
+                continue;
+            }
+            match self.get_adaptive_key_center(ch_lower) {
+                Some(pt) => {
                     // Deduplicate consecutive identical keys (e.g. 'll' or 'ee')
                     if path.last() != Some(&pt) {
                         path.push(pt);
@@ -240,9 +561,12 @@ impl GlideEngine {
             return Vec::new();
         }
 
+        // 0. Dynamic Takeoff & Landing Hook Trimming (Idea 5 / Loops 13-15)
+        let cleaned_path = trim_takeoff_and_landing_hooks(raw_path, self.average_key_radius);
+
         // 1. Simplify touch curve using RDP (epsilon proportional to key radius)
         let rdp_epsilon = (self.average_key_radius * 0.35).max(10.0);
-        let simplified_gesture = simplify_rdp(raw_path, rdp_epsilon);
+        let simplified_gesture = simplify_rdp(cleaned_path, rdp_epsilon);
         if simplified_gesture.len() < 2 {
             return Vec::new();
         }
@@ -250,8 +574,8 @@ impl GlideEngine {
         let start_pt = simplified_gesture[0];
         let end_pt = simplified_gesture[simplified_gesture.len() - 1];
 
-        // 2. Spatial bounding box filter for start & end keys (within 1.75x key radius)
-        let search_radius_sq = (self.average_key_radius * 1.75).powi(2);
+        // 2. Spatial bounding box filter for start & end keys (within 1.45x key radius)
+        let search_radius_sq = (self.average_key_radius * 1.45).powi(2);
         let mut start_chars = Vec::new();
         let mut end_chars = Vec::new();
 
@@ -268,27 +592,31 @@ impl GlideEngine {
             return Vec::new();
         }
 
+        // 2b. Extract kinematics (corners and dwell points) and micro-loops from the raw trace
+        let inflections = extract_inflections(cleaned_path, self.average_key_radius);
+        let double_loops = detect_double_letter_loops(cleaned_path, self.average_key_radius);
+        let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
+
         // 3. Collect candidate words from Radix Trie matching start characters
         let mut matches = Vec::new();
 
         for &start_ch in &start_chars {
             let prefix = start_ch.to_string();
-            // Pull a deep, frequency-sorted pool and keep only words whose
-            // LAST letter is reachable from where the finger lifted, THEN cap.
-            // Filtering after a 250-word frequency cut starved recall: any
-            // word outside its start letter's frequency top-250 could never
-            // be glided at all, and most of that 250 had unreachable endings.
-            let pool = trie.prefix_search(&prefix, 1500);
-            let viable = pool
-                .into_iter()
-                .filter(|(word, _)| {
-                    word.len() >= 2
-                        && word
-                            .chars()
-                            .last()
-                            .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
-                })
-                .take(300);
+            // Top 300 VIABLE words (end letter reachable from where the
+            // finger lifted), filtered during the trie walk. The old shape
+            // pulled 1500 frequency-sorted clones and filtered after —
+            // 1.27ms per start letter on the mid-gesture preview path, and
+            // any viable word below the frequency cut was unglidable.
+            let viable = trie.prefix_search_filtered(&prefix, 300, |word| {
+                let clean_len = word.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-').count();
+                clean_len >= 2
+                    && word
+                        .chars()
+                        .filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-')
+                        .last()
+                        .is_some_and(|c| end_chars.contains(&c.to_ascii_lowercase()))
+            });
+            let viable = viable.into_iter();
 
             for (word, freq) in viable {
                 // Build ideal keypath for the word
@@ -299,29 +627,69 @@ impl GlideEngine {
                     let normalized_dist = dtw_dist / (simplified_gesture.len() + ideal_path.len()) as f32;
 
                     // Anchor accuracy: glides start deliberately (the user is
-                    // looking at the first key), so distance from the trace's
-                    // endpoints to the word's first/last key centers carries
-                    // real signal that plain DTW dilutes across the path.
+                    // looking at the first key), evaluated via anisotropic ergonomic thumb reach.
                     let anchor_penalty = match (ideal_path.first(), ideal_path.last()) {
                         (Some(first), Some(last)) => {
-                            (start_pt.distance(first) + end_pt.distance(last))
+                            (anisotropic_thumb_distance(&start_pt, first, self.average_key_radius)
+                                + anisotropic_thumb_distance(&end_pt, last, self.average_key_radius))
                                 / self.average_key_radius.max(1.0)
                                 * 6.0
                         }
                         _ => 0.0,
                     };
 
-                    // Combine DTW geometric closeness with word frequency bonus
+                    // Kinematics Inflection Alignment & Key Coverage:
+                    // Reward candidates whose interior keys align with detected turn corners/dwells,
+                    // and penalize templates that bypass prominent interior gesture via-points.
+                    let mut kinematics_bonus = 0.0f32;
+                    for key_pt in &ideal_path {
+                        if inflections.iter().any(|inf| inf.point.distance_squared(key_pt) <= radius_match_sq) {
+                            kinematics_bonus += 1.5;
+                        }
+                    }
+                    // Reward templates that match the total turn complexity (number of via-points)
+                    if ideal_path.len() >= 3 && simplified_gesture.len() >= 3 {
+                        let len_diff = (ideal_path.len() as f32 - simplified_gesture.len() as f32).abs();
+                        if len_diff <= 1.0 {
+                            kinematics_bonus += 1.0;
+                        }
+                    }
+
+                    let mut interior_alignment_penalty = 0.0f32;
+                    if simplified_gesture.len() >= 3 {
+                        for pt in &simplified_gesture[1..simplified_gesture.len() - 1] {
+                            let min_dist = ideal_path.iter().map(|k| k.distance(pt)).fold(f32::INFINITY, f32::min);
+                            if min_dist > self.average_key_radius * 1.8 {
+                                interior_alignment_penalty += (min_dist - self.average_key_radius * 1.8) / self.average_key_radius * 3.0;
+                            }
+                        }
+                    }
+
+                    // Double-letter loop / stutter bonus:
+                    // If candidate word has double letters (e.g. "good", "look", "coffee", "sleep")
+                    // and a micro-loop was detected over that keycap, apply a decisive double-letter reward.
+                    let mut double_letter_bonus = 0.0f32;
+                    let double_chars = get_double_letter_chars(&word);
+                    if !double_loops.is_empty() && !double_chars.is_empty() {
+                        for d_char in &double_chars {
+                            if let Some(&center) = self.key_centers.get(d_char) {
+                                if double_loops.iter().any(|lp| lp.distance_squared(&center) <= radius_match_sq) {
+                                    double_letter_bonus += 22.0;
+                                }
+                            }
+                        }
+                    }
+
+                    // Combine DTW geometric closeness with word frequency bonus & kinematics
                     let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
-                    // Sentence-context bonus from the bigram LM (0 without
-                    // context or when the pair is unseen).
+                    // Multi-Word N-Gram Context & Score Fusion (Idea 3 / Loops 7-9):
                     let context_bonus = match context {
                         Some((nlp, prev)) if !prev.is_empty() => {
-                            nlp.bigram_pair_score(prev, &word) as f32 * 0.04
+                            nlp.multi_word_context_score(prev, &word)
                         }
                         _ => 0.0,
                     };
-                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus;
+                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
 
                     matches.push(GlideMatch {
                         word,
@@ -359,7 +727,7 @@ impl GlideEngine {
         // user actually means: "dont" -> "don't". Real-word bares ("were",
         // "wont") are untouched by contraction_display.
         for m in &mut matches {
-            if let Some(display) = crate::nlp::contraction_display(&m.word) {
+            if let Some(display) = crate::nlp::canonicalize_contraction(&m.word) {
                 m.word = display.to_string();
             }
         }

@@ -113,6 +113,7 @@ object FlorisNative {
 
     /** Records that the user wrote [nextWord] after [prevWord] (personal context). */
     fun recordPersonalBigram(prevWord: String, nextWord: String) {
+        invalidateLetterPredictionMemo()
         if (!isLoaded || prevWord.isEmpty() || nextWord.isEmpty()) return
         nativeNlpRecordPersonalBigram(prevWord, nextWord)
     }
@@ -125,6 +126,7 @@ object FlorisNative {
 
     /** Restores a CRKL blob; returns learned-word count or -1 on rejection. */
     fun importLearned(data: ByteArray): Int {
+        invalidateLetterPredictionMemo()
         if (!isLoaded || data.isEmpty()) return -1
         return nativeNlpImportLearned(data)
     }
@@ -140,6 +142,7 @@ object FlorisNative {
     }
 
     fun insertWord(word: String, frequency: Int) {
+        invalidateLetterPredictionMemo()
         if (!isLoaded) return
         // Never learn text if it is detected as a secret/mnemonic or threat
         val inspection = inspectSecret(word)
@@ -180,7 +183,8 @@ object FlorisNative {
         maxResults: Int = 3,
         includePersonal: Boolean = true,
     ): List<String> {
-        if (!isLoaded || prevWord.isBlank()) return emptyList()
+        if (!isLoaded) return emptyList()
+        // Blank prev is valid: the native side answers sentence starters.
         return nativeNlpPredictNextWords(prevWord, maxResults, includePersonal).toList()
     }
 
@@ -191,8 +195,21 @@ object FlorisNative {
         includePersonal: Boolean,
     ): Array<String>
 
+    /** Single-entry memo for letter predictions: the tap-down handler, the
+     * flick preview and the Compose bar all ask for the SAME (prefix, prev)
+     * state between keystrokes, and the down-handler sits on the touch
+     * path. Invalidated whenever learning mutates the model. */
+    @Volatile private var letterPredictionMemo: Triple<String, String, Map<Char, String>>? = null
+
+    internal fun invalidateLetterPredictionMemo() {
+        letterPredictionMemo = null
+    }
+
     fun predictNextLetterWords(prefix: String = "", prevWord: String = ""): Map<Char, String> {
         if (!isLoaded) return emptyMap()
+        letterPredictionMemo?.let { (p, pw, cached) ->
+            if (p == prefix && pw == prevWord) return cached
+        }
         val rawMatches = nativeNlpPredictNextLetterWords(prefix, prevWord)
         val result = mutableMapOf<Char, String>()
         for (raw in rawMatches) {
@@ -203,6 +220,7 @@ object FlorisNative {
                 result[ch] = word
             }
         }
+        letterPredictionMemo = Triple(prefix, prevWord, result)
         return result
     }
 

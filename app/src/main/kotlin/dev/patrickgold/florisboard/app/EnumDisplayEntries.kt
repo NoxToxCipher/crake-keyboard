@@ -53,6 +53,26 @@ import kotlin.reflect.KClass
 private const val DEFAULT = ""
 
 private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable () -> List<ListPreferenceEntry<*>>>(
+    dev.patrickgold.florisboard.ime.theme.CrakeFont::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = dev.patrickgold.florisboard.ime.theme.CrakeFont.SYSTEM,
+                label = "Classic (system default)",
+            )
+            entry(
+                key = dev.patrickgold.florisboard.ime.theme.CrakeFont.ATKINSON_HYPERLEGIBLE,
+                label = "Atkinson Hyperlegible",
+            )
+            entry(
+                key = dev.patrickgold.florisboard.ime.theme.CrakeFont.B612,
+                label = "B612",
+            )
+            entry(
+                key = dev.patrickgold.florisboard.ime.theme.CrakeFont.LEXEND,
+                label = "Lexend",
+            )
+        }
+    },
     AppTheme::class to DEFAULT to {
         listPrefEntries {
             entry(

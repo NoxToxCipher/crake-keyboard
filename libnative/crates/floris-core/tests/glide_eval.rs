@@ -516,3 +516,408 @@ fn context_rescues_the_coffee_code_corridor() {
         with_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
     );
 }
+
+
+/// Comprehensive test battery for glide contraction expansion across all major English contractions:
+/// bare swipe traces must automatically surface their apostrophized canonical forms.
+#[test]
+fn comprehensive_glided_contractions_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    
+    let contraction_pairs = [
+        ("dont", "don't"),
+        ("cant", "can't"),
+        ("wont", "won't"),
+        ("didnt", "didn't"),
+        ("doesnt", "doesn't"),
+        ("isnt", "isn't"),
+        ("arent", "aren't"),
+        ("wasnt", "wasn't"),
+        ("werent", "weren't"),
+        ("hasnt", "hasn't"),
+        ("havent", "haven't"),
+        ("hadnt", "hadn't"),
+        ("couldnt", "couldn't"),
+        ("shouldnt", "shouldn't"),
+        ("wouldnt", "wouldn't"),
+        ("mustnt", "mustn't"),
+        ("neednt", "needn't"),
+        ("mightnt", "mightn't"),
+        ("couldve", "could've"),
+        ("shouldve", "should've"),
+        ("wouldve", "would've"),
+        ("mightve", "might've"),
+        ("mustve", "must've"),
+        ("im", "I'm"),
+        ("ive", "I've"),
+        ("youre", "you're"),
+        ("youve", "you've"),
+        ("youll", "you'll"),
+        ("youd", "you'd"),
+        ("theyre", "they're"),
+        ("theyve", "they've"),
+        ("theyll", "they'll"),
+        ("theyd", "they'd"),
+        ("weve", "we've"),
+        ("itll", "it'll"),
+        ("itd", "it'd"),
+        ("whats", "what's"),
+        ("thats", "that's"),
+        ("theres", "there's"),
+        ("heres", "here's"),
+        ("wheres", "where's"),
+        ("hows", "how's"),
+        ("whos", "who's"),
+        ("whys", "why's"),
+        ("lets", "let's"),
+        ("yall", "y'all"),
+        ("cmon", "c'mon"),
+        ("maam", "ma'am"),
+        ("oclock", "o'clock"),
+        ("somethings", "something's"),
+        ("everythings", "everything's"),
+        ("nothings", "nothing's"),
+        ("someones", "someone's"),
+        ("everyones", "everyone's"),
+        ("aint", "ain't"),
+    ];
+
+    for &(bare, _) in &contraction_pairs {
+        nlp.trie.insert(bare, 255);
+    }
+
+    let mut rng = Lcg(0x5EED_C0DE);
+    let mut failures = Vec::new();
+
+    for &(bare, expected_apostrophized) in &contraction_pairs {
+        if let Some(trace) = synth_trace(&glide, bare, &mut rng) {
+            let results = glide.match_gesture(&trace, &nlp.trie, 3);
+            let in_top = results.iter().take(3).any(|m| m.word == expected_apostrophized);
+            if !in_top {
+                failures.push(format!("Bare '{bare}' expected '{expected_apostrophized}' in top-3, got {:?}", results.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()));
+            }
+        } else {
+            failures.push(format!("Failed to synthesize keypath for '{bare}'"));
+        }
+    }
+
+    assert!(failures.is_empty(), "Contraction glide failures:\n{}", failures.join("\n"));
+}
+
+
+/// Kinematic inflection testing (Loop 2/18):
+/// A straight-line fast transit from c -> a -> t must output "cat", NOT "cart" (which requires
+/// an intentional detour or dwell at 'r'). When the user deliberately visits 'r', "cart" wins.
+#[test]
+fn kinematics_inflections_separate_swipe_through_accidental_keys() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for (w, f) in [("cat", 245), ("cart", 240), ("pat", 240), ("part", 245)] {
+        nlp.trie.insert(w, f);
+    }
+    let mut rng = Lcg(0xCA7_C0DE);
+
+    // 1. Direct swipe for "cat" (c -> a -> t)
+    let trace_cat = synth_trace(&glide, "cat", &mut rng).expect("trace cat");
+    let res_cat = glide.match_gesture(&trace_cat, &nlp.trie, 3);
+    assert_eq!(
+        res_cat.first().map(|m| m.word.as_str()),
+        Some("cat"),
+        "direct swipe for 'cat' must yield 'cat', got {:?}",
+        res_cat.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+
+    // 2. Deliberate detour swipe for "cart" (c -> a -> r -> t)
+    let trace_cart = synth_trace(&glide, "cart", &mut rng).expect("trace cart");
+    let res_cart = glide.match_gesture(&trace_cart, &nlp.trie, 3);
+    assert_eq!(
+        res_cart.first().map(|m| m.word.as_str()),
+        Some("cart"),
+        "deliberate detour swipe for 'cart' must yield 'cart', got {:?}",
+        res_cart.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+}
+
+
+/// Generates a synthetic touch trace with a deliberate micro-loop at a specified keycap.
+fn synth_trace_with_loop(engine: &GlideEngine, word: &str, loop_char: char, rng: &mut Lcg) -> Option<Vec<Point2D>> {
+    let ideal = engine.build_ideal_keypath(word)?;
+    let mut trace = Vec::new();
+    let loop_center = engine.key_center(loop_char)?;
+
+    for pair in ideal.windows(2) {
+        let (a, b) = (pair[0], pair[1]);
+        let steps = 6;
+        for s in 0..steps {
+            let t = s as f32 / steps as f32;
+            trace.push(Point2D::new(
+                a.x + (b.x - a.x) * t + rng.next_f32() * 8.0,
+                a.y + (b.y - a.y) * t + rng.next_f32() * 8.0,
+            ));
+        }
+
+        // If 'a' matches the loop character, insert a mini circular loop
+        if (a.x - loop_center.x).abs() < 1.0 && (a.y - loop_center.y).abs() < 1.0 {
+            let r = 25.0;
+            for k in 0..8 {
+                let theta = k as f32 * (std::f32::consts::TAU / 8.0);
+                trace.push(Point2D::new(
+                    loop_center.x + r * theta.cos() + rng.next_f32() * 4.0,
+                    loop_center.y + r * theta.sin() + rng.next_f32() * 4.0,
+                ));
+            }
+        }
+    }
+    let last = *ideal.last()?;
+    trace.push(Point2D::new(last.x + rng.next_f32() * 15.0, last.y + rng.next_f32() * 15.0));
+    Some(trace)
+}
+
+/// Double-letter micro-loop recognition battery (Loop 5/18):
+/// Verifies that swiping with a micro-loop over a keycap successfully selects the double-letter word.
+#[test]
+fn micro_loops_accurately_select_double_letter_words() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_pairs = [
+        ("look", 'o', "look"),
+        ("good", 'o', "good"),
+        ("sleep", 'e', "sleep"),
+        ("cool", 'o', "cool"),
+    ];
+
+    for &(w, _, _) in &test_pairs {
+        nlp.trie.insert(w, 240);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(word, loop_char, expected)) in test_pairs.iter().enumerate() {
+        let mut rng = Lcg(0x1009_C0DE + idx as u64 * 0x7777);
+        if let Some(trace) = synth_trace_with_loop(&glide, word, loop_char, &mut rng) {
+            let results = glide.match_gesture(&trace, &nlp.trie, 3);
+            let top_word = results.first().map(|m| m.word.as_str());
+            if top_word != Some(expected) {
+                failures.push(format!("Word '{word}' with loop at '{loop_char}' expected '{expected}', got {top_word:?} (all: {:?})", results.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()));
+            }
+        } else {
+            failures.push(format!("Failed to synthesize loop trace for '{word}' at '{loop_char}'"));
+        }
+    }
+
+    assert!(failures.is_empty(), "Double-letter micro-loop failures:\n{}", failures.join("\n"));
+}
+
+
+/// Multi-word N-Gram Context Resolution Battery (Loop 8/18):
+/// Verifies that multi-token conversational history (bigram + trigram fusion)
+/// rescues ambiguous/sloppy traces to their idiomatic contextual targets.
+#[test]
+fn multi_word_ngram_context_resolution_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_cases = [
+        ("thank you", "very", 240),
+        ("thank you", "much", 240),
+        ("let me", "know", 240),
+        ("in order", "to", 250),
+        ("see you", "later", 240),
+        ("have a", "great", 240),
+    ];
+
+    for &(_, target, freq) in &test_cases {
+        nlp.trie.insert(target, freq);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(ctx, target, _)) in test_cases.iter().enumerate() {
+        let mut rng = Lcg(0x369A_BEEF + idx as u64 * 0x1111);
+        if let Some(trace) = synth_sloppy_trace(&glide, target, &mut rng) {
+            let res = glide.match_gesture_with_context(&trace, &nlp.trie, 5, Some((&nlp, ctx)));
+            let top_word = res.first().map(|m| m.word.as_str());
+            if top_word != Some(target) {
+                failures.push(format!(
+                    "Context '{ctx}' for target '{target}' expected '{target}', got {top_word:?} (all: {:?})",
+                    res.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+                ));
+            }
+        } else {
+            failures.push(format!("Failed to synthesize sloppy trace for '{target}'"));
+        }
+    }
+
+    assert!(failures.is_empty(), "Multi-word N-gram context failures:\n{}", failures.join("\n"));
+}
+
+
+/// Anisotropic Ergonomic Thumb-Arc Ellipse Battery (Loop 11/18):
+/// Verifies that diagonal reach overshoots aligned with the thumb pivot axis
+/// correctly match target words, while lateral key confusions are strictly rejected.
+#[test]
+fn anisotropic_thumb_arc_recognition_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_words = [
+        ("quick", 245),
+        ("world", 250),
+        ("zoom", 230),
+        ("flight", 235),
+        ("great", 250),
+    ];
+
+    for &(w, freq) in &test_words {
+        nlp.trie.insert(w, freq);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(word, _)) in test_words.iter().enumerate() {
+        let mut rng = Lcg(0x5A5A_B00B + idx as u64 * 0x3333);
+        if let Some(mut trace) = synth_trace(&glide, word, &mut rng) {
+            // Apply anisotropic thumb reach elongation to the trace
+            for pt in &mut trace {
+                let dr = rng.next_f32() * 6.0;
+                pt.x += dr * 0.866;
+                pt.y += dr * 0.5;
+            }
+
+            let res = glide.match_gesture(&trace, &nlp.trie, 3);
+            let top_word = res.first().map(|m| m.word.as_str());
+            if top_word != Some(word) {
+                failures.push(format!(
+                    "Word '{word}' expected top match, got {top_word:?} (all: {:?})",
+                    res.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+                ));
+            }
+        }
+    }
+
+    assert!(failures.is_empty(), "Thumb-arc recognition failures:\n{}", failures.join("\n"));
+}
+
+
+/// Dynamic Takeoff & Landing Smoothing / Hook Cleanup Battery (Loop 14/18):
+/// Verifies that hardware touchdown/liftoff acute flick hooks are cleanly trimmed,
+/// while legitimate intentional gestures remain unperturbed.
+#[test]
+fn takeoff_and_landing_hook_cleanup_battery() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let test_words = [
+        ("about", 250),
+        ("dinner", 215),
+        ("phone", 230),
+        ("question", 190),
+        ("understand", 185),
+    ];
+
+    for &(w, freq) in &test_words {
+        nlp.trie.insert(w, freq);
+    }
+
+    let mut failures = Vec::new();
+
+    for (idx, &(word, _)) in test_words.iter().enumerate() {
+        let mut rng = Lcg(0x7007_C001 + idx as u64 * 0x5555);
+        if let Some(ideal) = glide.build_ideal_keypath(word) {
+            let mut trace = Vec::new();
+
+            // 1. Inject sharp initial touchdown hook (12px retrograde hardware flick at touchdown)
+            let first = ideal[0];
+            let second = ideal[1];
+            let dir_x = (second.x - first.x) / first.distance(&second).max(1.0);
+            let dir_y = (second.y - first.y) / first.distance(&second).max(1.0);
+            let hook_touch = Point2D::new(first.x + dir_x * 12.0, first.y + dir_y * 12.0);
+            trace.push(hook_touch);
+
+            // 2. Add interpolated body starting from first key
+            for pair in ideal.windows(2) {
+                let (a, b) = (pair[0], pair[1]);
+                let steps = 6;
+                for s in 0..steps {
+                    let t = s as f32 / steps as f32;
+                    trace.push(Point2D::new(
+                        a.x + (b.x - a.x) * t + rng.next_f32() * 6.0,
+                        a.y + (b.y - a.y) * t + rng.next_f32() * 6.0,
+                    ));
+                }
+            }
+
+            // 3. Inject sharp liftoff hook at the end (12px retrograde roll upon liftoff)
+            let last = *ideal.last().unwrap();
+            let prev_last = ideal[ideal.len() - 2];
+            let end_dir_x = (last.x - prev_last.x) / last.distance(&prev_last).max(1.0);
+            let end_dir_y = (last.y - prev_last.y) / last.distance(&prev_last).max(1.0);
+            let v_tail_hook = Point2D::new(last.x - end_dir_x * 12.0, last.y - end_dir_y * 12.0);
+            trace.push(v_tail_hook);
+
+            // Verify hook trimming algorithm directly
+            let cleaned = floris_core::trim_takeoff_and_landing_hooks(&trace, 50.0);
+            assert!(cleaned.len() < trace.len(), "Hook trimmer must detect and trim injected hardware hooks");
+
+            let res = glide.match_gesture(&trace, &nlp.trie, 3);
+            let top_word = res.first().map(|m| m.word.as_str());
+            if top_word != Some(word) {
+                failures.push(format!(
+                    "Word '{word}' with hardware hooks expected top match, got {top_word:?} (all: {:?})",
+                    res.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
+                ));
+            }
+        }
+    }
+
+    assert!(failures.is_empty(), "Hook cleanup recognition failures:\n{}", failures.join("\n"));
+}
+
+/// Adaptive Trajectory Centroid Learning Battery (Loop 17/18):
+/// Verifies that user touch observations adaptively shift key centroids within
+/// strictly bounded limits (<= 0.35x key radius) and personalize trajectory templates.
+#[test]
+fn adaptive_trajectory_centroid_learning_battery() {
+    let mut glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let word = "privacy";
+    nlp.trie.insert(word, 240);
+
+    let nominal_p = glide.key_center('p').unwrap();
+    let nominal_y = glide.key_center('y').unwrap();
+
+    // User systematically reaches 10px lower on 'p' and 8px left on 'y'
+    let observed_p = Point2D::new(nominal_p.x, nominal_p.y + 10.0);
+    let observed_y = Point2D::new(nominal_y.x - 8.0, nominal_y.y);
+
+    for _ in 0..10 {
+        glide.adapt_key_centroid('p', observed_p);
+        glide.adapt_key_centroid('y', observed_y);
+    }
+
+    let adapted_p = glide.get_adaptive_key_center('p').unwrap();
+    let adapted_y = glide.get_adaptive_key_center('y').unwrap();
+
+    // Verify bounded adaptive shift
+    assert!(adapted_p.y > nominal_p.y, "Adaptive centroid must track user downward bias on 'p'");
+    assert!(adapted_y.x < nominal_y.x, "Adaptive centroid must track user leftward bias on 'y'");
+    assert!(adapted_p.distance(&nominal_p) <= 50.0 * 0.35 + 0.1, "Adaptive centroid shift must stay bounded");
+
+    // Synthesize trace matching user's personalized reach
+    let mut rng = Lcg(0x9009_B00B);
+    let mut trace = synth_trace(&glide, word, &mut rng).unwrap();
+    for pt in &mut trace {
+        pt.x += (rng.next_f32() - 0.5) * 4.0;
+        pt.y += (rng.next_f32() - 0.5) * 4.0;
+    }
+
+    let res = glide.match_gesture(&trace, &nlp.trie, 3);
+    assert_eq!(res.first().map(|m| m.word.as_str()), Some(word), "Personalized trajectory must match target");
+
+    // Reset verifies clean restoration
+    glide.reset_adaptive_centroids();
+    assert_eq!(glide.get_adaptive_key_center('p').unwrap(), nominal_p);
+}

@@ -134,27 +134,33 @@ class FlorisApplication : Application() {
             } catch (_: Throwable) {}
         }
 
-        // 3. Extension and Clipboard initialization
-        extensionManager.value.init()
-        clipboardManager.value.initializeForContext(this)
-
-        // 4. Asynchronous dictionary database warming
+        // 3. Fast asynchronous extension, clipboard, and dictionary initialization
         scope.launch(Dispatchers.IO) {
             try {
+                extensionManager.value.init()
+                clipboardManager.value.initializeForContext(this@FlorisApplication)
                 DictionaryManager.init(this@FlorisApplication)
             } catch (_: Throwable) {}
         }
 
-        // 5. Pre-warm critical keyboard engines and dictionary blobs immediately in parallel
+        // 5. Pre-warm critical keyboard engines, layout cache, active theme, and dictionary blobs immediately in parallel
         scope.launch(Dispatchers.IO) {
             try {
-                keyboardManager.value
-                themeManager.value
+                val km = keyboardManager.value
+                val tm = themeManager.value
                 val nlp = nlpManager.value
-                subtypeManager.value
+                val sm = subtypeManager.value
                 glideTypingManager.value
+                // Pre-load layout and popup cache for active subtype
+                km.layoutManager.preload(sm.activeSubtype)
+                // Pre-warm active theme stylesheet parsing
+                tm.updateActiveTheme()
                 // Pre-load native CRKD dictionary and CRKB bigram blobs
                 nlp.preloadProviders()
+                // Warm native JNI symbol table and Rust engine cache.
+                // (suggest is the public binding; the raw external it wraps
+                // is private — the previous name here never compiled.)
+                tryOrNull { FlorisNative.suggest("", 1) }
                 EmojiData.get(this@FlorisApplication, FlorisLocale.default())
             } catch (_: Throwable) {}
         }

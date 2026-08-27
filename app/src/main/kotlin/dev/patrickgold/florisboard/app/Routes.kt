@@ -62,6 +62,7 @@ import dev.patrickgold.florisboard.app.settings.dictionary.UserDictionaryScreen
 import dev.patrickgold.florisboard.app.settings.dictionary.UserDictionaryType
 import dev.patrickgold.florisboard.app.settings.gestures.GesturesScreen
 import dev.patrickgold.florisboard.app.settings.keyboard.InputFeedbackScreen
+import dev.patrickgold.florisboard.app.settings.fonts.FontsScreen
 import dev.patrickgold.florisboard.app.settings.keyboard.KeyboardScreen
 import dev.patrickgold.florisboard.app.settings.localization.LanguagePackManagerScreen
 import dev.patrickgold.florisboard.app.settings.localization.LanguagePackManagerScreenAction
@@ -135,6 +136,10 @@ object Routes {
         @Serializable
         @Deeplink("settings/theme/manage")
         data class ThemeManager(val action: ThemeManagerScreenAction)
+
+        @Serializable
+        @Deeplink("settings/fonts")
+        object Fonts
 
         @Serializable
         @Deeplink("settings/keyboard")
@@ -322,6 +327,7 @@ object Routes {
                 ThemeManagerScreen(payload.action)
             }
 
+            composableWithDeepLink(Settings.Fonts::class) { FontsScreen() }
             composableWithDeepLink(Settings.Keyboard::class) { KeyboardScreen() }
             composableWithDeepLink(Settings.InputFeedback::class) { InputFeedbackScreen() }
 

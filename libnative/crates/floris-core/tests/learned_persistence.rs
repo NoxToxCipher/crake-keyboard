@@ -92,3 +92,109 @@ fn learned_words_and_habits_survive_a_restart() {
     assert!(second.import_learned(&blob).is_ok());
     assert!(second.import_learned(b"garbage").is_err());
 }
+
+/// The learned stores never outgrow their persistence caps: at capacity a
+/// new entry evicts the least-used one, so serialize() never truncates —
+/// without this, export sorted alphabetically and every restart silently
+/// forgot the user's w-z words first.
+#[test]
+fn learned_words_evict_weakest_at_capacity_not_the_alphabet_tail() {
+    let mut e = NlpEngine::new();
+    for i in 0..floris_core::persist::MAX_LEARNED_WORDS {
+        // learn each filler once (freq path gives them all the same base)
+        e.learn_word(&format!("filler{i:04}"), 100);
+    }
+    // one word the user actually uses a lot
+    for _ in 0..10 {
+        e.learn_word("zzzfavourite", 100);
+    }
+    // capacity holds, and the well-used z-word survives an export
+    let blob = e.export_learned();
+    let mut fresh = NlpEngine::new();
+    let restored = fresh.import_learned(&blob).expect("import");
+    assert!(restored <= floris_core::persist::MAX_LEARNED_WORDS as usize);
+    assert!(
+        fresh.trie.get_frequency("zzzfavourite").is_some(),
+        "the used word must survive persistence even at capacity"
+    );
+}
+
+/// Every door into the learned set is capped — including the boost path
+/// (personal corrections) and import-merge, not just learn_word.
+#[test]
+fn boost_path_respects_the_capacity_cap() {
+    let mut e = NlpEngine::new();
+    for i in 0..floris_core::persist::MAX_LEARNED_WORDS {
+        e.learn_word(&format!("filler{i:04}"), 100);
+    }
+    e.learn_and_boost_word("zzzboosted");
+    let blob = e.export_learned();
+    let mut fresh = NlpEngine::new();
+    let restored = fresh.import_learned(&blob).expect("import");
+    assert!(restored <= floris_core::persist::MAX_LEARNED_WORDS as usize);
+    assert!(
+        fresh.trie.get_frequency("zzzboosted").is_some(),
+        "boost-learned word must survive persistence at capacity"
+    );
+}
+
+/// Personal-bigram capacity: at the cap a NEW pair evicts the weakest
+/// (lowest-count) pair — the store keeps learning forever. (The eviction
+/// predates its test; this pins it.)
+#[test]
+fn personal_bigrams_evict_weakest_at_capacity() {
+    let mut e = NlpEngine::new();
+    // one strong pair, then fill to cap with singles
+    for _ in 0..5 {
+        e.record_personal_bigram("keep", "strong");
+    }
+    let cap = floris_core::persist::MAX_PERSONAL_BIGRAMS as usize;
+    let mut i = 0;
+    while e.export_learned().len() < 1 || i < cap {
+        // fill with distinct single-count pairs up to the cap
+        e.record_personal_bigram(&format!("p{i}"), &format!("n{i}"));
+        i += 1;
+        if i >= cap {
+            break;
+        }
+    }
+    // over-cap insert: a fresh pair must land, evicting a single
+    e.record_personal_bigram("brand", "new");
+    assert!(
+        e.bigram_pair_score("brand", "new") >= 140,
+        "new pair must be recorded at capacity"
+    );
+    assert!(
+        e.bigram_pair_score("keep", "strong") >= 200,
+        "the well-used pair must survive eviction pressure"
+    );
+}
+
+/// prefix_search_filtered contract: frequency-desc then lex-asc ordering,
+/// predicate applied during the walk, limit respected — the glide pool
+/// depends on all three.
+#[test]
+fn filtered_prefix_search_orders_and_filters() {
+    let mut e = NlpEngine::new();
+    // zq-prefixed fakes: NlpEngine::new() preseeds CORE_DICTIONARY, so
+    // real-looking words collide with it (first version of this test
+    // learned that from an unexpected "save").
+    for (w, f) in [
+        ("zqail", 200u32),
+        ("zqale", 240),
+        ("zqalt", 240),
+        ("zqame", 100),
+        ("zqand", 250),
+        ("zqend", 250),
+    ] {
+        e.trie.insert(w, f);
+    }
+    let got = e.trie.prefix_search_filtered("zqa", 2, |w| w.ends_with('e'));
+    let words: Vec<&str> = got.iter().map(|(w, _)| w.as_str()).collect();
+    assert_eq!(words, vec!["zqale", "zqame"], "{got:?}");
+    // tie at 240 resolves lexicographically; limit counts only matches
+    let got = e.trie.prefix_search_filtered("zqa", 3, |w| w.len() == 5);
+    let words: Vec<&str> = got.iter().map(|(w, _)| w.as_str()).collect();
+    assert_eq!(words[0], "zqand", "{got:?}");
+    assert_eq!(&words[1..3], &["zqale", "zqalt"], "freq tie -> lex asc: {got:?}");
+}

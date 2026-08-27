@@ -256,3 +256,12 @@ fn private_prediction_excludes_personal_pairs() {
     assert!(!private.iter().any(|w| w == "crake"), "personal pair leaked: {private:?}");
     assert!(private.iter().any(|w| w == "shortcut"), "shipped LM still predicts: {private:?}");
 }
+
+/// Sentence start offers the capitalized starters instead of a dead bar.
+#[test]
+fn sentence_start_predicts_starters() {
+    let e = engine();
+    let preds = e.predict_next_words("", 3);
+    assert_eq!(preds.len(), 3, "{preds:?}");
+    assert!(preds.iter().all(|w| w.chars().next().unwrap().is_uppercase()), "{preds:?}");
+}

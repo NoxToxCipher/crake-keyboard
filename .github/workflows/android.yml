@@ -18,8 +18,18 @@ on:
       - "ROADMAP.md"
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
+  rust-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Rust workspace tests
+        working-directory: libnative
+        run: cargo test --workspace
+
   build:
     runs-on: ubuntu-latest
 

@@ -23,6 +23,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import dev.patrickgold.jetpref.datastore.model.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -79,9 +82,39 @@ fun FlorisAppTheme(
         }
     }
 
+    // Whole-app font choice: rebuild the Material typography with the
+    // chosen family on every style. SYSTEM keeps the stock look.
+    val prefs by dev.patrickgold.florisboard.app.FlorisPreferenceStore
+    val appFontChoice by prefs.fonts.appFont.collectAsState()
+    val context = LocalView.current.context
+    val typography = remember(appFontChoice) {
+        val family = dev.patrickgold.florisboard.ime.theme.CrakeFonts.familyOf(context, appFontChoice)
+        if (family == null) Typography else Typography.withFontFamily(family)
+    }
+
     MaterialTheme(
         colorScheme = colors,
-        typography = Typography,
+        typography = typography,
         content = content,
     )
 }
+
+private fun androidx.compose.material3.Typography.withFontFamily(
+    family: androidx.compose.ui.text.font.FontFamily,
+): androidx.compose.material3.Typography = copy(
+    displayLarge = displayLarge.copy(fontFamily = family),
+    displayMedium = displayMedium.copy(fontFamily = family),
+    displaySmall = displaySmall.copy(fontFamily = family),
+    headlineLarge = headlineLarge.copy(fontFamily = family),
+    headlineMedium = headlineMedium.copy(fontFamily = family),
+    headlineSmall = headlineSmall.copy(fontFamily = family),
+    titleLarge = titleLarge.copy(fontFamily = family),
+    titleMedium = titleMedium.copy(fontFamily = family),
+    titleSmall = titleSmall.copy(fontFamily = family),
+    bodyLarge = bodyLarge.copy(fontFamily = family),
+    bodyMedium = bodyMedium.copy(fontFamily = family),
+    bodySmall = bodySmall.copy(fontFamily = family),
+    labelLarge = labelLarge.copy(fontFamily = family),
+    labelMedium = labelMedium.copy(fontFamily = family),
+    labelSmall = labelSmall.copy(fontFamily = family),
+)

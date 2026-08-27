@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.AbstractComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.LayoutDirection
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
@@ -52,6 +53,9 @@ class ImeRootView(val ims: FlorisImeService) : AbstractComposeView(ims) {
         layoutParams = LayoutParams(
             /* width = */ LayoutParams.MATCH_PARENT,
             /* height = */ LayoutParams.MATCH_PARENT,
+        )
+        setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnDetachedFromWindowOrReleasedFromPool
         )
     }
 
