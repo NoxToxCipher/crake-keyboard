@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 The FlorisBoard Contributors
+ * Copyright (C) 2024-2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,18 +18,32 @@ package dev.patrickgold.florisboard.ime.smartbar
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Spellcheck
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,8 +58,12 @@ import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
+import dev.patrickgold.florisboard.ime.dictionary.UserDictionaryEntry
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.theme.FlorisImeUi
@@ -76,78 +94,210 @@ fun CandidatesRow(modifier: Modifier = Modifier) {
 
     val displayMode by prefs.suggestion.displayMode.collectAsState()
     val candidates by nlpManager.activeCandidatesFlow.collectAsState()
+    var selectedCandidateForMenu by remember { mutableStateOf<SuggestionCandidate?>(null) }
 
-    SnyggRow(
-        elementName = FlorisImeUi.SmartbarCandidatesRow.elementName,
-        modifier = modifier
-            .fillMaxSize()
-            .conditional(displayMode == CandidatesDisplayMode.DYNAMIC_SCROLLABLE && candidates.size > 1) {
-                florisHorizontalScroll(scrollbarHeight = CandidatesRowScrollbarHeight)
-            },
-        horizontalArrangement = if (candidates.size > 1) {
-            Arrangement.Start
-        } else {
-            Arrangement.Center
-        },
-    ) {
-        if (candidates.isNotEmpty()) {
-            val candidateModifier = if (candidates.size == 1) {
-                Modifier
-                    .fillMaxHeight()
-                    .weight(1f, fill = false)
+    Box(modifier = modifier.fillMaxSize()) {
+        SnyggRow(
+            elementName = FlorisImeUi.SmartbarCandidatesRow.elementName,
+            modifier = Modifier
+                .fillMaxSize()
+                .conditional(displayMode == CandidatesDisplayMode.DYNAMIC_SCROLLABLE && candidates.size > 1) {
+                    florisHorizontalScroll(scrollbarHeight = CandidatesRowScrollbarHeight)
+                },
+            horizontalArrangement = if (candidates.size > 1) {
+                Arrangement.Start
             } else {
-                Modifier
-                    .fillMaxHeight()
-                    .conditional(displayMode == CandidatesDisplayMode.CLASSIC) {
-                        weight(1f)
-                    }
-                    .conditional(displayMode != CandidatesDisplayMode.CLASSIC) {
-                        wrapContentWidth().widthIn(max = 160.dp)
-                    }
-            }
-            val list = when (displayMode) {
-                CandidatesDisplayMode.CLASSIC -> candidates.subList(0, 3.coerceAtMost(candidates.size))
-                else -> candidates
-            }
-            for ((n, candidate) in list.withIndex()) {
-                if (n > 0) {
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .fillMaxHeight(0.45f)
-                            .align(Alignment.CenterVertically)
-                            .background(
-                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        Color(0x3500E5FF),
-                                        Color(0x60CBD5E1),
-                                        Color(0x3500E5FF),
-                                        Color.Transparent,
+                Arrangement.Center
+            },
+        ) {
+            if (candidates.isNotEmpty()) {
+                val candidateModifier = if (candidates.size == 1) {
+                    Modifier
+                        .fillMaxHeight()
+                        .weight(1f, fill = false)
+                } else {
+                    Modifier
+                        .fillMaxHeight()
+                        .conditional(displayMode == CandidatesDisplayMode.CLASSIC) {
+                            weight(1f)
+                        }
+                        .conditional(displayMode != CandidatesDisplayMode.CLASSIC) {
+                            wrapContentWidth().widthIn(max = 160.dp)
+                        }
+                }
+                val list = when (displayMode) {
+                    CandidatesDisplayMode.CLASSIC -> candidates.subList(0, 3.coerceAtMost(candidates.size))
+                    else -> candidates
+                }
+                for ((n, candidate) in list.withIndex()) {
+                    if (n > 0) {
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .fillMaxHeight(0.45f)
+                                .align(Alignment.CenterVertically)
+                                .background(
+                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color(0x3500E5FF),
+                                            Color(0x60CBD5E1),
+                                            Color(0x3500E5FF),
+                                            Color.Transparent,
+                                        )
                                     )
                                 )
-                            )
+                        )
+                    }
+                    CandidateItem(
+                        modifier = candidateModifier,
+                        candidate = candidate,
+                        displayMode = displayMode,
+                        onClick = {
+                            keyboardManager.commitCandidate(candidates[n], withSpace = true)
+                        },
+                        onLongPress = {
+                            val candidateItem = candidates[n]
+                            selectedCandidateForMenu = candidateItem
+                            true
+                        },
+                        longPressDelay = prefs.keyboard.longPressDelay.get().toLong(),
                     )
                 }
-                CandidateItem(
-                    modifier = candidateModifier,
-                    candidate = candidate,
-                    displayMode = displayMode,
-                    onClick = {
-                        // Can't use candidate directly
-                        keyboardManager.commitCandidate(candidates[n], withSpace = true)
-                    },
-                    onLongPress = {
-                        // Can't use candidate directly
-                        val candidateItem = candidates[n]
-                        if (candidateItem.isEligibleForUserRemoval) {
-                            nlpManager.removeSuggestion(subtypeManager.activeSubtype, candidateItem)
-                        } else {
-                            false
-                        }
-                    },
-                    longPressDelay = prefs.keyboard.longPressDelay.get().toLong(),
-                )
+            }
+        }
+
+        // Crake Signature Glassmorphic Suggestion & Dictionary Menu Box
+        selectedCandidateForMenu?.let { item ->
+            val wordText = item.text.toString()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xCC05070B))
+                    .clickable { selectedCandidateForMenu = null },
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .wrapContentWidth()
+                        .fillMaxHeight(0.92f)
+                        .padding(horizontal = 6.dp)
+                        .background(
+                            color = Color(0xF412151E),
+                            shape = RoundedCornerShape(12.dp),
+                        )
+                        .border(
+                            width = 1.2.dp,
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color(0xFF00E5FF),
+                                    Color(0xFF38BDF8),
+                                    Color(0xFF00E5FF),
+                                )
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    // Word Label Badge
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0x3000E5FF), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Spellcheck,
+                            contentDescription = null,
+                            tint = Color(0xFF00E5FF),
+                            modifier = Modifier.padding(end = 4.dp).width(14.dp).height(14.dp),
+                        )
+                        Text(
+                            text = wordText,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    // Add to Dictionary Action Pill
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0x2510B981), RoundedCornerShape(6.dp))
+                            .border(1.dp, Color(0x6010B981), RoundedCornerShape(6.dp))
+                            .clickable {
+                                try {
+                                    val dictManager = DictionaryManager.default()
+                                    dictManager.florisUserDictionaryDao()?.insert(
+                                        UserDictionaryEntry(
+                                            id = 0L,
+                                            word = wordText,
+                                            freq = 250,
+                                            locale = subtypeManager.activeSubtype.primaryLocale.languageTag(),
+                                            shortcut = null,
+                                        )
+                                    )
+                                } catch (_: Throwable) {}
+                                selectedCandidateForMenu = null
+                            }
+                            .padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = null,
+                            tint = Color(0xFF34D399),
+                            modifier = Modifier.padding(end = 2.dp).width(13.dp).height(13.dp),
+                        )
+                        Text(
+                            text = "Add Word",
+                            color = Color(0xFF34D399),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    // Delete / Forget Action Pill
+                    Row(
+                        modifier = Modifier
+                            .background(Color(0x25F43F5E), RoundedCornerShape(6.dp))
+                            .border(1.dp, Color(0x60F43F5E), RoundedCornerShape(6.dp))
+                            .clickable {
+                                nlpManager.removeSuggestion(subtypeManager.activeSubtype, item)
+                                selectedCandidateForMenu = null
+                            }
+                            .padding(horizontal = 6.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = Color(0xFFFB7185),
+                            modifier = Modifier.padding(end = 2.dp).width(13.dp).height(13.dp),
+                        )
+                        Text(
+                            text = "Delete",
+                            color = Color(0xFFFB7185),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    // Close Button
+                    IconButton(
+                        onClick = { selectedCandidateForMenu = null },
+                        modifier = Modifier.width(22.dp).height(22.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.width(14.dp).height(14.dp),
+                        )
+                    }
+                }
             }
         }
     }
