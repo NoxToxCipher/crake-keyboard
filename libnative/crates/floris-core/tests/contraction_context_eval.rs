@@ -68,3 +68,23 @@ fn test_shed_and_hed_disambiguation_with_context() {
     assert_eq!(resolve_contraction_with_context("shed", Some("storage"), None), None);
     assert_eq!(resolve_contraction_with_context("shed", Some("garden"), None), None);
 }
+
+/// Modal + "well" + verb is the adverb, never the contraction: "it may
+/// well be" must not become "may we'll be". Pinned before anything wires
+/// this resolver into a revision feature (audit 2026-08-28).
+#[test]
+fn modal_well_verb_is_adverbial() {
+    use floris_core::nlp::resolve_contraction_with_context;
+    for modal in ["may", "might", "could", "should", "would", "will", "can", "must"] {
+        assert_eq!(
+            resolve_contraction_with_context("well", Some(modal), Some("be")),
+            None,
+            "'{modal} well be' must stay adverbial"
+        );
+    }
+    // the genuine contraction context still resolves
+    assert_eq!(
+        resolve_contraction_with_context("well", Some("tomorrow"), Some("see")),
+        Some("we'll"),
+    );
+}
