@@ -3,6 +3,78 @@ use crate::trie::RadixTrie;
 use crate::typo_corpus::lookup_common_typo;
 
 /// Comprehensive lexicon of common English contractions (SCOWL & Wiktionary).
+
+/// Hand assignment for touch keys in bimanual thumb typing (Idea 3 / Loops 7-9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Hand {
+    Left,
+    Right,
+    Unknown,
+}
+
+/// Returns the default hand assignment for a key character.
+#[inline]
+pub fn get_key_hand(ch: char) -> Hand {
+    match ch.to_ascii_lowercase() {
+        'q' | 'w' | 'e' | 'r' | 't' | 'a' | 's' | 'd' | 'f' | 'g' | 'z' | 'x' | 'c' | 'v' => Hand::Left,
+        'y' | 'u' | 'i' | 'o' | 'p' | 'h' | 'j' | 'k' | 'l' | 'b' | 'n' | 'm' => Hand::Right,
+        _ => Hand::Unknown,
+    }
+}
+
+/// Checks if `raw_token` and `candidate` are an adjacent-character transposition
+/// occurring across opposite hands with an inter-keystroke interval under 55ms (Idea 3 / Loops 7-9).
+#[inline]
+pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &[u64]) -> bool {
+    let raw_chars: Vec<char> = raw_token.chars().collect();
+    let cand_chars: Vec<char> = candidate.chars().collect();
+
+    if raw_chars.len() != cand_chars.len() || raw_chars.len() < 2 {
+        return false;
+    }
+
+    let mut mismatch_idx = None;
+    for i in 0..raw_chars.len() {
+        if raw_chars[i] != cand_chars[i] {
+            mismatch_idx = Some(i);
+            break;
+        }
+    }
+
+    let Some(i) = mismatch_idx else {
+        return false;
+    };
+
+    if i + 1 >= raw_chars.len() {
+        return false;
+    }
+
+    if raw_chars[i] != cand_chars[i + 1] || raw_chars[i + 1] != cand_chars[i] {
+        return false;
+    }
+
+    for j in (i + 2)..raw_chars.len() {
+        if raw_chars[j] != cand_chars[j] {
+            return false;
+        }
+    }
+
+    let hand1 = get_key_hand(raw_chars[i]);
+    let hand2 = get_key_hand(raw_chars[i + 1]);
+    if hand1 == Hand::Unknown || hand2 == Hand::Unknown || hand1 == hand2 {
+        return false;
+    }
+
+    if timestamps.len() == raw_chars.len() {
+        let t1 = timestamps[i];
+        let t2 = timestamps[i + 1];
+        let delta = if t2 >= t1 { t2 - t1 } else { t1 - t2 };
+        return delta <= 55;
+    }
+
+    true
+}
+
 pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
     ("bitcoin", "Bitcoin"),
     ("chatgpt", "ChatGPT"),
@@ -801,6 +873,28 @@ impl NlpEngine {
         } else {
             candidate.to_string()
         }
+    }
+
+    
+    /// Suggests completions and autocorrects with bimanual keystroke dynamics and transposition timing analysis (Idea 3 / Loops 7-9).
+    pub fn suggest_with_timing(
+        &self,
+        raw_token: &str,
+        timestamps: &[u64],
+        max_suggestions: usize,
+    ) -> SuggestionResult {
+        let mut result = self.suggest(raw_token, max_suggestions);
+        if raw_token.len() >= 2 && !result.candidates.is_empty() {
+            for i in 0..result.candidates.len() {
+                if is_bimanual_transposition(raw_token, &result.candidates[i].word, timestamps) {
+                    let mut transposed_cand = result.candidates.remove(i);
+                    transposed_cand.is_autocorrect = true;
+                    result.candidates.insert(0, transposed_cand);
+                    break;
+                }
+            }
+        }
+        result
     }
 
     pub fn suggest(&self, query: &str, max_candidates: usize) -> SuggestionResult {
