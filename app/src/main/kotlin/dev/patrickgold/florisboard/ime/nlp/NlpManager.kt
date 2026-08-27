@@ -377,14 +377,6 @@ class NlpManager(context: Context) {
         }
     }
 
-    fun getListOfWords(subtype: Subtype): List<String> {
-        return runBlocking { getSuggestionProvider(subtype).getListOfWords(subtype) }
-    }
-
-    fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-        return runBlocking { getSuggestionProvider(subtype).getFrequencyForWord(subtype, word) }
-    }
-
     private fun assembleCandidates() {
         runBlocking {
             val candidates = when {

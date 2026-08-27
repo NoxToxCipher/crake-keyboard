@@ -26,7 +26,6 @@ import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKey
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.nlpManager
-import dev.patrickgold.florisboard.subtypeManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,8 +35,8 @@ import org.florisboard.libnative.FlorisNative
 import kotlin.math.min
 
 /**
- * Handles the native Safe Rust DTW [GlideTypingClassifier]. Responsible for linking [GlideTypingGesture.Detector]
- * with native Rust DTW Trajectory Matching and fallback [GlideTypingClassifier].
+ * Links [GlideTypingGesture.Detector] with the native Safe Rust DTW
+ * trajectory-matching engine, which is the single glide classifier.
  */
 class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     companion object {
@@ -48,37 +47,29 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
     private val nlpManager by context.nlpManager()
-    private val subtypeManager by context.subtypeManager()
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private var glideTypingClassifier = StatisticalGlideTypingClassifier(context)
     private val gesturePoints = mutableListOf<FlorisNative.GlidePoint>()
     private var lastTime = System.currentTimeMillis()
 
     override fun onGlideComplete(data: GlideTypingGesture.Detector.PointerData) {
         updateSuggestionsAsync(MAX_SUGGESTION_COUNT, true) {
             synchronized(gesturePoints) { gesturePoints.clear() }
-            glideTypingClassifier.clear()
         }
     }
 
     override fun onGlideCancelled() {
         synchronized(gesturePoints) { gesturePoints.clear() }
-        glideTypingClassifier.clear()
     }
 
     fun cancelGlide() {
         synchronized(gesturePoints) { gesturePoints.clear() }
-        glideTypingClassifier.clear()
     }
 
     override fun onGlideAddPoint(point: GlideTypingGesture.Detector.Position) {
-        val normalized = GlideTypingGesture.Detector.Position(point.x, point.y)
-
         synchronized(gesturePoints) {
             gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y))
         }
-        this.glideTypingClassifier.addGesturePoint(normalized)
 
         val time = System.currentTimeMillis()
         if (prefs.glide.showPreview.get() && time - lastTime > prefs.glide.previewRefreshDelay.get()) {
@@ -88,7 +79,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     }
 
     /**
-     * Change the layout of the internal gesture classifier and native Rust DTW engine
+     * Change the key layout of the native Rust DTW engine
      */
     fun setLayout(keys: List<TextKey>) {
         if (keys.isNotEmpty()) {
@@ -123,8 +114,6 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                     Log.i("CrakeGlideTrace", "layout $desc")
                 }
             }
-
-            glideTypingClassifier.setLayout(keys, subtypeManager.activeSubtype)
         }
     }
 
@@ -155,17 +144,8 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
 
             // A native display-only set (no solid word anywhere - the
             // stray-flick guard) shows suggestions but commits nothing.
-            val commitSafe: Boolean
-            val suggestions = if (nativeSuggestions.words.isNotEmpty()) {
-                commitSafe = nativeSuggestions.commitSafe
-                nativeSuggestions.words
-            } else if (glideTypingClassifier.ready) {
-                commitSafe = true
-                glideTypingClassifier.getSuggestions(MAX_SUGGESTION_COUNT, true)
-            } else {
-                commitSafe = false
-                emptyList()
-            }
+            val commitSafe = nativeSuggestions.commitSafe
+            val suggestions = nativeSuggestions.words
 
             withContext(Dispatchers.Main) {
                 val suggestionList = buildList {
