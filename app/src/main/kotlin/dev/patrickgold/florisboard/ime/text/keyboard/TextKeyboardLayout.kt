@@ -443,7 +443,6 @@ fun TextKeyboardLayout(
     var serenityGardenTriggerTime by remember { mutableStateOf(0L) }
     var sniperDudeTriggerTime by remember { mutableStateOf(0L) }
     var thorTriggerTime by remember { mutableStateOf(0L) }
-    var lastThorTriggeredText by remember { mutableStateOf("") }
         LaunchedEffect(activeContent) {
             val tb = activeContent.textBeforeSelection.toString().lowercase()
             val comp = activeContent.composingText.lowercase()
@@ -654,16 +653,18 @@ fun TextKeyboardLayout(
             if (isSniperMatch) {
                 sniperDudeTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for Thor (Never triggers on Thorchain)
+            // Strict word boundary isolation for Thor (Case-insensitive, never triggers on Thorchain)
             val thorKeys = listOf("thor", "mjolnir", "god of thunder", "asgard", "odinson")
             val isThorMatch = thorKeys.any { k ->
                 val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
                 delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                    tb.equals("$k$d", ignoreCase = true) ||
+                    tb.endsWith(" $k$d", ignoreCase = true) ||
+                    tb.endsWith("\n$k$d", ignoreCase = true) ||
+                    (comp.equals(k, ignoreCase = true) && d == " ")
                 }
             }
-            if (isThorMatch && tb != lastThorTriggeredText) {
-                lastThorTriggeredText = tb
+            if (isThorMatch) {
                 thorTriggerTime = System.currentTimeMillis()
             }
         }
@@ -6376,8 +6377,9 @@ fun TextKeyboardLayout(
                     targetValue = 1f,
                     animationSpec = tween(durationMillis = 3500, easing = LinearEasing),
                 )
+                thorTriggerTime = 0L
             }
-            if (thorProgress.value in 0.0001f..0.9999f) {
+            if (thorProgress.value in 0.001f..0.999f) {
                 val progress = thorProgress.value
                 val elapsedSec = progress * 3.5f
                 val density = LocalDensity.current.density
