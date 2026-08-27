@@ -358,3 +358,100 @@ fn glide_recall_on_sloppy_traces() {
         misses.join("\n")
     );
 }
+
+/// The sloppy near-misses are the w-o-r-d corridor (world behind worked,
+/// would behind word) and the standing claim is that CONTEXT finishes the
+/// job in real use. This pins the claim: the same sloppy traces, given
+/// their natural prev word, must put the right word back on top.
+#[test]
+fn context_rescues_the_word_corridor_on_sloppy_traces() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for &(w, f) in EVAL_WORDS {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    for (w, f) in [("worked", 200), ("word", 220), ("i", 250)] {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    let id = |e: &NlpEngine, w: &str| e.corpus_words().iter().position(|c| c == w).unwrap() as u32;
+    let pairs = [("the", "world", 210u8), ("i", "would", 200)];
+    let mut entries: Vec<(u32, u32, u8)> =
+        pairs.iter().map(|&(a, b, s)| (id(&nlp, a), id(&nlp, b), s)).collect();
+    entries.sort();
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"CRKB");
+    blob.push(2);
+    blob.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    blob.extend_from_slice(&(nlp.corpus_words().len() as u32).to_le_bytes());
+    for (a, b, sc) in entries {
+        blob.extend_from_slice(&a.to_le_bytes());
+        blob.extend_from_slice(&b.to_le_bytes());
+        blob.push(sc);
+    }
+    nlp.load_bigrams(&blob).unwrap();
+
+    // Walk the same seeded rng through EVAL order so the corridor words get
+    // exactly the traces the sloppy eval near-missed on.
+    let mut rng = Lcg(0xDECAF);
+    for &(word, _) in EVAL_WORDS {
+        let trace = synth_sloppy_trace(&glide, word, &mut rng).expect("trace");
+        let prev = match word {
+            "world" => "the",
+            "would" => "i",
+            _ => continue,
+        };
+        let with_ctx = glide.match_gesture_with_context(&trace, &nlp.trie, 8, Some((&nlp, prev)));
+        assert_eq!(
+            with_ctx.first().map(|m| m.word.as_str()),
+            Some(word),
+            "context '{prev}' must rescue '{word}': {:?}",
+            with_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+        );
+    }
+}
+
+/// The inverse contract — the israeli-class property: context REFINES an
+/// ambiguous trace, it never overrides a clean one. A clean "word" glide
+/// with prev "the" (and "the world" strongly attested) must stay "word".
+#[test]
+fn context_never_hijacks_a_clean_trace() {
+    let glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+    for &(w, f) in EVAL_WORDS {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    for (w, f) in [("worked", 200), ("word", 220)] {
+        nlp.trie.insert(w, f);
+        nlp.corpus_insert(w, f);
+    }
+    let id = |e: &NlpEngine, w: &str| e.corpus_words().iter().position(|c| c == w).unwrap() as u32;
+    let entries = {
+        let mut v = vec![(id(&nlp, "the"), id(&nlp, "world"), 210u8)];
+        v.sort();
+        v
+    };
+    let mut blob = Vec::new();
+    blob.extend_from_slice(b"CRKB");
+    blob.push(2);
+    blob.extend_from_slice(&(entries.len() as u32).to_le_bytes());
+    blob.extend_from_slice(&(nlp.corpus_words().len() as u32).to_le_bytes());
+    for (a, b, sc) in entries {
+        blob.extend_from_slice(&a.to_le_bytes());
+        blob.extend_from_slice(&b.to_le_bytes());
+        blob.push(sc);
+    }
+    nlp.load_bigrams(&blob).unwrap();
+
+    let mut rng = Lcg(0xBEEF);
+    let trace = synth_trace(&glide, "word", &mut rng).expect("trace");
+    let with_ctx = glide.match_gesture_with_context(&trace, &nlp.trie, 8, Some((&nlp, "the")));
+    assert_eq!(
+        with_ctx.first().map(|m| m.word.as_str()),
+        Some("word"),
+        "a clean 'word' trace must never be hijacked to 'world' by context: {:?}",
+        with_ctx.iter().take(3).map(|m| m.word.as_str()).collect::<Vec<_>>()
+    );
+}
