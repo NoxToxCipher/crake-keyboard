@@ -23,19 +23,38 @@ pub fn get_key_hand(ch: char) -> Hand {
 }
 
 /// Checks if `raw_token` and `candidate` are an adjacent-character transposition
-/// occurring across opposite hands with an inter-keystroke interval under 55ms (Idea 3 / Loops 7-9).
+/// occurring across opposite hands with an inter-keystroke interval under 55ms with zero heap allocation (Idea 3 / Loop 9).
 #[inline]
 pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &[u64]) -> bool {
-    let raw_chars: Vec<char> = raw_token.chars().collect();
-    let cand_chars: Vec<char> = candidate.chars().collect();
+    if raw_token.len() != candidate.len() || raw_token.len() < 2 {
+        return false;
+    }
 
-    if raw_chars.len() != cand_chars.len() || raw_chars.len() < 2 {
+    // Stack array for fast zero-allocation char inspection
+    let mut raw_buf = ['\0'; 32];
+    let mut cand_buf = ['\0'; 32];
+
+    let mut raw_len = 0;
+    for ch in raw_token.chars() {
+        if raw_len >= 32 { return false; }
+        raw_buf[raw_len] = ch;
+        raw_len += 1;
+    }
+
+    let mut cand_len = 0;
+    for ch in candidate.chars() {
+        if cand_len >= 32 { return false; }
+        cand_buf[cand_len] = ch;
+        cand_len += 1;
+    }
+
+    if raw_len != cand_len || raw_len < 2 {
         return false;
     }
 
     let mut mismatch_idx = None;
-    for i in 0..raw_chars.len() {
-        if raw_chars[i] != cand_chars[i] {
+    for i in 0..raw_len {
+        if raw_buf[i] != cand_buf[i] {
             mismatch_idx = Some(i);
             break;
         }
@@ -45,27 +64,27 @@ pub fn is_bimanual_transposition(raw_token: &str, candidate: &str, timestamps: &
         return false;
     };
 
-    if i + 1 >= raw_chars.len() {
+    if i + 1 >= raw_len {
         return false;
     }
 
-    if raw_chars[i] != cand_chars[i + 1] || raw_chars[i + 1] != cand_chars[i] {
+    if raw_buf[i] != cand_buf[i + 1] || raw_buf[i + 1] != cand_buf[i] {
         return false;
     }
 
-    for j in (i + 2)..raw_chars.len() {
-        if raw_chars[j] != cand_chars[j] {
+    for j in (i + 2)..raw_len {
+        if raw_buf[j] != cand_buf[j] {
             return false;
         }
     }
 
-    let hand1 = get_key_hand(raw_chars[i]);
-    let hand2 = get_key_hand(raw_chars[i + 1]);
+    let hand1 = get_key_hand(raw_buf[i]);
+    let hand2 = get_key_hand(raw_buf[i + 1]);
     if hand1 == Hand::Unknown || hand2 == Hand::Unknown || hand1 == hand2 {
         return false;
     }
 
-    if timestamps.len() == raw_chars.len() {
+    if timestamps.len() == raw_len {
         let t1 = timestamps[i];
         let t2 = timestamps[i + 1];
         let delta = if t2 >= t1 { t2 - t1 } else { t1 - t2 };
