@@ -166,23 +166,42 @@ impl RadixTrie {
     }
 
     pub fn prefix_search(&self, prefix: &str, limit: usize) -> Vec<(String, u32)> {
-        let mut results = Vec::new();
-        if let Some(node) = self.get_terminal_node(prefix) {
-            self.collect_words(node, &mut results);
-            results.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-            results.truncate(limit);
+        // Bounded top-k during traversal. The old collect-everything +
+        // sort + truncate cloned EVERY word in the subtree per call —
+        // 474us for prefix "s" on the real dictionary (measured
+        // 2026-08-27), on the per-keystroke suggestion path. Ordering is
+        // unchanged: frequency desc, then lexicographic asc.
+        if limit == 0 {
+            return Vec::new();
         }
-        results
+        let mut top: Vec<(&String, u32)> = Vec::with_capacity(limit + 1);
+        if let Some(node) = self.get_terminal_node(prefix) {
+            self.collect_top(node, limit, &mut top);
+        }
+        top.into_iter().map(|(w, f)| (w.clone(), f)).collect()
     }
 
-    fn collect_words(&self, node: &TrieNode, out: &mut Vec<(String, u32)>) {
+    fn collect_top<'a>(&'a self, node: &'a TrieNode, limit: usize, top: &mut Vec<(&'a String, u32)>) {
         if node.is_terminal {
             if let Some(ref w) = node.word {
-                out.push((w.clone(), node.frequency));
+                let full = top.len() >= limit;
+                let beats_worst = top
+                    .last()
+                    .map(|&(lw, lf)| node.frequency > lf || (node.frequency == lf && w < lw))
+                    .unwrap_or(true);
+                if !full || beats_worst {
+                    let pos = top.partition_point(|&(tw, tf)| {
+                        tf > node.frequency || (tf == node.frequency && tw < w)
+                    });
+                    top.insert(pos, (w, node.frequency));
+                    if top.len() > limit {
+                        top.pop();
+                    }
+                }
             }
         }
         for child in node.children.values() {
-            self.collect_words(child, out);
+            self.collect_top(child, limit, top);
         }
     }
 
