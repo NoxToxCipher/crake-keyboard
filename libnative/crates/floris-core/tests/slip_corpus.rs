@@ -68,9 +68,10 @@ fn recovers_adjacent_key_slips() {
         ("accuracu", "accuracy"),   // 1 slip (u<->y adjacent key slip from live typing 2026-08-27)
         ("sjsnr", "didn't"),        // 5 adjacent key slips (s<->d, j<->i, s<->d, r<->t from live typing 2026-08-27)
         ("seiping", "swiping"),     // 1 adjacent slip (e<->w from live typing 2026-08-27)
-        ("itu", "you"),             // pronoun slip (i,t,u -> y,o,u from live typing 2026-08-27)
-        ("evsr", "every"),          // adjacent slips (s<->e, r<->y from live typing 2026-08-27)
-        ("tori", "this"),           // slips (o<->h, r<->i, i<->s from live typing 2026-08-27)
+        // "itu" and "tori" removed on audit: no adjacent-slip mechanism to
+        // you/this, and tori is a real word (torus pl.) + name the entry
+        // was overriding; "evsr" remapped to the mechanically nearest word.
+        ("evsr", "ever"),           // 1 adjacent slip (s<->e), same length
     ] {
         let got = top3(&e, typed);
         if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {

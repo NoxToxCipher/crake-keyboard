@@ -518,7 +518,9 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("eventualy", "eventually"),
     ("everyting", "everything"),
     ("evidance", "evidence"),
-    ("evsr", "every"),
+    // "evsr" is "ever" with a single adjacent s->e slip (same length);
+    // "every" also needs an insertion, so the nearer word wins.
+    ("evsr", "ever"),
     ("evsruh", "every"),
     ("exagerate", "exaggerate"),
     ("exagerated", "exaggerated"),
@@ -804,7 +806,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("itll", "it'll"),
     ("its", "it's"),
     ("itslef", "itself"),
-    ("itu", "you"),
     ("ive", "I've"),
     ("jeapardy", "jeopardy"),
     ("jewelery", "jewelry"),
@@ -1678,7 +1679,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("tommorrow", "tomorrow"),
     ("tomorrow", "tomorrow"),
     ("tongue", "tongue"),
-    ("tori", "this"),
     ("tou", "you"),
     ("tounge", "tongue"),
     ("tournament", "tournament"),
