@@ -704,3 +704,34 @@ fn capitalized_tokens_never_autoflip_outside_the_corpus() {
         r.candidates
     );
 }
+
+/// Space-beam fallback (Antigravity Idea 4, wired by Claude Code 1): a
+/// fat thumb hitting a bottom-row letter instead of space repairs to the
+/// phrase — "gotnto" -> "got to". The direct splitter cannot see this
+/// (one stowaway letter breaks membership). Same commit discipline as
+/// every lane: junk halves refused, capitalized input untouched.
+#[test]
+fn spacebar_substitution_repairs_to_the_phrase() {
+    let mut e = engine();
+    for (w, f) in [("got", 240), ("to", 250), ("order", 220), ("in", 254)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let r = e.suggest_with_context("gotnto", "", 5);
+    let head = r.candidates.first().expect("candidates");
+    assert_eq!(head.word, "got to", "got {:?}", r.candidates);
+    assert!(head.is_autocorrect);
+    let r = e.suggest_with_context("inmorder", "", 5);
+    assert!(
+        r.candidates.iter().any(|c| c.word == "in order" && c.is_autocorrect),
+        "inmorder -> in order: {:?}",
+        r.candidates
+    );
+    // capitalized stays a name
+    let r = e.suggest_with_context("Gotnto", "", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.is_autocorrect),
+        "capitalized never beam-splits: {:?}",
+        r.candidates
+    );
+}

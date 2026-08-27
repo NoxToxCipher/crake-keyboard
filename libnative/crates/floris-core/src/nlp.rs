@@ -1557,6 +1557,38 @@ impl NlpEngine {
                 }
             }
             
+            // 5b-2. Space-beam fallback (Antigravity Idea 4, wired here):
+            // catches what the direct splitter cannot — a fat thumb
+            // hitting a bottom-row letter INSTEAD of space ("gotnto" ->
+            // "got to"). Only when the splitter found nothing, and under
+            // this file's commit discipline: never for capitalized input,
+            // and the winning halves must each be solidly real (>= 150)
+            // or the pair attested in the language model.
+            let beam_triple_run = trimmed_lower
+                .as_bytes()
+                .windows(3)
+                .any(|w| w[0] == w[1] && w[1] == w[2]);
+            if candidates.is_empty()
+                && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
+                && trimmed_lower.len() >= 5
+                // burst territory ("helllo") collapses, never splits — the
+                // same rule the direct splitter learned (iteration ~42).
+                && !beam_triple_run
+            {
+                if let Some(beam) = self.evaluate_split_beam(&trimmed_lower) {
+                    let mut parts = beam.text.splitn(2, ' ');
+                    if let (Some(l), Some(r)) = (parts.next(), parts.next()) {
+                        let solid = |w: &str| self.trie.get_frequency(w).unwrap_or(0) >= 150;
+                        if (solid(l) && solid(r)) || self.bigram_pair_score(l, r) > 0 {
+                            candidates.push(RankedCandidate {
+                                word: beam.text,
+                                is_autocorrect: true,
+                            });
+                        }
+                    }
+                }
+            }
+
             // 5c. Repeated Letter Burst Normalization (e.g. soooo -> so, yessss -> yes, pleaaase -> please, heyyy -> hey)
             if candidates.is_empty() {
                 let mut single_collapsed = String::with_capacity(trimmed_lower.len());
