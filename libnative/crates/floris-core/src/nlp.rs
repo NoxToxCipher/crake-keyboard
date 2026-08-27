@@ -555,6 +555,10 @@ pub struct NlpEngine {
     /// context consumer (rescorer, glide, merge attestation, split-repair
     /// witnesses) reflects how this user actually writes. Capped and pruned.
     personal_bigrams: std::collections::HashMap<(String, String), u32>,
+    /// Suppressed false-positive corrections (typo, wrong_word) -> rejection count (Idea 6 / Loops 16-18)
+    rejected_corrections: std::collections::HashMap<(String, String), u32>,
+    /// Last-used interaction epoch for learned words
+    word_epochs: std::collections::HashMap<String, u64>,
 }
 
 impl NlpEngine {
@@ -574,12 +578,64 @@ impl NlpEngine {
             word_ids: std::collections::HashMap::new(),
             learned_words: std::collections::HashMap::new(),
             personal_bigrams: std::collections::HashMap::new(),
+            rejected_corrections: std::collections::HashMap::new(),
+            word_epochs: std::collections::HashMap::new(),
         }
     }
 
     /// Records that the user wrote `next` after `prev`. At the cap, the
     /// least-used pair is pruned so the store follows current habits
     /// instead of freezing on old ones.
+    
+    /// Records an explicitly rejected / backspaced autocorrect to suppress sticky typos (Idea 6 / Loops 16-18).
+    pub fn record_rejected_correction(&mut self, typo: &str, wrong_suggestion: &str) {
+        let t = typo.trim().to_ascii_lowercase();
+        let w = wrong_suggestion.trim().to_ascii_lowercase();
+        if !t.is_empty() && !w.is_empty() {
+            let entry = self.rejected_corrections.entry((t, w)).or_insert(0);
+            *entry = entry.saturating_add(1);
+        }
+    }
+
+    /// Checks whether a suggestion has been repeatedly rejected by the user.
+    #[inline]
+    pub fn is_rejected_correction(&self, typo: &str, candidate: &str) -> bool {
+        let t = typo.trim().to_ascii_lowercase();
+        let c = candidate.trim().to_ascii_lowercase();
+        if let Some(&rejections) = self.rejected_corrections.get(&(t, c)) {
+            return rejections >= 2;
+        }
+        false
+    }
+
+    /// Learns a word with recency epoch tracking (Idea 6 / Loops 16-18).
+    pub fn learn_word_with_decay(&mut self, word: &str, freq: u32, current_epoch: u64) {
+        self.learn_word(word, freq);
+        let trimmed = word.trim().to_ascii_lowercase();
+        if !trimmed.is_empty() {
+            self.word_epochs.insert(trimmed, current_epoch);
+        }
+    }
+
+    /// Decays transient learned words that have not been reinforced within `half_life` epochs (Idea 6 / Loops 16-18).
+    pub fn decay_learned_entries(&mut self, current_epoch: u64, half_life: u64) {
+        let mut words_to_remove = Vec::new();
+        for (word, &epoch) in &self.word_epochs {
+            if current_epoch > epoch && (current_epoch - epoch) >= half_life {
+                // If the word was only learned weakly (freq < 150), decay and remove it
+                if let Some(&freq) = self.learned_words.get(word) {
+                    if freq <= 140 {
+                        words_to_remove.push(word.clone());
+                    }
+                }
+            }
+        }
+        for w in words_to_remove {
+            self.learned_words.remove(&w);
+            self.word_epochs.remove(&w);
+        }
+    }
+
     pub fn record_personal_bigram(&mut self, prev: &str, next: &str) {
         let prev = prev.trim().to_lowercase();
         let next = next.trim().to_lowercase();
