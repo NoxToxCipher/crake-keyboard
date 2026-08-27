@@ -163,3 +163,44 @@ fn letter_prediction_uses_the_real_model_and_personal_pairs() {
         "personal pair must surface: {preds:?}"
     );
 }
+
+/// Homophone rules are hints, not verdicts: the LM arbitrates. A flip of a
+/// valid word fires only when the correct form is clearly attested (>=150)
+/// and clearly ahead (+30). Real-table shape: "are your" (174 vs 0) stays;
+/// "more then" -> than (163 vs 215) fires.
+#[test]
+fn homophone_flips_require_language_model_agreement() {
+    let mut e = engine();
+    for (w, f) in [("your", 250), ("more", 245), ("then", 240), ("than", 240), ("are", 250)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
+    let b = blob(&e, &[
+        ("are", "your", 174),
+        ("more", "than", 215),
+        ("more", "then", 163),
+    ]);
+    e.load_bigrams(&b).unwrap();
+    // "are your": the rule matches but the LM says the typed word is right
+    let r = e.suggest_with_context("your", "are", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.word == "you're" && c.is_autocorrect),
+        "'are your' must never flip: {:?}",
+        r.candidates
+    );
+    // "more then": rule matches AND the LM agrees by a wide margin
+    let r = e.suggest_with_context("then", "more", 5);
+    assert!(
+        r.candidates.first().is_some_and(|c| c.word == "than" && c.is_autocorrect),
+        "'more then' must fix to than: {:?}",
+        r.candidates
+    );
+    // No bigram table at all: no homophone flip can fire
+    let e2 = engine();
+    let r = e2.suggest_with_context("then", "more", 5);
+    assert!(
+        !r.candidates.iter().any(|c| c.word == "than" && c.is_autocorrect),
+        "no LM, no flip: {:?}",
+        r.candidates
+    );
+}

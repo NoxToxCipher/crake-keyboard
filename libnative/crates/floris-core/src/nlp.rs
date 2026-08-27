@@ -1123,14 +1123,28 @@ impl NlpEngine {
             }
         }
 
-        // Apply contextual homophone resolution if prev_word is provided
+        // Apply contextual homophone resolution if prev_word is provided.
+        // The static rule table is only a HINT — the real language model
+        // arbitrates. Audit 2026-08-27: ungated, the table auto-committed
+        // AGAINST overwhelming evidence ("are your"->you're with your=174
+        // vs you're=0; "in their"->there with their=206 vs there=178;
+        // "you to"->too with to=211 vs too=164). A flip of a VALID word
+        // needs the correct form clearly attested (>=150) and clearly
+        // ahead (+30, ~13x the count) — "more then"->than (+52) and
+        // "and than"->then (+67) keep firing; the coin flips stay typed.
         if !prev_word.is_empty() && !candidates.is_empty() {
             if let Some(correct_homophone) = Self::disambiguate_homophone(prev_word, &candidates[0].word) {
-                let formatted = Self::apply_casing(trimmed, correct_homophone);
-                candidates.insert(0, RankedCandidate {
-                    word: formatted,
-                    is_autocorrect: true,
-                });
+                let prev_l = prev_word.trim().to_lowercase();
+                let wrong_l = candidates[0].word.to_lowercase();
+                let correct_score = self.bigram_pair_score(&prev_l, correct_homophone);
+                let wrong_score = self.bigram_pair_score(&prev_l, &wrong_l);
+                if correct_score >= 150 && correct_score > wrong_score.saturating_add(30) {
+                    let formatted = Self::apply_casing(trimmed, correct_homophone);
+                    candidates.insert(0, RankedCandidate {
+                        word: formatted,
+                        is_autocorrect: true,
+                    });
+                }
             }
         }
 
