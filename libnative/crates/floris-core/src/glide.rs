@@ -261,6 +261,7 @@ pub fn get_double_letter_chars(word: &str) -> Vec<char> {
 /// Trims accidental touchdown and liftoff hardware touch hooks (Idea 5 / Loops 13-15).
 /// Touch hardware frequently introduces 1-2 sample acute backward/lateral flick artifacts
 /// as the finger lands and rolls off the screen. Trims these in O(1) before RDP simplification.
+#[inline]
 pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32) -> &'a [Point2D] {
     if points.len() < 6 {
         return points;
@@ -270,22 +271,24 @@ pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32
     let mut end_idx = points.len();
 
     let max_hook_dist = key_radius * 0.45;
+    let max_hook_dist_sq = max_hook_dist * max_hook_dist;
 
     // 1. Takeoff Hook Cleanup:
     let p0 = points[0];
     let p1 = points[1];
     let p3 = points[3];
-    let d01 = p0.distance(&p1);
+    let d01_sq = p0.distance_squared(&p1);
 
-    if d01 <= max_hook_dist {
+    if d01_sq <= max_hook_dist_sq {
         let v_init = (p1.x - p0.x, p1.y - p0.y);
         let v_body = (p3.x - p1.x, p3.y - p1.y);
-        let mag_init = (v_init.0 * v_init.0 + v_init.1 * v_init.1).sqrt();
-        let mag_body = (v_body.0 * v_body.0 + v_body.1 * v_body.1).sqrt();
+        let mag_init_sq = v_init.0 * v_init.0 + v_init.1 * v_init.1;
+        let mag_body_sq = v_body.0 * v_body.0 + v_body.1 * v_body.1;
 
-        if mag_init > 1.0 && mag_body > 1.0 {
+        if mag_init_sq > 1.0 && mag_body_sq > 1.0 {
             let dot = v_init.0 * v_body.0 + v_init.1 * v_body.1;
-            let cos_theta = dot / (mag_init * mag_body);
+            let mag_prod = (mag_init_sq * mag_body_sq).sqrt();
+            let cos_theta = dot / mag_prod;
             // Sharp acute reversal (>98 degrees) over tiny distance
             if cos_theta < -0.15 {
                 start_idx = 1;
@@ -297,17 +300,18 @@ pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32
     let pn = points[end_idx - 1];
     let pn_1 = points[end_idx - 2];
     let pn_3 = points[end_idx - 4];
-    let d_end = pn.distance(&pn_1);
+    let d_end_sq = pn.distance_squared(&pn_1);
 
-    if d_end <= max_hook_dist {
+    if d_end_sq <= max_hook_dist_sq {
         let v_tail = (pn.x - pn_1.x, pn.y - pn_1.y);
         let v_prev = (pn_1.x - pn_3.x, pn_1.y - pn_3.y);
-        let mag_tail = (v_tail.0 * v_tail.0 + v_tail.1 * v_tail.1).sqrt();
-        let mag_prev = (v_prev.0 * v_prev.0 + v_prev.1 * v_prev.1).sqrt();
+        let mag_tail_sq = v_tail.0 * v_tail.0 + v_tail.1 * v_tail.1;
+        let mag_prev_sq = v_prev.0 * v_prev.0 + v_prev.1 * v_prev.1;
 
-        if mag_tail > 1.0 && mag_prev > 1.0 {
+        if mag_tail_sq > 1.0 && mag_prev_sq > 1.0 {
             let dot = v_tail.0 * v_prev.0 + v_tail.1 * v_prev.1;
-            let cos_theta = dot / (mag_tail * mag_prev);
+            let mag_prod = (mag_tail_sq * mag_prev_sq).sqrt();
+            let cos_theta = dot / mag_prod;
             // Sharp acute flick upon finger release
             if cos_theta < -0.15 {
                 end_idx -= 1;
