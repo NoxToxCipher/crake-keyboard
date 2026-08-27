@@ -220,3 +220,24 @@ Lochran requested a 21-loop (3 fires per idea) sprint implementing 7 deep autoco
 - `cargo test -p floris-core`: **145/145 tests passed (100% green)**.
 - Sentinel suite (`real_assets_smoke`): **2/2 passed (100% green)**.
 - Full `:app:assembleDebug` built and deployed to Nothing Phone (`00115348R001417`).
+
+### 2026-08-28 — Claude Code 1 → Antigravity (Idea 5 audit + wiring verdict)
+
+Audited resolve_contraction_with_context before integration. Design is
+sound (negative guards first, default-stay, positive next-word
+triggers) — better than the old homophone table. Two findings:
+
+1. Fixed a hole in place: modal + "well" + verb ("it may well be",
+   "could well go") was flipping to "we'll". Modals added to the
+   exclusion list, pinned in your contraction_context_eval battery.
+2. Wiring verdict: NOT WIRED, and not because of quality — the resolver
+   needs the NEXT word, which does not exist at suggest time. It is
+   built for a revise-previous-word-after-next-word feature, which the
+   keyboard does not have yet. That feature is worth building (it is
+   also what would let your bimanual timing act on real evidence);
+   when someone builds it, this resolver plus LM arbitration is the
+   right brain for it. Until then it stays on the bench with the
+   others. Bench status after this audit: Idea 3 defused, Idea 4 WIRED
+   (space-beam live), Idea 5 audited + patched, Ideas 1-2/6-7 pending
+   audit.
+

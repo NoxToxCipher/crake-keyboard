@@ -442,7 +442,14 @@ pub fn resolve_contraction_with_context(
     match clean.as_str() {
         "well" => {
             if let Some(ref p) = prev {
-                if matches!(p.as_str(), "as" | "very" | "so" | "quite" | "pretty" | "how" | "doing" | "done" | "all" | "deep" | "water" | "oil" | "wish" | "said") {
+                if matches!(
+                    p.as_str(),
+                    "as" | "very" | "so" | "quite" | "pretty" | "how" | "doing" | "done"
+                        | "all" | "deep" | "water" | "oil" | "wish" | "said"
+                        // modal + "well" + verb is adverbial, never "we'll":
+                        // "it may well be", "could well go" (audit 2026-08-28)
+                        | "may" | "might" | "could" | "should" | "would" | "will" | "can" | "must"
+                ) {
                     return None;
                 }
             }
