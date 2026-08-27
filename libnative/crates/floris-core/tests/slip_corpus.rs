@@ -80,7 +80,8 @@ fn recovers_adjacent_key_slips() {
         ("ao", "so"),               // 1 adjacent slip on 2-letter word (a<->s from live typing 2026-08-27)
         ("abd", "and"),             // 1 adjacent slip (b<->n from live typing 2026-08-27)
         ("looke", "look"),          // trailing slip (from live typing 2026-08-27)
-        ("iff", "off"),             // 1 adjacent slip (i<->o from live typing 2026-08-27)
+        // "iff" removed on audit: real term ("if and only if" — formal
+        // methods vocabulary) and 3-way ambiguous (if/off/deliberate).
     ] {
         let got = top3(&e, typed);
         if !got.iter().any(|w| w.eq_ignore_ascii_case(expected)) {
