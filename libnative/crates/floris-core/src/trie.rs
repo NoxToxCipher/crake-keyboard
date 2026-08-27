@@ -270,7 +270,7 @@ impl RadixTrie {
         let query_len = query_chars.len();
         let mut results = Vec::new();
 
-        if query_len + 1 <= MAX_QUERY_STACK_LEN {
+        if query_len < MAX_QUERY_STACK_LEN {
             let mut initial_row = [0usize; MAX_QUERY_STACK_LEN];
             for (i, val) in initial_row.iter_mut().enumerate().take(query_len + 1) {
                 *val = i;

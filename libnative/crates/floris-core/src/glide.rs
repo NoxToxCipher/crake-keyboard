@@ -111,9 +111,6 @@ pub struct GlideMatch {
     pub frequency: u32,
 }
 
-/// Simplifies a touch trajectory using the Ramer-Douglas-Peucker (RDP) algorithm.
-/// Reduces hundreds of noisy touch samples down to essential inflection points.
-
 /// Detected inflection point (corner turn or dwell) along a touch trajectory.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InflectionPoint {
@@ -221,27 +218,24 @@ pub fn extract_inflections(points: &[Point2D], key_radius: f32) -> Vec<Inflectio
 
 /// Detects micro-loops (closed mini-circles) and hesitation stutters in a gesture trace.
 /// Used to recognize intentional double-letter inputs (e.g. "look", "good", "coffee", "sleep").
+#[allow(clippy::needless_range_loop)]
 pub fn detect_double_letter_loops(points: &[Point2D], key_radius: f32) -> Vec<Point2D> {
     if points.len() < 5 {
         return Vec::new();
     }
 
     let mut loop_centers = Vec::with_capacity(4);
-    let max_radius_sq = (key_radius * 1.2).powi(2);
-    let min_loop_path = key_radius * 1.1;
-    let max_closure_dist_sq = (key_radius * 0.65).powi(2);
+    let min_loop_path = key_radius * 0.75;
+    let max_radius_sq = (key_radius * 0.75).powi(2);
+    let max_closure_dist_sq = (key_radius * 0.55).powi(2);
 
-    // O(1) prefix distance table for instant sub-path length evaluation
-    let mut cum_dist = Vec::with_capacity(points.len());
-    cum_dist.push(0.0f32);
-    for w in points.windows(2) {
-        cum_dist.push(cum_dist.last().unwrap() + w[0].distance(&w[1]));
-    }
+    for i in 0..points.len().saturating_sub(3) {
+        for j in (i + 3)..points.len().min(i + 14) {
+            let mut path_len = 0.0;
+            for k in i..j {
+                path_len += points[k].distance(&points[k + 1]);
+            }
 
-    // Scan for sub-paths that travel a significant arc while closing back on themselves
-    for i in 0..points.len() {
-        for j in (i + 3)..points.len().min(i + 16) {
-            let path_len = cum_dist[j] - cum_dist[i];
             if path_len >= min_loop_path {
                 let closure_dist_sq = points[i].distance_squared(&points[j]);
                 if closure_dist_sq <= max_closure_dist_sq {
@@ -264,10 +258,9 @@ pub fn detect_double_letter_loops(points: &[Point2D], key_radius: f32) -> Vec<Po
                         }
                     }
 
-                    if confined {
-                        if loop_centers.last().map(|c: &Point2D| c.distance_squared(&center)).unwrap_or(1e6) > max_radius_sq {
-                            loop_centers.push(center);
-                        }
+                    if confined
+                        && loop_centers.last().map(|c: &Point2D| c.distance_squared(&center)).unwrap_or(1e6) > max_radius_sq {
+                        loop_centers.push(center);
                     }
                 }
             }
@@ -294,7 +287,7 @@ pub fn get_double_letter_chars(word: &str) -> Vec<char> {
 /// Touch hardware frequently introduces 1-2 sample acute backward/lateral flick artifacts
 /// as the finger lands and rolls off the screen. Trims these in O(1) before RDP simplification.
 #[inline]
-pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32) -> &'a [Point2D] {
+pub fn trim_takeoff_and_landing_hooks(points: &[Point2D], key_radius: f32) -> &[Point2D] {
     if points.len() < 6 {
         return points;
     }
@@ -358,6 +351,7 @@ pub fn trim_takeoff_and_landing_hooks<'a>(points: &'a [Point2D], key_radius: f32
     }
 }
 
+#[allow(clippy::needless_range_loop)]
 pub fn simplify_rdp(points: &[Point2D], epsilon: f32) -> Vec<Point2D> {
     if points.len() <= 2 {
         return points.to_vec();
@@ -472,8 +466,6 @@ impl GlideEngine {
         self.key_bounds = keys;
     }
 
-    /// Returns the center position of a key character if present in layout.
-    
     /// Adaptively updates the learned centroid of a key based on user touch observations (Idea 6 / Loops 16-18).
     /// Uses exponential moving average bounded within 0.35x key radius of nominal key center.
     #[inline]
@@ -527,14 +519,10 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
             if ch_lower == '\'' || ch_lower == '’' || ch_lower == '‘' || ch_lower == '-' {
                 continue;
             }
-            match self.get_adaptive_key_center(ch_lower) {
-                Some(pt) => {
-                    // Deduplicate consecutive identical keys (e.g. 'll' or 'ee')
-                    if path.last() != Some(&pt) {
-                        path.push(pt);
-                    }
-                }
-                None => return None, // Unknown character in layout
+            let pt = self.get_adaptive_key_center(ch_lower)?;
+            // Deduplicate consecutive identical keys (e.g. 'll' or 'ee')
+            if path.last() != Some(&pt) {
+                path.push(pt);
             }
         }
         if path.len() >= 2 {
@@ -682,8 +670,7 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                 clean_len >= 2
                     && word
                         .chars()
-                        .filter(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-')
-                        .last()
+                        .rfind(|c| *c != '\'' && *c != '’' && *c != '‘' && *c != '-')
                         .is_some_and(|c| end_chars.contains(&fold_key_char(c)))
             });
             let viable = viable.into_iter();
