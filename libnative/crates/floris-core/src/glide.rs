@@ -570,16 +570,16 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         let start_pt = simplified_gesture[0];
         let end_pt = simplified_gesture[simplified_gesture.len() - 1];
 
-        // 2. Spatial bounding box filter for start & end keys (within 1.75x key radius)
-        let search_radius_sq = (self.average_key_radius * 1.75).powi(2);
+        // 2. Spatial bounding box filter for start & end keys (within 1.45x key radius)
+        let search_radius_sq = (self.average_key_radius * 1.45).powi(2);
         let mut start_chars = Vec::new();
         let mut end_chars = Vec::new();
 
         for (&ch, &center) in &self.key_centers {
-            if anisotropic_thumb_distance_sq(&start_pt, &center, self.average_key_radius) <= search_radius_sq {
+            if center.distance_squared(&start_pt) <= search_radius_sq {
                 start_chars.push(ch);
             }
-            if anisotropic_thumb_distance_sq(&end_pt, &center, self.average_key_radius) <= search_radius_sq {
+            if center.distance_squared(&end_pt) <= search_radius_sq {
                 end_chars.push(ch);
             }
         }
@@ -634,12 +634,30 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                         _ => 0.0,
                     };
 
-                    // Kinematics Inflection Alignment:
-                    // Reward candidates whose interior keys align with detected turn corners/dwells.
+                    // Kinematics Inflection Alignment & Key Coverage:
+                    // Reward candidates whose interior keys align with detected turn corners/dwells,
+                    // and penalize templates that bypass prominent interior gesture via-points.
                     let mut kinematics_bonus = 0.0f32;
                     for key_pt in &ideal_path {
                         if inflections.iter().any(|inf| inf.point.distance_squared(key_pt) <= radius_match_sq) {
-                            kinematics_bonus += 0.8;
+                            kinematics_bonus += 1.5;
+                        }
+                    }
+                    // Reward templates that match the total turn complexity (number of via-points)
+                    if ideal_path.len() >= 3 && simplified_gesture.len() >= 3 {
+                        let len_diff = (ideal_path.len() as f32 - simplified_gesture.len() as f32).abs();
+                        if len_diff <= 1.0 {
+                            kinematics_bonus += 1.0;
+                        }
+                    }
+
+                    let mut interior_alignment_penalty = 0.0f32;
+                    if simplified_gesture.len() >= 3 {
+                        for pt in &simplified_gesture[1..simplified_gesture.len() - 1] {
+                            let min_dist = ideal_path.iter().map(|k| k.distance(pt)).fold(f32::INFINITY, f32::min);
+                            if min_dist > self.average_key_radius * 1.8 {
+                                interior_alignment_penalty += (min_dist - self.average_key_radius * 1.8) / self.average_key_radius * 3.0;
+                            }
                         }
                     }
 
@@ -667,7 +685,7 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                         }
                         _ => 0.0,
                     };
-                    let total_score = normalized_dist + anchor_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
+                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
 
                     matches.push(GlideMatch {
                         word,

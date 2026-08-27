@@ -874,3 +874,50 @@ fn takeoff_and_landing_hook_cleanup_battery() {
 
     assert!(failures.is_empty(), "Hook cleanup recognition failures:\n{}", failures.join("\n"));
 }
+
+/// Adaptive Trajectory Centroid Learning Battery (Loop 17/18):
+/// Verifies that user touch observations adaptively shift key centroids within
+/// strictly bounded limits (<= 0.35x key radius) and personalize trajectory templates.
+#[test]
+fn adaptive_trajectory_centroid_learning_battery() {
+    let mut glide = qwerty_engine();
+    let mut nlp = NlpEngine::new();
+
+    let word = "privacy";
+    nlp.trie.insert(word, 240);
+
+    let nominal_p = glide.key_center('p').unwrap();
+    let nominal_y = glide.key_center('y').unwrap();
+
+    // User systematically reaches 10px lower on 'p' and 8px left on 'y'
+    let observed_p = Point2D::new(nominal_p.x, nominal_p.y + 10.0);
+    let observed_y = Point2D::new(nominal_y.x - 8.0, nominal_y.y);
+
+    for _ in 0..10 {
+        glide.adapt_key_centroid('p', observed_p);
+        glide.adapt_key_centroid('y', observed_y);
+    }
+
+    let adapted_p = glide.get_adaptive_key_center('p').unwrap();
+    let adapted_y = glide.get_adaptive_key_center('y').unwrap();
+
+    // Verify bounded adaptive shift
+    assert!(adapted_p.y > nominal_p.y, "Adaptive centroid must track user downward bias on 'p'");
+    assert!(adapted_y.x < nominal_y.x, "Adaptive centroid must track user leftward bias on 'y'");
+    assert!(adapted_p.distance(&nominal_p) <= 50.0 * 0.35 + 0.1, "Adaptive centroid shift must stay bounded");
+
+    // Synthesize trace matching user's personalized reach
+    let mut rng = Lcg(0x9009_B00B);
+    let mut trace = synth_trace(&glide, word, &mut rng).unwrap();
+    for pt in &mut trace {
+        pt.x += (rng.next_f32() - 0.5) * 4.0;
+        pt.y += (rng.next_f32() - 0.5) * 4.0;
+    }
+
+    let res = glide.match_gesture(&trace, &nlp.trie, 3);
+    assert_eq!(res.first().map(|m| m.word.as_str()), Some(word), "Personalized trajectory must match target");
+
+    // Reset verifies clean restoration
+    glide.reset_adaptive_centroids();
+    assert_eq!(glide.get_adaptive_key_center('p').unwrap(), nominal_p);
+}

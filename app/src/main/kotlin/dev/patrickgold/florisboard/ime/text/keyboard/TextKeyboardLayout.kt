@@ -632,12 +632,12 @@ fun TextKeyboardLayout(
             if (isHiddenMatch) {
                 hiddenHoodedTriggerTime = System.currentTimeMillis()
             }
-            // Comprehensive & Instant word boundary matching for Serenity / Anti-Stress triggers
-            val serenityKeys = listOf("stressed", "stress", "sad", "depressed", "anxious", "anxiety", "overwhelmed", "unhappy")
+            // Serenity garden trigger (literal keyword only, zero sentiment analysis)
+            val serenityKeys = listOf("serenity", "zen garden")
             val isSerenityMatch = serenityKeys.any { k ->
-                tb == k || tb.endsWith(" $k") || tb.endsWith("\n$k") || comp == k ||
-                listOf(" ", ".", "!", ",", "?", "\n", "...", "🥺", "😢", "😭", "💔").any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d")
+                val delimiters = listOf(" ", ".", "!", ",", "?", "\n")
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
                 }
             }
             if (isSerenityMatch) {
