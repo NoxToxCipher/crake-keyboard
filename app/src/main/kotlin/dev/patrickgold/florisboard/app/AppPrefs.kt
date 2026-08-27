@@ -21,7 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import dev.patrickgold.florisboard.app.settings.theme.ColorPreferenceSerializer
 import dev.patrickgold.florisboard.app.settings.theme.DisplayKbdAfterDialogs
 import dev.patrickgold.florisboard.app.settings.theme.SnyggLevel
@@ -245,31 +248,46 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             default = "",
         )
 
+        // Egg-pref mutations are serialized on one scope behind a mutex,
+        // with the CSV re-read INSIDE the lock. A captured-read shape loses
+        // updates: a single keystroke can fire two eggs in the same
+        // detection pass ("sniping trains" hits both the sniper and the
+        // noble train), and two racing writes each based on the same stale
+        // CSV erase each other's egg. Same for two quick Settings toggles.
+        private val mutationScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        private val mutationMutex = Mutex()
+
         /**
          * Records the egg as discovered (making its off switch visible in
          * Settings) and reports whether it is currently allowed to fire.
          * Call this exactly when the egg's trigger condition matched.
          */
         fun fire(egg: EasterEgg): Boolean {
-            val discoveredCsv = discovered.get()
-            if (!EasterEggs.isDiscovered(discoveredCsv, egg)) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    discovered.set(EasterEggs.withId(discoveredCsv, egg.id))
+            if (!EasterEggs.isDiscovered(discovered.get(), egg)) {
+                mutationScope.launch {
+                    mutationMutex.withLock {
+                        val fresh = discovered.get()
+                        if (!EasterEggs.isDiscovered(fresh, egg)) {
+                            discovered.set(EasterEggs.withId(fresh, egg.id))
+                        }
+                    }
                 }
             }
             return EasterEggs.isEnabled(disabled.get(), egg)
         }
 
         fun setEggEnabled(egg: EasterEgg, enabled: Boolean) {
-            val disabledCsv = disabled.get()
-            CoroutineScope(Dispatchers.IO).launch {
-                disabled.set(
-                    if (enabled) {
-                        EasterEggs.withoutId(disabledCsv, egg.id)
-                    } else {
-                        EasterEggs.withId(disabledCsv, egg.id)
-                    }
-                )
+            mutationScope.launch {
+                mutationMutex.withLock {
+                    val fresh = disabled.get()
+                    disabled.set(
+                        if (enabled) {
+                            EasterEggs.withoutId(fresh, egg.id)
+                        } else {
+                            EasterEggs.withId(fresh, egg.id)
+                        }
+                    )
+                }
             }
         }
     }
