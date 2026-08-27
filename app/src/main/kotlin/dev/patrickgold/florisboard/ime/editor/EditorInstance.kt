@@ -299,14 +299,15 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * One backspace immediately after a candidate commit restores what the
      * user actually typed ("an" -> auto-committed "am" -> backspace -> "an"
      * again). Returns true when a revert was performed; the caller must
-     * then skip its normal delete. The revert window is the phantom-space
+     * then skip its normal delete. Returns the restored original text, or
+     * null when no revert applied. The revert window is the phantom-space
      * candidate lifecycle — any other input clears it.
      */
-    fun revertPreviousCommit(): Boolean {
-        if (activeInfo.isRawInputEditor) return false
-        val original = phantomSpace.textForRevert ?: return false
-        val committed = phantomSpace.committedForRevert ?: return false
-        if (original.isEmpty() || committed.isEmpty()) return false
+    fun revertPreviousCommit(): String? {
+        if (activeInfo.isRawInputEditor) return null
+        val original = phantomSpace.textForRevert ?: return null
+        val committed = phantomSpace.committedForRevert ?: return null
+        if (original.isEmpty() || committed.isEmpty()) return null
         // The committed text must still sit before the cursor, or the field
         // changed under us and blind surgery would corrupt it. The space
         // that TRIGGERED the auto-commit lands after the word (candidate
@@ -316,7 +317,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         val extra = when {
             tail.endsWith(committed) -> 0
             tail.endsWith("$committed ") -> 1
-            else -> return false
+            else -> return null
         }
         phantomSpace.setInactive()
         runBlocking {
@@ -326,7 +327,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                 n = committed.length + extra,
             )
         }
-        return super.commitText(original)
+        return if (super.commitText(original)) original else null
     }
 
     /**

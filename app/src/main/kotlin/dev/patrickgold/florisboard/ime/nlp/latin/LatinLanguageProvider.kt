@@ -379,6 +379,23 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
+    override suspend fun notifyCommitReverted(
+        subtype: Subtype,
+        originalText: String,
+        candidate: SuggestionCandidate,
+    ) {
+        // The engine corrected originalText and the user took it back:
+        // respect their word from now on. Learning it makes a non-word
+        // original exact (autocorrect never touches exact words), and the
+        // personal pair turns off the context rescues for valid-word
+        // originals — the documented off-switches, driven by one backspace.
+        FlorisNative.insertWord(originalText, 100)
+        if (lastPrevToken.isNotEmpty()) {
+            FlorisNative.recordPersonalBigram(lastPrevToken, originalText)
+        }
+        persistLearnedState()
+    }
+
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
         flogDebug { "suggestion reverted (${candidate.javaClass.simpleName})" }
         lastRevertedWord = candidate.text.toString()

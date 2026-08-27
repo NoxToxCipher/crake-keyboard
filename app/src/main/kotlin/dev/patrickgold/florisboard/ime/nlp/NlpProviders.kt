@@ -163,6 +163,18 @@ interface SuggestionProvider : NlpProvider {
     suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate)
 
     /**
+     * Is called when a backspace revert RESTORED the user's original typed
+     * text in place of an auto-committed candidate. The strongest possible
+     * "the correction was wrong" signal: providers should respect
+     * [originalText] in the future. Default: ignore.
+     */
+    suspend fun notifyCommitReverted(
+        subtype: Subtype,
+        originalText: String,
+        candidate: SuggestionCandidate,
+    ) {}
+
+    /**
      * Called if the user requests to prevent a certain suggested word from showing again. It is up to the actual
      * implementation to adhere to this user request, this removal is not enforced nor monitored by the NLP manager.
      *

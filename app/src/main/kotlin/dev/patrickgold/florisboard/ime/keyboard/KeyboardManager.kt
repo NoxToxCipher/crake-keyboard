@@ -446,13 +446,30 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             it.isManualSelectionModeStart = false
             it.isManualSelectionModeEnd = false
         }
+        // Capture before surgery: revertPreviousCommit clears phantom state.
+        val revertCandidate = editorInstance.phantomSpace.candidateForRevert
         revertPreviouslyAcceptedCandidate()
         // One CHARACTER backspace right after a candidate commit restores
         // the user's own typed text instead of eating the correction one
         // letter at a time. A word-unit delete means "get rid of it" and
         // deletes as before.
-        if (unit == OperationUnit.CHARACTERS && editorInstance.revertPreviousCommit()) {
-            return
+        if (unit == OperationUnit.CHARACTERS) {
+            val original = editorInstance.revertPreviousCommit()
+            if (original != null) {
+                // A performed revert is the strongest "that correction was
+                // wrong" signal — let the provider learn the user's word.
+                // Never in incognito.
+                if (!activeState.isIncognitoMode && revertCandidate?.sourceProvider != null) {
+                    scope.launch {
+                        revertCandidate.sourceProvider?.notifyCommitReverted(
+                            subtype = subtypeManager.activeSubtype,
+                            originalText = original,
+                            candidate = revertCandidate,
+                        )
+                    }
+                }
+                return
+            }
         }
         editorInstance.deleteBackwards(unit)
     }
