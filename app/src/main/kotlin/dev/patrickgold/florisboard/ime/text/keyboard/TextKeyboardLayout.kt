@@ -110,6 +110,7 @@ import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.popup.ExceptionsForKeyCodes
 import dev.patrickgold.florisboard.ime.popup.PopupUiController
 import dev.patrickgold.florisboard.ime.popup.rememberPopupUiController
+import dev.patrickgold.florisboard.ime.text.gestures.DeleteSwipePolicy
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingGesture
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeGesture
@@ -7256,19 +7257,19 @@ fun TextKeyboardLayout(
                     val y1 = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
                     val y2 = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
                     val y3 = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
-                    val margin = 38f * d
+                    val margin = 44f * d
 
                     fun getTrackPoint(u: Float): Triple<Float, Float, Float> {
                         val cu = u.coerceIn(0f, 1f)
                         return when {
-                            cu <= 0.38f -> {
-                                val s = cu / 0.38f
-                                val startX = -60f * d
+                            cu <= 0.36f -> {
+                                val s = cu / 0.36f
+                                val startX = -55f * d
                                 val endX = canvasW - margin
                                 Triple(startX + s * (endX - startX), y1, 0f)
                             }
                             cu <= 0.48f -> {
-                                val s = (cu - 0.38f) / 0.10f
+                                val s = (cu - 0.36f) / 0.12f
                                 val r = (y2 - y1) / 2f
                                 val cy = (y1 + y2) / 2f
                                 val cx = canvasW - margin
@@ -7278,14 +7279,14 @@ fun TextKeyboardLayout(
                                 val deg = s * 180f
                                 Triple(x, y, deg)
                             }
-                            cu <= 0.76f -> {
-                                val s = (cu - 0.48f) / 0.28f
+                            cu <= 0.72f -> {
+                                val s = (cu - 0.48f) / 0.24f
                                 val startX = canvasW - margin
                                 val endX = margin
                                 Triple(startX - s * (startX - endX), y2, 180f)
                             }
                             cu <= 0.84f -> {
-                                val s = (cu - 0.76f) / 0.08f
+                                val s = (cu - 0.72f) / 0.12f
                                 val r = (y3 - y2) / 2f
                                 val cy = (y2 + y3) / 2f
                                 val cx = margin
@@ -8754,12 +8755,8 @@ private class TextKeyboardLayoutController(
                     // would start the scrub; the scrub's selection then blocks
                     // the word-delete fallback on TOUCH_UP, so a flick deletes
                     // a random few characters instead of the word. Hold the
-                    // scrub until the stroke outlives the flick class. Only
-                    // for the DELETE pref: it has a word-delete fallback to
-                    // land on, the SELECT pref does not.
-                    if (action == SwipeAction.DELETE_CHARACTERS_PRECISELY &&
-                        event.ageMs < SwipeGesture.DELETE_SCRUB_MIN_AGE_MS
-                    ) {
+                    // scrub until the stroke outlives the flick class.
+                    if (!DeleteSwipePolicy.scrubMayBegin(action, event.ageMs)) {
                         return true
                     }
                     if (abs(event.relUnitCountX) > 0) {
@@ -8812,28 +8809,12 @@ private class TextKeyboardLayoutController(
                 else -> false
             }
             SwipeGesture.Type.TOUCH_UP -> {
-                if (event.direction == SwipeGesture.Direction.LEFT ||
-                    event.direction == SwipeGesture.Direction.UP_LEFT ||
-                    event.direction == SwipeGesture.Direction.DOWN_LEFT
-                ) {
-                    when (val action = prefs.gestures.deleteKeySwipeLeft.get()) {
-                        SwipeAction.DELETE_WORD,
-                        SwipeAction.DELETE_CHARACTER -> {
-                            keyboardManager.executeSwipeAction(action)
-                            true
-                        }
-                        SwipeAction.DELETE_CHARACTERS_PRECISELY -> {
-                            val selection = editorInstance.activeContent.selection
-                            if (!selection.isSelectionMode) {
-                                keyboardManager.executeSwipeAction(SwipeAction.DELETE_WORD)
-                            }
-                            true
-                        }
-                        else -> false
-                    }
-                } else {
-                    false
+                val action = prefs.gestures.deleteKeySwipeLeft.get()
+                val hasSelection = editorInstance.activeContent.selection.isSelectionMode
+                DeleteSwipePolicy.onUpAction(event.direction, action, hasSelection)?.let {
+                    keyboardManager.executeSwipeAction(it)
                 }
+                DeleteSwipePolicy.consumesUp(event.direction, action)
             }
         }
     }
