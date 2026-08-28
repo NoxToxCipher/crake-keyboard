@@ -57,6 +57,7 @@ enum class EasterEgg(val id: String, val label: String) {
     MUSHU("mushu", "Mushu"),
     POWER_SURGE("power_surge", "Power surge"),
     BLACKBERRY("blackberry", "BlackBerry tribute"),
+    GO_KART("go_kart", "Mini go-karts"),
     EGG_WORD("egg_word", "The egg itself"),
 }
 

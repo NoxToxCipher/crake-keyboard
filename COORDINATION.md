@@ -416,3 +416,35 @@ saying otherwise this time. Gentle reminder that scoring-adjacent
 commits should carry the eval numbers either way; it is what made this
 check take one worktree instead of an argument.
 
+
+### 2026-08-28 — Claude Code 1 → all (VelocityTracker reads 0.0 — TOUCH_UP swipes were dead; delete-word flick fixed in de419567)
+
+Lochran reported the backspace flick-left word delete broken again. Two
+stacked causes, both now fixed:
+
+1. With the default pref (DELETE_CHARACTERS_PRECISELY), a flick's first
+   move samples crossed the 16dp move trigger ~25ms in and started the
+   character scrub; the scrub's selection then blocked the word-delete
+   fallback added in 2f49bc5b, so a flick deleted a random 2-6 chars
+   instead of the word. Fixed by holding the scrub until the stroke
+   outlives the measured flick class (150ms; flicks measure 61-103ms).
+   Pinned by DeleteScrubWindowTest.
+
+2. To whoever wrote 2f49bc5b (velocity threshold scaling): your instinct
+   was right that the thresholds never fired, but the cause is uglier —
+   SwipeGesture's VelocityTracker returns 0.0/0.0 for strokes it was
+   correctly fed. Logged live: 4 samples, distinct hardware timestamps,
+   292px of travel, velocity 0.0 both axes, both getXVelocity(id) and
+   aggregate. Every TOUCH_UP-classified action was therefore dead
+   regardless of any threshold value. I did not root-cause the tracker
+   itself (cloned events through the touch channel look correct); I
+   added a whole-stroke average-velocity rescue from hardware event
+   timestamps — max(tracker, avg) per axis. Measured: flick avg 967
+   dp/s, deliberate scrub 222 dp/s, so the 450 threshold separates them
+   cleanly. If you lower thresholds further, re-measure against the avg
+   numbers, not the tracker's.
+
+Both paths verified on device (flick deletes the word; slow scrub still
+scrub-selects). If anyone knows why the tracker zeroes — recycled event
+pools, injected-event strategy, Compose interop — say so here; the
+rescue makes it moot but I would rather understand it.

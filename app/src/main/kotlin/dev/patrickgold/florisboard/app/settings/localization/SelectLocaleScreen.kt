@@ -16,21 +16,26 @@
 
 package dev.patrickgold.florisboard.app.settings.localization
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,11 +43,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.app.LocalNavController
@@ -50,7 +58,6 @@ import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
 import dev.patrickgold.florisboard.lib.FlorisLocale
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
-import dev.patrickgold.jetpref.material.ui.JetPrefListItem
 import org.florisboard.lib.compose.florisScrollbar
 import org.florisboard.lib.compose.stringRes
 
@@ -93,35 +100,39 @@ fun SelectLocaleScreen() = FlorisScreen {
     content {
         val state = rememberLazyListState()
         Column(modifier = Modifier.fillMaxSize()) {
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
+            androidx.compose.material3.OutlinedTextField(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 value = searchTermValue,
                 onValueChange = { searchTermValue = it },
-                placeholder = { Text(stringRes(R.string.settings__localization__subtype_search_locale_placeholder)) },
+                placeholder = { Text("Search language or region…", fontSize = 13.5.sp, color = Color(0xFF94A3B8)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = null,
+                        tint = Color(0xFF00D2FF),
                     )
                 },
                 singleLine = true,
-                shape = RectangleShape,
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color(0xFF00D2FF),
+                    unfocusedBorderColor = Color(0xFF222D42),
+                    focusedContainerColor = Color(0xFF131A29),
+                    unfocusedContainerColor = Color(0xFF131A29),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
                 ),
             )
             if (filteredSystemLocales.isEmpty()) {
                 Text(
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(24.dp)
                         .align(Alignment.CenterHorizontally),
-                    text = stringRes(
-                        R.string.settings__localization__subtype_search_locale_not_found,
-                        "search_term" to searchTermValue.text,
-                    ),
-                    color = LocalContentColor.current.copy(alpha = 0.54f),
+                    text = "No matching locales found for \"${searchTermValue.text}\"",
+                    color = Color(0xFF94A3B8),
+                    fontSize = 13.sp,
                 )
             }
             LazyColumn(
@@ -131,17 +142,50 @@ fun SelectLocaleScreen() = FlorisScreen {
                 state = state,
             ) {
                 items(filteredSystemLocales) { systemLocale ->
-                    JetPrefListItem(
-                        modifier = Modifier.clickable {
-                            navController.previousBackStackEntry
-                                ?.savedStateHandle
-                                ?.set(SelectLocaleScreenResultLanguageTag, systemLocale.languageTag())
-                            navController.popBackStack()
-                        },
-                        text = when (displayLanguageNamesIn) {
-                            DisplayLanguageNamesIn.SYSTEM_LOCALE -> systemLocale.displayName()
-                            DisplayLanguageNamesIn.NATIVE_LOCALE -> systemLocale.displayName(systemLocale)
-                        },
+                    val displayName = when (displayLanguageNamesIn) {
+                        DisplayLanguageNamesIn.SYSTEM_LOCALE -> systemLocale.displayName()
+                        DisplayLanguageNamesIn.NATIVE_LOCALE -> systemLocale.displayName(systemLocale)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                navController.previousBackStackEntry
+                                    ?.savedStateHandle
+                                    ?.set(SelectLocaleScreenResultLanguageTag, systemLocale.languageTag())
+                                navController.popBackStack()
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = displayName,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White,
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF00E5A3).copy(alpha = 0.12f))
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = systemLocale.languageTag(),
+                                color = Color(0xFF00E5A3),
+                                fontSize = 10.5.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                    HorizontalDivider(
+                        color = Color(0xFF1E293B).copy(alpha = 0.5f),
+                        thickness = 0.5.dp,
                     )
                 }
             }

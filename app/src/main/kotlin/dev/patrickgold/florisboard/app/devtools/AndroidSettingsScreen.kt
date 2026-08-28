@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2025 The FlorisBoard Contributors
+ * Copyright (C) 2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,19 +16,36 @@
 
 package dev.patrickgold.florisboard.app.devtools
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import org.florisboard.lib.android.AndroidSettings
 import org.florisboard.lib.compose.stringRes
@@ -36,10 +53,10 @@ import org.florisboard.lib.compose.stringRes
 @Composable
 fun AndroidSettingsScreen(name: String?) = FlorisScreen {
     title = when (name) {
-        AndroidSettings.Global.groupId -> stringRes(R.string.devtools__android_settings_global__title)
-        AndroidSettings.Secure.groupId -> stringRes(R.string.devtools__android_settings_secure__title)
-        AndroidSettings.System.groupId -> stringRes(R.string.devtools__android_settings_system__title)
-        else -> "invalid"
+        AndroidSettings.Global.groupId -> "Global Settings"
+        AndroidSettings.Secure.groupId -> "Secure Settings"
+        AndroidSettings.System.groupId -> "System Settings"
+        else -> "Android Settings"
     }
     scrollable = false
 
@@ -57,10 +74,31 @@ fun AndroidSettingsScreen(name: String?) = FlorisScreen {
     content {
         LazyColumn {
             items(nameValueTable) { (fieldName, key) ->
-                Preference(
-                    title = fieldName,
-                    summary = key,
-                    onClick = { dialogKey = key },
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { dialogKey = key }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = fieldName,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.5.sp,
+                            color = Color.White,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = key,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            color = Color(0xFF94A3B8),
+                        )
+                    }
+                }
+                HorizontalDivider(
+                    color = Color(0xFF1E293B).copy(alpha = 0.5f),
+                    thickness = 0.5.dp,
                 )
             }
         }
@@ -75,6 +113,9 @@ fun AndroidSettingsScreen(name: String?) = FlorisScreen {
                         text = remember {
                             (settingsGroup.getString(context, dialogKey!!) ?: "(null)").ifBlank { "(blank)" }
                         },
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = Color(0xFF00E5A3),
                     )
                 }
             }

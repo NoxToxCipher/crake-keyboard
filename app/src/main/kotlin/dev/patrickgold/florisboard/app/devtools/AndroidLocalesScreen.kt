@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2025 The FlorisBoard Contributors
+ * Copyright (C) 2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,37 +16,54 @@
 
 package dev.patrickgold.florisboard.app.devtools
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.ime.core.DisplayLanguageNamesIn
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
-import java.util.*
-import org.florisboard.lib.android.showLongToastSync
+import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.compose.FlorisIconButton
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.kotlin.io.subDir
 import org.florisboard.lib.kotlin.io.subFile
+import java.util.Locale
 
 @Composable
 fun AndroidLocalesScreen() = FlorisScreen {
-    title = stringRes(R.string.devtools__android_locales__title)
+    title = "System Locales"
     scrollable = false
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val availableLocales = remember { Locale.getAvailableLocales().sortedBy { it.toLanguageTag() } }
 
     actions {
@@ -66,12 +83,16 @@ fun AndroidLocalesScreen() = FlorisScreen {
                             out.appendLine()
                         }
                     }
-                    context.showLongToastSync("Exported available system locales to \"${txtFile.path}\"")
+                    scope.launch {
+                        context.showLongToast("Exported system locales to \"${txtFile.path}\"")
+                    }
                 } catch (e: Exception) {
-                    context.showLongToastSync(
-                        R.string.error__snackbar_message_template,
-                        "error_message" to e.message.toString(),
-                    )
+                    scope.launch {
+                        context.showLongToast(
+                            R.string.error__snackbar_message_template,
+                            "error_message" to e.message.toString(),
+                        )
+                    }
                 }
             },
             icon = Icons.Default.Save,
@@ -84,20 +105,43 @@ fun AndroidLocalesScreen() = FlorisScreen {
         SelectionContainer(modifier = Modifier.fillMaxWidth()) {
             LazyColumn {
                 items(availableLocales) { locale ->
-                    Row {
-                        Text(
-                            text = locale.toLanguageTag().padEnd(12),
-                            fontFamily = FontFamily.Monospace,
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
                         Text(
                             modifier = Modifier.weight(1.0f),
                             text = when (displayLanguageNamesIn) {
                                 DisplayLanguageNamesIn.SYSTEM_LOCALE -> locale.displayName
                                 DisplayLanguageNamesIn.NATIVE_LOCALE -> locale.getDisplayName(locale)
                             },
-                            fontFamily = FontFamily.Monospace,
+                            fontSize = 13.5.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium,
                         )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF00D2FF).copy(alpha = 0.12f))
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = locale.toLanguageTag(),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF00D2FF),
+                            )
+                        }
                     }
+                    HorizontalDivider(
+                        color = Color(0xFF1E293B).copy(alpha = 0.5f),
+                        thickness = 0.5.dp,
+                    )
                 }
             }
         }

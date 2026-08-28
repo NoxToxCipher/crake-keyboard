@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022-2025 The FlorisBoard Contributors
+ * Copyright (C) 2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,23 @@
 
 package dev.patrickgold.florisboard.app.devtools
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -30,34 +40,38 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.florisboard.lib.devtools.Devtools
-import org.florisboard.lib.android.showShortToastSync
-import org.florisboard.lib.compose.FlorisButton
+import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.compose.florisHorizontalScroll
 import org.florisboard.lib.compose.florisScrollbar
-import org.florisboard.lib.compose.stringRes
 
-// TODO: This screen is just a quick thrown-together thing and needs further enhancing in the UI
+private val CyberEmerald = Color(0xFF00E5A3)
+private val ElectricCyan = Color(0xFF00D2FF)
+
 @Composable
 fun ExportDebugLogScreen() = FlorisScreen {
-    title = stringRes(R.string.devtools__debuglog__title)
+    title = "Debug Engine Log"
     scrollable = false
 
     val prefs by FlorisPreferenceStore
     val context = LocalContext.current
-    val resources = LocalResources.current
+    val scope = rememberCoroutineScope()
     val clipboardManager by context.clipboardManager()
 
     var debugLog by remember { mutableStateOf<List<String>?>(null) }
@@ -71,52 +85,92 @@ fun ExportDebugLogScreen() = FlorisScreen {
     bottomBar {
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
         ) {
-            FlorisButton(
+            Button(
                 onClick = {
-                    clipboardManager.addNewPlaintext(debugLog!!.joinToString("\n"))
-                    context.showShortToastSync(resources.getString(R.string.devtools__debuglog__copied_to_clipboard))
+                    debugLog?.let {
+                        clipboardManager.addNewPlaintext(it.joinToString("\n"))
+                        scope.launch { context.showShortToast("Raw debug log copied to clipboard") }
+                    }
                 },
-                modifier = Modifier,
-                text = stringRes(R.string.devtools__debuglog__copy_log),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ElectricCyan,
+                    contentColor = Color(0xFF0F172A),
+                ),
                 enabled = debugLog != null,
-            )
-            FlorisButton(
+            ) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy Raw Log", fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+            }
+            Button(
                 onClick = {
-                    clipboardManager.addNewPlaintext(formattedDebugLog!!.joinToString("\n"))
-                    context.showShortToastSync(resources.getString(R.string.devtools__debuglog__copied_to_clipboard))
+                    formattedDebugLog?.let {
+                        clipboardManager.addNewPlaintext(it.joinToString("\n"))
+                        scope.launch { context.showShortToast("Markdown debug log copied to clipboard") }
+                    }
                 },
-                text = stringRes(R.string.devtools__debuglog__copy_for_github),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = CyberEmerald,
+                    contentColor = Color(0xFF0F172A),
+                ),
                 enabled = debugLog != null,
-            )
+            ) {
+                Icon(Icons.Default.ContentCopy, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Copy Markdown", fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
+            }
         }
     }
 
     content {
-        // Forcing LTR because text displayed is a debug log
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             val lazyListState = rememberLazyListState()
-            LazyColumn(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .florisScrollbar(lazyListState, isVertical = true)
-                    .florisHorizontalScroll(),
-                state = lazyListState,
+                    .background(Color(0xFF080C14))
             ) {
-                val log = debugLog
-                if (log == null) {
-                    item {
-                        Text(stringRes(R.string.devtools__debuglog__loading))
-                    }
-                } else {
-                    items(log) { logLine ->
-                        Text(
-                            text = logLine,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp,
-                            softWrap = false,
-                        )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .florisScrollbar(lazyListState, isVertical = true)
+                        .florisHorizontalScroll(),
+                    state = lazyListState,
+                ) {
+                    val log = debugLog
+                    if (log == null) {
+                        item {
+                            Text(
+                                text = "Compiling diagnostic engine logs…",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp,
+                                fontFamily = FontFamily.Monospace,
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    } else {
+                        items(log) { logLine ->
+                            val textColor = when {
+                                logLine.contains("ERROR") || logLine.contains("FATAL") || logLine.contains("Exception") -> Color(0xFFEF4444)
+                                logLine.contains("WARN") -> Color(0xFFF59E0B)
+                                logLine.contains("INFO") -> ElectricCyan
+                                logLine.startsWith("###") || logLine.startsWith("##") -> CyberEmerald
+                                else -> Color(0xFFCBD5E1)
+                            }
+                            Text(
+                                text = logLine,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.5.sp,
+                                color = textColor,
+                                softWrap = false,
+                                lineHeight = 14.sp,
+                            )
+                        }
                     }
                 }
             }

@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Observer
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import dev.patrickgold.florisboard.R
@@ -296,16 +297,21 @@ fun SubtypeEditorScreen(id: Long?) = FlorisScreen {
     content {
         Column(modifier = Modifier.padding(8.dp)) {
             if (id == null) {
-                Card(modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(0xFF131A29)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFF222D42)),
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Column(modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp)) {
                         Text(
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                            text = stringRes(R.string.settings__localization__suggested_subtype_presets),
-                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
+                            text = "Suggested Language Presets",
+                            color = androidx.compose.ui.graphics.Color(0xFF00D2FF),
                             fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -335,23 +341,31 @@ fun SubtypeEditorScreen(id: Long?) = FlorisScreen {
                                         DisplayLanguageNamesIn.NATIVE_LOCALE -> suggestedPreset.locale.displayName(suggestedPreset.locale)
                                     },
                                     secondaryText = suggestedPreset.preferred.characters.componentId,
-                                    colors = ListItemDefaults.colors(containerColor = CardDefaults.cardColors().containerColor),
+                                    colors = ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color(0xFF131A29)),
                                 )
                             }
                         } else {
                             Text(
-                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                                text = stringRes(R.string.settings__localization__suggested_subtype_presets_none_found),
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
+                                text = "No matching layout presets found for current system locale.",
+                                fontSize = 12.sp,
+                                color = androidx.compose.ui.graphics.Color(0xFF94A3B8),
                             )
                         }
                         Button(
                             modifier = Modifier
-                                .padding(horizontal = 16.dp)
+                                .padding(top = 8.dp)
                                 .align(Alignment.End),
                             onClick = { showSubtypePresetsDialog = true },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = androidx.compose.ui.graphics.Color(0xFF00E5A3),
+                                contentColor = androidx.compose.ui.graphics.Color(0xFF0F172A),
+                            ),
                         ) {
                             Text(
-                                text = stringRes(R.string.settings__localization__subtype_presets_view_all)
+                                text = "View All Presets",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
                             )
                         }
                     }

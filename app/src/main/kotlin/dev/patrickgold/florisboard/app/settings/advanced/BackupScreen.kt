@@ -162,11 +162,11 @@ fun BackupScreen() = FlorisScreen {
                 context.contentResolver.writeFromFile(uri, backupWorkspace!!.zipFile)
                 backupWorkspace!!.close()
             }.onSuccess {
-                context.showLongToastSync(R.string.backup_and_restore__back_up__success)
+                scope.launch { context.showLongToast(R.string.backup_and_restore__back_up__success) }
                 navController.popBackStack()
             }.onFailure { error ->
                 flogError { error.stackTraceToString() }
-                context.showLongToastSync(R.string.backup_and_restore__back_up__failure, "error_message" to error.message)
+                scope.launch { context.showLongToast(R.string.backup_and_restore__back_up__failure, "error_message" to error.message) }
                 backupWorkspace = null
             }
         },

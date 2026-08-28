@@ -136,10 +136,12 @@ fun RestoreScreen() = FlorisScreen {
                 }
                 restoreWorkspace = workspace
             }.onFailure { error ->
-                context.showLongToastSync(
-                    R.string.backup_and_restore__restore__failure,
-                    "error_message" to error.localizedMessage,
-                )
+                restoreScope.launch {
+                    context.showLongToast(
+                        R.string.backup_and_restore__restore__failure,
+                        "error_message" to error.localizedMessage,
+                    )
+                }
             }
         },
     )
@@ -291,10 +293,12 @@ fun RestoreScreen() = FlorisScreen {
                 runCatching {
                     restoreDataFromFileSystemLauncher.launch("*/*")
                 }.onFailure { error ->
-                    context.showLongToastSync(
-                        R.string.backup_and_restore__restore__failure,
-                        "error_message" to error.localizedMessage,
-                    )
+                    restoreScope.launch {
+                        context.showLongToast(
+                            R.string.backup_and_restore__restore__failure,
+                            "error_message" to error.localizedMessage,
+                        )
+                    }
                 }
             },
             modifier = Modifier

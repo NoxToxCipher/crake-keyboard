@@ -193,6 +193,7 @@ private val serenityKeysHoisted = listOf(
 private val sniperKeysHoisted = listOf("snipe", "snipes", "sniper", "sniped", "sniping", "headshot", "360 noscope", "awp")
 private val thorKeysHoisted = listOf("thor", "mjolnir", "god of thunder", "asgard", "odinson")
 private val mushuKeysHoisted = listOf("mushu", "mulan", "mulsn", "cri-kee", "dishonor on your cow", "dragon", "great stone dragon")
+private val goKartKeysHoisted = listOf("go-kart", "gokart", "kart", "karting", "go kart", "gokarts", "karts", "go-karts", "go karts", "kartings")
 
 @Composable
 fun TextKeyboardLayout(
@@ -506,6 +507,7 @@ fun TextKeyboardLayout(
     var sniperDudeTriggerTime by remember { mutableStateOf(0L) }
     var thorTriggerTime by remember { mutableStateOf(0L) }
     var mushuTriggerTime by remember { mutableStateOf(0L) }
+    var goKartTriggerTime by remember { mutableStateOf(0L) }
         // Per-key egg layers (BlackBerry keycap flip, egg wobble, sun conure
         // perch): detected once here, consumed by every TextKeyButton via
         // parameters.
@@ -754,6 +756,19 @@ fun TextKeyboardLayout(
             }
             if (isMushuMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.MUSHU)) mushuTriggerTime = System.currentTimeMillis()
+            }
+            val goKartKeys = goKartKeysHoisted
+            val isGoKartMatch = goKartKeys.any { k ->
+                val delimiters = triggerDelimitersWithEmpty
+                delimiters.any { d ->
+                    tb.equals("$k$d", ignoreCase = true) ||
+                    tb.endsWith(" $k$d", ignoreCase = true) ||
+                    tb.endsWith("\n$k$d", ignoreCase = true) ||
+                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isGoKartMatch) {
+                if (prefs.easterEggs.fire(EasterEgg.GO_KART)) goKartTriggerTime = System.currentTimeMillis()
             }
             // Per-key egg layers, hoisted out of TextKeyButton (previously
             // every key button re-ran these scans on each content change).
@@ -7205,6 +7220,376 @@ fun TextKeyboardLayout(
             }
         }
 
+        // Cute Mini Go-Kart Grand Prix Easter Egg (5.2s duration: 3 mini karts racing across keyboard rows)
+        if (goKartTriggerTime > 0L) {
+            val kartProgress = remember(goKartTriggerTime) { Animatable(0f) }
+            LaunchedEffect(goKartTriggerTime) {
+                kartProgress.snapTo(0f)
+                kartProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 5200, easing = LinearEasing),
+                )
+                goKartTriggerTime = 0L
+            }
+            if (kartProgress.value in 0.001f..0.999f) {
+                val progress = kartProgress.value
+                val density = LocalDensity.current.density
+
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasW = this.size.width
+                    val canvasH = this.size.height
+                    val d = density
+
+                    // Smooth fade in (0.0 -> 0.04) and fade out (0.95 -> 1.0)
+                    val masterAlpha = when {
+                        progress < 0.04f -> (progress / 0.04f).coerceIn(0f, 1f)
+                        progress > 0.95f -> ((1f - progress) / 0.05f).coerceIn(0f, 1f)
+                        else -> 1f
+                    }
+                    if (masterAlpha <= 0f) return@Canvas
+
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+
+                    val y1 = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
+                    val y2 = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
+                    val y3 = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
+                    val margin = 38f * d
+
+                    fun getTrackPoint(u: Float): Triple<Float, Float, Float> {
+                        val cu = u.coerceIn(0f, 1f)
+                        return when {
+                            cu <= 0.38f -> {
+                                val s = cu / 0.38f
+                                val startX = -60f * d
+                                val endX = canvasW - margin
+                                Triple(startX + s * (endX - startX), y1, 0f)
+                            }
+                            cu <= 0.48f -> {
+                                val s = (cu - 0.38f) / 0.10f
+                                val r = (y2 - y1) / 2f
+                                val cy = (y1 + y2) / 2f
+                                val cx = canvasW - margin
+                                val angleRad = -kotlin.math.PI.toFloat() / 2f + s * kotlin.math.PI.toFloat()
+                                val x = cx + r * kotlin.math.cos(angleRad)
+                                val y = cy + r * kotlin.math.sin(angleRad)
+                                val deg = s * 180f
+                                Triple(x, y, deg)
+                            }
+                            cu <= 0.76f -> {
+                                val s = (cu - 0.48f) / 0.28f
+                                val startX = canvasW - margin
+                                val endX = margin
+                                Triple(startX - s * (startX - endX), y2, 180f)
+                            }
+                            cu <= 0.84f -> {
+                                val s = (cu - 0.76f) / 0.08f
+                                val r = (y3 - y2) / 2f
+                                val cy = (y2 + y3) / 2f
+                                val cx = margin
+                                val angleRad = -kotlin.math.PI.toFloat() / 2f + s * kotlin.math.PI.toFloat()
+                                val x = cx - r * kotlin.math.cos(angleRad)
+                                val y = cy + r * kotlin.math.sin(angleRad)
+                                val deg = 180f - s * 180f
+                                Triple(x, y, deg)
+                            }
+                            else -> {
+                                val s = (cu - 0.84f) / 0.16f
+                                val startX = margin
+                                val endX = canvasW + 65f * d
+                                Triple(startX + s * (endX - startX), y3, 0f)
+                            }
+                        }
+                    }
+
+                    // Checkered Finish Line Flag & Banner (flutters near exit when karts approach finish)
+                    if (progress >= 0.80f) {
+                        val flagAlpha = ((progress - 0.80f) / 0.08f).coerceIn(0f, 1f) * masterAlpha
+                        val flagX = canvasW - 28f * d
+                        val flagY = y3 - 12f * d
+                        val polePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((flagAlpha * 255).toInt().coerceIn(0, 255), 203, 213, 225)
+                            strokeWidth = 2f * d
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        val blackCheck = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((flagAlpha * 255).toInt().coerceIn(0, 255), 30, 41, 59)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val whiteCheck = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((flagAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        // Pole
+                        drawContext.canvas.nativeCanvas.drawLine(flagX, flagY - 14f * d, flagX, flagY + 14f * d, polePaint)
+                        // Waving Checkered Cloth (2x3 pattern with wave oscillation)
+                        val wave = kotlin.math.sin(progress * 45f) * (2f * d)
+                        val cw = 4.5f * d
+                        val ch = 4.5f * d
+                        for (r in 0..1) {
+                            for (c in 0..2) {
+                                val isBlack = (r + c) % 2 == 0
+                                val p = if (isBlack) blackCheck else whiteCheck
+                                val tileX = flagX + c * cw
+                                val tileY = flagY - 14f * d + r * ch + (c * wave * 0.3f)
+                                drawContext.canvas.nativeCanvas.drawRoundRect(
+                                    tileX, tileY, tileX + cw, tileY + ch, 0.5f * d, 0.5f * d, p
+                                )
+                            }
+                        }
+                    }
+
+                    // Define the 3 Mini Racers
+                    data class KartSpec(
+                        val uOffset: Float,
+                        val bodyColor: Int,
+                        val accentColor: Int,
+                        val helmetColor: Int,
+                        val visorColor: Int,
+                        val numberStr: String,
+                        val bounceFreq: Float,
+                        val driftBonus: Float,
+                    )
+
+                    val racers = listOf(
+                        KartSpec(
+                            uOffset = 0.0f,
+                            bodyColor = 0xFFEF4444.toInt(), // Vibrant Red #1 Speedster
+                            accentColor = 0xFFFFFFFF.toInt(),
+                            helmetColor = 0xFFFFFFFF.toInt(),
+                            visorColor = 0xFFDC2626.toInt(),
+                            numberStr = "1",
+                            bounceFreq = 42f,
+                            driftBonus = 0f,
+                        ),
+                        KartSpec(
+                            uOffset = -0.038f,
+                            bodyColor = 0xFF00E5A3.toInt(), // Cyber Emerald #7 Racer
+                            accentColor = 0xFF00D2FF.toInt(),
+                            helmetColor = 0xFF00D2FF.toInt(),
+                            visorColor = 0xFF0F172A.toInt(),
+                            numberStr = "7",
+                            bounceFreq = 48f,
+                            driftBonus = 4.5f,
+                        ),
+                        KartSpec(
+                            uOffset = -0.076f,
+                            bodyColor = 0xFFF59E0B.toInt(), // Cyber Gold #3 Pocket Rocket
+                            accentColor = 0xFF0F172A.toInt(),
+                            helmetColor = 0xFFFDE047.toInt(),
+                            visorColor = 0xFF1E293B.toInt(),
+                            numberStr = "3",
+                            bounceFreq = 38f,
+                            driftBonus = -3.5f,
+                        ),
+                    )
+
+                    for (racer in racers) {
+                        val kartU = progress + racer.uOffset
+                        if (kartU < 0f || kartU > 1f) continue
+
+                        val (kx, ky, headingDeg) = getTrackPoint(kartU)
+                        val isCornering = (headingDeg !in -5f..5f) && (headingDeg !in 175f..185f)
+                        val kartAlpha = masterAlpha
+
+                        drawContext.canvas.nativeCanvas.save()
+                        // Slight bouncy suspension
+                        val suspensionHop = kotlin.math.sin(kartU * racer.bounceFreq) * (1.2f * d)
+                        drawContext.canvas.nativeCanvas.translate(kx, ky + suspensionHop)
+                        // Rotation heading with cute drift flair when cornering
+                        val driftAngle = if (isCornering) racer.driftBonus else 0f
+                        drawContext.canvas.nativeCanvas.rotate(headingDeg + driftAngle)
+
+                        // 1. Shadow beneath kart
+                        val shadowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 70).toInt().coerceIn(0, 255), 0, 0, 0)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawOval(
+                            android.graphics.RectF(-11f * d, -7f * d, 13f * d, 7f * d), shadowPaint
+                        )
+
+                        // 2. Exhaust Puffs (Tiny cute bubbles trailing backwards)
+                        val puffPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 140).toInt().coerceIn(0, 255), 241, 245, 249)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val puffDist1 = ((kartU * 300f) % 7f) * d
+                        val puffDist2 = (((kartU * 300f) + 3.5f) % 7f) * d
+                        drawContext.canvas.nativeCanvas.drawCircle(-13f * d - puffDist1, -2.5f * d, 1.6f * d, puffPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-13f * d - puffDist2, 2.5f * d, 1.4f * d, puffPaint)
+
+                        // Drift sparks when cornering
+                        if (isCornering) {
+                            val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                                color = android.graphics.Color.argb((kartAlpha * 220).toInt().coerceIn(0, 255), 254, 240, 138)
+                                style = android.graphics.Paint.Style.FILL
+                            }
+                            val sp1 = kotlin.math.sin(kartU * 80f) * (3f * d)
+                            drawContext.canvas.nativeCanvas.drawCircle(-9f * d, -7.5f * d + sp1, 1.2f * d, sparkPaint)
+                            drawContext.canvas.nativeCanvas.drawCircle(-9f * d, 7.5f * d - sp1, 1.2f * d, sparkPaint)
+                        }
+
+                        // 3. Four Wide Kart Slicks (Tires)
+                        val tirePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 30, 41, 59)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val hubPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 226, 232, 240)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        // Front-Left & Front-Right Slicks
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            4.5f * d, -7.8f * d, 9.5f * d, -5.2f * d, 1.2f * d, 1.2f * d, tirePaint
+                        )
+                        drawContext.canvas.nativeCanvas.drawCircle(7f * d, -6.5f * d, 0.9f * d, hubPaint)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            4.5f * d, 5.2f * d, 9.5f * d, 7.8f * d, 1.2f * d, 1.2f * d, tirePaint
+                        )
+                        drawContext.canvas.nativeCanvas.drawCircle(7f * d, 6.5f * d, 0.9f * d, hubPaint)
+
+                        // Rear-Left & Rear-Right Slicks (Chunky power slicks)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            -9.5f * d, -8.2f * d, -4f * d, -5.0f * d, 1.4f * d, 1.4f * d, tirePaint
+                        )
+                        drawContext.canvas.nativeCanvas.drawCircle(-6.75f * d, -6.6f * d, 1.1f * d, hubPaint)
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            -9.5f * d, 5.0f * d, -4f * d, 8.2f * d, 1.4f * d, 1.4f * d, tirePaint
+                        )
+                        drawContext.canvas.nativeCanvas.drawCircle(-6.75f * d, 6.6f * d, 1.1f * d, hubPaint)
+
+                        // 4. Kart Chassis & Side Pods
+                        val sidePodPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(
+                                (kartAlpha * 255).toInt().coerceIn(0, 255),
+                                android.graphics.Color.red(racer.accentColor),
+                                android.graphics.Color.green(racer.accentColor),
+                                android.graphics.Color.blue(racer.accentColor)
+                            )
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            -5.5f * d, -6.8f * d, 3.5f * d, -4.5f * d, 1.5f * d, 1.5f * d, sidePodPaint
+                        )
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            -5.5f * d, 4.5f * d, 3.5f * d, 6.8f * d, 1.5f * d, 1.5f * d, sidePodPaint
+                        )
+
+                        // 5. Main Bodywork / Wedge Nose Cone
+                        val bodyPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(
+                                (kartAlpha * 255).toInt().coerceIn(0, 255),
+                                android.graphics.Color.red(racer.bodyColor),
+                                android.graphics.Color.green(racer.bodyColor),
+                                android.graphics.Color.blue(racer.bodyColor)
+                            )
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val nosePath = android.graphics.Path().apply {
+                            moveTo(-8f * d, -4.5f * d)
+                            lineTo(4f * d, -4.2f * d)
+                            lineTo(11.5f * d, -2f * d)
+                            quadTo(13f * d, 0f, 11.5f * d, 2f * d)
+                            lineTo(4f * d, 4.2f * d)
+                            lineTo(-8f * d, 4.5f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(nosePath, bodyPaint)
+
+                        // Front Bumper Bar
+                        val bumperPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.3f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(10f * d, -5.5f * d, 12.5f * d, 0f, bumperPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(12.5f * d, 0f, 10f * d, 5.5f * d, bumperPaint)
+
+                        // 6. Number Plate on Nose
+                        val numBgPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 255, 255, 255)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val numTextPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                            textSize = 3.6f * d
+                            typeface = android.graphics.Typeface.DEFAULT_BOLD
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(7.5f * d, 0f, 2.3f * d, numBgPaint)
+                        drawContext.canvas.nativeCanvas.drawText(racer.numberStr, 7.5f * d, 1.3f * d, numTextPaint)
+
+                        // 7. Steering Wheel & Rod
+                        val steeringPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 15, 23, 42)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.2f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(3f * d, -2f * d, 3f * d, 2f * d, steeringPaint)
+
+                        // 8. Driver Helmet & Visor (Cute Chibi Driver)
+                        val helmetPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(
+                                (kartAlpha * 255).toInt().coerceIn(0, 255),
+                                android.graphics.Color.red(racer.helmetColor),
+                                android.graphics.Color.green(racer.helmetColor),
+                                android.graphics.Color.blue(racer.helmetColor)
+                            )
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        val visorPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(
+                                (kartAlpha * 255).toInt().coerceIn(0, 255),
+                                android.graphics.Color.red(racer.visorColor),
+                                android.graphics.Color.green(racer.visorColor),
+                                android.graphics.Color.blue(racer.visorColor)
+                            )
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        // Helmet Base Circle
+                        drawContext.canvas.nativeCanvas.drawCircle(-0.5f * d, 0f, 3.6f * d, helmetPaint)
+                        // Visor (Facing forward towards +X)
+                        val visorPath = android.graphics.Path().apply {
+                            moveTo(0.5f * d, -2.5f * d)
+                            lineTo(2.4f * d, -1.8f * d)
+                            quadTo(3.1f * d, 0f, 2.4f * d, 1.8f * d)
+                            lineTo(0.5f * d, 2.5f * d)
+                            close()
+                        }
+                        drawContext.canvas.nativeCanvas.drawPath(visorPath, visorPaint)
+
+                        // 9. Rear Spoiler / Wing & Twin Chrome Exhausts
+                        val spoilerPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(
+                                (kartAlpha * 255).toInt().coerceIn(0, 255),
+                                android.graphics.Color.red(racer.accentColor),
+                                android.graphics.Color.green(racer.accentColor),
+                                android.graphics.Color.blue(racer.accentColor)
+                            )
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawRoundRect(
+                            -9.5f * d, -5.5f * d, -8f * d, 5.5f * d, 0.8f * d, 0.8f * d, spoilerPaint
+                        )
+                        val exhaustPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb((kartAlpha * 255).toInt().coerceIn(0, 255), 203, 213, 225)
+                            style = android.graphics.Paint.Style.FILL
+                        }
+                        drawContext.canvas.nativeCanvas.drawCircle(-10.5f * d, -2.5f * d, 0.9f * d, exhaustPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(-10.5f * d, 2.5f * d, 0.9f * d, exhaustPaint)
+
+                        drawContext.canvas.nativeCanvas.restore()
+                    }
+                }
+            }
+        }
+
         popupUiController.RenderPopups()
     }
 
@@ -8363,8 +8748,20 @@ private class TextKeyboardLayoutController(
         if (editorInstance.activeInfo.isRawInputEditor) return false
 
         return when (event.type) {
-            SwipeGesture.Type.TOUCH_MOVE -> when (prefs.gestures.deleteKeySwipeLeft.get()) {
+            SwipeGesture.Type.TOUCH_MOVE -> when (val action = prefs.gestures.deleteKeySwipeLeft.get()) {
                 SwipeAction.DELETE_CHARACTERS_PRECISELY, SwipeAction.SELECT_CHARACTERS_PRECISELY -> {
+                    // A flick's first move samples land here within ~25ms and
+                    // would start the scrub; the scrub's selection then blocks
+                    // the word-delete fallback on TOUCH_UP, so a flick deletes
+                    // a random few characters instead of the word. Hold the
+                    // scrub until the stroke outlives the flick class. Only
+                    // for the DELETE pref: it has a word-delete fallback to
+                    // land on, the SELECT pref does not.
+                    if (action == SwipeAction.DELETE_CHARACTERS_PRECISELY &&
+                        event.ageMs < SwipeGesture.DELETE_SCRUB_MIN_AGE_MS
+                    ) {
+                        return true
+                    }
                     if (abs(event.relUnitCountX) > 0) {
                         inputFeedbackController?.gestureMovingSwipe(TextKeyData.DELETE)
                     }
