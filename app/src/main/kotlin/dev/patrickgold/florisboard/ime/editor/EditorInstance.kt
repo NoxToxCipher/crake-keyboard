@@ -423,7 +423,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     fun deleteBackwards(unit: OperationUnit): Boolean {
         val content = activeContent
         if (unit == OperationUnit.CHARACTERS) {
-            if (phantomSpace.isActive && content.currentWord.isValid && prefs.glide.immediateBackspaceDeletesWord.get()) {
+            if (phantomSpace.isActive && (content.currentWord.isValid || content.composing.isValid) && prefs.glide.immediateBackspaceDeletesWord.get()) {
                 return deleteBackwards(OperationUnit.WORDS)
             }
         }
