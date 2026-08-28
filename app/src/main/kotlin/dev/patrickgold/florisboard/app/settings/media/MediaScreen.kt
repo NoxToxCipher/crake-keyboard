@@ -108,7 +108,7 @@ fun MediaScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.emoji.suggestionEnabled,
             title = "Suggest Emojis while Typing",
-            summary = "Show matching emoji capsules in candidate bar when typing keywords",
+            summary = "Show matching emoji capsules in the Smartbar when typing keywords",
             icon = Icons.Outlined.EmojiSymbols,
             accentColor = ElectricCyan,
         )

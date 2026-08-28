@@ -69,7 +69,7 @@ fun FontsScreen() = FlorisScreen {
         FontEvidenceCard(
             font = CrakeFont.ATKINSON_HYPERLEGIBLE,
             name = "Atkinson Hyperlegible",
-            oneLiner = "Built so no letter can be mistaken for another.",
+            oneLiner = "Designed by the Braille Institute for unambiguous letter shapes.",
             evidence = "Designed by the Braille Institute (2019, expanded 2025) " +
                 "around character disambiguation for low vision: mirrored " +
                 "letters like b, d, p and q get distinct shapes, and lookalikes " +

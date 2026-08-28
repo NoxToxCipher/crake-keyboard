@@ -211,7 +211,7 @@ fun ThemeScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.theme.showFretsOnBorderless,
             title = "Show Frets on Borderless Themes",
-            summary = "Render dual-tone metallic fret bars and cyan pulse even when using borderless keycap styles",
+            summary = "Render metallic fret bars and cyan touch pulse when using borderless themes",
             icon = Icons.Default.LinearScale,
             accentColor = CyberEmerald,
         )

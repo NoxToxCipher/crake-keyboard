@@ -56,7 +56,7 @@ fun ClipboardScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.clipboard.useInternalClipboard,
             title = "Internal Encrypted Storage",
-            summary = "Store clips in private AES-GCM / ChaCha20 sandbox inaccessible to background apps",
+            summary = "Store clips in private AES-GCM / ChaCha20 sandbox isolated from background apps",
             icon = Icons.Default.Lock,
             accentColor = CyberEmerald,
         )
@@ -85,7 +85,7 @@ fun ClipboardScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.clipboard.historyAutoCleanOldEnabled,
             title = "Ephemeral Auto-Wipe Timer",
-            summary = "Automatically shred copied clips after specified time",
+            summary = "Automatically shred copied clips after the configured timeout",
             icon = Icons.Default.Timer,
             accentColor = CyberEmerald,
         )
@@ -100,7 +100,7 @@ fun ClipboardScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.clipboard.historyAutoCleanSensitiveEnabled,
             title = "Auto-Scrub Sensitive Passwords & OTPs",
-            summary = "Instantly sanitize clips marked as sensitive or containing seed phrases",
+            summary = "Sanitize clips marked sensitive or containing crypto seed phrases",
             accentColor = CyberEmerald,
             visibleIf = { AndroidVersion.ATLEAST_API33_T },
         )
@@ -110,7 +110,7 @@ fun ClipboardScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.clipboard.suggestionEnabled,
             title = "Suggest Copied Items in Smartbar",
-            summary = "Show quick 1-tap paste capsule in the Smartbar after copying",
+            summary = "Show quick 1-tap paste capsule in the Smartbar",
             icon = Icons.Default.AutoAwesome,
             accentColor = ElectricCyan,
         )
