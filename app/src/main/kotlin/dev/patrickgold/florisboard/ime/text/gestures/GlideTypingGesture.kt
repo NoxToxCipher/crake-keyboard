@@ -120,7 +120,7 @@ class GlideTypingGesture {
                             val triggerSlop = triggerSlopFor(keySize)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
-                            val isUpwardFlick = diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
+                            val isUpwardFlick = dist < keySize * 1.5f && diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
                             // Glide may only START from a real character key:
                             // a null initial key (missed tap near delete) or
                             // a functional key must never grow into a glide —

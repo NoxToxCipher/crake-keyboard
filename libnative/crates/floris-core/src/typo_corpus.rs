@@ -579,6 +579,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("fiel", "feel"),
     ("finacial", "financial"),
     ("finaly", "finally"),
+    ("fins", "find"),
     ("firends", "friends"),
     ("firts", "first"),
     ("flamable", "flammable"),

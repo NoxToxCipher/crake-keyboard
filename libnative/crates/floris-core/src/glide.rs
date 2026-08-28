@@ -833,7 +833,10 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                         .is_some_and(|m| nlp.is_learned(&m.word))
                 })
                 .unwrap_or(false);
-            if !winner_is_learned {
+            let winner_is_contraction = matches
+                .first()
+                .is_some_and(|m| crate::nlp::canonicalize_contraction(&m.word).is_some());
+            if !winner_is_learned && !winner_is_contraction {
                 if let Some(pos) = matches.iter().position(|m| m.frequency >= GLIDE_COMMIT_MIN_FREQ) {
                     if matches[pos].score - matches[0].score <= JUNK_RESCUE_MARGIN {
                         let rescued = matches.remove(pos);
