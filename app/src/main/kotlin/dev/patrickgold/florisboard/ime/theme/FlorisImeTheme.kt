@@ -71,7 +71,7 @@ fun FlorisImeTheme(content: @Composable () -> Unit) {
     MaterialTheme {
         CompositionLocalProvider(
             LocalTextStyle provides TextStyle.Default,
-            org.florisboard.lib.snygg.ui.LocalSnyggDefaultFontFamily provides keyboardFontFamily,
+            org.florisboard.lib.snygg.ui.LocalSnyggFontFamilyOverride provides keyboardFontFamily,
         ) {
             ProvideSnyggTheme(
                 snyggTheme = snyggTheme,
