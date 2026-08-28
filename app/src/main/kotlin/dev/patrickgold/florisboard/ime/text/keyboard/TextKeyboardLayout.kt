@@ -7250,10 +7250,13 @@ fun TextKeyboardLayout(
                     }
                     if (masterAlpha <= 0f) return@Canvas
 
-                    val y1 = canvasH * 0.22f
-                    val y2 = canvasH * 0.52f
-                    val y3 = canvasH * 0.78f
-                    val margin = 35f * d
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val fretYs = (1 until rowCount).map { row -> (canvasH / rowCount) * row }
+
+                    val y1 = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
+                    val y2 = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
+                    val y3 = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
+                    val margin = 38f * d
 
                     fun getTrackPoint(u: Float): Triple<Float, Float, Float> {
                         val cu = u.coerceIn(0f, 1f)
@@ -7272,7 +7275,7 @@ fun TextKeyboardLayout(
                                 val angleRad = -kotlin.math.PI.toFloat() / 2f + s * kotlin.math.PI.toFloat()
                                 val x = cx + r * kotlin.math.cos(angleRad)
                                 val y = cy + r * kotlin.math.sin(angleRad)
-                                val deg = (angleRad + kotlin.math.PI.toFloat() / 2f) * (180f / kotlin.math.PI.toFloat())
+                                val deg = s * 180f
                                 Triple(x, y, deg)
                             }
                             cu <= 0.76f -> {
@@ -7286,10 +7289,10 @@ fun TextKeyboardLayout(
                                 val r = (y3 - y2) / 2f
                                 val cy = (y2 + y3) / 2f
                                 val cx = margin
-                                val angleRad = kotlin.math.PI.toFloat() / 2f + s * kotlin.math.PI.toFloat()
-                                val x = cx + r * kotlin.math.cos(angleRad)
+                                val angleRad = -kotlin.math.PI.toFloat() / 2f + s * kotlin.math.PI.toFloat()
+                                val x = cx - r * kotlin.math.cos(angleRad)
                                 val y = cy + r * kotlin.math.sin(angleRad)
-                                val deg = (angleRad + kotlin.math.PI.toFloat() / 2f) * (180f / kotlin.math.PI.toFloat())
+                                val deg = 180f - s * 180f
                                 Triple(x, y, deg)
                             }
                             else -> {
