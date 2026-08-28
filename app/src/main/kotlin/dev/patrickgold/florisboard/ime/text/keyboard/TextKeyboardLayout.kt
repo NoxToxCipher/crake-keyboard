@@ -7257,19 +7257,19 @@ fun TextKeyboardLayout(
                     val y1 = fretYs.getOrNull(0) ?: (canvasH * 0.25f)
                     val y2 = fretYs.getOrNull(1) ?: (canvasH * 0.50f)
                     val y3 = fretYs.getOrNull(2) ?: (canvasH * 0.75f)
-                    val margin = 38f * d
+                    val margin = 44f * d
 
                     fun getTrackPoint(u: Float): Triple<Float, Float, Float> {
                         val cu = u.coerceIn(0f, 1f)
                         return when {
-                            cu <= 0.38f -> {
-                                val s = cu / 0.38f
-                                val startX = -60f * d
+                            cu <= 0.36f -> {
+                                val s = cu / 0.36f
+                                val startX = -55f * d
                                 val endX = canvasW - margin
                                 Triple(startX + s * (endX - startX), y1, 0f)
                             }
                             cu <= 0.48f -> {
-                                val s = (cu - 0.38f) / 0.10f
+                                val s = (cu - 0.36f) / 0.12f
                                 val r = (y2 - y1) / 2f
                                 val cy = (y1 + y2) / 2f
                                 val cx = canvasW - margin
@@ -7279,14 +7279,14 @@ fun TextKeyboardLayout(
                                 val deg = s * 180f
                                 Triple(x, y, deg)
                             }
-                            cu <= 0.76f -> {
-                                val s = (cu - 0.48f) / 0.28f
+                            cu <= 0.72f -> {
+                                val s = (cu - 0.48f) / 0.24f
                                 val startX = canvasW - margin
                                 val endX = margin
                                 Triple(startX - s * (startX - endX), y2, 180f)
                             }
                             cu <= 0.84f -> {
-                                val s = (cu - 0.76f) / 0.08f
+                                val s = (cu - 0.72f) / 0.12f
                                 val r = (y3 - y2) / 2f
                                 val cy = (y2 + y3) / 2f
                                 val cx = margin
