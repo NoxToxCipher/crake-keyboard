@@ -204,7 +204,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                 pts.last().timestamp - pts.first().timestamp
             } else 0L
             val commitSafe = nativeSuggestions.commitSafe &&
-                (!commit || strokeDurationMs >= 150L)
+                (!commit || strokeDurationMs >= 110L)
             val suggestions = nativeSuggestions.words
 
             withContext(Dispatchers.Main) {
