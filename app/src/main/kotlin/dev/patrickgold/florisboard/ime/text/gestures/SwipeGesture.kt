@@ -32,6 +32,22 @@ import kotlin.math.atan2
  * Wrapper class which holds all enums, interfaces and classes for detecting a swipe gesture.
  */
 abstract class SwipeGesture {
+    companion object {
+        /**
+         * A delete-key scrub may only begin once the stroke is older than
+         * this. MEASURED, not chosen: real backspace flicks finish in
+         * 61-103ms (same stroke class as glide flicks, see the 150ms glide
+         * duration gate), while a deliberate character scrub is still in
+         * contact well past 150ms. Without this window the flick's first
+         * move samples start the scrub, the scrub's selection then blocks
+         * the word-delete fallback on release, and whether a flick deletes
+         * the word or a random few characters becomes a race between move
+         * sampling and finger lift (field report 2026-08-28: "swipe left
+         * to backspace an entire word doesn't work, again").
+         */
+        internal const val DELETE_SCRUB_MIN_AGE_MS = 150L
+    }
+
     /**
      * Class which detects swipes based on given [MotionEvent]s. Only supports single-finger swipes
      * and ignores additional pointers provided, if any.
@@ -93,6 +109,7 @@ abstract class SwipeGesture {
                         gesturePointer.absUnitCountY,
                         relUnitCountX,
                         relUnitCountY,
+                        ageMs = event.eventTime - event.downTime,
                     ))
                 } else {
                     false
@@ -109,15 +126,27 @@ abstract class SwipeGesture {
                 val absDiffX = currentX - gesturePointer.firstX
                 val absDiffY = currentY - gesturePointer.firstY
                 velocityTracker.computeCurrentVelocity(1000)
-                val velocityX = ViewUtils.px2dp(velocityTracker.getXVelocity(pointer.id))
-                val velocityY = ViewUtils.px2dp(velocityTracker.getYVelocity(pointer.id))
-                flogDebug(LogTopic.GESTURES) { "Velocity: $velocityX $velocityY dp/s" }
+                val trackerVelocityX = ViewUtils.px2dp(velocityTracker.getXVelocity(pointer.id))
+                val trackerVelocityY = ViewUtils.px2dp(velocityTracker.getYVelocity(pointer.id))
+                // VelocityTracker can report 0 for a stroke it was correctly
+                // fed (observed live on-device 2026-08-28: 4 samples, 292px
+                // of travel, distinct hardware timestamps, velocity 0.0/0.0)
+                // which silently kills every TOUCH_UP-classified action. The
+                // whole-stroke average from hardware timestamps cannot lie
+                // like that, so use whichever of the two is larger: a real
+                // flick passes on average alone, a slow scrub fails both.
+                val ageMs = event.eventTime - event.downTime
+                val avgVelocityX = if (ageMs > 0) abs(absDiffX) * 1000.0 / ageMs else 0.0
+                val avgVelocityY = if (ageMs > 0) abs(absDiffY) * 1000.0 / ageMs else 0.0
+                val velocityX = maxOf(abs(trackerVelocityX).toDouble(), avgVelocityX)
+                val velocityY = maxOf(abs(trackerVelocityY).toDouble(), avgVelocityY)
+                flogDebug(LogTopic.GESTURES) { "Velocity: tracker=$trackerVelocityX/$trackerVelocityY avg=$avgVelocityX/$avgVelocityY dp/s" }
                 pointerMap.removeById(pointer.id)
                 val rawThreshold = prefs.gestures.swipeVelocityThreshold.get().toDouble()
                 val thresholdSpeed = if (rawThreshold > 1000.0) 450.0 else rawThreshold.coerceIn(200.0, 800.0)
                 val thresholdWidth = prefs.gestures.swipeDistanceThreshold.get().dp.value.toDouble()
                 val unitWidth = (thresholdWidth / 4.0).coerceAtLeast(4.0)
-                return if ((abs(absDiffX) > thresholdWidth || abs(absDiffY) > thresholdWidth) && (abs(velocityX) > thresholdSpeed || abs(velocityY) > thresholdSpeed)) {
+                return if ((abs(absDiffX) > thresholdWidth || abs(absDiffY) > thresholdWidth) && (velocityX > thresholdSpeed || velocityY > thresholdSpeed)) {
                     val direction = detectDirection(absDiffX.toDouble(), absDiffY.toDouble())
                     gesturePointer.absUnitCountX = (absDiffX / unitWidth).toInt()
                     gesturePointer.absUnitCountY = (absDiffY / unitWidth).toInt()
@@ -129,6 +158,7 @@ abstract class SwipeGesture {
                         gesturePointer.absUnitCountY,
                         gesturePointer.absUnitCountX,
                         gesturePointer.absUnitCountY,
+                        ageMs = event.eventTime - event.downTime,
                     ))
                 } else {
                     false
@@ -227,6 +257,8 @@ abstract class SwipeGesture {
         val relUnitCountX: Int,
         /** The unit count on the y-axis, measured from the last event (ACTION_MOVE). */
         val relUnitCountY: Int,
+        /** Milliseconds since the gesture's ACTION_DOWN, from hardware event timestamps. */
+        val ageMs: Long = 0L,
     )
 
     /**

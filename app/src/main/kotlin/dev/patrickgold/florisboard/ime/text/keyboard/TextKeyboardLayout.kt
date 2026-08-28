@@ -8745,8 +8745,20 @@ private class TextKeyboardLayoutController(
         if (editorInstance.activeInfo.isRawInputEditor) return false
 
         return when (event.type) {
-            SwipeGesture.Type.TOUCH_MOVE -> when (prefs.gestures.deleteKeySwipeLeft.get()) {
+            SwipeGesture.Type.TOUCH_MOVE -> when (val action = prefs.gestures.deleteKeySwipeLeft.get()) {
                 SwipeAction.DELETE_CHARACTERS_PRECISELY, SwipeAction.SELECT_CHARACTERS_PRECISELY -> {
+                    // A flick's first move samples land here within ~25ms and
+                    // would start the scrub; the scrub's selection then blocks
+                    // the word-delete fallback on TOUCH_UP, so a flick deletes
+                    // a random few characters instead of the word. Hold the
+                    // scrub until the stroke outlives the flick class. Only
+                    // for the DELETE pref: it has a word-delete fallback to
+                    // land on, the SELECT pref does not.
+                    if (action == SwipeAction.DELETE_CHARACTERS_PRECISELY &&
+                        event.ageMs < SwipeGesture.DELETE_SCRUB_MIN_AGE_MS
+                    ) {
+                        return true
+                    }
                     if (abs(event.relUnitCountX) > 0) {
                         inputFeedbackController?.gestureMovingSwipe(TextKeyData.DELETE)
                     }
