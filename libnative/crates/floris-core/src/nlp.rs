@@ -571,6 +571,19 @@ pub fn resolve_contraction_with_context(
             }
             None
         }
+        "id" => {
+            if let Some(ref p) = prev {
+                if matches!(p.as_str(), "user" | "the" | "an" | "my" | "your" | "their" | "his" | "her" | "valid" | "photo" | "national" | "card" | "badge" | "ego") {
+                    return None;
+                }
+            }
+            if let Some(ref n) = next {
+                if matches!(n.as_str(), "like" | "love" | "want" | "prefer" | "rather" | "say" | "think" | "suggest" | "be" | "have" | "do" | "go" | "see" | "know" | "make" | "tell" | "ask" | "never" | "always" | "hope") {
+                    return Some("I'd");
+                }
+            }
+            None
+        }
         _ => None,
     }
 }

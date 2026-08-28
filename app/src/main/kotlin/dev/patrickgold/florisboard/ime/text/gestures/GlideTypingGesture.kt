@@ -158,9 +158,13 @@ class GlideTypingGesture {
                         if (wasGesture) {
                             listeners.forEach { listener -> listener.onGlideComplete(pointerData) }
                         }
+                        resetState()
+                        return wasGesture
                     }
-                    resetState()
-                    return wasGesture
+                    if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        resetState()
+                    }
+                    return false
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     val wasGesture = pointerData.isActuallyGesture == true

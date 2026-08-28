@@ -88,3 +88,19 @@ fn modal_well_verb_is_adverbial() {
         Some("we'll"),
     );
 }
+
+#[test]
+fn test_id_disambiguation_with_context() {
+    // Following modal/preference verb -> "I'd"
+    assert_eq!(resolve_contraction_with_context("id", None, Some("like")), Some("I'd"));
+    assert_eq!(resolve_contraction_with_context("id", None, Some("love")), Some("I'd"));
+    assert_eq!(resolve_contraction_with_context("id", None, Some("prefer")), Some("I'd"));
+    assert_eq!(resolve_contraction_with_context("id", None, Some("rather")), Some("I'd"));
+    assert_eq!(resolve_contraction_with_context("id", None, Some("suggest")), Some("I'd"));
+
+    // Preceding noun/identifier trigger -> "id" (None)
+    assert_eq!(resolve_contraction_with_context("id", Some("user"), None), None);
+    assert_eq!(resolve_contraction_with_context("id", Some("photo"), None), None);
+    assert_eq!(resolve_contraction_with_context("id", Some("valid"), None), None);
+    assert_eq!(resolve_contraction_with_context("id", Some("card"), None), None);
+}

@@ -317,6 +317,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     fun commitGesture(word: String) {
         editorInstance.commitGesture(fixCase(word))
+        if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
+            activeState.inputShiftState = InputShiftState.UNSHIFTED
+        }
     }
 
     /**
