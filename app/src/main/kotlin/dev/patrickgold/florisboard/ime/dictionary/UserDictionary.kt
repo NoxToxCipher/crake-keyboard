@@ -182,6 +182,11 @@ interface UserDictionaryDatabase {
                     }
                 }
             }
+            try {
+                DictionaryManager.default().invalidateUserDictionaryCache()
+            } catch (e: Exception) {
+                // Ignore if not initialized
+            }
         }
     }
 

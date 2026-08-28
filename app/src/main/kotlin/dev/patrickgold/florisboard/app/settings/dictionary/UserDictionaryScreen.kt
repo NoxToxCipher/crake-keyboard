@@ -347,6 +347,7 @@ fun UserDictionaryScreen(type: UserDictionaryType) = FlorisScreen {
                         } else {
                             userDictionaryDao()?.update(entry)
                         }
+                        dictionaryManager.invalidateUserDictionaryCache()
                         userDictionaryEntryForDialog = null
                         buildUi()
                     }
@@ -362,6 +363,7 @@ fun UserDictionaryScreen(type: UserDictionaryType) = FlorisScreen {
                 },
                 onNeutral = {
                     userDictionaryDao()?.delete(wordEntry)
+                    dictionaryManager.invalidateUserDictionaryCache()
                     userDictionaryEntryForDialog = null
                     buildUi()
                 },

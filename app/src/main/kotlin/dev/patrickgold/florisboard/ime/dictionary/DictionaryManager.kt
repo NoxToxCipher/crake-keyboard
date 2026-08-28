@@ -34,6 +34,10 @@ class DictionaryManager private constructor(context: Context) {
     private var florisUserDictionaryDatabase: FlorisUserDictionaryDatabase? = null
     private var systemUserDictionaryDatabase: SystemUserDictionaryDatabase? = null
 
+    private val userDictionaryCache = UserDictionaryCache()
+    @Volatile
+    private var isCacheLoaded = false
+
     companion object {
         private var defaultInstance: DictionaryManager? = null
 
@@ -57,60 +61,54 @@ class DictionaryManager private constructor(context: Context) {
     }
 
     fun queryUserDictionary(word: String, locale: FlorisLocale? = null): List<SuggestionCandidate> {
-        val florisDao = florisUserDictionaryDao()
-        val systemDao = systemUserDictionaryDao()
         val trimmed = word.trim()
         if (trimmed.isEmpty()) return emptyList()
 
-        return buildList {
-            val lowerWord = trimmed.lowercase()
-
-            // 1. Dynamic Timestamp / Date Macros
-            if (lowerWord == "!time" || lowerWord == "!t") {
-                val formattedTime = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                add(WordSuggestionCandidate(formattedTime, secondaryText = "Snippet • Time", confidence = 1.0, isEligibleForAutoCommit = true))
-            } else if (lowerWord == "!date" || lowerWord == "!d") {
-                val formattedDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                add(WordSuggestionCandidate(formattedDate, secondaryText = "Snippet • Date", confidence = 1.0, isEligibleForAutoCommit = true))
-            } else if (lowerWord == "!now" || lowerWord == "!datetime") {
-                val formattedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
-                add(WordSuggestionCandidate(formattedDateTime, secondaryText = "Snippet • Now", confidence = 1.0, isEligibleForAutoCommit = true))
-            }
-
-            // 2. Custom User Defined Shortcuts / Snippets
-            florisDao?.let { dao ->
-                val matches = try {
-                    val direct = dao.queryShortcut(trimmed)
-                    val lower = if (trimmed != lowerWord) dao.queryShortcut(lowerWord) else emptyList()
-                    (direct + lower).distinctBy { it.id }
-                } catch (e: Exception) {
-                    emptyList()
-                }
-
-                for (entry in matches) {
-                    add(0, WordSuggestionCandidate(
-                        text = entry.word,
-                        secondaryText = "Snippet • " + (entry.shortcut ?: "!"),
-                        confidence = 1.0,
-                        isEligibleForAutoCommit = true,
-                    ))
-                }
-            }
-
-            // 3. System User Dictionary Shortcuts
-            if (prefs.dictionary.enableSystemUserDictionary.get()) {
-                systemDao?.queryShortcut(trimmed, locale)?.let { entries ->
-                    for (entry in entries) {
-                        add(0, WordSuggestionCandidate(
-                            text = entry.word,
-                            secondaryText = "Snippet",
-                            confidence = 1.0,
-                            isEligibleForAutoCommit = true,
-                        ))
-                    }
-                }
-            }
+        // 1. Dynamic Timestamp / Date Macros (Instant, in-memory, 0 allocations)
+        val macroCandidates = UserDictionaryCache.evaluateMacros(trimmed)
+        if (macroCandidates.isNotEmpty()) {
+            return macroCandidates
         }
+
+        // 2. Ensure in-memory cache is warmed
+        if (!isCacheLoaded) {
+            warmUserDictionaryCache()
+        }
+
+        // 3. Ultra-fast in-memory index query (0 SQLite disk I/O)
+        val cachedShortcuts = userDictionaryCache.queryShortcuts(trimmed, locale)
+
+        // 4. Optional System User Dictionary (if enabled in settings)
+        val systemCandidates = if (prefs.dictionary.enableSystemUserDictionary.get()) {
+            systemUserDictionaryDao()?.queryShortcut(trimmed, locale)?.map { entry ->
+                WordSuggestionCandidate(
+                    text = entry.word,
+                    secondaryText = "Snippet",
+                    confidence = 1.0,
+                    isEligibleForAutoCommit = true,
+                )
+            } ?: emptyList()
+        } else {
+            emptyList()
+        }
+
+        return cachedShortcuts + systemCandidates
+    }
+
+    @Synchronized
+    fun warmUserDictionaryCache() {
+        try {
+            val dao = florisUserDictionaryDao()
+            val entries = dao?.queryAll() ?: emptyList()
+            userDictionaryCache.updateEntries(entries)
+            isCacheLoaded = true
+        } catch (e: Exception) {
+            // Keep safe
+        }
+    }
+
+    fun invalidateUserDictionaryCache() {
+        warmUserDictionaryCache()
     }
 
     fun spell(word: String, locale: FlorisLocale): Boolean {
