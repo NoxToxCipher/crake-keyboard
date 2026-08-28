@@ -324,7 +324,8 @@ object FlorisNative {
         if (!isLoaded || points.size < 2) return GlideResult(emptyList(), false)
         val xs = FloatArray(points.size) { points[it].x }
         val ys = FloatArray(points.size) { points[it].y }
-        val raw = nativeGlideMatch(xs, ys, maxResults, prevWord).toList()
+        val times = LongArray(points.size) { points[it].timestamp }
+        val raw = nativeGlideMatch(xs, ys, times, maxResults, prevWord).toList()
         // Leading empty string is the native sentinel for "display-only".
         return if (raw.firstOrNull() == "") {
             GlideResult(raw.drop(1), commitSafe = false)
@@ -347,6 +348,7 @@ object FlorisNative {
     private external fun nativeGlideMatch(
         xs: FloatArray,
         ys: FloatArray,
+        times: LongArray,
         maxResults: Int,
         prevWord: String,
     ): Array<String>
