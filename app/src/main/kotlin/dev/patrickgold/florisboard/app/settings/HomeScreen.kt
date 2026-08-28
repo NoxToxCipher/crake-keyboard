@@ -263,7 +263,7 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.Spellcheck,
             title = "Typing & Glide NLP Core",
-            summary = "5.3M word/s Radix Trie, Damerau-Levenshtein & gestures",
+            summary = "5.3M word/s Radix Trie, Damerau-Levenshtein & gesture typing",
             badgeText = "SAFE RUST",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Typing) },
@@ -271,7 +271,7 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.FlashOn,
             title = "Smart Text Expansion & Snippets",
-            summary = "Custom triggers (!addr, !email, macros) & fast expansion",
+            summary = "Custom expansion triggers (!addr, !email, macros)",
             badgeText = "MACROS",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Snippets) },
@@ -279,7 +279,7 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.Security,
             title = "Decoy Profiles & Duress PIN",
-            summary = "Isolated dual-profile vault, duress trigger & panic zeroize",
+            summary = "Dual-profile decoy vault, duress trigger & panic zeroize",
             badgeText = "AIR-GAP",
             accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.Other) },
@@ -287,7 +287,7 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.AutoMirrored.Outlined.Assignment,
             title = "Encrypted Clipboard Vault",
-            summary = "ChaCha20-Poly1305 storage & ephemeral auto-destruct",
+            summary = "ChaCha20-Poly1305 encrypted storage & auto-destruct",
             badgeText = "ENCRYPTED",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Clipboard) },
@@ -295,7 +295,7 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.QrCode2,
             title = "Air-Gapped Optical QR Sync",
-            summary = "Zero-network animated QR frame pairing & cold backup",
+            summary = "Zero-network animated QR pairing & cold offline backup",
             badgeText = "OPTICAL",
             accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.OpticalQrSync) },
@@ -303,7 +303,7 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Outlined.Palette,
             title = stringRes(R.string.settings__theme__title),
-            summary = "OLED Obsidian, BlackBerry 10 Chrome Frets & Cyber Cyan",
+            summary = "OLED Obsidian, BB10 Chrome Frets & Cyber Cyan themes",
             badgeText = "THEME",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Theme) },
@@ -311,13 +311,13 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.Language,
             title = stringRes(R.string.settings__localization__title),
-            summary = "Subtypes, dictionaries and multilingual layouts",
+            summary = "Language subtypes, dictionaries & multilingual layouts",
             onClick = { navController.navigate(Routes.Settings.Localization) },
         )
         CrakeNavTile(
             icon = Icons.Default.TextFields,
             title = "Fonts",
-            summary = "Legibility fonts with the evidence behind them",
+            summary = "Legibility-tested fonts with research evidence",
             onClick = { navController.navigate(Routes.Settings.Fonts) },
         )
         // Appears only once at least one easter egg has been discovered —
@@ -327,26 +327,26 @@ fun HomeScreen() = FlorisScreen {
             CrakeNavTile(
                 icon = Icons.Default.Egg,
                 title = "Easter eggs",
-                summary = "The ones you've found, with their off switches",
+                summary = "Discovered easter eggs and toggle switches",
                 onClick = { navController.navigate(Routes.Settings.EasterEggs) },
             )
         }
         CrakeNavTile(
             icon = Icons.Outlined.Keyboard,
             title = stringRes(R.string.settings__keyboard__title),
-            summary = "Key height, long-press delay, haptics & audio packs",
+            summary = "Key height, long-press delays, haptics & audio packs",
             onClick = { navController.navigate(Routes.Settings.Keyboard) },
         )
         CrakeNavTile(
             icon = Icons.Default.SmartButton,
             title = stringRes(R.string.settings__smartbar__title),
-            summary = "Action tiles, candidate capsules & quick actions",
+            summary = "Action tiles, candidate capsules & quick actions bar",
             onClick = { navController.navigate(Routes.Settings.Smartbar) },
         )
         CrakeNavTile(
             icon = Icons.Default.Gesture,
             title = stringRes(R.string.settings__gestures__title),
-            summary = "Spatial swipe flicks, neon aurora trail & trackpad drag",
+            summary = "Spatial swipe flicks, neon aurora trail & cursor drag",
             onClick = { navController.navigate(Routes.Settings.Gestures) },
         )
         CrakeNavTile(

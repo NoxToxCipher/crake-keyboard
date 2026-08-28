@@ -51,14 +51,14 @@ fun GesturesScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.glide.enabled,
             title = "Continuous Glide Typing",
-            summary = "Slide finger across letters to type words smoothly",
+            summary = "Slide finger across letters to type words continuously",
             icon = Icons.Default.Gesture,
             accentColor = CyberEmerald,
         )
         CrakeRadioPreference(
             pref = prefs.glide.showTrail,
             title = "Neon Aurora Particle Trail",
-            summary = "Draw animated electric cyan glow following your glide path",
+            summary = "Draw electric cyan particle trail following gesture strokes",
             accentColor = ElectricCyan,
             enabledIf = { prefs.glide.enabled.get() },
         )
@@ -74,7 +74,7 @@ fun GesturesScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.glide.immediateBackspaceDeletesWord,
             title = "Backspace Deletes Whole Glided Word",
-            summary = "Pressing backspace right after a glided word deletes the entire word",
+            summary = "Pressing backspace right after a glided word deletes the whole word",
             accentColor = CyberEmerald,
             enabledIf = { prefs.glide.enabled.get() },
         )

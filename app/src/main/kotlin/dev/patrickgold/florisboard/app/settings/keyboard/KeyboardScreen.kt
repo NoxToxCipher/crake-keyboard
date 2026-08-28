@@ -175,7 +175,7 @@ fun KeyboardScreen() = FlorisScreen {
                             color = Color.White,
                         )
                         Text(
-                            text = "Tap the Resize icon on the keyboard toolbar (Smartbar) to drag handles and adjust height, width, and position",
+                            text = "Tap the Resize icon on the Smartbar to drag handles and adjust keyboard dimensions and position",
                             fontSize = 11.5.sp,
                             color = TextMuted,
                         )
@@ -245,7 +245,7 @@ fun KeyboardScreen() = FlorisScreen {
                             color = Color.White,
                         )
                         Text(
-                            text = "Configure vibration intensity, Nothing Phone haptics & key sounds",
+                            text = "Configure vibration intensity, Nothing Phone haptics & mechanical key audio",
                             fontSize = 11.5.sp,
                             color = TextMuted,
                         )

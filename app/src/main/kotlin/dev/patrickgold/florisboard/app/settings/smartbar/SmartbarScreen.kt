@@ -51,7 +51,7 @@ fun SmartbarScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.smartbar.enabled,
             title = "Enable Smartbar",
-            summary = "Display top bar above keyboard for word suggestions and quick utility actions",
+            summary = "Display top bar above keyboard for word suggestions and quick actions",
             icon = Icons.Default.SmartButton,
             accentColor = CyberEmerald,
         )
@@ -74,7 +74,7 @@ fun SmartbarScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.smartbar.flipToggles,
             title = "Flip Action Button Placement",
-            summary = "Position action toggle arrow on the right side of the candidate bar",
+            summary = "Position action toggle arrow on the right side of Smartbar",
             icon = Icons.Default.SwapHoriz,
             accentColor = ElectricCyan,
             enabledIf = { prefs.smartbar.enabled.get() },

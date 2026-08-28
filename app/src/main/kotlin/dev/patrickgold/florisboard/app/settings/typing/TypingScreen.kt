@@ -141,14 +141,14 @@ fun TypingScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.suggestion.enabled,
             title = "Predictive Candidate Bar",
-            summary = "Show live candidate capsules in the Smartbar above the keyboard",
+            summary = "Show live candidate capsules in the Smartbar",
             icon = Icons.Default.AutoFixHigh,
             accentColor = ElectricCyan,
         )
         CrakeRadioPreference(
             pref = prefs.glide.flickPredictionsEnabled,
             title = "BB10 Predictive Flick Capsules",
-            summary = "Show predicted words directly above next-character keycaps to swipe up and catapult",
+            summary = "Display predicted words above keycaps to swipe up and catapult into text",
             icon = Icons.Default.FlashOn,
             accentColor = CyberEmerald,
         )
@@ -162,7 +162,7 @@ fun TypingScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.suggestion.api30InlineSuggestionsEnabled,
             title = "Android Autofill Inline Integration",
-            summary = "Display password manager and autofill pills inside the Smartbar",
+            summary = "Display password manager and autofill pills in the Smartbar",
             accentColor = ElectricCyan,
             visibleIf = { AndroidVersion.ATLEAST_API30_R },
         )
@@ -178,14 +178,14 @@ fun TypingScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.glide.enabled,
             title = "Enable Glide Typing",
-            summary = "Type words by sliding your finger smoothly across letters",
+            summary = "Type words by sliding your finger continuously across keycaps",
             icon = Icons.Default.Gesture,
             accentColor = CyberEmerald,
         )
         CrakeRadioPreference(
             pref = prefs.glide.showTrail,
             title = "Neon Aurora Particle Trail",
-            summary = "Draw illuminated cyber cyan trail following your touch path",
+            summary = "Draw illuminated cyber cyan trail following touch gestures",
             accentColor = ElectricCyan,
             enabledIf = { prefs.glide.enabled.get() },
         )
@@ -201,20 +201,20 @@ fun TypingScreen() = FlorisScreen {
         CrakeRadioPreference(
             pref = prefs.correction.doubleSpacePeriod,
             title = "Double-Tap Space for Period",
-            summary = "Quickly pressing space twice inserts a period followed by a space",
+            summary = "Double-tapping space inserts a period followed by a space",
             icon = Icons.Default.SpaceBar,
             accentColor = CyberEmerald,
         )
         CrakeRadioPreference(
             pref = prefs.correction.autoSpacePunctuation,
             title = "Auto-Space after Punctuation",
-            summary = "Automatically insert a space after commas, colons, and punctuation marks",
+            summary = "Insert a space automatically after punctuation marks",
             accentColor = ElectricCyan,
         )
         CrakeRadioPreference(
             pref = prefs.correction.rememberCapsLockState,
             title = "Remember Caps Lock State",
-            summary = "Keep caps locked across input field focus changes",
+            summary = "Keep caps locked across input field changes",
             accentColor = ElectricCyan,
         )
 
