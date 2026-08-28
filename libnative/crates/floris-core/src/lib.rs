@@ -12,6 +12,7 @@
 pub mod bigram;
 pub mod blob;
 pub mod british_spelling;
+pub mod composing;
 pub mod core_dict;
 pub mod hit_test;
 pub mod persist;
@@ -27,6 +28,7 @@ pub mod typo_corpus;
 
 pub use bigram::{BigramError, BigramModel};
 pub use blob::{parse_dict_blob, BlobError};
+pub use composing::{hangul_unicode_actions, kana_unicode_actions, RuleComposer};
 pub use core_dict::CORE_DICTIONARY;
 pub use distance::{damerau_levenshtein, damerau_levenshtein_threshold, spatial_levenshtein_distance, spatial_substitution_cost};
 pub use glide::{

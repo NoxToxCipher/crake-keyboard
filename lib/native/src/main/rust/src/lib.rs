@@ -1286,3 +1286,126 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeToBriti
         None => empty,
     }
 }
+
+// ---------------------------------------------------------------------------
+// Composers (ime/text/composing): Hangul, Kana, rule-table
+// ---------------------------------------------------------------------------
+
+static RULE_COMPOSERS: Lazy<RwLock<Vec<floris_core::RuleComposer>>> =
+    Lazy::new(|| RwLock::new(Vec::new()));
+
+/// Composer action for the stateless composers. Returns "N|text" where N is
+/// the number of UTF-16 code units to delete before the cursor and text is
+/// the replacement (may itself contain '|'; the Kotlin side splits with
+/// limit = 2). Returns null for an unknown kind or on string-conversion
+/// failure, which the Kotlin shim treats as "no action".
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeComposerAction(
+    mut env: JNIEnv,
+    _class: JClass,
+    kind: JString,
+    preceding: JString,
+    to_insert: JString,
+) -> jstring {
+    let kind = match env.get_string(&kind) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let to_insert = match env.get_string(&to_insert) {
+        Ok(s) => match s.to_str() {
+            Ok(v) => v.to_string(),
+            Err(_) => return std::ptr::null_mut(),
+        },
+        Err(_) => return std::ptr::null_mut(),
+    };
+    // A preceding text whose UTF-16 tail is a lone surrogate half cannot
+    // cross JNI as UTF-8; U+FFFD matches nothing in any composer table and
+    // yields the same no-action result the Kotlin code produced.
+    let preceding = env
+        .get_string(&preceding)
+        .ok()
+        .and_then(|s| s.to_str().map(|v| v.to_string()).ok())
+        .unwrap_or_else(|| "\u{FFFD}".to_string());
+    let (n, text) = match kind.as_str() {
+        "hangul-unicode" => floris_core::hangul_unicode_actions(&preceding, &to_insert),
+        "kana-unicode" => floris_core::kana_unicode_actions(&preceding, &to_insert),
+        _ => return std::ptr::null_mut(),
+    };
+    let payload = format!("{n}|{text}");
+    env.new_string(&payload)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// Registers a rule table for the "with-rules" composer. The blob encodes
+/// entries in JSON insertion order as key U+001F value, entries separated by
+/// U+001E. Returns a handle for nativeComposerActionRules, or -1 on a
+/// malformed blob.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeComposerRegisterRules(
+    mut env: JNIEnv,
+    _class: JClass,
+    rules_blob: JString,
+) -> jlong {
+    let blob = match env.get_string(&rules_blob) {
+        Ok(s) => match s.to_str() {
+            Ok(v) => v.to_string(),
+            Err(_) => return -1,
+        },
+        Err(_) => return -1,
+    };
+    let mut entries: Vec<(String, String)> = Vec::new();
+    if !blob.is_empty() {
+        for entry in blob.split('\u{001E}') {
+            match entry.split_once('\u{001F}') {
+                Some((k, v)) => entries.push((k.to_string(), v.to_string())),
+                None => return -1,
+            }
+        }
+    }
+    let composer = floris_core::RuleComposer::new(entries);
+    match RULE_COMPOSERS.write() {
+        Ok(mut reg) => {
+            reg.push(composer);
+            (reg.len() - 1) as jlong
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Rule-table composer action for a previously registered handle. Same
+/// "N|text" payload as nativeComposerAction; null on unknown handle.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeComposerActionRules(
+    mut env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+    preceding: JString,
+    to_insert: JString,
+) -> jstring {
+    let to_insert = match env.get_string(&to_insert) {
+        Ok(s) => match s.to_str() {
+            Ok(v) => v.to_string(),
+            Err(_) => return std::ptr::null_mut(),
+        },
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let preceding = env
+        .get_string(&preceding)
+        .ok()
+        .and_then(|s| s.to_str().map(|v| v.to_string()).ok())
+        .unwrap_or_else(|| "\u{FFFD}".to_string());
+    let reg = match RULE_COMPOSERS.read() {
+        Ok(r) => r,
+        Err(_) => return std::ptr::null_mut(),
+    };
+    let composer = match usize::try_from(handle).ok().and_then(|h| reg.get(h)) {
+        Some(c) => c,
+        None => return std::ptr::null_mut(),
+    };
+    let (n, text) = composer.get_actions(&preceding, &to_insert);
+    let payload = format!("{n}|{text}");
+    env.new_string(&payload)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
