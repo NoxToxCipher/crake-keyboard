@@ -82,10 +82,10 @@ enum class UserDictionaryType(val id: String) {
 
 @Composable
 fun UserDictionaryScreen(type: UserDictionaryType) = FlorisScreen {
-    title = stringRes(when (type) {
-        UserDictionaryType.FLORIS -> R.string.settings__udm__title_floris
-        UserDictionaryType.SYSTEM -> R.string.settings__udm__title_system
-    })
+    title = when (type) {
+        UserDictionaryType.FLORIS -> "Crake User Dictionary"
+        UserDictionaryType.SYSTEM -> "System User Dictionary"
+    }
     previewFieldVisible = false
     scrollable = false
 
