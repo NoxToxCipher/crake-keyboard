@@ -96,11 +96,13 @@ internal val LocalSnyggPreloadedCustomFontFamilies: ProvidableCompositionLocal<C
     }
 
 /**
- * Fallback font family for Snygg-styled text whose stylesheet leaves
- * `font-family` undefined. Lets the app offer a user font choice while
- * explicit theme font declarations still win. Null means system default.
+ * User font OVERRIDE for Snygg-styled text. Non-null wins over any
+ * stylesheet `font-family`, generic or custom: an explicit user choice
+ * outranks a theme's aesthetic (field bug 2026-08-28: every shipped
+ * Crake theme declares monospace, so a fallback-only default never
+ * applied anywhere). Null means the stylesheet, then system, decide.
  */
-val LocalSnyggDefaultFontFamily: ProvidableCompositionLocal<FontFamily?> =
+val LocalSnyggFontFamilyOverride: ProvidableCompositionLocal<FontFamily?> =
     compositionLocalOf { null }
 
 internal val LocalSnyggParentStyle: ProvidableCompositionLocal<SnyggSinglePropertySet> =

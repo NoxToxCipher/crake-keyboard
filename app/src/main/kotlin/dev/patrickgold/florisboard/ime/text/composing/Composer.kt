@@ -19,6 +19,7 @@ package dev.patrickgold.florisboard.ime.text.composing
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import org.florisboard.libnative.FlorisNative
 
 /**
  * Base interface for a text composer. A composer allows to dynamically transform text, which is especially useful for
@@ -58,6 +59,12 @@ object Appender : Composer {
     }
 }
 
+/**
+ * Rule-table composer. The matching logic (longest key first, length ties in
+ * reverse table order, case carry-over from the matched tail) lives in the
+ * native core (floris-core composing::RuleComposer); the table is registered
+ * once on first use. Without the native lib, text is appended untransformed.
+ */
 @Serializable
 @SerialName("with-rules")
 class WithRules(
@@ -67,17 +74,26 @@ class WithRules(
 ) : Composer {
     override val toRead = (rules.keys.maxOf { it.length } - 1).coerceAtLeast(0)
 
-    @Transient val ruleOrder = rules.keys.toList().sortedBy { it.length }.reversed()
+    @Transient private var nativeHandle: Long = -1L
 
     override fun getActions(precedingText: String, toInsert: String): Pair<Int, String> {
-        val str = precedingText + toInsert
-        for (key in ruleOrder) {
-            if (str.lowercase().endsWith(key)) {
-                val value = rules.getValue(key)
-                val firstOfKey = str.takeLast(key.length).take(1)
-                return (key.length - 1) to (if (firstOfKey.uppercase() == firstOfKey) value.uppercase() else value)
-            }
+        if (nativeHandle < 0L) {
+            nativeHandle = registerRules()
+        }
+        if (nativeHandle >= 0L) {
+            FlorisNative.composerActionRules(nativeHandle, precedingText, toInsert)?.let { return it }
         }
         return 0 to toInsert
+    }
+
+    private fun registerRules(): Long {
+        // The blob separators are ASCII control chars which cannot occur in
+        // real rule tables; refuse registration rather than corrupt entries.
+        val unsafe = rules.any { (k, v) ->
+            k.contains('\u001E') || k.contains('\u001F') || v.contains('\u001E') || v.contains('\u001F')
+        }
+        if (unsafe) return -1L
+        val blob = rules.entries.joinToString("\u001E") { (k, v) -> "$k\u001F$v" }
+        return FlorisNative.composerRegisterRules(blob)
     }
 }
