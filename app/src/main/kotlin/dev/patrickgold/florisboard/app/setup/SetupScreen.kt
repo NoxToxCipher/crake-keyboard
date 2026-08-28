@@ -294,18 +294,18 @@ private fun PreferenceUiScope<FlorisPreferenceModel>.steps(
         } else null,
         FlorisStep(
             id = Steps.FinishUp.id,
-            title = stringRes(R.string.setup__finish_up__title),
+            title = "Discover & Personalize",
         ) {
-            StepText(stringRes(R.string.setup__finish_up__description_p1))
-            StepText(stringRes(R.string.setup__finish_up__description_p2))
-            StepButton(label = stringRes(R.string.setup__finish_up__finish_btn)) {
-                scope.launch { this@steps.prefs.internal.isImeSetUp.set(true) }
-                navController.navigate(Routes.Settings.Home) {
-                    popUpTo(Routes.Setup.Screen) {
-                        inclusive = true
+            OnboardingFeatureCarousel(
+                onFinish = {
+                    scope.launch { this@steps.prefs.internal.isImeSetUp.set(true) }
+                    navController.navigate(Routes.Settings.Home) {
+                        popUpTo(Routes.Setup.Screen) {
+                            inclusive = true
+                        }
                     }
                 }
-            }
+            )
         }
     )
 }

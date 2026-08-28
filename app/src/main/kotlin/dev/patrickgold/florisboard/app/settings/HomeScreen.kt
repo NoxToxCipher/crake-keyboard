@@ -47,6 +47,9 @@ import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Card
@@ -56,6 +59,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import dev.patrickgold.florisboard.app.setup.OnboardingFeatureCarousel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -254,6 +263,102 @@ fun HomeScreen() = FlorisScreen {
                         fontFamily = FontFamily.Monospace,
                     )
                 }
+            }
+        }
+
+        var showFeatureTourDialog by remember { mutableStateOf(false) }
+
+        if (showFeatureTourDialog) {
+            Dialog(
+                onDismissRequest = { showFeatureTourDialog = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF0A0E17).copy(alpha = 0.95f))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    OnboardingFeatureCarousel(
+                        onFinish = { showFeatureTourDialog = false }
+                    )
+                }
+            }
+        }
+
+        // CRAKE FEATURE DISCOVERY & INTERACTIVE TOUR HERO CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .clickable { showFeatureTourDialog = true },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF131F33)),
+            border = BorderStroke(1.dp, CyberEmerald.copy(alpha = 0.6f)),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(CyberEmerald.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RocketLaunch,
+                        contentDescription = null,
+                        tint = CyberEmerald,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "Feature Tour & Studio",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = Color.White,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(CyberEmerald.copy(alpha = 0.2f))
+                                .padding(horizontal = 5.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = "INTERACTIVE",
+                                color = CyberEmerald,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Explore air-gapped privacy, customize themes & fonts, and test drive gestures.",
+                        fontSize = 11.5.sp,
+                        color = TextMuted,
+                        lineHeight = 15.sp,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = CyberEmerald,
+                    modifier = Modifier.size(20.dp),
+                )
             }
         }
 
