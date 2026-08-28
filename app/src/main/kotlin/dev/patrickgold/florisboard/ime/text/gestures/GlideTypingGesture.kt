@@ -80,7 +80,7 @@ class GlideTypingGesture {
                     }
                     val pointerIndex = event.actionIndex
                     pointerId = event.getPointerId(pointerIndex)
-                    pointerData.positions.add(Position(event.getX(pointerIndex), event.getY(pointerIndex)))
+                    pointerData.positions.add(Position(event.getX(pointerIndex), event.getY(pointerIndex), event.eventTime))
                     return false
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -91,8 +91,8 @@ class GlideTypingGesture {
 
                     for (i in 0..event.historySize) {
                         val pos = when (i) {
-                            event.historySize -> Position(event.getX(pointerIndex), event.getY(pointerIndex))
-                            else -> Position(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i))
+                            event.historySize -> Position(event.getX(pointerIndex), event.getY(pointerIndex), event.eventTime)
+                            else -> Position(event.getHistoricalX(pointerIndex, i), event.getHistoricalY(pointerIndex, i), event.getHistoricalEventTime(i))
                         }
                         if (pointerData.positions.size < MAX_GESTURE_POINTS) {
                             pointerData.positions.add(pos)
@@ -206,7 +206,7 @@ class GlideTypingGesture {
             var isActuallyGesture: Boolean? = null,
         )
 
-        data class Position(val x: Float, val y: Float) {
+        data class Position(val x: Float, val y: Float, val timestamp: Long = 0L) {
             fun dist(p2: Position): Float {
                 return sqrt((p2.x - x).pow(2) + (p2.y - y).pow(2))
             }

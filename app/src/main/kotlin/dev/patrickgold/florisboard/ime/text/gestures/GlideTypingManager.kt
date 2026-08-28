@@ -94,7 +94,7 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
     }
 
     override fun onGlideAddPoint(point: GlideTypingGesture.Detector.Position) {
-        val time = System.currentTimeMillis()
+        val time = if (point.timestamp > 0L) point.timestamp else android.os.SystemClock.uptimeMillis()
         synchronized(gesturePoints) {
             if (gesturePoints.size < MAX_GESTURE_POINTS) {
                 gesturePoints.add(FlorisNative.GlidePoint(point.x, point.y, time))
