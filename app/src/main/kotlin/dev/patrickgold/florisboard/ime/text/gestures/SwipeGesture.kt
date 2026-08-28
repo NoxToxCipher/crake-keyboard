@@ -55,6 +55,91 @@ abstract class SwipeGesture {
      * @property listener The listener to report detected swipes to.
      */
     class Detector(private val listener: Listener) {
+        companion object {
+            /**
+             * The clamped release-velocity threshold in dp/s. Old stored
+             * prefs carry the historic 1900 default which no measured
+             * stroke reaches, so anything above 1000 is remapped to 450;
+             * in-range values are held to [200, 800] so no pref value can
+             * make classification impossible (floor) or fire on taps
+             * (ceiling). Pinned by SwipeClassifierTest.
+             */
+            internal fun clampThresholdSpeed(raw: Double): Double =
+                if (raw > 1000.0) 450.0 else raw.coerceIn(200.0, 800.0)
+
+            /**
+             * Whole-stroke average velocity in dp/s from hardware event
+             * timestamps. Exists because VelocityTracker returned 0.0/0.0
+             * for strokes it was correctly fed (observed on the Xiaomi and
+             * on a clean emulator, 2026-08-28); a broken tracker must
+             * never be able to kill classification on its own. A degenerate
+             * age (<=0) contributes 0 so the tracker remains the only
+             * voice rather than dividing by zero. Pinned by
+             * SwipeClassifierTest against real captured strokes.
+             */
+            internal fun averageVelocity(absDiffDp: Float, ageMs: Long): Double =
+                if (ageMs > 0) kotlin.math.abs(absDiffDp) * 1000.0 / ageMs else 0.0
+
+            /**
+             * The TOUCH_UP swipe classification, pure so it can be replayed
+             * in JVM tests. A stroke classifies when it travelled far enough
+             * on either axis AND was fast enough on either axis, where speed
+             * is the better of the tracker's reading and the whole-stroke
+             * average — a real flick passes on the average alone (measured
+             * 1494 dp/s on a live phone flick), a tap has no travel, and a
+             * deliberate scrub averages well under any allowed threshold
+             * (measured 222 dp/s).
+             */
+            internal fun classifiesAsSwipe(
+                absDiffXDp: Float,
+                absDiffYDp: Float,
+                trackerVelXDp: Float,
+                trackerVelYDp: Float,
+                ageMs: Long,
+                rawThresholdSpeed: Double,
+                thresholdWidthDp: Double,
+            ): Boolean {
+                val thresholdSpeed = clampThresholdSpeed(rawThresholdSpeed)
+                val velocityX = maxOf(kotlin.math.abs(trackerVelXDp).toDouble(), averageVelocity(absDiffXDp, ageMs))
+                val velocityY = maxOf(kotlin.math.abs(trackerVelYDp).toDouble(), averageVelocity(absDiffYDp, ageMs))
+                return (kotlin.math.abs(absDiffXDp) > thresholdWidthDp || kotlin.math.abs(absDiffYDp) > thresholdWidthDp) &&
+                    (velocityX > thresholdSpeed || velocityY > thresholdSpeed)
+            }
+
+            /**
+             * Detects the direction of a finger swipe from the stroke's
+             * total displacement. The returned angle bands are pinned by
+             * SwipeClassifierTest with a real captured flick vector so the
+             * LEFT band cannot silently narrow.
+             */
+            internal fun detectDirection(diffX: Double, diffY: Double): Direction {
+                val diffAngle = angle(diffX, diffY) / 360.0
+                return when {
+                    diffAngle >= (1/16.0) && diffAngle < (3/16.0) ->        Direction.DOWN_RIGHT
+                    diffAngle >= (3/16.0) && diffAngle < (5/16.0) ->        Direction.DOWN
+                    diffAngle >= (5/16.0) && diffAngle < (7/16.0) ->        Direction.DOWN_LEFT
+                    diffAngle >= (7/16.0) && diffAngle < (9/16.0) ->        Direction.LEFT
+                    diffAngle >= (9/16.0) && diffAngle < (11/16.0) ->       Direction.UP_LEFT
+                    diffAngle >= (11/16.0) && diffAngle < (13/16.0) ->      Direction.UP
+                    diffAngle >= (13/16.0) && diffAngle < (15/16.0) ->      Direction.UP_RIGHT
+                    else ->                                                 Direction.RIGHT
+                }
+            }
+
+            /**
+             * Calculates the angle based on the given x any y lengths. The returned angle is in degree
+             * and goes clockwise, beginning with 0° at +x, 90° at +y, 180° at -y and 270° at -y.
+             *
+             * Coordinate system (based on the Android display coordinate system):
+             *    -y
+             * -x 00 +x
+             *    +y
+             */
+            private fun angle(diffX: Double, diffY: Double): Double {
+                return (Math.toDegrees(atan2(diffY, diffX)) + 360) % 360
+            }
+        }
+
         private val prefs by FlorisPreferenceStore
 
         var isEnabled: Boolean = true
@@ -128,25 +213,13 @@ abstract class SwipeGesture {
                 velocityTracker.computeCurrentVelocity(1000)
                 val trackerVelocityX = ViewUtils.px2dp(velocityTracker.getXVelocity(pointer.id))
                 val trackerVelocityY = ViewUtils.px2dp(velocityTracker.getYVelocity(pointer.id))
-                // VelocityTracker can report 0 for a stroke it was correctly
-                // fed (observed live on-device 2026-08-28: 4 samples, 292px
-                // of travel, distinct hardware timestamps, velocity 0.0/0.0)
-                // which silently kills every TOUCH_UP-classified action. The
-                // whole-stroke average from hardware timestamps cannot lie
-                // like that, so use whichever of the two is larger: a real
-                // flick passes on average alone, a slow scrub fails both.
                 val ageMs = event.eventTime - event.downTime
-                val avgVelocityX = if (ageMs > 0) abs(absDiffX) * 1000.0 / ageMs else 0.0
-                val avgVelocityY = if (ageMs > 0) abs(absDiffY) * 1000.0 / ageMs else 0.0
-                val velocityX = maxOf(abs(trackerVelocityX).toDouble(), avgVelocityX)
-                val velocityY = maxOf(abs(trackerVelocityY).toDouble(), avgVelocityY)
-                flogDebug(LogTopic.GESTURES) { "Velocity: tracker=$trackerVelocityX/$trackerVelocityY avg=$avgVelocityX/$avgVelocityY dp/s" }
+                flogDebug(LogTopic.GESTURES) { "Velocity: tracker=$trackerVelocityX/$trackerVelocityY ageMs=$ageMs dp/s" }
                 pointerMap.removeById(pointer.id)
                 val rawThreshold = prefs.gestures.swipeVelocityThreshold.get().toDouble()
-                val thresholdSpeed = if (rawThreshold > 1000.0) 450.0 else rawThreshold.coerceIn(200.0, 800.0)
                 val thresholdWidth = prefs.gestures.swipeDistanceThreshold.get().dp.value.toDouble()
                 val unitWidth = (thresholdWidth / 4.0).coerceAtLeast(4.0)
-                return if ((abs(absDiffX) > thresholdWidth || abs(absDiffY) > thresholdWidth) && (velocityX > thresholdSpeed || velocityY > thresholdSpeed)) {
+                return if (classifiesAsSwipe(absDiffX, absDiffY, trackerVelocityX, trackerVelocityY, ageMs, rawThreshold, thresholdWidth)) {
                     val direction = detectDirection(absDiffX.toDouble(), absDiffY.toDouble())
                     gesturePointer.absUnitCountX = (absDiffX / unitWidth).toInt()
                     gesturePointer.absUnitCountY = (absDiffY / unitWidth).toInt()
@@ -171,36 +244,6 @@ abstract class SwipeGesture {
         fun onTouchCancel(event: MotionEvent, pointer: Pointer) {
             if (!isEnabled) return
             pointerMap.removeById(pointer.id)
-        }
-
-        /**
-         * Calculates the angle based on the given x any y lengths. The returned angle is in degree
-         * and goes clockwise, beginning with 0° at +x, 90° at +y, 180° at -y and 270° at -y.
-         *
-         * Coordinate system (based on the Android display coordinate system):
-         *    -y
-         * -x 00 +x
-         *    +y
-         */
-        private fun angle(diffX: Double, diffY: Double): Double {
-            return (Math.toDegrees(atan2(diffY, diffX)) + 360) % 360
-        }
-
-        /**
-         * Detects the direction of a finger swipe by two given events.
-         */
-        private fun detectDirection(diffX: Double, diffY: Double): Direction {
-            val diffAngle = angle(diffX, diffY) / 360.0
-            return when {
-                diffAngle >= (1/16.0) && diffAngle < (3/16.0) ->        Direction.DOWN_RIGHT
-                diffAngle >= (3/16.0) && diffAngle < (5/16.0) ->        Direction.DOWN
-                diffAngle >= (5/16.0) && diffAngle < (7/16.0) ->        Direction.DOWN_LEFT
-                diffAngle >= (7/16.0) && diffAngle < (9/16.0) ->        Direction.LEFT
-                diffAngle >= (9/16.0) && diffAngle < (11/16.0) ->       Direction.UP_LEFT
-                diffAngle >= (11/16.0) && diffAngle < (13/16.0) ->      Direction.UP
-                diffAngle >= (13/16.0) && diffAngle < (15/16.0) ->      Direction.UP_RIGHT
-                else ->                                                 Direction.RIGHT
-            }
         }
 
         /**

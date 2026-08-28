@@ -110,6 +110,7 @@ import dev.patrickgold.florisboard.ime.keyboard.computeLabel
 import dev.patrickgold.florisboard.ime.popup.ExceptionsForKeyCodes
 import dev.patrickgold.florisboard.ime.popup.PopupUiController
 import dev.patrickgold.florisboard.ime.popup.rememberPopupUiController
+import dev.patrickgold.florisboard.ime.text.gestures.DeleteSwipePolicy
 import dev.patrickgold.florisboard.ime.text.gestures.GlideTypingGesture
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeGesture
@@ -8754,12 +8755,8 @@ private class TextKeyboardLayoutController(
                     // would start the scrub; the scrub's selection then blocks
                     // the word-delete fallback on TOUCH_UP, so a flick deletes
                     // a random few characters instead of the word. Hold the
-                    // scrub until the stroke outlives the flick class. Only
-                    // for the DELETE pref: it has a word-delete fallback to
-                    // land on, the SELECT pref does not.
-                    if (action == SwipeAction.DELETE_CHARACTERS_PRECISELY &&
-                        event.ageMs < SwipeGesture.DELETE_SCRUB_MIN_AGE_MS
-                    ) {
+                    // scrub until the stroke outlives the flick class.
+                    if (!DeleteSwipePolicy.scrubMayBegin(action, event.ageMs)) {
                         return true
                     }
                     if (abs(event.relUnitCountX) > 0) {
@@ -8812,28 +8809,12 @@ private class TextKeyboardLayoutController(
                 else -> false
             }
             SwipeGesture.Type.TOUCH_UP -> {
-                if (event.direction == SwipeGesture.Direction.LEFT ||
-                    event.direction == SwipeGesture.Direction.UP_LEFT ||
-                    event.direction == SwipeGesture.Direction.DOWN_LEFT
-                ) {
-                    when (val action = prefs.gestures.deleteKeySwipeLeft.get()) {
-                        SwipeAction.DELETE_WORD,
-                        SwipeAction.DELETE_CHARACTER -> {
-                            keyboardManager.executeSwipeAction(action)
-                            true
-                        }
-                        SwipeAction.DELETE_CHARACTERS_PRECISELY -> {
-                            val selection = editorInstance.activeContent.selection
-                            if (!selection.isSelectionMode) {
-                                keyboardManager.executeSwipeAction(SwipeAction.DELETE_WORD)
-                            }
-                            true
-                        }
-                        else -> false
-                    }
-                } else {
-                    false
+                val action = prefs.gestures.deleteKeySwipeLeft.get()
+                val hasSelection = editorInstance.activeContent.selection.isSelectionMode
+                DeleteSwipePolicy.onUpAction(event.direction, action, hasSelection)?.let {
+                    keyboardManager.executeSwipeAction(it)
                 }
+                DeleteSwipePolicy.consumesUp(event.direction, action)
             }
         }
     }
