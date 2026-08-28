@@ -475,6 +475,7 @@ impl GlideEngine {
     /// Sets or updates the active keyboard key layout geometry.
     pub fn set_layout(&mut self, keys: Vec<KeyInfo>) {
         self.key_centers.clear();
+        self.adaptive_centroids.clear();
         let mut total_radius = 0.0;
 
         for key in &keys {
