@@ -648,6 +648,23 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
             }
         }
 
+        // Edge-of-screen / bezel reach fallback: if touch landed outside nominal 1.45x radius,
+        // clamp to the single nearest keycap instead of dropping the entire gesture.
+        if start_chars.is_empty() {
+            if let Some((&closest_ch, _)) = self.key_centers.iter().min_by(|(_, c1), (_, c2)| {
+                c1.distance_squared(&start_pt).partial_cmp(&c2.distance_squared(&start_pt)).unwrap_or(std::cmp::Ordering::Equal)
+            }) {
+                start_chars.push(closest_ch);
+            }
+        }
+        if end_chars.is_empty() {
+            if let Some((&closest_ch, _)) = self.key_centers.iter().min_by(|(_, c1), (_, c2)| {
+                c1.distance_squared(&end_pt).partial_cmp(&c2.distance_squared(&end_pt)).unwrap_or(std::cmp::Ordering::Equal)
+            }) {
+                end_chars.push(closest_ch);
+            }
+        }
+
         if start_chars.is_empty() || end_chars.is_empty() {
             return Vec::new();
         }
@@ -747,14 +764,16 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
 
                     // Double-letter loop / stutter bonus:
                     // If candidate word has double letters (e.g. "good", "look", "coffee", "sleep")
-                    // and a micro-loop was detected over that keycap, apply a decisive double-letter reward.
+                    // and a micro-loop or dwell was detected over that keycap, apply a decisive double-letter reward.
                     let mut double_letter_bonus = 0.0f32;
                     let double_chars = get_double_letter_chars(&word);
-                    if !double_loops.is_empty() && !double_chars.is_empty() {
+                    if !double_chars.is_empty() {
                         for d_char in &double_chars {
                             if let Some(&center) = self.key_centers.get(d_char) {
                                 if double_loops.iter().any(|lp| lp.distance_squared(&center) <= radius_match_sq) {
                                     double_letter_bonus += 22.0;
+                                } else if key_dwell.iter().any(|&(ch, d)| ch == *d_char && d >= 90) {
+                                    double_letter_bonus += 12.0;
                                 }
                             }
                         }
