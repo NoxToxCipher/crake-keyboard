@@ -200,11 +200,9 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
             // 61-103ms (~70 kw/s — physically impossible for a thumb
             // glide; real glides run 300-600ms). Distance triggers cannot
             // catch them; the clock can. Under 150ms nothing commits.
-            val strokeDurationMs = synchronized(gesturePoints) {
-                if (gesturePoints.size >= 2) {
-                    gesturePoints.last().timestamp - gesturePoints.first().timestamp
-                } else 0L
-            }
+            val strokeDurationMs = if (pts.size >= 2) {
+                pts.last().timestamp - pts.first().timestamp
+            } else 0L
             val commitSafe = nativeSuggestions.commitSafe &&
                 (!commit || strokeDurationMs >= 150L)
             val suggestions = nativeSuggestions.words
