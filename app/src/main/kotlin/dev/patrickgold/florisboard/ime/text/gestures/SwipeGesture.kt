@@ -102,8 +102,19 @@ abstract class SwipeGesture {
                 val thresholdSpeed = clampThresholdSpeed(rawThresholdSpeed)
                 val velocityX = maxOf(kotlin.math.abs(trackerVelXDp).toDouble(), averageVelocity(absDiffXDp, ageMs))
                 val velocityY = maxOf(kotlin.math.abs(trackerVelYDp).toDouble(), averageVelocity(absDiffYDp, ageMs))
-                return (kotlin.math.abs(absDiffXDp) > thresholdWidthDp || kotlin.math.abs(absDiffYDp) > thresholdWidthDp) &&
-                    (velocityX > thresholdSpeed || velocityY > thresholdSpeed)
+                val maxTravel = maxOf(kotlin.math.abs(absDiffXDp), kotlin.math.abs(absDiffYDp))
+                val maxVelocity = maxOf(velocityX, velocityY)
+
+                // For high-velocity snappy flicks (e.g. upward letter word flick or backspace flick),
+                // an absolute displacement of 14dp is distinct from accidental tap wobble (<=8dp)
+                // and prevents dropping fast short thumb flicks on high-density displays.
+                val effectiveThresholdWidth = if (maxVelocity >= thresholdSpeed) {
+                    (thresholdWidthDp * 0.5).coerceAtLeast(14.0)
+                } else {
+                    thresholdWidthDp
+                }
+
+                return (maxTravel > effectiveThresholdWidth) && (maxVelocity > thresholdSpeed)
             }
 
             /**

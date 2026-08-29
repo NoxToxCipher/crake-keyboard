@@ -836,6 +836,7 @@ fun TextKeyboardLayout(
                 emptyMap()
             }
         }
+        controller.currentFlickPredictions = flickPredictions
         // Keeps the letter-prediction memo warm for the touch-down handler's
         // adaptive hitboxes when flick previews are off (the produceState
         // above warms it otherwise). Runs off the UI thread; result unused.
@@ -8297,6 +8298,7 @@ private class TextKeyboardLayoutController(
         val timestamp: Long = System.currentTimeMillis(),
     )
     var activeCatapult by mutableStateOf<CatapultEffect?>(null)
+    var currentFlickPredictions: Map<Char, String> = emptyMap()
 
     lateinit var keyboard: TextKeyboard
     var size = Size.Zero
@@ -8682,14 +8684,15 @@ private class TextKeyboardLayoutController(
                     inputEventDispatcher.sendCancel(TextKeyData.SHIFT)
                     true
                 }
-                initialKey.computedData.code > KeyCode.SPACE && !popupUiController.isShowingExtendedPopup -> when {
-                    !pointer.hasTriggeredGestureMove -> when (event.type) {
-                        SwipeGesture.Type.TOUCH_UP -> {
-                            val isUpwardFlick = event.direction == SwipeGesture.Direction.UP ||
-                                                event.direction == SwipeGesture.Direction.UP_LEFT ||
-                                                event.direction == SwipeGesture.Direction.UP_RIGHT
-                            if (isUpwardFlick && prefs.glide.flickPredictionsEnabled.get()) {
-                                val charCode = initialKey.computedData.code.toChar().lowercaseChar()
+                initialKey.computedData.code > KeyCode.SPACE && !popupUiController.isShowingExtendedPopup -> when (event.type) {
+                    SwipeGesture.Type.TOUCH_UP -> {
+                        val isUpwardFlick = event.direction == SwipeGesture.Direction.UP ||
+                                            event.direction == SwipeGesture.Direction.UP_LEFT ||
+                                            event.direction == SwipeGesture.Direction.UP_RIGHT
+                        if (isUpwardFlick && prefs.glide.flickPredictionsEnabled.get()) {
+                            val charCode = initialKey.computedData.code.toChar().lowercaseChar()
+                            // Direct hit on the rendered floating word on the keycap first
+                            val predictedWord = currentFlickPredictions[charCode] ?: run {
                                 val activeContent = editorInstance.activeContent
                                 val textBefore = activeContent.textBeforeSelection.toString()
                                 val composing = activeContent.composingText
@@ -8704,39 +8707,37 @@ private class TextKeyboardLayoutController(
                                     textBefore.trimEnd()
                                 }
                                 val prevWord = beforePrefix.takeLastWhile { it.isLetter() || it == '\'' }
-                                val predictions = if (org.florisboard.libnative.FlorisNative.isAvailable()) {
-                                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix, prevWord)
+                                if (org.florisboard.libnative.FlorisNative.isAvailable()) {
+                                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(prefix, prevWord)[charCode]
                                 } else {
-                                    emptyMap()
-                                }
-                                val predictedWord = predictions[charCode]
-                                if (predictedWord != null) {
-                                    glideTypingDetector.cancel()
-                                    isGliding = false
-                                    activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
-                                    keyboardManager.commitFlickPrediction(predictedWord)
-                                    inputFeedbackController?.flickCommit(initialKey.computedData)
-                                    return true
+                                    null
                                 }
                             }
-
-                            val swipeAction = when (event.direction) {
-                                SwipeGesture.Direction.UP -> prefs.gestures.swipeUp.get()
-                                SwipeGesture.Direction.DOWN -> prefs.gestures.swipeDown.get()
-                                SwipeGesture.Direction.LEFT -> prefs.gestures.swipeLeft.get()
-                                SwipeGesture.Direction.RIGHT -> prefs.gestures.swipeRight.get()
-                                else -> SwipeAction.NO_ACTION
-                            }
-                            if (swipeAction != SwipeAction.NO_ACTION) {
+                            if (predictedWord != null) {
                                 glideTypingDetector.cancel()
                                 isGliding = false
-                                keyboardManager.executeSwipeAction(swipeAction)
-                                true
-                            } else {
-                                false
+                                activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
+                                keyboardManager.commitFlickPrediction(predictedWord)
+                                inputFeedbackController?.flickCommit(initialKey.computedData)
+                                return true
                             }
                         }
-                        else -> false
+
+                        val swipeAction = when (event.direction) {
+                            SwipeGesture.Direction.UP -> prefs.gestures.swipeUp.get()
+                            SwipeGesture.Direction.DOWN -> prefs.gestures.swipeDown.get()
+                            SwipeGesture.Direction.LEFT -> prefs.gestures.swipeLeft.get()
+                            SwipeGesture.Direction.RIGHT -> prefs.gestures.swipeRight.get()
+                            else -> SwipeAction.NO_ACTION
+                        }
+                        if (swipeAction != SwipeAction.NO_ACTION) {
+                            glideTypingDetector.cancel()
+                            isGliding = false
+                            keyboardManager.executeSwipeAction(swipeAction)
+                            true
+                        } else {
+                            false
+                        }
                     }
                     else -> false
                 }

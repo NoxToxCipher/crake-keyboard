@@ -111,4 +111,11 @@ class SwipeClassifierTest : FunSpec({
         SwipeGesture.Detector.detectDirection(-100.0, 70.0) shouldBe SwipeGesture.Direction.DOWN_LEFT
         SwipeGesture.Detector.detectDirection(-100.0, -70.0) shouldBe SwipeGesture.Direction.UP_LEFT
     }
+
+    test("quick snappy upward key flick classifies accurately") {
+        // High-speed short thumb flick over letter keycap (e.g. 20dp in 40ms = 500 dp/s)
+        val upwardFlick = Triple(0.0f, -20.0f, 40L)
+        classify(upwardFlick) shouldBe true
+        SwipeGesture.Detector.detectDirection(0.0, -20.0) shouldBe SwipeGesture.Direction.UP
+    }
 })
