@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 301
+    const val CURRENT_MILESTONE = 302
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 30101
-    private const val RESOLVED_NOTIFICATION_ID = 30102
+    private const val NOTIFICATION_ID = 30201
+    private const val RESOLVED_NOTIFICATION_ID = 30202
 
     data class ReleaseInfo(
         val tagName: String,
@@ -82,6 +82,7 @@ object UpdateManager {
 
     fun getMilestoneHighlights(milestone: Int): String {
         return when (milestone) {
+            302 -> "Centered & comprehensive on-device telemetry explanatory card • Smooth transient error auto-recovery in updater engine."
             301 -> "Telemetry typo confusion matrix analysis (local fat-finger clustering) • Zero-trace secure diagnostic data wipe with storage shredding."
             300 -> "Milestone 300 Century Release: High-precision gesture telemetry velocity metrics • Ephemeral memory auto-scrubbing on keyboard idle."
             299 -> "Automatic feedback PII redaction & EXIF metadata stripping • Telemetry & Privacy Shield assurance in Feedback Hub."
@@ -189,7 +190,17 @@ object UpdateManager {
                 },
                 onFailure = { error ->
                     Log.w(TAG, "Failed to check for updates: ${error.message}")
-                    _status.value = if (silent) UpdateStatus.Idle else UpdateStatus.Error(error.localizedMessage ?: "Network error")
+                    if (silent) {
+                        _status.value = UpdateStatus.Idle
+                    } else {
+                        _status.value = UpdateStatus.Error(error.localizedMessage ?: "Network error")
+                        scope.launch {
+                            kotlinx.coroutines.delay(4000)
+                            if (_status.value is UpdateStatus.Error) {
+                                _status.value = UpdateStatus.Idle
+                            }
+                        }
+                    }
                 }
             )
         }

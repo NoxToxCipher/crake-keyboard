@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.style.TextAlign
 import dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -478,11 +479,16 @@ fun HomeScreen() = FlorisScreen {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF0F172A).copy(alpha = 0.6f))
-                        .padding(8.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF0F172A).copy(alpha = 0.8f))
+                        .border(1.dp, CyberEmerald.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                        .padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(7.dp)
@@ -492,24 +498,35 @@ fun HomeScreen() = FlorisScreen {
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "Telemetry Engine Active",
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = CyberEmerald,
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "• Flight logs training models",
-                            fontSize = 10.sp,
-                            color = TextMuted,
-                            maxLines = 1,
+                            textAlign = TextAlign.Center,
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Latest Additions (M${UpdateManager.CURRENT_MILESTONE}): ${UpdateManager.getMilestoneHighlights(UpdateManager.CURRENT_MILESTONE)}",
+                        text = "On-Device Neural Typing & Gesture Engine",
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Learns your custom vocabulary & corrects fat-finger keystrokes locally with zero cloud telemetry or keystroke leakage.",
                         fontSize = 10.sp,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = TextMuted,
+                        textAlign = TextAlign.Center,
                         lineHeight = 13.sp,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "Latest Additions (M${UpdateManager.CURRENT_MILESTONE}): ${UpdateManager.getMilestoneHighlights(UpdateManager.CURRENT_MILESTONE)}",
+                        fontSize = 9.5.sp,
+                        color = ElectricCyan.copy(alpha = 0.9f),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 12.sp,
                     )
                 }
             }

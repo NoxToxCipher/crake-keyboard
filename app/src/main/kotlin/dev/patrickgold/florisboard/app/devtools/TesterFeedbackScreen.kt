@@ -682,6 +682,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 302 fixes (Centered informative telemetry card, updater transient error smooth recovery)
+                    combined.contains("center") || (t.contains("more information") && combined.contains("why we would use it")) || (t.contains("updating error again") || (t.contains("update") && combined.contains("goes away after a bit"))) -> 302
+
                     // Milestone 295 fixes (Resolution engine fix, false keyword badge elimination, dynamic milestone additions)
                     combined.contains("incorrect bug fixes") || (t == "incorrect" && fb.timestamp >= 1788074000000L) -> 295
 
