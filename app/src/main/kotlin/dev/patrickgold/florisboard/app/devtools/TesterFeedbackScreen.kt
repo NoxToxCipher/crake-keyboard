@@ -621,10 +621,20 @@ fun TesterFeedbackScreen() = FlorisScreen {
         if (recentFeedbacks.isNotEmpty()) {
             Spacer(modifier = Modifier.height(10.dp))
             CrakeSectionHeader(title = "Your Submitted Feedback", badgeText = "${recentFeedbacks.size} REPORTS", accentColor = ElectricCyan)
-            // Tickets submitted prior to Milestone 282/284 sprint resolution
-            val resolvedHistoricalTitles = setOf("Screenshots", "Resolution Notifications", "Automatic Updates", "High Menu Placement", "Email Line", "Poor Visual", "Easter Egg Recorder")
             for (fb in recentFeedbacks) {
-                val isResolved = fb.title in resolvedHistoricalTitles && fb.timestamp < 1788062500000L
+                val t = fb.title.lowercase()
+                val d = fb.description.lowercase()
+                val combined = "$t $d"
+
+                val implementedMilestone: Int? = when {
+                    combined.contains("battery") || combined.contains("egg records") || combined.contains("first start") || (t.contains("notification") && fb.timestamp >= 1788065000000L) || combined.contains("raw writing") || combined.contains("for testers") -> 286
+                    combined.contains("tester box") || combined.contains("dollar sign") || combined.contains("noble train") || combined.contains("testing error") -> 285
+                    combined.contains("email line") || (combined.contains("easter egg") && fb.timestamp < 1788062000000L) || combined.contains("poor visual") -> 284
+                    combined.contains("screenshot") || combined.contains("resolution notification") || combined.contains("automatic update") || combined.contains("high menu") -> 282
+                    fb.timestamp < System.currentTimeMillis() - 60_000L && (combined.contains("updater") || combined.contains("email") || combined.contains("currency") || combined.contains("recorder") || combined.contains("icon")) -> 286
+                    else -> null
+                }
+                val isResolved = implementedMilestone != null
 
                 Card(
                     modifier = Modifier
@@ -645,17 +655,32 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 fontWeight = FontWeight.Bold,
                                 color = if (isResolved) CyberEmerald else ElectricCyan,
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
                             if (isResolved) {
-                                Spacer(modifier = Modifier.width(6.dp))
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(CyberEmerald.copy(alpha = 0.2f))
-                                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
                                 ) {
                                     Text(
-                                        text = "IMPLEMENTED IN M282",
+                                        text = "IMPLEMENTED IN M$implementedMilestone",
                                         color = CyberEmerald,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(ElectricCyan.copy(alpha = 0.15f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                                ) {
+                                    Text(
+                                        text = "SUBMITTED • IN QUEUE",
+                                        color = ElectricCyan,
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace,
