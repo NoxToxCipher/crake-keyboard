@@ -190,7 +190,7 @@ object DiagnosticSyncManager {
     fun sanitizeRecord(rawJson: String): String? {
         if (rawJson.isBlank()) return null
         val emailRegex = Regex("""[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+""")
-        val cardRegex = Regex("""\b(?:\d[ -]*?){13,16}\b""")
+        val cardRegex = Regex("""\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12}|(?:[0-9]{4}[ -][0-9]{4}[ -][0-9]{4}[ -][0-9]{1,4}))\b""")
         var clean = rawJson
         if (emailRegex.containsMatchIn(clean)) {
             clean = emailRegex.replace(clean, "[FILTERED_EMAIL]")

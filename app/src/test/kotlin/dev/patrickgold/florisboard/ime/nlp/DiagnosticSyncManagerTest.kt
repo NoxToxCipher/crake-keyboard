@@ -36,6 +36,10 @@ class DiagnosticSyncManagerTest : FunSpec({
         val normalRecord = """{"action":"KEY_TAP","mode":"TYPING","word":"hello","target":"hello"}"""
         val sanitizedNormal = DiagnosticSyncManager.sanitizeRecord(normalRecord)
         sanitizedNormal shouldContain "hello"
+
+        val timestampRecord = """{"timestamp":1788086192123,"action":"KEY_TAP","mode":"TYPING"}"""
+        val sanitizedTs = DiagnosticSyncManager.sanitizeRecord(timestampRecord)
+        sanitizedTs shouldBe timestampRecord
     }
 
     test("Sprint name constant is defined accurately") {
