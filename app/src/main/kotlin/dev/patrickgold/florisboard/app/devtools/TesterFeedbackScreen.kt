@@ -682,6 +682,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 307 fixes (Theme switcher component ID mapping in onboarding selector)
+                    combined.contains("theme switcher") || (combined.contains("selector") && combined.contains("theme")) -> 307
+
                     // Milestone 306 fixes (Flick typing guide cards, 36 pure word Easter Egg registry count)
                     combined.contains("flick typing") || combined.contains("word flicks") || (combined.contains("flick") && combined.contains("introductory")) || combined.contains("record count") || (combined.contains("power surge") && (combined.contains("dropped") || combined.contains("word"))) -> 306
 

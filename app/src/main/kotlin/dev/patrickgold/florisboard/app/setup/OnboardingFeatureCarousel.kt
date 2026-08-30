@@ -114,12 +114,12 @@ enum class OnboardingThemeChoice(
     val accentColor: Color,
     val description: String,
 ) {
-    CYBER_EMERALD("Cyber Emerald", "org.florisboard.themes", "cyber_emerald", CyberEmerald, "Obsidian black with neon emerald accents"),
-    ELECTRIC_CYAN("Electric Cyan", "org.florisboard.themes", "electric_cyan", ElectricCyan, "High-contrast electric cyan keycaps"),
-    NEON_PURPLE("Neon Purple", "org.florisboard.themes", "neon_purple", NeonPurple, "Synthwave violet & cyberpunk glow"),
-    CRIMSON_SPEEDSTER("Crimson Speedster", "org.florisboard.themes", "crimson_speedster", CrimsonRed, "Race-tuned dynamic crimson"),
-    CYBER_AMBER("Cyber Amber", "org.florisboard.themes", "cyber_amber", CyberAmber, "Warm amber cockpit HUD aesthetic"),
-    GHOST_SLATE("Ghost Slate", "org.florisboard.themes", "ghost_slate", GhostSlate, "Ultra-clean minimalist slate");
+    CYBER_EMERALD("Crake Obsidian Emerald", "org.florisboard.themes", "crake_emerald_bordered", CyberEmerald, "Obsidian black with neon emerald accents"),
+    ELECTRIC_CYAN("Crake Obsidian Cyan", "org.florisboard.themes", "crake_cyan_bordered", ElectricCyan, "High-contrast electric cyan keycaps"),
+    NEON_PURPLE("Crake Obsidian Purple", "org.florisboard.themes", "crake_purple_bordered", NeonPurple, "Synthwave violet & cyberpunk glow"),
+    CRIMSON_SPEEDSTER("Crake Obsidian Crimson", "org.florisboard.themes", "crake_crimson_bordered", CrimsonRed, "Race-tuned dynamic crimson"),
+    CYBER_AMBER("Crake Obsidian Amber", "org.florisboard.themes", "crake_amber_bordered", CyberAmber, "Warm amber cockpit HUD aesthetic"),
+    GHOST_SLATE("Crake Ghost Titanium White", "org.florisboard.themes", "crake_ghost_white_bordered", GhostSlate, "Ultra-clean minimalist titanium slate");
 }
 
 @Composable
@@ -487,7 +487,7 @@ private fun LiveThemeStudioCard(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         for (theme in OnboardingThemeChoice.entries) {
-            val isSelected = currentThemeId == theme.componentId
+            val isSelected = currentThemeId == theme.componentId || (currentThemeId.startsWith("crake_") && theme.componentId.contains(currentThemeId.removePrefix("crake_").removeSuffix("_bordered").removeSuffix("_borderless")))
 
             Card(
                 modifier = Modifier

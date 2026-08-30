@@ -1,8 +1,8 @@
 {
-  "milestone": 306,
-  "tagName": "v0.306.0",
-  "name": "Milestone 306 (UI Features & Easter Egg Refinements)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.306.0/CrakeKeyboard_Milestone_306.apk",
+  "milestone": 307,
+  "tagName": "v0.307.0",
+  "name": "Milestone 307 (Theme Switcher Fix)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.307.0/CrakeKeyboard_Milestone_307.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 306: Interactive Word Flick & Gesture introductory guide card on Home Screen \u2022 Easter Egg registry refinement (36 pure word eggs with power surge as ambient charging touch)."
+  "changelog": "Milestone 307: Fixed theme switcher in onboarding carousel (mapped valid Crake theme component IDs so theme changes apply instantly)."
 }
