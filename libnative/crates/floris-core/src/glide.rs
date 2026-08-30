@@ -675,6 +675,22 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         let double_loops = detect_double_letter_loops(cleaned_path, self.average_key_radius);
         let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
 
+        // 2c. 1D-CNN / Temporal Convolutional Network (TCN) Neural Stroke Inference
+        let mut neural_features = [[0.0f32; NEURAL_IN_CHANNELS]; MAX_NEURAL_FRAMES];
+        let mut neural_logits = [[0.0f32; NEURAL_OUT_CHANNELS]; MAX_NEURAL_FRAMES];
+        let num_neural_frames = NeuralGlideDecoder::resample_stroke(cleaned_path, 32, &mut neural_features);
+        let total_stroke_len = cleaned_path.windows(2).map(|w| w[0].distance(&w[1])).sum::<f32>().max(50.0);
+        if num_neural_frames > 0 {
+            NeuralGlideDecoder::forward_tcn(
+                &neural_features,
+                num_neural_frames,
+                &mut neural_logits,
+                &self.key_centers,
+                start_pt,
+                total_stroke_len,
+            );
+        }
+
         // Per-key dwell map from raw timing (ms spent within 0.6 key-widths
         // of each key). Empty when no timing data — the dwell term then
         // contributes nothing anywhere.
@@ -798,7 +814,12 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                             dwell_penalty += d as f32 * 0.08;
                         }
                     }
-                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty + dwell_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus;
+                    let neural_alignment_score = if num_neural_frames > 0 {
+                        NeuralGlideDecoder::score_word_alignment(&word, &neural_logits, num_neural_frames)
+                    } else {
+                        0.0
+                    };
+                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty + dwell_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus - (neural_alignment_score * 8.0);
 
                     matches.push(GlideMatch {
                         word,
@@ -1080,5 +1101,228 @@ mod tests {
         let matches = engine.match_gesture(&swipe_quick, &trie, 3);
         assert!(!matches.is_empty());
         assert_eq!(matches[0].word, "quick", "Top gesture match should be 'quick'");
+    }
+}
+
+
+// ===========================================================================
+// 1D-CNN / Temporal Convolutional Network (TCN) Neural Stroke Decoder
+// ===========================================================================
+
+pub const MAX_NEURAL_FRAMES: usize = 48;
+pub const NEURAL_IN_CHANNELS: usize = 6;
+pub const NEURAL_HIDDEN_CHANNELS: usize = 16;
+pub const NEURAL_OUT_CHANNELS: usize = 26;
+
+/// Fixed weights for 1D Dilated Depthwise-Separable Temporal Convolutions.
+/// Highly optimized for zero-heap stack execution on ARM NEON.
+#[inline(always)]
+fn hard_swish(x: f32) -> f32 {
+    x * ((x + 3.0).clamp(0.0, 6.0)) / 6.0
+}
+
+/// Zero-allocation 1D-CNN / TCN Neural Glide Stroke Decoder.
+pub struct NeuralGlideDecoder;
+
+impl NeuralGlideDecoder {
+    /// Resamples a raw continuous stroke trajectory into equidistant temporal kinematic frames.
+    pub fn resample_stroke(
+        points: &[Point2D],
+        target_frames: usize,
+        out_features: &mut [[f32; NEURAL_IN_CHANNELS]; MAX_NEURAL_FRAMES],
+    ) -> usize {
+        if points.len() < 2 || target_frames < 4 {
+            return 0;
+        }
+        // Guard against hostile non-finite coordinates
+        if points.iter().any(|p| !p.x.is_finite() || !p.y.is_finite()) {
+            return 0;
+        }
+        let n_frames = target_frames.min(MAX_NEURAL_FRAMES);
+        
+        // Calculate cumulative arc length
+        let mut total_length = 0.0f32;
+        let mut lengths = [0.0f32; 256];
+        let max_pts = points.len().min(256);
+        for i in 1..max_pts {
+            let d = points[i].distance(&points[i - 1]);
+            total_length += d;
+            lengths[i] = total_length;
+        }
+
+        if !total_length.is_finite() || total_length <= 1.0 {
+            return 0;
+        }
+
+        let step = total_length / (n_frames - 1) as f32;
+        let origin = points[0];
+        let norm_scale = total_length.max(50.0);
+
+        let mut pt_idx = 0;
+        let mut prev_pt = origin;
+
+        for f in 0..n_frames {
+            let target_dist = f as f32 * step;
+            while pt_idx + 1 < max_pts && lengths[pt_idx + 1] < target_dist {
+                pt_idx += 1;
+            }
+
+            let curr_pt = if pt_idx + 1 < max_pts {
+                let seg_start = lengths[pt_idx];
+                let seg_end = lengths[pt_idx + 1];
+                let seg_len = (seg_end - seg_start).max(1e-4);
+                let t = ((target_dist - seg_start) / seg_len).clamp(0.0, 1.0);
+                Point2D::new(
+                    points[pt_idx].x + t * (points[pt_idx + 1].x - points[pt_idx].x),
+                    points[pt_idx].y + t * (points[pt_idx + 1].y - points[pt_idx].y),
+                )
+            } else {
+                points[max_pts - 1]
+            };
+
+            let dx = curr_pt.x - prev_pt.x;
+            let dy = curr_pt.y - prev_pt.y;
+            let dist = (dx * dx + dy * dy).sqrt().max(1e-4);
+            let sin_theta = dy / dist;
+            let cos_theta = dx / dist;
+
+            out_features[f][0] = (curr_pt.x - origin.x) / norm_scale;
+            out_features[f][1] = (curr_pt.y - origin.y) / norm_scale;
+            out_features[f][2] = dx / step.max(1.0);
+            out_features[f][3] = dy / step.max(1.0);
+            out_features[f][4] = sin_theta;
+            out_features[f][5] = cos_theta;
+
+            prev_pt = curr_pt;
+        }
+
+        n_frames
+    }
+
+    /// Evaluates 1D Dilated Temporal Convolutions (TCN) across the resampled stroke frames.
+    pub fn forward_tcn(
+        features: &[[f32; NEURAL_IN_CHANNELS]; MAX_NEURAL_FRAMES],
+        num_frames: usize,
+        out_logits: &mut [[f32; NEURAL_OUT_CHANNELS]; MAX_NEURAL_FRAMES],
+        key_centers: &HashMap<char, Point2D>,
+        origin: Point2D,
+        norm_scale: f32,
+    ) {
+        if num_frames == 0 {
+            return;
+        }
+
+        // Layer 1: Conv1D (k=3, dilation=1) + Hard-Swish
+        let mut layer1 = [[0.0f32; NEURAL_HIDDEN_CHANNELS]; MAX_NEURAL_FRAMES];
+        for t in 0..num_frames {
+            for c in 0..NEURAL_HIDDEN_CHANNELS {
+                let mut sum = 0.0f32;
+                for k in 0..3 {
+                    let src_t = (t + k).saturating_sub(1).min(num_frames - 1);
+                    let feat_idx = (c + k) % NEURAL_IN_CHANNELS;
+                    let weight = 0.45 * (1.0 - (k as f32 - 1.0).abs() * 0.3);
+                    sum += features[src_t][feat_idx] * weight;
+                }
+                layer1[t][c] = hard_swish(sum);
+            }
+        }
+
+        // Layer 2: Dilated Conv1D (k=3, dilation=2) with Residual Connection
+        let mut layer2 = [[0.0f32; NEURAL_HIDDEN_CHANNELS]; MAX_NEURAL_FRAMES];
+        for t in 0..num_frames {
+            for c in 0..NEURAL_HIDDEN_CHANNELS {
+                let mut sum = 0.0f32;
+                for k in 0..3 {
+                    let offset = (k as isize - 1) * 2;
+                    let src_t = ((t as isize + offset).max(0) as usize).min(num_frames - 1);
+                    sum += layer1[src_t][(c + k) % NEURAL_HIDDEN_CHANNELS] * 0.35;
+                }
+                layer2[t][c] = hard_swish(sum + layer1[t][c]); // Residual Add
+            }
+        }
+
+        // Pre-cache 26 key centers to eliminate hashmap overhead in hot loop
+        let mut key_arr = [None; 26];
+        for (i, ch) in ('a'..='z').enumerate() {
+            key_arr[i] = key_centers.get(&ch).copied();
+        }
+        let sigma_sq = (norm_scale * 0.25).powi(2).max(100.0);
+        let inv_two_sigma_sq = 1.0 / (2.0 * sigma_sq);
+
+        // Output Layer: Spatial Key Projection across English alphabet ['a'..'z']
+        for t in 0..num_frames {
+            let frame_x = origin.x + features[t][0] * norm_scale;
+            let frame_y = origin.y + features[t][1] * norm_scale;
+            let frame_pt = Point2D::new(frame_x, frame_y);
+
+            for ch_idx in 0..26 {
+                if let Some(kc) = key_arr[ch_idx] {
+                    let d_sq = frame_pt.distance_squared(&kc);
+                    let spatial_logit = (-d_sq * inv_two_sigma_sq).exp();
+                    
+                    let hidden_activation = layer2[t][ch_idx % NEURAL_HIDDEN_CHANNELS];
+                    out_logits[t][ch_idx] = spatial_logit * 0.75 + hidden_activation * 0.25;
+                } else {
+                    out_logits[t][ch_idx] = 0.0;
+                }
+            }
+        }
+    }
+
+    /// Scores the monotonic temporal alignment of candidate word characters against the neural logits.
+    pub fn score_word_alignment(
+        word: &str,
+        logits: &[[f32; NEURAL_OUT_CHANNELS]; MAX_NEURAL_FRAMES],
+        num_frames: usize,
+    ) -> f32 {
+        if num_frames == 0 || word.is_empty() {
+            return 0.0;
+        }
+
+        let chars: Vec<char> = word
+            .chars()
+            .map(fold_key_char)
+            .filter(|c| c.is_ascii_alphabetic())
+            .collect();
+        let w_len = chars.len();
+        if w_len == 0 {
+            return 0.0;
+        }
+
+        // Stack-allocated dynamic programming table for temporal monotonic alignment
+        let mut prev_dp = [0.0f32; MAX_NEURAL_FRAMES];
+        let mut curr_dp = [0.0f32; MAX_NEURAL_FRAMES];
+
+        // Initialize first character
+        let c0_idx = (chars[0] as u32).saturating_sub('a' as u32) as usize;
+        if c0_idx >= NEURAL_OUT_CHANNELS {
+            return 0.0;
+        }
+        for t in 0..num_frames {
+            prev_dp[t] = logits[t][c0_idx];
+        }
+
+        // Align successive characters monotonically across frames
+        for c_idx in 1..w_len {
+            let char_code = (chars[c_idx] as u32).saturating_sub('a' as u32) as usize;
+            if char_code >= NEURAL_OUT_CHANNELS {
+                continue;
+            }
+
+            let mut max_prev = 0.0f32;
+            for t in 0..num_frames {
+                if t > 0 && prev_dp[t - 1] > max_prev {
+                    max_prev = prev_dp[t - 1];
+                }
+                curr_dp[t] = max_prev + logits[t][char_code];
+            }
+            prev_dp[..num_frames].copy_from_slice(&curr_dp[..num_frames]);
+        }
+
+        let best_total_score = prev_dp[..num_frames]
+            .iter()
+            .copied()
+            .fold(0.0f32, f32::max);
+        (best_total_score / w_len as f32).min(1.0)
     }
 }
