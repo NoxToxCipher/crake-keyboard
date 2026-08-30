@@ -33,7 +33,7 @@ class UpdateManagerTest : FunSpec({
 
     test("Milestone comparisons accurately trigger update availability") {
         val currentMilestone = UpdateManager.CURRENT_MILESTONE
-        currentMilestone shouldBe 308
+        currentMilestone shouldBe 309
         val futureReleaseMilestone = currentMilestone + 1
         val pastReleaseMilestone = currentMilestone - 1
 
@@ -48,5 +48,10 @@ class UpdateManagerTest : FunSpec({
         changelog.contains("Milestone 302") shouldBe true
         changelog.contains("Milestone 301") shouldBe true
         changelog.contains("Milestone 300") shouldBe true
+    }
+
+    test("remote milestone highlights override default fallback") {
+        UpdateManager.remoteMilestoneHighlights[999] = "Custom Dynamic Cloud Highlight"
+        UpdateManager.getMilestoneHighlights(999) shouldBe "Custom Dynamic Cloud Highlight"
     }
 })

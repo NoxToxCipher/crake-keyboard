@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 308
+    const val CURRENT_MILESTONE = 309
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 30801
-    private const val RESOLVED_NOTIFICATION_ID = 30802
+    private const val NOTIFICATION_ID = 30901
+    private const val RESOLVED_NOTIFICATION_ID = 30902
 
     data class ReleaseInfo(
         val tagName: String,
@@ -79,9 +79,15 @@ object UpdateManager {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var appContext: Context? = null
     private val prefs by FlorisPreferenceStore
+    val remoteMilestoneHighlights = java.util.concurrent.ConcurrentHashMap<Int, String>()
 
     fun getMilestoneHighlights(milestone: Int): String {
+        val remote = remoteMilestoneHighlights[milestone]
+        if (!remote.isNullOrBlank()) {
+            return remote
+        }
         return when (milestone) {
+            309 -> "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones)."
             308 -> "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words)."
             307 -> "Fixed theme switcher in onboarding carousel (mapped valid Crake theme component IDs so theme changes apply instantly)."
             306 -> "Interactive Word Flick & Gesture introductory guide card on Home Screen • Easter Egg registry refinement (36 pure word eggs with power surge as ambient charging touch)."
@@ -270,6 +276,16 @@ object UpdateManager {
                 }
                 if (rawConn.responseCode == HttpURLConnection.HTTP_OK) {
                     val rawJson = JSONObject(rawConn.inputStream.bufferedReader().use { it.readText() })
+                    val historyObj = rawJson.optJSONObject("history")
+                    if (historyObj != null) {
+                        for (key in historyObj.keys()) {
+                            val mNum = key.toIntOrNull()
+                            val hl = historyObj.optString(key, "")
+                            if (mNum != null && hl.isNotBlank()) {
+                                remoteMilestoneHighlights[mNum] = hl
+                            }
+                        }
+                    }
                     val m = rawJson.optInt("milestone", 0)
                     val tag = rawJson.optString("tagName", "")
                     val apk = rawJson.optString("apkDownloadUrl", "")
@@ -318,6 +334,12 @@ object UpdateManager {
                 val body = json.optString("body", "")
                 val publishedAt = json.optString("published_at", "")
                 val milestone = parseMilestoneNumber(if (name.isNotBlank()) name else tagName)
+                if (milestone > 0 && body.isNotBlank()) {
+                    val firstLine = body.lines().firstOrNull { it.isNotBlank() }?.trim() ?: body.trim()
+                    if (firstLine.isNotBlank() && !remoteMilestoneHighlights.containsKey(milestone)) {
+                        remoteMilestoneHighlights[milestone] = firstLine
+                    }
+                }
 
                 val assets = json.optJSONArray("assets") ?: JSONArray()
                 var apkUrl = ""

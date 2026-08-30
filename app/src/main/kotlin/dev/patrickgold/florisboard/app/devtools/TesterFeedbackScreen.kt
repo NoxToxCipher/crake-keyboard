@@ -682,6 +682,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 309 fixes (Dynamic cloud changelog sync and retrospective history dictionary)
+                    combined.contains("the truth") || (combined.contains("same thing") && combined.contains("updates")) || combined.contains("last 4 updates") -> 309
+
                     // Milestone 308 fixes (Upward word flick prediction restoration and guide text accuracy)
                     combined.contains("upwards flick") || combined.contains("upward flick") || (combined.contains("flick") && combined.contains("words")) || (combined.contains("flick") && combined.contains("capitals")) -> 308
 
