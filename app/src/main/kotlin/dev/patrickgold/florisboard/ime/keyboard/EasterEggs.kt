@@ -137,11 +137,17 @@ enum class EasterEgg(
         "Sundae ice creams landing on S-U-N-D-A-E keys",
         listOf("sundae", "sundaes", "icecream", "ice cream", "gelato", "parfait"),
     ),
-    TRAIN(
-        "train",
-        "Noble Train",
-        "Steam locomotive & royal golden noble train on middle fret",
-        listOf("train", "trains", "choo choo", "choochoo", "locomotive", "noble train", "nobletrain"),
+    STEAM_TRAIN(
+        "steam_train",
+        "Steam Locomotive",
+        "Classic puffing steam locomotive cruising middle fret",
+        listOf("train", "trains", "choo choo", "choochoo", "locomotive", "steam train"),
+    ),
+    NOBLE_TRAIN(
+        "noble_train",
+        "Royal Noble Train",
+        "Royal Golden 4-carriage noble train with purple velvet coaches & crests",
+        listOf("noble train", "nobletrain", "noble_train", "sniping trains", "noble"),
     ),
     LOUIE_PAWS(
         "louie_paws",

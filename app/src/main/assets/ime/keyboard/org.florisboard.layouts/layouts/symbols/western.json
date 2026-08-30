@@ -24,6 +24,10 @@
         },
         "relevant": [
           {
+            "code": 36,
+            "label": "$"
+          },
+          {
             "code": 8364,
             "label": "€"
           },

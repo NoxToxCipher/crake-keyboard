@@ -651,11 +651,15 @@ fun TextKeyboardLayout(
                 }
             }
             if (isNobleTrainMatch) {
-                isNobleTrainMode = true
-                if (prefs.easterEggs.fire(EasterEgg.TRAIN)) trainTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.NOBLE_TRAIN)) {
+                    isNobleTrainMode = true
+                    trainTriggerTime = System.currentTimeMillis()
+                }
             } else if (isRegularTrainMatch) {
-                isNobleTrainMode = false
-                if (prefs.easterEggs.fire(EasterEgg.TRAIN)) trainTriggerTime = System.currentTimeMillis()
+                if (prefs.easterEggs.fire(EasterEgg.STEAM_TRAIN)) {
+                    isNobleTrainMode = false
+                    trainTriggerTime = System.currentTimeMillis()
+                }
             }
             val louieKeys = louieKeysHoisted
             if (louieKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {

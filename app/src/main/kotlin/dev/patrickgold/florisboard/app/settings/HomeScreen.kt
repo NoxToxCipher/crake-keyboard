@@ -313,47 +313,48 @@ fun HomeScreen() = FlorisScreen {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(ElectricCyan.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Feedback,
-                                contentDescription = null,
-                                tint = ElectricCyan,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Tester Hub & Feedback",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp,
-                                color = Color.White,
-                            )
-                            Text(
-                                text = "Report bugs, attach screenshots & request features",
-                                fontSize = 10.5.sp,
-                                color = TextMuted,
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ElectricCyan.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Feedback,
+                            contentDescription = null,
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Tester Hub & Feedback",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp,
+                            color = Color.White,
+                            maxLines = 1,
+                        )
+                        Text(
+                            text = "Report bugs, screenshots & suggestions",
+                            fontSize = 10.5.sp,
+                            color = TextMuted,
+                            maxLines = 1,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = { navController.navigate(Routes.Devtools.TesterFeedback) },
                         colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan),
                         shape = RoundedCornerShape(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                     ) {
                         Text(
                             text = "Open",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
+                            fontSize = 12.sp,
                             color = Color(0xFF0F172A),
                         )
                     }
@@ -410,10 +411,10 @@ fun HomeScreen() = FlorisScreen {
                                 Text("Milestone ${st.release.milestone} Ready to Install", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CyberEmerald)
                             }
                             is UpdateManager.UpdateStatus.UpToDate -> {
-                                Text("Up to date • Latest build installed", fontSize = 11.sp, color = TextMuted)
+                                Text("No Update, Please Check Again Soon", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = CyberEmerald)
                             }
                             is UpdateManager.UpdateStatus.Error -> {
-                                Text("Check failed: ${st.message}", fontSize = 11.sp, color = NeonPink)
+                                Text("No Update, Please Check Again Soon", fontSize = 11.sp, color = TextMuted)
                             }
                             else -> {
                                 Text("Automatic hourly checks & instant manual trigger", fontSize = 11.sp, color = TextMuted)

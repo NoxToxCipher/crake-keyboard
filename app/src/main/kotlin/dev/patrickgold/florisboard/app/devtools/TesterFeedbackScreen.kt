@@ -621,10 +621,10 @@ fun TesterFeedbackScreen() = FlorisScreen {
         if (recentFeedbacks.isNotEmpty()) {
             Spacer(modifier = Modifier.height(10.dp))
             CrakeSectionHeader(title = "Your Submitted Feedback", badgeText = "${recentFeedbacks.size} REPORTS", accentColor = ElectricCyan)
-            val resolvedKeywords = listOf("screenshot", "update", "feedback box", "higher", "menu", "resolution", "notification")
+            // Tickets submitted prior to Milestone 282/284 sprint resolution
+            val resolvedHistoricalTitles = setOf("Screenshots", "Resolution Notifications", "Automatic Updates", "High Menu Placement", "Email Line", "Poor Visual", "Easter Egg Recorder")
             for (fb in recentFeedbacks) {
-                val combinedText = "${fb.title} ${fb.description}".lowercase()
-                val isResolved = resolvedKeywords.any { combinedText.contains(it) }
+                val isResolved = fb.title in resolvedHistoricalTitles && fb.timestamp < 1788062500000L
 
                 Card(
                     modifier = Modifier

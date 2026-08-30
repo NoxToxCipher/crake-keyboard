@@ -33,7 +33,7 @@ class UpdateManagerTest : FunSpec({
 
     test("Milestone comparisons accurately trigger update availability") {
         val currentMilestone = UpdateManager.CURRENT_MILESTONE
-        currentMilestone shouldBe 284
+        currentMilestone shouldBe 285
         val futureReleaseMilestone = currentMilestone + 1
         val pastReleaseMilestone = currentMilestone - 1
 
