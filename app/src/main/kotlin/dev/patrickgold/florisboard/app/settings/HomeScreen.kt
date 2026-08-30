@@ -469,6 +469,49 @@ fun HomeScreen() = FlorisScreen {
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = CardBorder, thickness = 0.8.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // TELEMETRY LEARNING & SPRINT ADDITIONS
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF0F172A).copy(alpha = 0.6f))
+                        .padding(8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(CyberEmerald)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Telemetry Engine Active",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CyberEmerald,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "• Flight logs training models",
+                            fontSize = 10.sp,
+                            color = TextMuted,
+                            maxLines = 1,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Latest Additions (M${UpdateManager.CURRENT_MILESTONE}): 3-Tier CDN Zero-Rate-Limit Updater • Telemetry-tuned typo recovery (kf->of, ia->is, fizdx->fixed) • Secret Easter Egg discovery & spoiler-free tracking.",
+                        fontSize = 10.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        lineHeight = 13.sp,
+                    )
+                }
             }
         }
 
@@ -790,8 +833,8 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.Egg,
             title = "Secret Easter Eggs",
-            summary = "Triggered: $discoveredCount/$totalEggs • Recorded: $recordedCount/$totalEggs",
-            badgeText = "$recordedCount/$totalEggs",
+            summary = "Discovered: $discoveredCount/$totalEggs • Solved: $recordedCount/$totalEggs",
+            badgeText = "$discoveredCount/$totalEggs",
             accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.EasterEggs) },
         )

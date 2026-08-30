@@ -627,6 +627,12 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val combined = "$t $d"
 
                 val implementedMilestone: Int? = when {
+                    // Milestone 291 (Update list changelog in tester card, Telemetry learning status, Easter Egg counter disambiguation)
+                    combined.contains("triggered") || combined.contains("35/35") || combined.contains("no word") || combined.contains("update list") || combined.contains("inform") || combined.contains("autocorrect and gliding") -> 291
+
+                    // Milestone 290 (Telemetry-driven autocorrect accuracy enhancements & 3-tier zero-rate-limit CDN updater)
+                    combined.contains("error") && fb.timestamp >= 1788070000000L -> 290
+
                     // Milestone 289 (New Icon, Menu deduplication, Easter Egg Serenity Sad/Stress triggers, Audited Badges)
                     combined.contains("icon") || combined.contains("doubling") || combined.contains("incorrect") || combined.contains("tester bug") -> 289
 

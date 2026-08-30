@@ -1,8 +1,8 @@
 {
-  "milestone": 290,
-  "tagName": "v0.290.0",
-  "name": "Milestone 290 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.290.0/CrakeKeyboard_Milestone_290.apk",
+  "milestone": 291,
+  "tagName": "v0.291.0",
+  "name": "Milestone 291 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.291.0/CrakeKeyboard_Milestone_291.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 290: Telemetry-driven autocorrect accuracy enhancements (kf->of, ia->is, fizdx->fixed, novle->noble, trai->train, ckrdsct->correct) and zero-rate-limit 3-tier update resolution."
+  "changelog": "Milestone 291: Live telemetry model training status, version-aware additions changelog in Tester Hub, and Easter egg discovery clarification."
 }
