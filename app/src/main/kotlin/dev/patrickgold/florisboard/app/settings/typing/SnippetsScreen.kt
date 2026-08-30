@@ -420,12 +420,12 @@ fun SnippetsScreen() = FlorisScreen {
                                     fontFamily = FontFamily.Monospace,
                                 )
                             }
-                            Spacer(modifier = Modifier.width(12.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 if (detectedChain != null) {
                                     Text(
                                         text = "${detectedChain.displayName} (${detectedChain.symbol})",
-                                        fontSize = 11.sp,
+                                        fontSize = 10.5.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace,
                                         color = CyberAmber,
@@ -434,11 +434,11 @@ fun SnippetsScreen() = FlorisScreen {
                                 }
                                 Text(
                                     text = entry.word,
-                                    fontSize = 13.sp,
+                                    fontSize = if (entry.word.length > 25) 11.5.sp else 13.sp,
                                     fontWeight = FontWeight.Medium,
                                     fontFamily = if (detectedChain != null) FontFamily.Monospace else FontFamily.Default,
                                     color = Color.White,
-                                    maxLines = 4,
+                                    maxLines = 2,
                                     softWrap = true,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 )

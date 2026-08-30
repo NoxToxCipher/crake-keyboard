@@ -278,12 +278,18 @@ fun EasterEggsScreen() = FlorisScreen {
                     onClick = {
                         if (guessText.isBlank()) return@Button
                         scope.launch {
+                            val preMatched = EasterEggs.matchTriggerPhrase(guessText)
+                            val alreadyRecorded = preMatched != null && EasterEggs.isRecorded(recordedCsv, preMatched)
                             val matched = prefs.easterEggs.recordGuess(guessText)
                             if (matched != null) {
                                 lastUnlockedEgg = matched
-                                feedbackMessage = "🎉 Verified! You identified '${matched.label}'. Toggle unlocked below."
+                                if (alreadyRecorded) {
+                                    feedbackMessage = "ℹ️ Already Recorded! '${matched.label}' was already in your active collection."
+                                } else {
+                                    feedbackMessage = "🎉 Verified! You identified '${matched.label}'. Toggle unlocked below."
+                                    context.showShortToast("Easter Egg '${matched.label}' recorded!")
+                                }
                                 guessText = ""
-                                context.showShortToast("Easter Egg '${matched.label}' recorded!")
                             } else {
                                 lastUnlockedEgg = null
                                 feedbackMessage = "No hidden easter egg matched that phrase. Keep exploring!"

@@ -403,6 +403,7 @@ private fun SmartbarSecondaryRow(modifier: Modifier = Modifier) {
 
 @Composable
 fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
+    val prefs by FlorisPreferenceStore
     val context = LocalContext.current
     val editorInstance by context.editorInstance()
     val activeContent by editorInstance.activeContentFlow.collectAsState()
@@ -411,9 +412,13 @@ fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
     LaunchedEffect(activeContent) {
         val tb = activeContent.textBeforeSelection.toString().lowercase()
         val comp = activeContent.composingText.lowercase()
-        val batteryKeys = listOf("battery", "batteries", "supercharge", "overcharge", "power")
+        val batteryKeys = listOf("battery", "batteries", "supercharge", "overcharge", "power", "charge")
         if (batteryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
-            overchargeTriggerTime = System.currentTimeMillis()
+            if (prefs.easterEggs.fire(dev.patrickgold.florisboard.ime.keyboard.EasterEgg.BATTERY_OVERCHARGE)) {
+                overchargeTriggerTime = System.currentTimeMillis()
+            } else {
+                overchargeTriggerTime = System.currentTimeMillis()
+            }
         }
     }
 

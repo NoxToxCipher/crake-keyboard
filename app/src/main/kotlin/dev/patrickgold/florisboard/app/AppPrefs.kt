@@ -255,6 +255,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "updater__tester_onboarding_dismissed",
             default = false,
         )
+        val lastNotifiedMilestone = int(
+            key = "updater__last_notified_milestone",
+            default = 0,
+        )
         val logSyncEnabled = boolean(
             key = "updater__log_sync_enabled",
             default = true,

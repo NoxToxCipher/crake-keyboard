@@ -29,6 +29,12 @@ enum class EasterEgg(
     val description: String,
     val triggerWords: List<String>,
 ) {
+    BATTERY_OVERCHARGE(
+        "battery_overcharge",
+        "Overcharged Battery",
+        "Lightning-charged plasma battery HUD on the Smartbar",
+        listOf("battery", "batteries", "supercharge", "overcharge", "power", "charge"),
+    ),
     ECLECTUS_FLIGHT(
         "eclectus_flight",
         "Eclectus Flight",
