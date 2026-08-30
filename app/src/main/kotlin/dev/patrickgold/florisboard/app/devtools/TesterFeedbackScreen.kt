@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager
+import dev.patrickgold.florisboard.ime.nlp.RemoteTelemetryClient
 import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
@@ -362,11 +363,19 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 it.append(jsonObj.toString()).append("\n")
                             }
 
+                            // Transmit wirelessly to development relay
+                            RemoteTelemetryClient.transmitFeedback(
+                                testerName = testerName,
+                                category = selectedCategory.name,
+                                title = titleText.trim(),
+                                jsonPayload = jsonObj.toString(),
+                            )
+
                             withContext(Dispatchers.Main) {
                                 submissionSuccess = true
                                 titleText = ""
                                 descriptionText = ""
-                                Toast.makeText(context, "Feedback saved! Thank you for helping build Crake.", Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Feedback transmitted to Crake development team!", Toast.LENGTH_LONG).show()
                                 refreshRecentFeedbacks()
                             }
                         }

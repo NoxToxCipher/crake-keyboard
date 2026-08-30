@@ -157,6 +157,13 @@ object DiagnosticSyncManager {
                 allFiles.drop(15).forEach { it.delete() }
             }
 
+            // Transmit wirelessly over HTTPS to development relay
+            RemoteTelemetryClient.transmitDiagnosticBundle(
+                testerName = testerName,
+                recordCount = sanitizedCount,
+                jsonBundle = bundleObj.toString(),
+            )
+
             sanitizedCount
         }
     }
