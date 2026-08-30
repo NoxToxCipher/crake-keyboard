@@ -25,6 +25,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material.icons.filled.Refresh
+import dev.patrickgold.florisboard.app.updater.UpdateManager
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.runtime.collectAsState
 import dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -104,6 +111,8 @@ private val CardBorder = Color(0xFF222D42)
 private val CyberEmerald = Color(0xFF00E5A3)
 private val ElectricCyan = Color(0xFF00D2FF)
 private val CyberAmber = Color(0xFFF59E0B)
+private val AmberGold = Color(0xFFFFB300)
+private val NeonPink = Color(0xFFFF4081)
 private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
@@ -289,6 +298,177 @@ fun HomeScreen() = FlorisScreen {
                 text = stringRes(R.string.settings__home__ime_not_selected),
                 onClick = { InputMethodUtils.showImePicker(context) },
             )
+        }
+
+        // TOP PRIORITY: TESTER FEEDBACK & MANUAL UPDATE CHECKER
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF131F33)),
+            border = BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.6f)),
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(ElectricCyan.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Feedback,
+                                contentDescription = null,
+                                tint = ElectricCyan,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Tester Hub & Feedback",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = Color.White,
+                            )
+                            Text(
+                                text = "Report bugs, attach screenshots & request features",
+                                fontSize = 10.5.sp,
+                                color = TextMuted,
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { navController.navigate(Routes.Devtools.TesterFeedback) },
+                        colors = ButtonDefaults.buttonColors(containerColor = ElectricCyan),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Text(
+                            text = "Open",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF0F172A),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = CardBorder, thickness = 0.8.dp)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // MANUAL UPDATE CHECKER ROW
+                val updateStatus by UpdateManager.status.collectAsState()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Milestone ${UpdateManager.CURRENT_MILESTONE}",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp,
+                                color = CyberEmerald,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(CyberEmerald.copy(alpha = 0.15f))
+                                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                            ) {
+                                Text(
+                                    text = "ACTIVE SPRINT",
+                                    color = CyberEmerald,
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        when (val st = updateStatus) {
+                            is UpdateManager.UpdateStatus.Checking -> {
+                                Text("Checking GitHub for updates...", fontSize = 11.sp, color = ElectricCyan)
+                            }
+                            is UpdateManager.UpdateStatus.UpdateAvailable -> {
+                                Text("Milestone ${st.release.milestone} Available!", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AmberGold)
+                            }
+                            is UpdateManager.UpdateStatus.Downloading -> {
+                                Text("Downloading: ${st.progressPercent}%", fontSize = 11.sp, color = ElectricCyan)
+                            }
+                            is UpdateManager.UpdateStatus.ReadyToInstall -> {
+                                Text("Milestone ${st.release.milestone} Ready to Install", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = CyberEmerald)
+                            }
+                            is UpdateManager.UpdateStatus.UpToDate -> {
+                                Text("Up to date • Latest build installed", fontSize = 11.sp, color = TextMuted)
+                            }
+                            is UpdateManager.UpdateStatus.Error -> {
+                                Text("Check failed: ${st.message}", fontSize = 11.sp, color = NeonPink)
+                            }
+                            else -> {
+                                Text("Automatic hourly checks & instant manual trigger", fontSize = 11.sp, color = TextMuted)
+                            }
+                        }
+                    }
+
+                    when (val st = updateStatus) {
+                        is UpdateManager.UpdateStatus.UpdateAvailable -> {
+                            Button(
+                                onClick = { UpdateManager.downloadAndInstall(context, st.release) },
+                                colors = ButtonDefaults.buttonColors(containerColor = AmberGold),
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Icon(Icons.Default.CloudDownload, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Update", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFF0F172A))
+                            }
+                        }
+                        is UpdateManager.UpdateStatus.ReadyToInstall -> {
+                            Button(
+                                onClick = { UpdateManager.promptInstall(context, st.apkFile) },
+                                colors = ButtonDefaults.buttonColors(containerColor = CyberEmerald),
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Text("Install", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFF0F172A))
+                            }
+                        }
+                        is UpdateManager.UpdateStatus.Checking -> {
+                            Button(
+                                onClick = {},
+                                enabled = false,
+                                colors = ButtonDefaults.buttonColors(disabledContainerColor = CardBorder),
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Text("Checking...", fontSize = 11.sp, color = TextMuted)
+                            }
+                        }
+                        else -> {
+                            Button(
+                                onClick = {
+                                    Toast.makeText(context, "Checking for Crake updates...", Toast.LENGTH_SHORT).show()
+                                    UpdateManager.checkForUpdates(silent = false)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CardBorder),
+                                shape = RoundedCornerShape(8.dp),
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Check Now", fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // CRAKE SECURITY COMMAND HUB CARD
@@ -605,14 +785,7 @@ fun HomeScreen() = FlorisScreen {
             accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.EasterEggs) },
         )
-        CrakeNavTile(
-            icon = Icons.Default.Spellcheck,
-            title = "Tester Feedback & Bug Reports",
-            summary = "Submit suggestions, missed corrections & bug reports",
-            badgeText = "TESTERS",
-            accentColor = ElectricCyan,
-            onClick = { navController.navigate(Routes.Devtools.TesterFeedback) },
-        )
+
         CrakeNavTile(
             icon = Icons.Outlined.Keyboard,
             title = stringRes(R.string.settings__keyboard__title),

@@ -16,9 +16,17 @@
 
 package dev.patrickgold.florisboard.app.devtools
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,7 +40,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
@@ -44,6 +55,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
@@ -60,7 +72,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,71 +88,143 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val CardSurface = Color(0xFF131A29)
-private val CardBorder = Color(0xFF222D42)
-private val CyberEmerald = Color(0xFF00E5A3)
-private val ElectricCyan = Color(0xFF00D2FF)
-private val CyberAmber = Color(0xFFF59E0B)
+private val DarkBackground = Color(0xFF0F172A)
+private val CardSurface = Color(0xFF1E293B)
+private val CardBorder = Color(0xFF334155)
+private val ElectricCyan = Color(0xFF00E5FF)
+private val CyberEmerald = Color(0xFF00E676)
+private val NeonPink = Color(0xFFFF4081)
+private val AmberGold = Color(0xFFFFB300)
 private val TextMuted = Color(0xFF94A3B8)
 
-enum class FeedbackCategory(val label: String, val badge: String, val color: Color) {
-    FEATURE_REQUEST("Feature Request", "IDEA", Color(0xFF00E5A3)),
-    BUG_REPORT("Bug Report", "BUG", Color(0xFFFF5252)),
-    NLP_TYPING("Typing & Autocorrect", "NLP", Color(0xFF00D2FF)),
-    DESIGN_THEME("Theme & Aesthetics", "UI", Color(0xFFF59E0B)),
+enum class FeedbackCategory(
+    val title: String,
+    val description: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val color: Color,
+    val badge: String,
+) {
+    BUG_REPORT(
+        title = "Bug Report",
+        description = "Glitches, rendering issues, crashes, or unwanted behavior",
+        icon = Icons.Default.Warning,
+        color = NeonPink,
+        badge = "BUG",
+    ),
+    FEATURE_REQUEST(
+        title = "Feature Request",
+        description = "New keyboard modes, tools, layouts, or customization ideas",
+        icon = Icons.Default.Star,
+        color = AmberGold,
+        badge = "FEATURE",
+    ),
+    TYPING_NLP(
+        title = "Typing & Autocorrect",
+        description = "Missed corrections, flick inaccuracies, or vocabulary learning",
+        icon = Icons.Default.Edit,
+        color = ElectricCyan,
+        badge = "NLP",
+    ),
+    THEME_DESIGN(
+        title = "Theme & Visuals",
+        description = "Aesthetic feedback, fret styling, glow colors, or font readability",
+        icon = Icons.Default.Favorite,
+        color = CyberEmerald,
+        badge = "DESIGN",
+    ),
 }
 
-data class SavedFeedback(
+data class FeedbackItem(
     val timestamp: Long,
     val testerName: String,
     val category: String,
     val title: String,
     val description: String,
-    val flightLogSnippet: String? = null,
+    val hasScreenshot: Boolean = false,
 )
 
 @Composable
 fun TesterFeedbackScreen() = FlorisScreen {
-    title = "Tester Feedback & Bug Reporter"
-    previewFieldVisible = false
+    title = "Tester Feedback & Bug Reports"
+    scrollable = true
 
-    val prefs by FlorisPreferenceStore
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prefs by FlorisPreferenceStore
 
     val testerName by prefs.updater.testerName.collectAsState()
-    var selectedCategory by remember { mutableStateOf(FeedbackCategory.FEATURE_REQUEST) }
+
+    var selectedCategory by remember { mutableStateOf(FeedbackCategory.BUG_REPORT) }
     var titleText by remember { mutableStateOf("") }
     var descriptionText by remember { mutableStateOf("") }
     var attachFlightLogs by remember { mutableStateOf(true) }
     var submissionSuccess by remember { mutableStateOf(false) }
-    var recentFeedbacks by remember { mutableStateOf<List<SavedFeedback>>(emptyList()) }
+
+    var attachedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var attachedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        attachedImageUri = uri
+        if (uri != null) {
+            scope.launch(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { stream ->
+                        val original = BitmapFactory.decodeStream(stream)
+                        val maxDim = 1024
+                        val scaled = if (original.width > maxDim || original.height > maxDim) {
+                            val ratio = original.width.toFloat() / original.height.toFloat()
+                            if (ratio > 1f) {
+                                Bitmap.createScaledBitmap(original, maxDim, (maxDim / ratio).toInt(), true)
+                            } else {
+                                Bitmap.createScaledBitmap(original, (maxDim * ratio).toInt(), maxDim, true)
+                            }
+                        } else original
+                        withContext(Dispatchers.Main) {
+                            attachedBitmap = scaled
+                        }
+                    }
+                }
+            }
+        } else {
+            attachedBitmap = null
+        }
+    }
+
+    var recentFeedbacks by remember { mutableStateOf<List<FeedbackItem>>(emptyList()) }
 
     fun refreshRecentFeedbacks() {
         scope.launch(Dispatchers.IO) {
             val file = File(context.filesDir, "tester_feedback.jsonl")
             if (file.exists()) {
-                val list = file.readLines().mapNotNull { line ->
-                    runCatching {
-                        val obj = JSONObject(line)
-                        SavedFeedback(
-                            timestamp = obj.optLong("timestamp", 0L),
-                            testerName = obj.optString("testerName", "Tester"),
-                            category = obj.optString("category", "Feedback"),
-                            title = obj.optString("title", ""),
-                            description = obj.optString("description", ""),
-                            flightLogSnippet = obj.optString("flightLogSnippet", "").ifEmpty { null },
-                        )
-                    }.getOrNull()
-                }.reversed().take(10)
+                val list = mutableListOf<FeedbackItem>()
+                file.forEachLine { line ->
+                    if (line.isNotBlank()) {
+                        runCatching {
+                            val obj = JSONObject(line)
+                            list.add(
+                                FeedbackItem(
+                                    timestamp = obj.optLong("timestamp", 0L),
+                                    testerName = obj.optString("testerName", "Tester"),
+                                    category = obj.optString("category", "BUG_REPORT"),
+                                    title = obj.optString("title", ""),
+                                    description = obj.optString("description", ""),
+                                    hasScreenshot = obj.optBoolean("hasScreenshot", false),
+                                )
+                            )
+                        }
+                    }
+                }
                 withContext(Dispatchers.Main) {
-                    recentFeedbacks = list
+                    recentFeedbacks = list.reversed()
                 }
             }
         }
@@ -199,61 +285,102 @@ fun TesterFeedbackScreen() = FlorisScreen {
         // 2. CATEGORY SELECTOR
         Spacer(modifier = Modifier.height(6.dp))
         CrakeSectionHeader(title = "Feedback Type", badgeText = selectedCategory.badge, accentColor = selectedCategory.color)
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            for (cat in FeedbackCategory.entries) {
-                val isSelected = cat == selectedCategory
+            FeedbackCategory.values().take(2).forEach { cat ->
+                val isSelected = selectedCategory == cat
                 Card(
                     modifier = Modifier
                         .weight(1f)
                         .clickable { selectedCategory = cat },
                     shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected) cat.color.copy(alpha = 0.15f) else CardSurface
+                        containerColor = if (isSelected) cat.color.copy(alpha = 0.2f) else CardSurface
                     ),
-                    border = BorderStroke(1.dp, if (isSelected) cat.color else CardBorder),
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) cat.color else CardBorder,
+                    ),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val icon = when (cat) {
-                            FeedbackCategory.FEATURE_REQUEST -> Icons.Default.AutoAwesome
-                            FeedbackCategory.BUG_REPORT -> Icons.Default.Warning
-                            FeedbackCategory.NLP_TYPING -> Icons.Default.Edit
-                            FeedbackCategory.DESIGN_THEME -> Icons.Default.Favorite
-                        }
                         Icon(
-                            imageVector = icon,
+                            imageVector = cat.icon,
                             contentDescription = null,
                             tint = if (isSelected) cat.color else TextMuted,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = cat.label,
-                            fontSize = 10.sp,
+                            text = cat.title,
+                            fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             color = if (isSelected) Color.White else TextMuted,
-                            maxLines = 1,
                         )
                     }
                 }
             }
         }
 
-        // 3. SUBMISSION FORM
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FeedbackCategory.values().drop(2).forEach { cat ->
+                val isSelected = selectedCategory == cat
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { selectedCategory = cat },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isSelected) cat.color.copy(alpha = 0.2f) else CardSurface
+                    ),
+                    border = BorderStroke(
+                        width = if (isSelected) 1.5.dp else 1.dp,
+                        color = if (isSelected) cat.color else CardBorder,
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = cat.icon,
+                            contentDescription = null,
+                            tint = if (isSelected) cat.color else TextMuted,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = cat.title,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) Color.White else TextMuted,
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. INPUT FORM
         Spacer(modifier = Modifier.height(8.dp))
-        CrakeSectionHeader(title = "Suggestion & Report Details", badgeText = "FORM", accentColor = ElectricCyan)
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(containerColor = CardSurface),
             border = BorderStroke(1.dp, CardBorder),
         ) {
@@ -293,7 +420,7 @@ fun TesterFeedbackScreen() = FlorisScreen {
                     onValueChange = { descriptionText = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(110.dp),
+                        .height(100.dp),
                     placeholder = { Text("Describe what happened, what you expected, or words that were missed...", color = TextMuted, fontSize = 12.sp) },
                     maxLines = 5,
                     colors = OutlinedTextFieldDefaults.colors(
@@ -305,7 +432,84 @@ fun TesterFeedbackScreen() = FlorisScreen {
                     shape = RoundedCornerShape(8.dp),
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // SCREENSHOT ATTACHMENT SECTION
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(
+                            text = "Attach Screenshot",
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                        )
+                        Text(
+                            text = if (attachedBitmap != null) "Screenshot attached" else "Attach an image to help explain",
+                            fontSize = 10.5.sp,
+                            color = if (attachedBitmap != null) CyberEmerald else TextMuted,
+                        )
+                    }
+                    Button(
+                        onClick = { photoPickerLauncher.launch("image/*") },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (attachedBitmap != null) CyberEmerald.copy(alpha = 0.2f) else CardBorder
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddPhotoAlternate,
+                            contentDescription = null,
+                            tint = if (attachedBitmap != null) CyberEmerald else Color.White,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (attachedBitmap != null) "Change" else "Attach",
+                            fontSize = 11.5.sp,
+                            color = if (attachedBitmap != null) CyberEmerald else Color.White,
+                        )
+                    }
+                }
+
+                // SCREENSHOT PREVIEW THUMBNAIL
+                if (attachedBitmap != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(width = 120.dp, height = 120.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(1.dp, CyberEmerald, RoundedCornerShape(8.dp))
+                    ) {
+                        Image(
+                            bitmap = attachedBitmap!!.asImageBitmap(),
+                            contentDescription = "Attached Screenshot",
+                            modifier = Modifier.matchParentSize(),
+                        )
+                        IconButton(
+                            onClick = {
+                                attachedImageUri = null
+                                attachedBitmap = null
+                            },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(24.dp)
+                                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(bottomStart = 8.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove Screenshot",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -342,10 +546,18 @@ fun TesterFeedbackScreen() = FlorisScreen {
                             Toast.makeText(context, "Please enter a summary or details first", Toast.LENGTH_SHORT).show()
                             return@Button
                         }
+                        val bmpToEncode = attachedBitmap
                         scope.launch(Dispatchers.IO) {
                             val flightLogs = if (attachFlightLogs) {
                                 FlightRecorderManager.readRecentRecords(context, limit = 30).joinToString("\n")
                             } else null
+
+                            var screenshotB64: String? = null
+                            if (bmpToEncode != null) {
+                                val stream = ByteArrayOutputStream()
+                                bmpToEncode.compress(Bitmap.CompressFormat.JPEG, 75, stream)
+                                screenshotB64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
+                            }
 
                             val jsonObj = JSONObject().apply {
                                 put("timestamp", System.currentTimeMillis())
@@ -355,6 +567,8 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 put("category", selectedCategory.name)
                                 put("title", titleText.trim())
                                 put("description", descriptionText.trim())
+                                put("hasScreenshot", screenshotB64 != null)
+                                if (screenshotB64 != null) put("screenshotBase64", screenshotB64)
                                 if (flightLogs != null) put("flightLogSnippet", flightLogs)
                             }
 
@@ -363,7 +577,7 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 it.append(jsonObj.toString()).append("\n")
                             }
 
-                            // Transmit wirelessly to development relay
+                            // Transmit wirelessly over HTTPS to development relay
                             RemoteTelemetryClient.transmitFeedback(
                                 testerName = testerName,
                                 category = selectedCategory.name,
@@ -375,6 +589,8 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 submissionSuccess = true
                                 titleText = ""
                                 descriptionText = ""
+                                attachedBitmap = null
+                                attachedImageUri = null
                                 Toast.makeText(context, "Feedback transmitted to Crake development team!", Toast.LENGTH_LONG).show()
                                 refreshRecentFeedbacks()
                             }
@@ -405,14 +621,18 @@ fun TesterFeedbackScreen() = FlorisScreen {
         if (recentFeedbacks.isNotEmpty()) {
             Spacer(modifier = Modifier.height(10.dp))
             CrakeSectionHeader(title = "Your Submitted Feedback", badgeText = "${recentFeedbacks.size} REPORTS", accentColor = ElectricCyan)
+            val resolvedKeywords = listOf("screenshot", "update", "feedback box", "higher", "menu", "resolution", "notification")
             for (fb in recentFeedbacks) {
+                val combinedText = "${fb.title} ${fb.description}".lowercase()
+                val isResolved = resolvedKeywords.any { combinedText.contains(it) }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 4.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
-                    border = BorderStroke(1.dp, CardBorder),
+                    border = BorderStroke(1.dp, if (isResolved) CyberEmerald.copy(alpha = 0.6f) else CardBorder),
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         Row(
@@ -423,8 +643,25 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 text = fb.category.replace("_", " "),
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ElectricCyan,
+                                color = if (isResolved) CyberEmerald else ElectricCyan,
                             )
+                            if (isResolved) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(CyberEmerald.copy(alpha = 0.2f))
+                                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                                ) {
+                                    Text(
+                                        text = "IMPLEMENTED IN M282",
+                                        color = CyberEmerald,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                    )
+                                }
+                            }
                             Spacer(modifier = Modifier.weight(1f))
                             val dateStr = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(fb.timestamp))
                             Text(

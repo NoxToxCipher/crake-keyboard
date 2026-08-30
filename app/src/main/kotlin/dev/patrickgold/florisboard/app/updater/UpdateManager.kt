@@ -50,10 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 277
+    const val CURRENT_MILESTONE = 282
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases/latest"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 27701
+    private const val NOTIFICATION_ID = 28201
+    private const val RESOLVED_NOTIFICATION_ID = 28202
 
     data class ReleaseInfo(
         val tagName: String,
@@ -86,6 +87,7 @@ object UpdateManager {
         appContext = context.applicationContext
         createNotificationChannel(context)
         startPeriodicCheckLoop()
+        checkAndNotifyResolvedFeedback(context)
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -95,7 +97,7 @@ object UpdateManager {
                 "Crake Keyboard Updates",
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply {
-                description = "Notifications for automatic background keyboard updates"
+                description = "Notifications for automatic background keyboard updates & feature fixes"
             }
             val nm = context.getSystemService(NotificationManager::class.java)
             nm?.createNotificationChannel(channel)
@@ -116,22 +118,21 @@ object UpdateManager {
                         checkForUpdates(silent = true)
                     }
                 }
-                // Periodic wake every 15 minutes to evaluate hourly gate
                 delay(15 * 60 * 1000L)
             }
         }
     }
 
     fun parseMilestoneNumber(tagOrName: String): Int {
-        val mMatch = Regex("""(?i)(?:milestone[\s_\-]*|(?:\b|[_\-])m)(\d+)""").find(tagOrName)
+        val mMatch = Regex("(?i)(?:milestone[\\s_\\-]*|(?:\\b|[\\-_])m)(\\d+)").find(tagOrName)
         if (mMatch != null) {
             return mMatch.groupValues[1].toIntOrNull() ?: 0
         }
-        val vMatch = Regex("""(?i)(?:^|[^a-z0-9])v(\d{2,4})(?:[^0-9]|$)""").find(tagOrName)
+        val vMatch = Regex("(?i)(?:^|[^a-z0-9])v(\\d{2,4})(?:[^0-9]|$)").find(tagOrName)
         if (vMatch != null) {
             return vMatch.groupValues[1].toIntOrNull() ?: 0
         }
-        val generalMatch = Regex("""\b(\d{2,4})\b""").find(tagOrName)
+        val generalMatch = Regex("\\b(\\d{2,4})\\b").find(tagOrName)
         if (generalMatch != null) {
             return generalMatch.groupValues[1].toIntOrNull() ?: 0
         }
@@ -151,6 +152,9 @@ object UpdateManager {
                         _status.value = UpdateStatus.UpdateAvailable(release)
                         appContext?.let { ctx ->
                             notifyUpdateAvailable(ctx, release)
+                            if (prefs.updater.autoDownloadOnWifi.get()) {
+                                downloadAndInstall(ctx, release, autoPrompt = true)
+                            }
                         }
                     } else {
                         _status.value = UpdateStatus.UpToDate(now)
@@ -218,7 +222,7 @@ object UpdateManager {
         }
     }
 
-    fun downloadAndInstall(context: Context, release: ReleaseInfo) {
+    fun downloadAndInstall(context: Context, release: ReleaseInfo, autoPrompt: Boolean = false) {
         scope.launch {
             _status.value = UpdateStatus.Downloading(progressPercent = 0, bytesDownloaded = 0, totalBytes = release.apkSize)
 
@@ -226,7 +230,11 @@ object UpdateManager {
             downloadResult.fold(
                 onSuccess = { apkFile ->
                     _status.value = UpdateStatus.ReadyToInstall(apkFile, release)
-                    promptInstall(context, apkFile)
+                    if (autoPrompt) {
+                        notifyReadyToInstall(context, apkFile, release)
+                    } else {
+                        promptInstall(context, apkFile)
+                    }
                 },
                 onFailure = { error ->
                     _status.value = UpdateStatus.Error("Download failed: ${error.localizedMessage}")
@@ -337,6 +345,80 @@ object UpdateManager {
             nm.notify(NOTIFICATION_ID, builder.build())
         } catch (e: Exception) {
             Log.w(TAG, "Could not post update notification: ${e.message}")
+        }
+    }
+
+    private fun notifyReadyToInstall(context: Context, apkFile: File, release: ReleaseInfo) {
+        try {
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider.file",
+                apkFile,
+            )
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                1,
+                installIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.mipmap.floris_app_icon)
+                .setContentTitle("Milestone ${release.milestone} Ready to Install")
+                .setContentText("Update downloaded automatically. Tap to install!")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            val nm = NotificationManagerCompat.from(context)
+            nm.notify(NOTIFICATION_ID, builder.build())
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not post install notification: ${e.message}")
+        }
+    }
+
+    /**
+     * Checks local feedback records and notifies the tester when their feature request / bug fix is addressed.
+     */
+    fun checkAndNotifyResolvedFeedback(context: Context) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val file = File(context.filesDir, "tester_feedback.jsonl")
+                if (!file.exists()) return@launch
+
+                val lines = file.readLines()
+                val resolvedKeywords = listOf("screenshot", "update", "feedback box", "higher", "menu", "resolution", "notification")
+                val addressed = lines.mapNotNull { line ->
+                    runCatching {
+                        val obj = JSONObject(line)
+                        val title = obj.optString("title", "")
+                        val desc = obj.optString("description", "")
+                        val combined = "$title $desc".lowercase()
+                        if (resolvedKeywords.any { combined.contains(it) }) {
+                            title.ifBlank { "Tester Suggestion" }
+                        } else null
+                    }.getOrNull()
+                }
+
+                if (addressed.isNotEmpty()) {
+                    val resolvedTitle = addressed.first()
+                    val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                        .setSmallIcon(R.mipmap.floris_app_icon)
+                        .setContentTitle("🎉 Crake Fix Deployed (Milestone $CURRENT_MILESTONE)")
+                        .setContentText("Your request '$resolvedTitle' has been implemented!")
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setAutoCancel(true)
+
+                    val nm = NotificationManagerCompat.from(context)
+                    nm.notify(RESOLVED_NOTIFICATION_ID, builder.build())
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed checking resolved tickets: ${e.message}")
+            }
         }
     }
 }
