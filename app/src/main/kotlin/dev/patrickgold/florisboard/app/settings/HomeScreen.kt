@@ -506,7 +506,7 @@ fun HomeScreen() = FlorisScreen {
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Latest Additions (M${UpdateManager.CURRENT_MILESTONE}): 3-Tier CDN Zero-Rate-Limit Updater • Telemetry-tuned typo recovery (kf->of, ia->is, fizdx->fixed) • Secret Easter Egg discovery & spoiler-free tracking.",
+                        text = "Latest Additions (M${UpdateManager.CURRENT_MILESTONE}): ${UpdateManager.getMilestoneHighlights(UpdateManager.CURRENT_MILESTONE)}",
                         fontSize = 10.sp,
                         color = Color.White.copy(alpha = 0.85f),
                         lineHeight = 13.sp,

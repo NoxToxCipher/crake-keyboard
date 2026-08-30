@@ -1,8 +1,8 @@
 {
-  "milestone": 294,
+  "milestone": 295,
   "tagName": "v0.294.0",
-  "name": "Milestone 294 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.294.0/CrakeKeyboard_Milestone_294.apk",
+  "name": "Milestone 295 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.295.0/CrakeKeyboard_Milestone_295.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 294: Reserved generic guinea pig triggers for future pet eggs, keeping Licorice trigger exclusive."
+  "changelog": "Milestone 295: Audited feedback resolution engine (fixed false instant 'implemented' badges) \u2022 Dynamic version-matched milestone additions."
 }
