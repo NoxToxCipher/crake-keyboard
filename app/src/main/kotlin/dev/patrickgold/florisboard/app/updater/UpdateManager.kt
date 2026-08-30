@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 287
+    const val CURRENT_MILESTONE = 288
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases/latest"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 28701
-    private const val RESOLVED_NOTIFICATION_ID = 28702
+    private const val NOTIFICATION_ID = 28801
+    private const val RESOLVED_NOTIFICATION_ID = 28802
 
     data class ReleaseInfo(
         val tagName: String,
@@ -86,8 +86,12 @@ object UpdateManager {
     fun init(context: Context) {
         appContext = context.applicationContext
         createNotificationChannel(context)
+        try {
+            val nm = NotificationManagerCompat.from(context)
+            nm.cancel(RESOLVED_NOTIFICATION_ID)
+            nm.cancel(NOTIFICATION_ID)
+        } catch (_: Exception) {}
         startPeriodicCheckLoop()
-        checkAndNotifyResolvedFeedback(context)
     }
 
     private fun createNotificationChannel(context: Context) {
@@ -321,8 +325,14 @@ object UpdateManager {
         }
     }
 
-    private fun notifyUpdateAvailable(context: Context, release: ReleaseInfo) {
+    private suspend fun notifyUpdateAvailable(context: Context, release: ReleaseInfo) {
         try {
+            val lastNotified = prefs.updater.lastNotifiedMilestone.get()
+            if (lastNotified >= release.milestone) {
+                return
+            }
+            prefs.updater.lastNotifiedMilestone.set(release.milestone)
+
             val intent = Intent(context, FlorisAppActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
@@ -348,8 +358,13 @@ object UpdateManager {
         }
     }
 
-    private fun notifyReadyToInstall(context: Context, apkFile: File, release: ReleaseInfo) {
+    private suspend fun notifyReadyToInstall(context: Context, apkFile: File, release: ReleaseInfo) {
         try {
+            val lastNotified = prefs.updater.lastNotifiedMilestone.get()
+            if (lastNotified >= release.milestone) {
+                return
+            }
+            prefs.updater.lastNotifiedMilestone.set(release.milestone)
             val apkUri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.provider.file",
@@ -387,18 +402,25 @@ object UpdateManager {
     fun checkAndNotifyResolvedFeedback(context: Context) {
         scope.launch(Dispatchers.IO) {
             try {
+                val lastNotified = prefs.updater.lastNotifiedResolvedMilestone.get()
+                if (lastNotified >= CURRENT_MILESTONE) {
+                    return@launch
+                }
+                prefs.updater.lastNotifiedResolvedMilestone.set(CURRENT_MILESTONE)
+
                 val file = File(context.filesDir, "tester_feedback.jsonl")
                 if (!file.exists()) return@launch
 
                 val lines = file.readLines()
-                val resolvedKeywords = listOf("screenshot", "update", "feedback box", "higher", "menu", "resolution", "notification")
+                val resolvedKeywords = listOf("battery", "first start", "egg records", "dollar sign", "noble train")
                 val addressed = lines.mapNotNull { line ->
                     runCatching {
                         val obj = JSONObject(line)
                         val title = obj.optString("title", "")
                         val desc = obj.optString("description", "")
+                        val time = obj.optLong("timestamp", 0L)
                         val combined = "$title $desc".lowercase()
-                        if (resolvedKeywords.any { combined.contains(it) }) {
+                        if (time > System.currentTimeMillis() - 86400000L && resolvedKeywords.any { combined.contains(it) }) {
                             title.ifBlank { "Tester Suggestion" }
                         } else null
                     }.getOrNull()
@@ -410,7 +432,7 @@ object UpdateManager {
                         .setSmallIcon(R.mipmap.floris_app_icon)
                         .setContentTitle("🎉 Crake Fix Deployed (Milestone $CURRENT_MILESTONE)")
                         .setContentText("Your request '$resolvedTitle' has been implemented!")
-                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                         .setAutoCancel(true)
 
                     val nm = NotificationManagerCompat.from(context)

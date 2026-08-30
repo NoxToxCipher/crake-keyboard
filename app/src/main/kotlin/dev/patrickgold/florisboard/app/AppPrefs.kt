@@ -259,6 +259,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "updater__last_notified_milestone",
             default = 0,
         )
+        val lastNotifiedResolvedMilestone = int(
+            key = "updater__last_notified_resolved_milestone",
+            default = 288,
+        )
         val logSyncEnabled = boolean(
             key = "updater__log_sync_enabled",
             default = true,
