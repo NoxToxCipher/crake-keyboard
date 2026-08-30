@@ -33,12 +33,20 @@ class UpdateManagerTest : FunSpec({
 
     test("Milestone comparisons accurately trigger update availability") {
         val currentMilestone = UpdateManager.CURRENT_MILESTONE
-        currentMilestone shouldBe 302
+        currentMilestone shouldBe 303
         val futureReleaseMilestone = currentMilestone + 1
         val pastReleaseMilestone = currentMilestone - 1
 
         (futureReleaseMilestone > currentMilestone) shouldBe true
         (pastReleaseMilestone > currentMilestone) shouldBe false
         (currentMilestone > currentMilestone) shouldBe false
+    }
+
+    test("UpdateManager.getCumulativeChangelog compiles multi-version retrospective changelog") {
+        val changelog = UpdateManager.getCumulativeChangelog(fromMilestone = 299, toMilestone = 303)
+        changelog.contains("Milestone 303") shouldBe true
+        changelog.contains("Milestone 302") shouldBe true
+        changelog.contains("Milestone 301") shouldBe true
+        changelog.contains("Milestone 300") shouldBe true
     }
 })

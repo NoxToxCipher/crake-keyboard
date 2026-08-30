@@ -471,6 +471,44 @@ fun HomeScreen() = FlorisScreen {
                     }
                 }
 
+                if (updateStatus is UpdateManager.UpdateStatus.UpdateAvailable || updateStatus is UpdateManager.UpdateStatus.ReadyToInstall) {
+                    val targetMilestone = when (val st = updateStatus) {
+                        is UpdateManager.UpdateStatus.UpdateAvailable -> st.release.milestone
+                        is UpdateManager.UpdateStatus.ReadyToInstall -> st.release.milestone
+                        else -> UpdateManager.CURRENT_MILESTONE
+                    }
+                    val versionCount = (targetMilestone - UpdateManager.CURRENT_MILESTONE).coerceAtLeast(1)
+                    val cumulativeChangelog = UpdateManager.getCumulativeChangelog(
+                        fromMilestone = UpdateManager.CURRENT_MILESTONE,
+                        toMilestone = targetMilestone,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AmberGold.copy(alpha = 0.1f))
+                            .border(1.dp, AmberGold.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(10.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "✨ What's New in this Update (M${UpdateManager.CURRENT_MILESTONE} ➔ M$targetMilestone • $versionCount version${if (versionCount > 1) "s" else ""}):",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AmberGold,
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = cumulativeChangelog,
+                                fontSize = 10.sp,
+                                color = Color.White.copy(alpha = 0.9f),
+                                lineHeight = 13.5.sp,
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
                 HorizontalDivider(color = CardBorder, thickness = 0.8.dp)
                 Spacer(modifier = Modifier.height(8.dp))

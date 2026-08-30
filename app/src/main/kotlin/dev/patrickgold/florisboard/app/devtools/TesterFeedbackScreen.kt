@@ -682,6 +682,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 303 fixes (Cumulative multi-version changelog engine across notifications, home cards & releases)
+                    combined.contains("more than one version") || combined.contains("all the changes") || (combined.contains("change log") && (combined.contains("io dating") || combined.contains("updating"))) || combined.contains("cumulative") -> 303
+
                     // Milestone 302 fixes (Centered informative telemetry card, updater transient error smooth recovery)
                     combined.contains("center") || (t.contains("more information") && combined.contains("why we would use it")) || (t.contains("updating error again") || (t.contains("update") && combined.contains("goes away after a bit"))) -> 302
 

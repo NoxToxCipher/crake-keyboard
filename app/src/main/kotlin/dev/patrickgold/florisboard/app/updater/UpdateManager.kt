@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 302
+    const val CURRENT_MILESTONE = 303
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 30201
-    private const val RESOLVED_NOTIFICATION_ID = 30202
+    private const val NOTIFICATION_ID = 30301
+    private const val RESOLVED_NOTIFICATION_ID = 30302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -82,6 +82,7 @@ object UpdateManager {
 
     fun getMilestoneHighlights(milestone: Int): String {
         return when (milestone) {
+            303 -> "Cumulative multi-version changelog engine (delivering full retrospective change histories when jumping multiple milestones)."
             302 -> "Centered & comprehensive on-device telemetry explanatory card • Smooth transient error auto-recovery in updater engine."
             301 -> "Telemetry typo confusion matrix analysis (local fat-finger clustering) • Zero-trace secure diagnostic data wipe with storage shredding."
             300 -> "Milestone 300 Century Release: High-precision gesture telemetry velocity metrics • Ephemeral memory auto-scrubbing on keyboard idle."
@@ -101,6 +102,20 @@ object UpdateManager {
             286 -> "Battery overcharge protection • Currency probe on startup • Spoiler-free egg recorder alerts."
             285 -> "Dollar sign Western popup • Secret Easter Egg layout adjustments."
             else -> "Continuous performance optimizations, telemetry enhancements & typing model updates."
+        }
+    }
+
+    fun getCumulativeChangelog(fromMilestone: Int, toMilestone: Int): String {
+        val startM = maxOf(282, fromMilestone + 1)
+        if (startM > toMilestone) {
+            return getMilestoneHighlights(toMilestone)
+        }
+        val milestones = (startM..toMilestone).reversed().toList()
+        if (milestones.size == 1) {
+            return "• Milestone " + milestones.first() + ": " + getMilestoneHighlights(milestones.first())
+        }
+        return milestones.joinToString("\n\n") { m ->
+            "• Milestone $m:\n  ${getMilestoneHighlights(m)}"
         }
     }
 
@@ -449,11 +464,15 @@ object UpdateManager {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
 
-            val summaryChangelog = release.changelog.ifBlank { "Includes latest performance improvements, gesture tuning & telemetry updates." }
+            val cumulativeChangelog = getCumulativeChangelog(CURRENT_MILESTONE, release.milestone).ifBlank {
+                release.changelog.ifBlank { "Includes latest performance improvements, gesture tuning & telemetry updates." }
+            }
+            val versionsCount = (release.milestone - CURRENT_MILESTONE).coerceAtLeast(1)
+            val versionNote = if (versionsCount > 1) " ($versionsCount versions of updates)" else ""
             val bigTextStyle = NotificationCompat.BigTextStyle()
-                .setBigContentTitle("✨ Crake Milestone ${release.milestone} Ready")
+                .setBigContentTitle("✨ Crake Milestone ${release.milestone} Ready$versionNote")
                 .setSummaryText("Crake Update Ready")
-                .bigText("✨ Milestone ${release.milestone} is now available!\n\n$summaryChangelog\n\nTap to install instantly.")
+                .bigText("✨ Milestone ${release.milestone} is now available!$versionNote\n\n$cumulativeChangelog\n\nTap to install instantly.")
 
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.floris_app_icon)

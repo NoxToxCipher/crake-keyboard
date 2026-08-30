@@ -1,8 +1,8 @@
 {
-  "milestone": 302,
-  "tagName": "v0.302.0",
-  "name": "Milestone 302 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.302.0/CrakeKeyboard_Milestone_302.apk",
+  "milestone": 303,
+  "tagName": "v0.303.0",
+  "name": "Milestone 303 (Cumulative Changelogs)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.303.0/CrakeKeyboard_Milestone_303.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 302: Centered & comprehensive on-device telemetry explanatory card \u2022 Smooth transient error auto-recovery in updater engine."
+  "changelog": "Milestone 303: Cumulative multi-version changelog engine across all update notifications, home cards & releases (delivering full change histories when jumping multiple milestones)."
 }
