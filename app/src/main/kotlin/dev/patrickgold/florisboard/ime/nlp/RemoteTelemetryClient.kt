@@ -19,19 +19,25 @@ package dev.patrickgold.florisboard.ime.nlp
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /**
  * Lightweight HTTPS client for transmitting tester feedback and 20-minute diagnostic
  * sync bundles directly to the development AI assistant over the internet.
  *
- * Fully wireless, zero-config, works over cellular & Wi-Fi without needing USB/ADB cables.
+ * Fully wireless, zero-config, with SHA-256 cryptographic payload integrity verification.
  */
 object RemoteTelemetryClient {
     private const val TAG = "CrakeRemoteTelemetry"
     const val TELEMETRY_URL = "https://ntfy.sh/crake_sprint_telemetry_2026_noxtox"
+
+    private fun computeSha256(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest(bytes)
+        return hash.joinToString("") { "%02x".format(it) }
+    }
 
     suspend fun transmitFeedback(
         testerName: String,
@@ -41,6 +47,9 @@ object RemoteTelemetryClient {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val url = URL(TELEMETRY_URL)
+            val rawBytes = jsonPayload.toByteArray(Charsets.UTF_8)
+            val sha256 = computeSha256(rawBytes)
+
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
@@ -49,10 +58,11 @@ object RemoteTelemetryClient {
                 setRequestProperty("Title", "[$category] $title ($testerName)")
                 setRequestProperty("Tags", "bulb,speech_balloon")
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("X-Checksum-SHA256", sha256)
             }
-            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
-                writer.write(jsonPayload)
-                writer.flush()
+            conn.outputStream.use { os ->
+                os.write(rawBytes)
+                os.flush()
             }
             val code = conn.responseCode
             conn.disconnect()
@@ -72,6 +82,9 @@ object RemoteTelemetryClient {
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             val url = URL(TELEMETRY_URL)
+            val rawBytes = jsonBundle.toByteArray(Charsets.UTF_8)
+            val sha256 = computeSha256(rawBytes)
+
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 doOutput = true
@@ -80,10 +93,11 @@ object RemoteTelemetryClient {
                 setRequestProperty("Title", "[DiagSync] $testerName ($recordCount records)")
                 setRequestProperty("Tags", "chart_with_upwards_trend,satellite")
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("X-Checksum-SHA256", sha256)
             }
-            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
-                writer.write(jsonBundle)
-                writer.flush()
+            conn.outputStream.use { os ->
+                os.write(rawBytes)
+                os.flush()
             }
             val code = conn.responseCode
             conn.disconnect()

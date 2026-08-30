@@ -1,8 +1,8 @@
 {
-  "milestone": 303,
-  "tagName": "v0.303.0",
-  "name": "Milestone 303 (Cumulative Changelogs)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.303.0/CrakeKeyboard_Milestone_303.apk",
+  "milestone": 304,
+  "tagName": "v0.304.0",
+  "name": "Milestone 304 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.304.0/CrakeKeyboard_Milestone_304.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 303: Cumulative multi-version changelog engine across all update notifications, home cards & releases (delivering full change histories when jumping multiple milestones)."
+  "changelog": "Milestone 304: Hardware-grade SHA-256 telemetry payload checksum verification \u2022 Zero-packet-corruption transport guards in remote diagnostic relay."
 }
