@@ -231,6 +231,13 @@ fun HomeScreen() = FlorisScreen {
                             accent = Color(0xFFC084FC),
                         )
 
+                        TesterSprintPill(
+                            icon = Icons.Default.Gesture,
+                            title = "How to Use Word Flicks & Quick Gestures",
+                            desc = "Flick keys up, down, or diagonally to type numbers, symbols & punctuation without layer switching. Glide smoothly across keys for rapid word completion.",
+                            accent = ElectricCyan,
+                        )
+
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = "Your Tester Identity / Name:",
@@ -566,6 +573,145 @@ fun HomeScreen() = FlorisScreen {
                         textAlign = TextAlign.Center,
                         lineHeight = 12.sp,
                     )
+                }
+            }
+        }
+
+        // WORD FLICK & QUICK GESTURES INTRODUCTORY GUIDE CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(ElectricCyan.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Gesture,
+                            contentDescription = null,
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "QUICK GESTURES & FLICKS",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp,
+                                color = ElectricCyan,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(CyberEmerald.copy(alpha = 0.15f))
+                                    .padding(horizontal = 5.dp, vertical = 1.5.dp),
+                            ) {
+                                Text(
+                                    text = "FAST TYPING",
+                                    color = CyberEmerald,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+                        Text(
+                            text = "How to Use Word Flicks & Gestures",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("⬆️ Upward Flick", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = ElectricCyan)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Quick numbers & capital symbols without opening symbol pad.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("⬇️ Downward Flick", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberEmerald)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Instant punctuation (!, ?, ,, .) and secondary brackets.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("↔️ Spacebar Swipe", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = AmberGold)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Slide finger across spacebar for surgical cursor positioning.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("🌊 Glide Typing", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFFC084FC))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Drag smoothly across letter keys for fluid word predictions.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
                 }
             }
         }

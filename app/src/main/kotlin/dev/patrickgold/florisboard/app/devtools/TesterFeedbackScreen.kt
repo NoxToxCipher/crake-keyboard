@@ -682,6 +682,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 306 fixes (Flick typing guide cards, 36 pure word Easter Egg registry count)
+                    combined.contains("flick typing") || combined.contains("word flicks") || (combined.contains("flick") && combined.contains("introductory")) || combined.contains("record count") || (combined.contains("power surge") && (combined.contains("dropped") || combined.contains("word"))) -> 306
+
                     // Milestone 303 fixes (Cumulative multi-version changelog engine across notifications, home cards & releases)
                     combined.contains("more than one version") || combined.contains("all the changes") || (combined.contains("change log") && (combined.contains("io dating") || combined.contains("updating"))) || combined.contains("cumulative") -> 303
 

@@ -1,8 +1,8 @@
 {
-  "milestone": 305,
-  "tagName": "v0.305.0",
-  "name": "Milestone 305 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.305.0/CrakeKeyboard_Milestone_305.apk",
+  "milestone": 306,
+  "tagName": "v0.306.0",
+  "name": "Milestone 306 (UI Features & Easter Egg Refinements)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.306.0/CrakeKeyboard_Milestone_306.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 305: Battery & power-save adaptive telemetry scheduling \u2022 Zero-persistence diagnostic sync in-memory pipeline."
+  "changelog": "Milestone 306: Interactive Word Flick & Gesture introductory guide card on Home Screen \u2022 Easter Egg registry refinement (36 pure word eggs with power surge as ambient charging touch)."
 }

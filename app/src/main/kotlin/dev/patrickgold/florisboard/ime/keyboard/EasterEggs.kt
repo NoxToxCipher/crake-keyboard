@@ -215,12 +215,6 @@ enum class EasterEgg(
         "Guardian dragon flame swirl & gong chime",
         listOf("mushu", "mulan", "cri-kee", "dishonor on your cow"),
     ),
-    POWER_SURGE(
-        "power_surge",
-        "Power Surge",
-        "Quantum core energy surge when plugged into charger",
-        listOf("power", "charge", "plugged in", "surge", "quantum"),
-    ),
     BLACKBERRY(
         "blackberry",
         "BlackBerry Tribute",

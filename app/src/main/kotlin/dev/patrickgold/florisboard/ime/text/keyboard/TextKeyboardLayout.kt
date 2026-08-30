@@ -244,9 +244,7 @@ fun TextKeyboardLayout(
     DisposableEffect(context) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(c: android.content.Context?, intent: Intent?) {
-                if (intent?.action == Intent.ACTION_POWER_CONNECTED &&
-                    prefs.easterEggs.fire(EasterEgg.POWER_SURGE)
-                ) {
+                if (intent?.action == Intent.ACTION_POWER_CONNECTED) {
                     powerSurgeTrigger++
                 }
             }

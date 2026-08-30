@@ -71,4 +71,9 @@ class EasterEggsTest : FunSpec({
         list.map { it.id } shouldContain EasterEgg.LUNA_CRASH.id
         list.map { it.id } shouldContain EasterEgg.BAWEN_CAT.id
     }
+
+    test("EasterEgg enum contains exactly 36 pure word-triggered Easter Eggs") {
+        EasterEgg.entries shouldHaveSize 36
+        EasterEgg.entries.any { it.id == "power_surge" } shouldBe false
+    }
 })
