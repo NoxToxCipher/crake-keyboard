@@ -96,6 +96,17 @@ object DiagnosticSyncManager {
         }
     }
 
+    fun performSyncIfPending(minRecords: Int = 5) {
+        val context = appContext ?: return
+        scope.launch {
+            if (!prefs.updater.logSyncEnabled.get()) return@launch
+            val count = FlightRecorderManager.recentEventsCount.value
+            if (count >= minRecords) {
+                performSync(silent = true)
+            }
+        }
+    }
+
     fun performSync(silent: Boolean = false) {
         val context = appContext ?: return
         scope.launch {
@@ -119,7 +130,7 @@ object DiagnosticSyncManager {
 
     private suspend fun packageAndSyncLogs(context: Context): Result<Int> = withContext(Dispatchers.IO) {
         runCatching {
-            val records = FlightRecorderManager.readRecentRecords(context, limit = 100)
+            val records = FlightRecorderManager.readRecentRecords(context, limit = 350)
             if (records.isEmpty()) {
                 return@runCatching 0
             }

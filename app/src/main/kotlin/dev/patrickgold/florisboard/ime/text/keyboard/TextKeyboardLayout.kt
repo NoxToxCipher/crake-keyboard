@@ -8565,7 +8565,7 @@ private fun TextKeyButton(
 
 @Suppress("unused_parameter")
 private class TextKeyboardLayoutController(
-    context: Context,
+    val context: Context,
 ) : SwipeGesture.Listener, GlideTypingGesture.Listener {
     private val prefs by FlorisPreferenceStore
     private val editorInstance by context.editorInstance()
@@ -8832,6 +8832,20 @@ private class TextKeyboardLayoutController(
             }
             inputFeedbackController?.keyPress(key.computedData)
             key.isPressed = true
+            val cx = key.visibleBounds.left + key.visibleBounds.width / 2f
+            val cy = key.visibleBounds.top + key.visibleBounds.height / 2f
+            val density = context.resources.displayMetrics.density
+            val offX = (touchX - cx) / density
+            val offY = (touchY - cy) / density
+            val label = key.computedData.asString(isForDisplay = true).ifEmpty { key.computedData.code.toString() }
+            dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
+                keyLabel = label,
+                spatialOffsetX = offX,
+                spatialOffsetY = offY,
+                contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+                keyVariation = keyboardManager.activeState.keyVariation,
+                packageName = editorInstance.activeInfo.packageName,
+            )
             if (pointer.initialKey == null) {
                 pointer.initialKey = key
             }

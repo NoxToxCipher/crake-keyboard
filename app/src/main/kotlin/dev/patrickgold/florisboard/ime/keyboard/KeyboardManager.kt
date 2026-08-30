@@ -488,6 +488,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 return
             }
         }
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logBackspaceDelete(
+            deletedChar = if (unit == OperationUnit.WORDS) "[WORD]" else "[CHAR]",
+            remainingPrefix = editorInstance.activeContent.textBeforeSelection.takeLast(16).toString(),
+            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            keyVariation = activeState.keyVariation,
+            packageName = editorInstance.activeInfo.packageName,
+        )
         editorInstance.deleteBackwards(unit)
     }
 
@@ -782,13 +789,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     override fun onInputKeyUp(data: KeyData) = activeState.batchEdit {
-        val label = data.asString(isForDisplay = true).ifEmpty { data.code.toString() }
-        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
-            keyLabel = label,
-            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
-            keyVariation = activeState.keyVariation,
-            packageName = editorInstance.activeInfo.packageName,
-        )
+        // Key tap telemetry is captured with high-precision touch centroids in TextKeyboardLayout
         val windowController = FlorisImeService.windowControllerOrNull() ?: return@batchEdit
         when (data.code) {
             KeyCode.ARROW_DOWN,

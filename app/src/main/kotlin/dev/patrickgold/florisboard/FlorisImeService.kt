@@ -463,6 +463,7 @@ class FlorisImeService : LifecycleInputMethodService() {
         super.onWindowHidden()
         if (windowController.onWindowHidden()) {
             flogInfo(LogTopic.IMS_EVENTS)
+            dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.performSyncIfPending(minRecords = 5)
             activeState.batchEdit {
                 activeState.imeUiMode = ImeUiMode.TEXT
                 activeState.isActionsOverflowVisible = false

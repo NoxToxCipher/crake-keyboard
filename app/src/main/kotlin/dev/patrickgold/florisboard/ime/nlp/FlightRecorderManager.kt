@@ -57,6 +57,8 @@ object FlightRecorderManager {
         AUTOCORRECTION,
         MISSED_CORRECTION,
         MANUAL_REVERT,
+        BACKSPACE_DELETE,
+        TYPO_MISTAKE,
         WORD_COMMITTED,
         SUGGESTION_PICKED,
     }
@@ -85,6 +87,8 @@ object FlightRecorderManager {
         val intendedWord: String? = null,
         val candidates: List<String>? = null,
         val gestureMetrics: GestureMetrics? = null,
+        val spatialOffset: String? = null,
+        val editDistance: Int? = null,
         val contextBefore: String? = null,
         val packageName: String? = null,
         val isTypo: Boolean = false,
@@ -110,6 +114,8 @@ object FlightRecorderManager {
             gestureMetrics?.let {
                 append(",\"gestureMetrics\":").append(it.toJsonString())
             }
+            spatialOffset?.let { append(",\"spatialOffset\":\"").append(escapeJson(it)).append("\"") }
+            editDistance?.let { append(",\"editDistance\":").append(it) }
             contextBefore?.let { append(",\"contextBefore\":\"").append(escapeJson(it)).append("\"") }
             packageName?.let { append(",\"packageName\":\"").append(escapeJson(it)).append("\"") }
             append("}")
@@ -183,6 +189,30 @@ object FlightRecorderManager {
 
     fun logKeyTap(
         keyLabel: String,
+        spatialOffsetX: Float? = null,
+        spatialOffsetY: Float? = null,
+        contextBefore: String? = null,
+        keyVariation: KeyVariation? = null,
+        packageName: String? = null,
+    ) {
+        if (!isLoggingAllowed(keyVariation, packageName)) return
+        val offsetStr = if (spatialOffsetX != null && spatialOffsetY != null) {
+            String.format(Locale.US, "%.1f,%.1f", spatialOffsetX, spatialOffsetY)
+        } else null
+        val record = Record(
+            mode = InputMode.TYPING,
+            action = ActionType.KEY_TAP,
+            rawInput = keyLabel,
+            spatialOffset = offsetStr,
+            contextBefore = sanitizePii(contextBefore?.takeLast(32)),
+            packageName = packageName,
+        )
+        recordChannel.trySend(record)
+    }
+
+    fun logBackspaceDelete(
+        deletedChar: String,
+        remainingPrefix: String? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
@@ -190,8 +220,32 @@ object FlightRecorderManager {
         if (!isLoggingAllowed(keyVariation, packageName)) return
         val record = Record(
             mode = InputMode.TYPING,
-            action = ActionType.KEY_TAP,
-            rawInput = keyLabel,
+            action = ActionType.BACKSPACE_DELETE,
+            rawInput = deletedChar,
+            contextBefore = sanitizePii((contextBefore ?: remainingPrefix)?.takeLast(32)),
+            packageName = packageName,
+        )
+        recordChannel.trySend(record)
+    }
+
+    fun logTypoMistake(
+        mistyped: String,
+        intended: String,
+        editDistance: Int,
+        candidates: List<String>,
+        contextBefore: String? = null,
+        keyVariation: KeyVariation? = null,
+        packageName: String? = null,
+    ) {
+        if (!isLoggingAllowed(keyVariation, packageName)) return
+        val record = Record(
+            mode = InputMode.TYPING,
+            action = ActionType.TYPO_MISTAKE,
+            rawInput = sanitizePii(mistyped),
+            intendedWord = sanitizePii(intended),
+            candidates = candidates.take(8),
+            isTypo = true,
+            editDistance = editDistance,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )

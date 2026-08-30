@@ -692,6 +692,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 314 fixes (High-fidelity telemetry harvester & typo/backspace spatial tracker)
+                    combined.contains("catch more telemetry") || combined.contains("catch it") || (combined.contains("telemetry") && combined.contains("mistakes")) -> 314
+
                     // Milestone 313 fixes (Home menu Easter Egg count registry sync and 36/36 bounds)
                     combined.contains("37/36") || (combined.contains("secret easter eggs") && combined.contains("correct number")) || (combined.contains("done 37") || combined.contains("37/")) -> 313
 
