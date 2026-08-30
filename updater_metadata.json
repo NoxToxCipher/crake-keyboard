@@ -1,8 +1,8 @@
 {
-  "milestone": 304,
-  "tagName": "v0.304.0",
-  "name": "Milestone 304 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.304.0/CrakeKeyboard_Milestone_304.apk",
+  "milestone": 305,
+  "tagName": "v0.305.0",
+  "name": "Milestone 305 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.305.0/CrakeKeyboard_Milestone_305.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 304: Hardware-grade SHA-256 telemetry payload checksum verification \u2022 Zero-packet-corruption transport guards in remote diagnostic relay."
+  "changelog": "Milestone 305: Battery & power-save adaptive telemetry scheduling \u2022 Zero-persistence diagnostic sync in-memory pipeline."
 }

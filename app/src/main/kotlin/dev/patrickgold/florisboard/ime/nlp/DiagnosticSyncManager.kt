@@ -82,7 +82,12 @@ object DiagnosticSyncManager {
                     val intervalMs = intervalMin.minutes.inWholeMilliseconds
 
                     if (now - lastSync >= intervalMs) {
-                        performSync(silent = true)
+                        val ctx = appContext
+                        if (ctx == null || !isBatteryLow(ctx)) {
+                            performSync(silent = true)
+                        } else {
+                            Log.d(TAG, "Diagnostic telemetry sync deferred: Battery <15% or Power Save active")
+                        }
                     }
                 }
                 // Check cadence every 5 minutes
@@ -167,6 +172,16 @@ object DiagnosticSyncManager {
 
             sanitizedCount
         }
+    }
+
+    private fun isBatteryLow(context: Context): Boolean {
+        return runCatching {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            val level = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 100
+            val pm = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+            val isPowerSave = pm?.isPowerSaveMode == true
+            isPowerSave || level < 15
+        }.getOrDefault(false)
     }
 
     /**
