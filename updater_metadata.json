@@ -1,8 +1,8 @@
 {
-  "milestone": 300,
-  "tagName": "v0.300.0",
-  "name": "Milestone 300 (Century Release)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.300.0/CrakeKeyboard_Milestone_300.apk",
+  "milestone": 301,
+  "tagName": "v0.301.0",
+  "name": "Milestone 301 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.301.0/CrakeKeyboard_Milestone_301.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 300 Century Release: High-precision gesture telemetry velocity metrics \u2022 Ephemeral memory auto-scrubbing on keyboard idle."
+  "changelog": "Milestone 301: Telemetry typo confusion matrix analysis (local fat-finger clustering) \u2022 Zero-trace secure diagnostic data wipe with storage shredding."
 }

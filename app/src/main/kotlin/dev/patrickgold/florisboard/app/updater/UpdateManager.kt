@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 300
+    const val CURRENT_MILESTONE = 301
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 30001
-    private const val RESOLVED_NOTIFICATION_ID = 30002
+    private const val NOTIFICATION_ID = 30101
+    private const val RESOLVED_NOTIFICATION_ID = 30102
 
     data class ReleaseInfo(
         val tagName: String,
@@ -82,6 +82,7 @@ object UpdateManager {
 
     fun getMilestoneHighlights(milestone: Int): String {
         return when (milestone) {
+            301 -> "Telemetry typo confusion matrix analysis (local fat-finger clustering) • Zero-trace secure diagnostic data wipe with storage shredding."
             300 -> "Milestone 300 Century Release: High-precision gesture telemetry velocity metrics • Ephemeral memory auto-scrubbing on keyboard idle."
             299 -> "Automatic feedback PII redaction & EXIF metadata stripping • Telemetry & Privacy Shield assurance in Feedback Hub."
             298 -> "Hardware-grade telemetry PII sanitization (automatic redaction of emails, cards & phone numbers) • Privacy shielding in flight logs (incognito & password manager exclusions)."

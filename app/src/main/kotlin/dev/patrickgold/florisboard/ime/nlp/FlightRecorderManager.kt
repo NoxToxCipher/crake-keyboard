@@ -365,14 +365,44 @@ object FlightRecorderManager {
         lastCommittedTime = 0L
     }
 
-    suspend fun clearLogFile(context: Context): Boolean = withContext(Dispatchers.IO) {
+    suspend fun securePurgeDiagnostics(context: Context): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val file = getLogFile(context)
             if (file.exists()) {
+                val length = file.length()
+                if (length > 0) {
+                    java.io.RandomAccessFile(file, "rws").use { raf ->
+                        val zeroes = ByteArray(length.toInt().coerceIn(1, 64 * 1024))
+                        raf.write(zeroes)
+                    }
+                }
                 file.delete()
-            } else {
-                true
             }
+            scrubVolatileBuffers()
+            _recentEventsCount.value = 0
+            true
         }.getOrDefault(false)
     }
+
+    suspend fun getTypoConfusionSummary(context: Context): List<Pair<String, Int>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val records = readRecentRecords(context, limit = 200)
+            val counts = mutableMapOf<String, Int>()
+            for (line in records) {
+                if (line.contains("isTypo") || line.contains("MISSED_CORRECTION")) {
+                    val rawMatch = Regex("\"rawInput\":\"([^\"]+)\"").find(line)
+                    val corrMatch = Regex("\"correctedTo\":\"([^\"]+)\"").find(line)
+                    val raw = rawMatch?.groupValues?.getOrNull(1)
+                    val corr = corrMatch?.groupValues?.getOrNull(1)
+                    if (raw != null && corr != null && raw != corr) {
+                        val key = "$raw -> $corr"
+                        counts[key] = (counts[key] ?: 0) + 1
+                    }
+                }
+            }
+            counts.toList().sortedByDescending { it.second }.take(10)
+        }.getOrDefault(emptyList())
+    }
+
+    suspend fun clearLogFile(context: Context): Boolean = securePurgeDiagnostics(context)
 }
