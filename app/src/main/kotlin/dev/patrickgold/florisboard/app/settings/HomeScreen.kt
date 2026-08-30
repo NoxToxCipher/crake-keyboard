@@ -1029,8 +1029,8 @@ fun HomeScreen() = FlorisScreen {
         val totalEggs = dev.patrickgold.florisboard.ime.keyboard.EasterEgg.entries.size
         val discoveredEggsCsv by prefs.easterEggs.discovered.collectAsState()
         val recordedEggsCsv by prefs.easterEggs.recorded.collectAsState()
-        val discoveredCount = EasterEggs.parseIds(discoveredEggsCsv).size
-        val recordedCount = EasterEggs.parseIds(recordedEggsCsv).size
+        val discoveredCount = EasterEggs.discoveredEggs(discoveredEggsCsv).size.coerceAtMost(totalEggs)
+        val recordedCount = EasterEggs.recordedEggs(recordedEggsCsv).size.coerceAtMost(totalEggs)
         CrakeNavTile(
             icon = Icons.Default.Egg,
             title = "Secret Easter Eggs",
