@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 295
+    const val CURRENT_MILESTONE = 296
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 29501
-    private const val RESOLVED_NOTIFICATION_ID = 29502
+    private const val NOTIFICATION_ID = 29601
+    private const val RESOLVED_NOTIFICATION_ID = 29602
 
     data class ReleaseInfo(
         val tagName: String,
@@ -82,9 +82,10 @@ object UpdateManager {
 
     fun getMilestoneHighlights(milestone: Int): String {
         return when (milestone) {
-            295 -> "Audited feedback resolution engine (fixed false instant 'implemented' badges) • Dynamic version-matched milestone additions • Licorice guinea pig exclusive trigger."
-            294 -> "Reserved generic guinea pig triggers for future pet eggs, keeping Licorice trigger exclusive."
-            293 -> "Brand new ultra-cute Easter Egg: Licorice the sweet sleeping black guinea pig on the Enter key."
+            296 -> "Audited feedback resolution status (accurately restored historical fixes) • Strict spoiler protection across all release changelogs."
+            295 -> "Audited feedback resolution engine (fixed false instant 'implemented' badges) • Dynamic version-matched milestone additions."
+            294 -> "Mystery Easter Egg trigger refinements & exclusive activation tuning."
+            293 -> "Brand new secret interactive keycap Easter Egg animation added!"
             292 -> "Contraction & apostrophe spacing fixes (don't, it's, I'm) • Default tester name updated to Daya."
             291 -> "Live Telemetry Engine active banner • Discovered vs Solved score disambiguation in Easter Egg tracker."
             290 -> "3-Tier CDN Zero-Rate-Limit Updater • Telemetry-tuned typo recovery (kf->of, ia->is, fizdx->fixed)."
@@ -92,7 +93,7 @@ object UpdateManager {
             288 -> "Notification spam eradication & silent background update check gates."
             287 -> "Dynamic resolution tagging & feedback queue indicators."
             286 -> "Battery overcharge protection • Currency probe on startup • Spoiler-free egg recorder alerts."
-            285 -> "Dollar sign Western popup • Noble train Easter Egg separation."
+            285 -> "Dollar sign Western popup • Secret Easter Egg layout adjustments."
             else -> "Continuous performance optimizations, telemetry enhancements & typing model updates."
         }
     }

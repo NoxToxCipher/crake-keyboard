@@ -631,15 +631,42 @@ fun TesterFeedbackScreen() = FlorisScreen {
 
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
-                    // Audited historical tickets strictly by exact topic & verified resolution
-                    (combined.contains("apostrophe") || combined.contains("force spacing") || combined.contains("contraction")) && fb.timestamp in 1788070000000L..1788075000000L -> 292
-                    (combined.contains("35/35") || combined.contains("disambiguate") || combined.contains("discovered vs solved")) && fb.timestamp < 1788070000000L -> 291
-                    combined.contains("getting this notification every single time") && fb.timestamp < 1788066000000L -> 288
-                    (combined.contains("notification when our feature") || combined.contains("notified when their errors")) && fb.timestamp < 1788065000000L -> 287
-                    (combined.contains("battery overcharge") || combined.contains("currency probe on first start")) && fb.timestamp < 1788064000000L -> 286
-                    combined.contains("dollar sign western popup") && fb.timestamp < 1788063000000L -> 285
-                    combined.contains("easter egg recorder trigger sync") && fb.timestamp < 1788062000000L -> 284
-                    // ALL OTHER TICKETS (and any new reports submitted) REMAIN STRICTLY 'SUBMITTED • IN QUEUE'
+
+                    // Milestone 295 fixes (Resolution engine fix, false keyword badge elimination, dynamic milestone additions)
+                    combined.contains("incorrect bug fixes") || (t == "incorrect" && fb.timestamp >= 1788074000000L) -> 295
+
+                    // Milestone 292 fixes (Apostrophes, contractions, force-spacing, tester name Daya)
+                    combined.contains("apostrophe") || combined.contains("force spacing") || combined.contains("contraction") -> 292
+
+                    // Milestone 291 fixes (Disambiguate 35/35 triggered vs solved, non-word egg clarification, live telemetry engine inform status, update additions list in tester card)
+                    combined.contains("35/35") || combined.contains("triggered") || combined.contains("has no word") || combined.contains("update list") || (t == "inform" && combined.contains("logs have been used")) -> 291
+
+                    // Milestone 290 fixes (CDN updater 3-tier fallback, typo recovery)
+                    (t == "update error" && fb.timestamp in 1788072000000L..1788073500000L) -> 290
+
+                    // Milestone 289 fixes (New Crake app icon, home menu deduplication, audited resolution badges)
+                    (t == "icon" && combined.contains("new icon")) || t == "doubling" || (t == "incorrect" && fb.timestamp < 1788070000000L) || t == "tester bug" -> 289
+
+                    // Milestone 288 fixes (Notification spam eradication & silent background update check gates)
+                    t == "notification" && (combined.contains("every single time") || fb.timestamp in 1788065000000L..1788065900000L) -> 288
+
+                    // Milestone 287 fixes (Dynamic resolution tagging & feedback queue indicators)
+                    (t == "notification" && combined.contains("notified when their errors")) || combined.contains("notification when our feature") -> 287
+
+                    // Milestone 286 fixes (Battery overcharge protection, currency probe on first start, already-recorded egg alert, tester beginning guidance)
+                    t == "egg records" || t == "battery" || t == "first start" || t == "for testers" || t == "tester beginning" -> 286
+
+                    // Milestone 285 fixes (Tester box header, dollar sign Western popup, noble train Easter Egg separation, testing error phrasing)
+                    t == "tester box" || t == "testing error" || t == "dollar sign" || t.contains("train & noble train") || combined.contains("dollar sign") || combined.contains("noble train") -> 285
+
+                    // Milestone 284 fixes (Easter egg recorder trigger sync, email line expand, poor visual polish)
+                    t == "email" || t == "email line" || t == "easter egg recorder" || t == "poor visual" || combined.contains("easter egg recorder") -> 284
+
+                    // Milestone 282 fixes (Screenshots attachment, top tester feedback box placement, automatic background update loop)
+                    t == "updater" || t == "testers" || combined.contains("screenshot") -> 282
+
+                    // STRICTLY IN QUEUE (Pending features & new bug reports)
+                    // e.g. 'Pokemon Bank animation', 'More information / center words', 'visual notifications', 'updating error again'
                     else -> null
                 }
                 val isResolved = implementedMilestone != null

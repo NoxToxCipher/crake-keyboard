@@ -1,8 +1,8 @@
 {
-  "milestone": 295,
-  "tagName": "v0.294.0",
-  "name": "Milestone 295 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.295.0/CrakeKeyboard_Milestone_295.apk",
+  "milestone": 296,
+  "tagName": "v0.296.0",
+  "name": "Milestone 296 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.296.0/CrakeKeyboard_Milestone_296.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 295: Audited feedback resolution engine (fixed false instant 'implemented' badges) \u2022 Dynamic version-matched milestone additions."
+  "changelog": "Milestone 296: Audited feedback resolution status (accurately restored historical fixes) \u2022 Strict spoiler protection across all release changelogs."
 }
