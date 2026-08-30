@@ -414,7 +414,7 @@ fun HomeScreen() = FlorisScreen {
                                 Text("No Update, Please Check Again Soon", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = CyberEmerald)
                             }
                             is UpdateManager.UpdateStatus.Error -> {
-                                Text("No Update, Please Check Again Soon", fontSize = 11.sp, color = TextMuted)
+                                Text(st.message, fontSize = 10.5.sp, color = Color(0xFFEF4444))
                             }
                             else -> {
                                 Text("Automatic hourly checks & instant manual trigger", fontSize = 11.sp, color = TextMuted)

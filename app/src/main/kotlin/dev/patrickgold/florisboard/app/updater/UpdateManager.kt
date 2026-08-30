@@ -174,6 +174,68 @@ object UpdateManager {
 
     private suspend fun fetchLatestRelease(): Result<ReleaseInfo?> = withContext(Dispatchers.IO) {
         runCatching {
+            // Tier 1: Zero-Rate-Limit Fastly CDN Web Redirect
+            try {
+                val cdnUrl = URL("https://github.com/NoxToxCipher/crake-keyboard/releases/latest")
+                val cdnConn = (cdnUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    instanceFollowRedirects = true
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14; CrakeUpdater)")
+                }
+                val finalUrl = cdnConn.url.toString()
+                val tagMatch = Regex("/releases/tag/(v[0-9\\.]+)").find(finalUrl)
+                if (tagMatch != null) {
+                    val tag = tagMatch.groupValues[1]
+                    val milestone = parseMilestoneNumber(tag)
+                    if (milestone > 0) {
+                        return@runCatching ReleaseInfo(
+                            tagName = tag,
+                            name = "Milestone $milestone",
+                            milestone = milestone,
+                            changelog = "Crake Autonomous Sprint Release",
+                            apkDownloadUrl = "https://github.com/NoxToxCipher/crake-keyboard/releases/download/$tag/CrakeKeyboard_Milestone_$milestone.apk",
+                            apkSize = 56645012L,
+                            publishedAt = "",
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Tier 1 CDN lookup skipped: ${e.message}")
+            }
+
+            // Tier 2: Zero-Rate-Limit GitHub Raw Static Metadata
+            try {
+                val rawUrl = URL("https://raw.githubusercontent.com/NoxToxCipher/crake-keyboard/main/updater_metadata.json")
+                val rawConn = (rawUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("User-Agent", "CrakeKeyboard-Updater")
+                }
+                if (rawConn.responseCode == HttpURLConnection.HTTP_OK) {
+                    val rawJson = JSONObject(rawConn.inputStream.bufferedReader().use { it.readText() })
+                    val m = rawJson.optInt("milestone", 0)
+                    val tag = rawJson.optString("tagName", "")
+                    val apk = rawJson.optString("apkDownloadUrl", "")
+                    if (m > 0 && apk.isNotBlank()) {
+                        return@runCatching ReleaseInfo(
+                            tagName = tag,
+                            name = rawJson.optString("name", "Milestone $m"),
+                            milestone = m,
+                            changelog = rawJson.optString("changelog", ""),
+                            apkDownloadUrl = apk,
+                            apkSize = rawJson.optLong("apkSize", 56645012L),
+                            publishedAt = "",
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Tier 2 Raw metadata lookup skipped: ${e.message}")
+            }
+
+            // Tier 3: GitHub REST API (Fallback)
             val url = URL(GITHUB_REPO_API)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
