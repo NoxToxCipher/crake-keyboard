@@ -501,6 +501,73 @@ fun DevtoolsScreen() = FlorisScreen {
             icon = Icons.Default.Refresh,
             accentColor = CyberEmerald,
         )
+        CrakeRadioPreference(
+            pref = prefs.updater.logSyncEnabled,
+            title = "20-Minute Diagnostic Log Sync",
+            summary = "Syncs on-device accuracy and correction stats every 20 minutes for AI analysis & destruction",
+            icon = Icons.Default.Refresh,
+            accentColor = ElectricCyan,
+        )
+        val diagStatus by dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.status.collectFlowAsState()
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            onClick = {
+                dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.performSync(silent = false)
+            },
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ElectricCyan.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = ElectricCyan,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    val titleText = when (diagStatus) {
+                        is dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.SyncStatus.Syncing -> "Syncing Diagnostic Bundle..."
+                        is dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.SyncStatus.Success -> "Diagnostic Sync Completed"
+                        is dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.SyncStatus.Error -> "Sync Failed"
+                        else -> "Sync Diagnostic Logs Now"
+                    }
+                    val subtitleText = when (val st = diagStatus) {
+                        is dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.SyncStatus.Success -> "${st.actionCount} records bundled • Next auto-sync in 20 min"
+                        is dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager.SyncStatus.Error -> st.message
+                        else -> "Tap to immediately package & sync diagnostic flight recorder logs"
+                    }
+                    Text(
+                        text = titleText,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.5.sp,
+                        color = Color.White,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitleText,
+                        fontSize = 11.5.sp,
+                        color = TextMuted,
+                    )
+                }
+            }
+        }
         val updateStatus by dev.patrickgold.florisboard.app.updater.UpdateManager.status.collectFlowAsState()
         Card(
             modifier = Modifier

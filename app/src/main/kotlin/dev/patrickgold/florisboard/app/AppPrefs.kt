@@ -251,6 +251,22 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "updater__tester_name",
             default = "Tester",
         )
+        val testerOnboardingDismissed = boolean(
+            key = "updater__tester_onboarding_dismissed",
+            default = false,
+        )
+        val logSyncEnabled = boolean(
+            key = "updater__log_sync_enabled",
+            default = true,
+        )
+        val logSyncIntervalMinutes = int(
+            key = "updater__log_sync_interval_minutes",
+            default = 20,
+        )
+        val lastLogSyncTimestamp = string(
+            key = "updater__last_log_sync_timestamp",
+            default = "0",
+        )
         val autoDownloadOnWifi = boolean(
             key = "updater__auto_download_on_wifi",
             default = true,

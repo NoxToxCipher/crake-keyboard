@@ -17,6 +17,15 @@
 package dev.patrickgold.florisboard.app.settings
 
 import androidx.compose.foundation.BorderStroke
+import android.widget.Toast
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material.icons.filled.Refresh
+import dev.patrickgold.florisboard.ime.nlp.DiagnosticSyncManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -61,7 +70,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.patrickgold.florisboard.app.setup.OnboardingFeatureCarousel
@@ -92,6 +103,7 @@ private val CardSurface = Color(0xFF131A29)
 private val CardBorder = Color(0xFF222D42)
 private val CyberEmerald = Color(0xFF00E5A3)
 private val ElectricCyan = Color(0xFF00D2FF)
+private val CyberAmber = Color(0xFFF59E0B)
 private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
@@ -105,7 +117,163 @@ fun HomeScreen() = FlorisScreen {
     val prefs by FlorisPreferenceStore
 
     content {
+        val scope = rememberCoroutineScope()
         val isFlorisBoardEnabled by InputMethodUtils.observeIsFlorisboardEnabled(foregroundOnly = true)
+        val testerOnboardingDismissed by prefs.updater.testerOnboardingDismissed.collectAsState()
+        var showTesterModal by remember { mutableStateOf(!testerOnboardingDismissed) }
+        var inputTesterName by remember { mutableStateOf(prefs.updater.testerName.get()) }
+
+        if (showTesterModal) {
+            Dialog(
+                onDismissRequest = {
+                    scope.launch {
+                        prefs.updater.testerOnboardingDismissed.set(true)
+                    }
+                    showTesterModal = false
+                },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.92f)
+                        .padding(vertical = 16.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                    border = BorderStroke(1.5.dp, ElectricCyan.copy(alpha = 0.6f)),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(20.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(ElectricCyan.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.RocketLaunch,
+                                    contentDescription = null,
+                                    tint = ElectricCyan,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "7-DAY TESTER SPRINT",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp,
+                                    color = ElectricCyan,
+                                )
+                                Text(
+                                    text = "Aug 30 – Sep 6 Testing Sprint",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Welcome to our 1-week intensive keyboard test round! Here is how your device will collaborate to build the ultimate keyboard:",
+                            fontSize = 12.sp,
+                            color = Color(0xFFE2E8F0),
+                            lineHeight = 16.sp,
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        TesterSprintPill(
+                            icon = Icons.Default.Refresh,
+                            title = "Automated Diagnostic Sync (Every 20 Min)",
+                            desc = "Typing accuracy, spatial swipe deltas, and missed corrections sync in lightweight bundles every 20 minutes while active.",
+                            accent = CyberEmerald,
+                        )
+
+                        TesterSprintPill(
+                            icon = Icons.Default.FlashOn,
+                            title = "Hourly Background Auto-Updates",
+                            desc = "Checks for new milestone APKs once an hour and offers 1-tap in-app installation so you always run the latest optimizations.",
+                            accent = ElectricCyan,
+                        )
+
+                        TesterSprintPill(
+                            icon = Icons.Default.Security,
+                            title = "On-Device Encryption & Ephemeral AI Processing",
+                            desc = "All logs are encrypted on-device and decrypted exclusively by the AI assistant. Passwords, PINs, and usernames are completely filtered and never recorded. Raw logs are permanently destroyed after analytics.",
+                            accent = CyberAmber,
+                        )
+
+                        TesterSprintPill(
+                            icon = Icons.Default.SentimentSatisfiedAlt,
+                            title = "Personalized Performance Graphs at Sprint End",
+                            desc = "At the end of the sprint, you will receive a complete graphical report showing your error rate reduction, WPM speed gains, and custom spatial tuning!",
+                            accent = Color(0xFFC084FC),
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Your Tester Identity / Name:",
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = inputTesterName,
+                            onValueChange = { inputTesterName = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            placeholder = { Text("e.g. Lochran, Samsung Friend, Hidaya", color = TextMuted, fontSize = 12.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = CyberEmerald,
+                                unfocusedBorderColor = CardBorder,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                val name = inputTesterName.trim().ifEmpty { "Tester" }
+                                scope.launch {
+                                    prefs.updater.testerName.set(name)
+                                    prefs.updater.testerOnboardingDismissed.set(true)
+                                    prefs.updater.autoCheckEnabled.set(true)
+                                    prefs.updater.logSyncEnabled.set(true)
+                                    showTesterModal = false
+                                    DiagnosticSyncManager.performSync(silent = true)
+                                    dev.patrickgold.florisboard.app.updater.UpdateManager.checkForUpdates(silent = true)
+                                    Toast.makeText(context, "Welcome to the Sprint, $name!", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = CyberEmerald),
+                            shape = RoundedCornerShape(10.dp),
+                        ) {
+                            Text(
+                                text = "Join Sprint & Start Testing (Let's Go!)",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.5.sp,
+                                color = Color(0xFF0F172A),
+                            )
+                        }
+                    }
+                }
+            }
+        }
         val isFlorisBoardSelected by InputMethodUtils.observeIsFlorisboardSelected(foregroundOnly = true)
         if (!isFlorisBoardEnabled) {
             FlorisErrorCard(
@@ -567,6 +735,53 @@ private fun CrakeNavTile(
                 contentDescription = null,
                 tint = TextMuted.copy(alpha = 0.6f),
                 modifier = Modifier.size(16.dp),
+            )
+        }
+    }
+}
+
+
+@Composable
+private fun TesterSprintPill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    desc: String,
+    accent: Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(accent.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = desc,
+                fontSize = 10.5.sp,
+                color = Color(0xFFCBD5E1),
+                lineHeight = 14.sp,
             )
         }
     }
