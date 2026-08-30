@@ -8872,8 +8872,13 @@ private class TextKeyboardLayoutController(
                     || (event.getY(pointer.index) < activeKey.visibleBounds.top - 0.35f * activeKey.visibleBounds.height)
                     || (event.getY(pointer.index) > activeKey.visibleBounds.bottom + 0.35f * activeKey.visibleBounds.height)
                 ) {
+                    val origInitialKey = pointer.initialKey
                     onTouchCancelInternal(event, pointer)
                     onTouchDownInternal(event, pointer)
+                    // Preserve origin key for swipes & flicks so vertical gestures don't get reset by bounding box exit
+                    if (origInitialKey != null && origInitialKey.computedData.code > KeyCode.SPACE) {
+                        pointer.initialKey = origInitialKey
+                    }
                 }
             }
         }

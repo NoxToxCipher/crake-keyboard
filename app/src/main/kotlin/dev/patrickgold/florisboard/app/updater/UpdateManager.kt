@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 311
+    const val CURRENT_MILESTONE = 312
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 31101
-    private const val RESOLVED_NOTIFICATION_ID = 31102
+    private const val NOTIFICATION_ID = 31201
+    private const val RESOLVED_NOTIFICATION_ID = 31202
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            312 -> "Fixed initial touch-origin preservation in gesture engine (preventing touch-move bounds checks from resetting letter origins during upward word flicks) • Embedded numbered Ticket IDs (#CRK-xxx) across feedback hub."
             311 -> "Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling."
             310 -> "Telemetry timestamp PII scrubber accuracy (preserving 13-digit Unix flight log timestamps while shielding payment card numbers)."
             309 -> "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones)."

@@ -150,6 +150,7 @@ data class FeedbackItem(
     val description: String,
     val hasScreenshot: Boolean = false,
     val resolvedMilestone: Int? = null,
+    val ticketId: String = "",
 )
 
 @Composable
@@ -213,15 +214,19 @@ fun TesterFeedbackScreen() = FlorisScreen {
                     if (line.isNotBlank()) {
                         runCatching {
                             val obj = JSONObject(line)
+                            val ts = obj.optLong("timestamp", 0L)
+                            val explicitId = obj.optString("ticketId", "")
+                            val tid = if (explicitId.isNotBlank()) explicitId else "CRK-" + (100 + list.size + 1)
                             list.add(
                                 FeedbackItem(
-                                    timestamp = obj.optLong("timestamp", 0L),
+                                    timestamp = ts,
                                     testerName = obj.optString("testerName", "Tester"),
                                     category = obj.optString("category", "BUG_REPORT"),
                                     title = obj.optString("title", ""),
                                     description = obj.optString("description", ""),
                                     hasScreenshot = obj.optBoolean("hasScreenshot", false),
                                     resolvedMilestone = obj.optInt("resolvedMilestone", -1).takeIf { it > 0 },
+                                    ticketId = tid,
                                 )
                             )
                         }
@@ -610,7 +615,12 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 screenshotB64 = Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
                             }
 
+                            val existingCount = if (File(context.filesDir, "tester_feedback.jsonl").exists()) {
+                                File(context.filesDir, "tester_feedback.jsonl").readLines().count { it.isNotBlank() }
+                            } else 0
+                            val assignedTicketId = "CRK-" + (100 + existingCount + 1)
                             val jsonObj = JSONObject().apply {
+                                put("ticketId", assignedTicketId)
                                 put("timestamp", System.currentTimeMillis())
                                 val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US).format(Date())
                                 put("time", iso)
@@ -681,6 +691,9 @@ fun TesterFeedbackScreen() = FlorisScreen {
 
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
+
+                    // Milestone 312 fixes (Flick touch origin bounds fix & numbered Ticket ID auditing)
+                    combined.contains("flick typing not firing") || (combined.contains("flick") && combined.contains("not firing")) || combined.contains("lying") || combined.contains("embedded with a number") -> 312
 
                     // Milestone 311 fixes (Eliminated unnecessary vertical scrolling on final tour card via 2x2 grid)
                     combined.contains("much nicer") || (combined.contains("scroll") && (combined.contains("last page") || combined.contains("unnecessary"))) -> 311
@@ -758,9 +771,19 @@ fun TesterFeedbackScreen() = FlorisScreen {
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            if (fb.ticketId.isNotBlank()) {
+                                Text(
+                                    text = "#${fb.ticketId}",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = AmberGold,
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                            }
                             Text(
                                 text = fb.category.replace("_", " "),
-                                fontSize = 10.5.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isResolved) CyberEmerald else ElectricCyan,
                             )

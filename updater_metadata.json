@@ -1,10 +1,10 @@
 {
-  "milestone": 311,
-  "tagName": "v0.311.0",
-  "name": "Milestone 311 (Onboarding Tour 2x2 Grid)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.311.0/CrakeKeyboard_Milestone_311.apk",
+  "milestone": 312,
+  "tagName": "v0.312.0",
+  "name": "Milestone 312 (Flick Touch Origin Fix & Ticket Numbering)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.312.0/CrakeKeyboard_Milestone_312.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 311: Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling.",
+  "changelog": "Milestone 312: Fixed initial touch-origin preservation in gesture engine (preventing touch-move bounds checks from resetting letter origins during upward word flicks) • Embedded numbered Ticket IDs (#CRK-xxx) across feedback hub.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -32,6 +32,7 @@
     "286": "Battery overcharge protection • Currency probe on startup • Spoiler-free egg recorder alerts.",
     "285": "Dollar sign Western popup • Secret Easter Egg layout adjustments.",
     "310": "Telemetry timestamp PII scrubber accuracy (preserving 13-digit Unix flight log timestamps while shielding payment card numbers).",
-    "311": "Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling."
+    "311": "Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling.",
+    "312": "Fixed initial touch-origin preservation in gesture engine (preventing touch-move bounds checks from resetting letter origins during upward word flicks) • Embedded numbered Ticket IDs (#CRK-xxx) across feedback hub."
   }
 }
