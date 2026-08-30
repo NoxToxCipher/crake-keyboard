@@ -327,6 +327,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                 n = committed.length + extra,
             )
         }
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logManualRevertOrRetype(
+            deletedWord = committed,
+            retypedWord = original,
+            contextBefore = tail.toString(),
+            keyVariation = activeState.keyVariation,
+            packageName = activeInfo.packageName,
+        )
         return if (super.commitText(original)) original else null
     }
 

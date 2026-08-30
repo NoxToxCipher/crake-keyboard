@@ -223,6 +223,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "devtools__show_window_resize_handle_boundaries",
             default = false,
         )
+        val flightRecorderEnabled = boolean(
+            key = "devtools__flight_recorder_enabled",
+            default = true,
+        )
+        val flightRecorderIncludeSuggestions = boolean(
+            key = "devtools__flight_recorder_include_suggestions",
+            default = true,
+        )
     }
 
     val dictionary = Dictionary()

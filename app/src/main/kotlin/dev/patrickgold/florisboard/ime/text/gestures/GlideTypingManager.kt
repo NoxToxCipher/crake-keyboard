@@ -242,6 +242,15 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                             "commit prev=\"$prevWordForTrace\" top=$top n=${pts.size}"
                         )
                     }
+                    dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logGlideStroke(
+                        pointCount = pts.size,
+                        durationMs = strokeDurationMs,
+                        chosenWord = suggestions.firstOrNull(),
+                        topCandidates = suggestions,
+                        contextBefore = prevWordForTrace,
+                        keyVariation = keyboardManager.activeState.keyVariation,
+                        packageName = editorInstance.activeInfo.packageName,
+                    )
                     keyboardManager.commitGesture(suggestions.first())
                 }
                 callback.invoke(true)

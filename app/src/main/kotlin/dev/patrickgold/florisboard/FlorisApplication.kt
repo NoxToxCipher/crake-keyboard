@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2021-2025 The FlorisBoard Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -140,6 +140,7 @@ class FlorisApplication : Application() {
                 extensionManager.value.init()
                 clipboardManager.value.initializeForContext(this@FlorisApplication)
                 DictionaryManager.init(this@FlorisApplication)
+                dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.init(this@FlorisApplication)
             } catch (_: Throwable) {}
         }
 

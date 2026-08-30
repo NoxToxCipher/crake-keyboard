@@ -304,6 +304,7 @@ class FlorisImeService : LifecycleInputMethodService() {
         lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { nlpManager.preloadProviders() }
         }
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.init(this)
         FlorisImeServiceReference = WeakReference(this)
         systemLocalesFlow.value = resources.configuration.locales
 

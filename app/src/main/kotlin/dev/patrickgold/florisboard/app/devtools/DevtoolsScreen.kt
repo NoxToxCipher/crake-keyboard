@@ -360,7 +360,137 @@ fun DevtoolsScreen() = FlorisScreen {
             }
         }
 
-        // 4. ANDROID SYSTEM CONFIGURATION
+        // 4. FLIGHT RECORDER & NLP EVALUATION
+        Spacer(modifier = Modifier.height(10.dp))
+        CrakeSectionHeader(title = "Crake Flight Recorder", badgeText = "NLP EVAL", accentColor = ElectricCyan)
+        CrakeRadioPreference(
+            pref = prefs.devtools.flightRecorderEnabled,
+            title = "Record Key Actions & Gestures",
+            summary = "Log typing taps, glide gestures, autocorrects, and missed typos for NLP evaluation",
+            icon = Icons.Default.Terminal,
+            accentColor = ElectricCyan,
+        )
+        CrakeRadioPreference(
+            pref = prefs.devtools.flightRecorderIncludeSuggestions,
+            title = "Include Candidate Suggestions",
+            summary = "Attach trie and DTW candidate words to each flight record entry",
+            icon = Icons.Default.Layers,
+            accentColor = ElectricCyan,
+            enabledIf = { prefs.devtools.flightRecorderEnabled.get() },
+        )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            onClick = {
+                scope.launch {
+                    val records = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.readRecentRecords(context, limit = 500)
+                    if (records.isNotEmpty()) {
+                        val text = records.joinToString("\n")
+                        val cm = context.getSystemService(android.content.ClipboardManager::class.java)
+                        cm?.setPrimaryClip(android.content.ClipData.newPlainText("Crake Flight Recorder Log", text))
+                        context.showLongToast("Copied ${records.size} flight records to clipboard")
+                    } else {
+                        context.showLongToast("Flight recorder log is currently empty")
+                    }
+                }
+            },
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(ElectricCyan.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        tint = ElectricCyan,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Copy Flight Recorder Log (.jsonl)",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.5.sp,
+                        color = Color.White,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Copies the latest 500 recorded typing actions and typos to clipboard",
+                        fontSize = 11.5.sp,
+                        color = TextMuted,
+                    )
+                }
+            }
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            onClick = {
+                scope.launch {
+                    val success = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.clearLogFile(context)
+                    if (success) {
+                        context.showLongToast("Flight recorder log cleared")
+                    }
+                }
+            },
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Red.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Clear Flight Recorder Log",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.5.sp,
+                        color = Color.White,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Reset on-device circular flight recording buffer",
+                        fontSize = 11.5.sp,
+                        color = TextMuted,
+                    )
+                }
+            }
+        }
+
+        // 5. ANDROID SYSTEM CONFIGURATION
         Spacer(modifier = Modifier.height(10.dp))
         CrakeSectionHeader(title = "Android System Settings", badgeText = "SYSTEM", accentColor = CyberAmber)
         Card(

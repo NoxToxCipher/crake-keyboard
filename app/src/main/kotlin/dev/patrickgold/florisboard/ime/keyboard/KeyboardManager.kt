@@ -300,6 +300,20 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
             }
         }
+        val rawBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }.toString()
+        val committedText = candidate.text.toString()
+        val isAutocorrect = rawBefore.isNotBlank() && rawBefore != committedText
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logWordCommitted(
+            rawInput = rawBefore,
+            committedWord = committedText,
+            mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
+            topCandidates = nlpManager.activeCandidates.map { it.text.toString() },
+            isAutocorrected = isAutocorrect,
+            isKnownWord = true,
+            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            keyVariation = activeState.keyVariation,
+            packageName = editorInstance.activeInfo.packageName,
+        )
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
             else -> {
@@ -601,7 +615,31 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     private fun handleSpace(data: KeyData) {
         val candidate = nlpManager.getAutoCommitCandidate()
-        candidate?.let { commitCandidate(it) }
+        if (candidate != null) {
+            commitCandidate(candidate)
+        } else {
+            val wordBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+            if (wordBefore.isNotBlank()) {
+                val candidates = nlpManager.activeCandidates.map { it.text.toString() }
+                val isKnown = if (org.florisboard.libnative.FlorisNative.isAvailable()) {
+                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(wordBefore, "").isNotEmpty() ||
+                    candidates.any { it.equals(wordBefore, ignoreCase = true) }
+                } else {
+                    true
+                }
+                dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logWordCommitted(
+                    rawInput = wordBefore,
+                    committedWord = wordBefore,
+                    mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
+                    topCandidates = candidates,
+                    isAutocorrected = false,
+                    isKnownWord = isKnown,
+                    contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+                    keyVariation = activeState.keyVariation,
+                    packageName = editorInstance.activeInfo.packageName,
+                )
+            }
+        }
         if (prefs.keyboard.spaceBarSwitchesToCharacters.get()) {
             when (activeState.keyboardMode) {
                 KeyboardMode.NUMERIC_ADVANCED,
@@ -744,6 +782,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     override fun onInputKeyUp(data: KeyData) = activeState.batchEdit {
+        val label = data.asString(isForDisplay = true).ifEmpty { data.code.toString() }
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
+            keyLabel = label,
+            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            keyVariation = activeState.keyVariation,
+            packageName = editorInstance.activeInfo.packageName,
+        )
         val windowController = FlorisImeService.windowControllerOrNull() ?: return@batchEdit
         when (data.code) {
             KeyCode.ARROW_DOWN,
