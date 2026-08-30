@@ -65,11 +65,13 @@ object FlightRecorderManager {
         val pointCount: Int,
         val durationMs: Long,
         val distanceDp: Float = 0.0f,
+        val velocityDpPerSec: Float = 0.0f,
     ) {
         fun toJsonString(): String = buildString {
             append("{\"pointCount\":").append(pointCount)
             append(",\"durationMs\":").append(durationMs)
             if (distanceDp > 0.0f) append(",\"distanceDp\":").append(distanceDp)
+            if (velocityDpPerSec > 0.0f) append(",\"velocity\":").append(velocityDpPerSec)
             append("}")
         }
     }
@@ -354,6 +356,13 @@ object FlightRecorderManager {
                 emptyList()
             }
         }.getOrDefault(emptyList())
+    }
+
+    fun scrubVolatileBuffers() {
+        lastCommittedWord = null
+        lastRawInput = null
+        lastCandidates = emptyList()
+        lastCommittedTime = 0L
     }
 
     suspend fun clearLogFile(context: Context): Boolean = withContext(Dispatchers.IO) {
