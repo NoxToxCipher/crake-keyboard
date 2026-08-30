@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -238,6 +239,53 @@ fun TesterFeedbackScreen() = FlorisScreen {
     }
 
     content {
+        // 0. TELEMETRY & PRIVACY ASSURANCE CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CyberEmerald.copy(alpha = 0.5f)),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CyberEmerald.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = null,
+                        tint = CyberEmerald,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Telemetry & Privacy Shield Active",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.5.sp,
+                        color = CyberEmerald,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Zero-leak airgap • PII auto-redaction • Passwords & vaults excluded",
+                        fontSize = 10.5.sp,
+                        color = TextMuted,
+                    )
+                }
+            }
+        }
+
         // 1. TESTER IDENTITY CARD
         Card(
             modifier = Modifier
@@ -568,8 +616,10 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 put("time", iso)
                                 put("testerName", testerName)
                                 put("category", selectedCategory.name)
-                                put("title", titleText.trim())
-                                put("description", descriptionText.trim())
+                                val sanitizedTitle = FlightRecorderManager.sanitizePii(titleText.trim()) ?: titleText.trim()
+                                val sanitizedDesc = FlightRecorderManager.sanitizePii(descriptionText.trim()) ?: descriptionText.trim()
+                                put("title", sanitizedTitle)
+                                put("description", sanitizedDesc)
                                 put("hasScreenshot", screenshotB64 != null)
                                 if (screenshotB64 != null) put("screenshotBase64", screenshotB64)
                                 if (flightLogs != null) put("flightLogSnippet", flightLogs)

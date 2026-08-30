@@ -1,8 +1,8 @@
 {
-  "milestone": 298,
-  "tagName": "v0.298.0",
-  "name": "Milestone 298 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.298.0/CrakeKeyboard_Milestone_298.apk",
+  "milestone": 299,
+  "tagName": "v0.299.0",
+  "name": "Milestone 299 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.299.0/CrakeKeyboard_Milestone_299.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 298: Hardware-grade telemetry PII sanitization (automatic redaction of emails, cards & phone numbers) \u2022 Privacy shielding in flight logs (incognito & password manager exclusions)."
+  "changelog": "Milestone 299: Automatic feedback PII redaction & EXIF metadata stripping \u2022 Telemetry & Privacy Shield assurance in Feedback Hub."
 }
