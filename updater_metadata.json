@@ -1,8 +1,8 @@
 {
-  "milestone": 296,
-  "tagName": "v0.296.0",
-  "name": "Milestone 296 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.296.0/CrakeKeyboard_Milestone_296.apk",
+  "milestone": 297,
+  "tagName": "v0.297.0",
+  "name": "Milestone 297 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.297.0/CrakeKeyboard_Milestone_297.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 296: Audited feedback resolution status (accurately restored historical fixes) \u2022 Strict spoiler protection across all release changelogs."
+  "changelog": "Milestone 297: Rich visual update notifications with BigTextStyle preview \u2022 Brand new mystery interactive Easter Egg."
 }

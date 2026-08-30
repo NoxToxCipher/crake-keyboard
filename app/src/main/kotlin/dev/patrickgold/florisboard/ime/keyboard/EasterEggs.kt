@@ -245,6 +245,12 @@ enum class EasterEgg(
         "Sweet sleeping black guinea pig resting peacefully on the Enter key",
         listOf("licorice"),
     ),
+    POKEMON_BANK(
+        "pokemon_bank",
+        "Poké Vault",
+        "Mystery digital creature vault Easter Egg",
+        listOf("pokemon bank", "pokebank"),
+    ),
 }
 
 /**

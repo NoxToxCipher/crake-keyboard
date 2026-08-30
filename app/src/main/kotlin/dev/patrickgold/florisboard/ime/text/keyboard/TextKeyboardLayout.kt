@@ -510,6 +510,7 @@ fun TextKeyboardLayout(
     var mushuTriggerTime by remember { mutableStateOf(0L) }
     var goKartTriggerTime by remember { mutableStateOf(0L) }
     var licoriceTriggerTime by remember { mutableStateOf(0L) }
+    var pokeBankTriggerTime by remember { mutableStateOf(0L) }
         // Per-key egg layers (BlackBerry keycap flip, egg wobble, sun conure
         // perch): detected once here, consumed by every TextKeyButton via
         // parameters.
@@ -788,6 +789,18 @@ fun TextKeyboardLayout(
             if (isLicoriceMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.LICORICE)) licoriceTriggerTime = System.currentTimeMillis()
             }
+            val isPokeBankMatch = listOf("pokemon bank", "pokebank").any { k ->
+                val delimiters = triggerDelimitersWithEmpty
+                delimiters.any { d ->
+                    tb.equals("$k$d", ignoreCase = true) ||
+                    tb.endsWith(" $k$d", ignoreCase = true) ||
+                    tb.endsWith("\n$k$d", ignoreCase = true) ||
+                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isPokeBankMatch) {
+                if (prefs.easterEggs.fire(EasterEgg.POKEMON_BANK)) pokeBankTriggerTime = System.currentTimeMillis()
+            }
             // Per-key egg layers, hoisted out of TextKeyButton (previously
             // every key button re-ran these scans on each content change).
             val keyLayerSignature = "$tb::$comp"
@@ -1061,6 +1074,93 @@ fun TextKeyboardLayout(
                 spaceRainTriggerTime = spaceRainTriggerTime,
                 licoriceTriggerTime = licoriceTriggerTime,
             )
+        }
+
+
+        // =========================================================================
+        // POKEMON BANK EASTER EGG OVERLAY (6.0s duration)
+        // =========================================================================
+        if (pokeBankTriggerTime > 0L && System.currentTimeMillis() - pokeBankTriggerTime < 6000L) {
+            val elapsed = System.currentTimeMillis() - pokeBankTriggerTime
+            val u = (elapsed / 6000f).coerceIn(0f, 1f)
+            val alpha = if (u < 0.1f) u / 0.1f else if (u > 0.85f) (1f - u) / 0.15f else 1f
+            val pxDensity = LocalDensity.current.density
+
+            androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+                val w = size.width
+                val h = size.height
+                val d = pxDensity
+                val cx = w * 0.5f
+                val cy = h * 0.5f
+
+                drawContext.canvas.nativeCanvas.save()
+                val paintAlpha = (alpha * 255).toInt().coerceIn(0, 255)
+
+                // Vault Backdrop Glow
+                val glowPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb((paintAlpha * 0.45f).toInt(), 0, 229, 255)
+                    style = android.graphics.Paint.Style.FILL
+                }
+                drawContext.canvas.nativeCanvas.drawCircle(cx, cy, 38f * d, glowPaint)
+
+                // Vault Poke Ball (Dual tone Red & White with Gold Vault Trims)
+                val redPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(paintAlpha, 239, 68, 68)
+                    style = android.graphics.Paint.Style.FILL
+                }
+                val whitePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(paintAlpha, 248, 250, 252)
+                    style = android.graphics.Paint.Style.FILL
+                }
+                val goldPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(paintAlpha, 250, 204, 21)
+                    style = android.graphics.Paint.Style.FILL
+                }
+                val darkLine = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.argb(paintAlpha, 15, 23, 42)
+                    strokeWidth = 2.5f * d
+                    style = android.graphics.Paint.Style.STROKE
+                }
+
+                // Bounce scale
+                val bounce = (kotlin.math.sin(u * 8f * Math.PI.toFloat()) * 0.12f).coerceIn(-0.1f, 0.15f)
+                val ballRadius = 22f * d * (1f + bounce)
+
+                // Top Hemisphere (Red)
+                drawContext.canvas.nativeCanvas.drawArc(
+                    android.graphics.RectF(cx - ballRadius, cy - ballRadius, cx + ballRadius, cy + ballRadius),
+                    180f, 180f, true, redPaint
+                )
+                // Bottom Hemisphere (White)
+                drawContext.canvas.nativeCanvas.drawArc(
+                    android.graphics.RectF(cx - ballRadius, cy - ballRadius, cx + ballRadius, cy + ballRadius),
+                    0f, 180f, true, whitePaint
+                )
+                // Outer Border
+                drawContext.canvas.nativeCanvas.drawCircle(cx, cy, ballRadius, darkLine)
+                // Center Line
+                drawContext.canvas.nativeCanvas.drawLine(cx - ballRadius, cy, cx + ballRadius, cy, darkLine)
+                // Center Button (Gold Vault Lock)
+                drawContext.canvas.nativeCanvas.drawCircle(cx, cy, 7.5f * d, darkLine)
+                drawContext.canvas.nativeCanvas.drawCircle(cx, cy, 6f * d, goldPaint)
+                drawContext.canvas.nativeCanvas.drawCircle(cx, cy, 3f * d, whitePaint)
+
+                // Floating Star & Gold Coin Sparkles
+                for (i in 0 until 8) {
+                    val angle = (i * (Math.PI / 4.0) + (u * 4.0)).toFloat()
+                    val dist = (32f + kotlin.math.sin(u * 12f + i) * 8f) * d
+                    val sx = cx + kotlin.math.cos(angle) * dist
+                    val sy = cy + kotlin.math.sin(angle) * dist
+                    val sparkAlpha = (alpha * 220 * (1f - (i % 3) * 0.2f)).toInt().coerceIn(0, 255)
+                    val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(sparkAlpha, 255, 215, 0)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(sx, sy, 3f * d, sparkPaint)
+                }
+
+                drawContext.canvas.nativeCanvas.restore()
+            }
         }
 
         // Authentic BlackBerry 10 Floating Fret Word Overlay Layer
