@@ -906,7 +906,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     else -> when (data.type) {
                         KeyType.CHARACTER, KeyType.NUMERIC -> {
                             val text = data.asString(isForDisplay = false)
-                            if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0))) {
+                            val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
+                            if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0)) && !isApostrophe) {
                                 nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
                             }
                             editorInstance.commitChar(text)

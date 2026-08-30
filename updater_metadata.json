@@ -1,8 +1,8 @@
 {
-  "milestone": 291,
-  "tagName": "v0.291.0",
-  "name": "Milestone 291 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.291.0/CrakeKeyboard_Milestone_291.apk",
+  "milestone": 292,
+  "tagName": "v0.292.0",
+  "name": "Milestone 292 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.292.0/CrakeKeyboard_Milestone_292.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 291: Live telemetry model training status, version-aware additions changelog in Tester Hub, and Easter egg discovery clarification."
+  "changelog": "Milestone 292: Comprehensive apostrophe & contraction spacing audit (zero rogue spaces on it's, don't, I'm, Daya's), default tester name Daya (Hidaya), and typographic quote normalization."
 }

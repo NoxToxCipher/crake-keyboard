@@ -172,6 +172,9 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (activeInfo.isRawInputEditor) return false
         if (activeState.keyVariation != KeyVariation.NORMAL) return false
 
+        val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
+        if (isApostrophe) return false
+
         val currentWord = activeContent.currentWordText
         if (currentWord.contains('@') || currentWord.contains("http") || currentWord.contains("www") || currentWord.startsWith(".") || currentWord.startsWith("/")) {
             return false
@@ -187,6 +190,9 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (!prefs.correction.autoSpacePunctuation.get() || text.isEmpty()) return false
         if (activeInfo.isRawInputEditor) return false
         if (activeState.keyVariation != KeyVariation.NORMAL) return false
+
+        val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
+        if (isApostrophe) return false
 
         val content = activeContent
         val currentWord = content.currentWordText
@@ -208,6 +214,18 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     }
 
     override fun commitChar(char: String): Boolean {
+        val isApostrophe = char.length == 1 && (char[0] == '\'' || char[0] == '’' || char[0] == '‘' || char[0] == '´' || char[0] == '`')
+        if (isApostrophe) {
+            // Contraction & quote apostrophes must never trigger auto-spacing or phantom spaces
+            autoSpace.setInactive()
+            phantomSpace.setInactive()
+            return super.commitChar(
+                char = char,
+                deletePreviousSpace = false,
+                insertSpaceBeforeChar = false,
+                insertSpaceAfterChar = false,
+            )
+        }
         val isInsertAutoSpaceBeforeChar = shouldInsertAutoSpaceBefore(char)
         val isInsertAutoSpaceAfterChar = shouldInsertAutoSpaceAfter(char)
         val isDeletePreviousSpace = isInsertAutoSpaceAfterChar && autoSpace.isActive
@@ -639,7 +657,18 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
          val content = activeContent
          val selection = content.selection
          if (!(isActive || forceActive) || selection.isNotValid || selection.start <= 0 || text.isEmpty()) return false
+
+         val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
+         if (isApostrophe) return false
+
          val textBefore = content.getTextBeforeCursor(1)
+         if (textBefore.isNotEmpty()) {
+             val lastChar = textBefore.last()
+             if (lastChar == '\'' || lastChar == '’' || lastChar == '‘' || lastChar == '´' || lastChar == '`') {
+                 return false
+             }
+         }
+
          val punctuationRule = nlpManager.getActivePunctuationRule()
          if (!subtypeManager.activeSubtype.primaryLocale.supportsAutoSpace) return false;
          return textBefore.isNotEmpty() &&

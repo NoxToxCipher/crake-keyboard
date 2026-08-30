@@ -159,7 +159,8 @@ fun TesterFeedbackScreen() = FlorisScreen {
     val scope = rememberCoroutineScope()
     val prefs by FlorisPreferenceStore
 
-    val testerName by prefs.updater.testerName.collectAsState()
+    val rawTesterName by prefs.updater.testerName.collectAsState()
+    val testerName = if (rawTesterName.isBlank() || rawTesterName.equals("Tester", ignoreCase = true)) "Daya" else rawTesterName
 
     var selectedCategory by remember { mutableStateOf(FeedbackCategory.BUG_REPORT) }
     var titleText by remember { mutableStateOf("") }

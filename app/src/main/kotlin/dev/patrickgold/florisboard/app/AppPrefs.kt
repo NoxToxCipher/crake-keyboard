@@ -249,7 +249,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val testerName = string(
             key = "updater__tester_name",
-            default = "Tester",
+            default = "Daya",
         )
         val testerOnboardingDismissed = boolean(
             key = "updater__tester_onboarding_dismissed",

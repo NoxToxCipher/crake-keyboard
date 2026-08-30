@@ -119,7 +119,8 @@ object DiagnosticSyncManager {
                 return@runCatching 0
             }
 
-            val testerName = prefs.updater.testerName.get()
+            val rawName = prefs.updater.testerName.get().trim()
+            val testerName = if (rawName.isBlank() || rawName.equals("Tester", ignoreCase = true)) "Daya" else rawName
             val now = System.currentTimeMillis()
             val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.US).format(Date(now))
 

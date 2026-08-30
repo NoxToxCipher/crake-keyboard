@@ -224,8 +224,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             // Plain suggestions only — nothing here may auto-commit.
             val prevCommitted = content.textBeforeSelection
                 .trimEnd()
-                .takeLastWhile { it.isLetter() || it == '\'' }
-                .toString()
+                .takeLastWhile { it.isLetter() || it == '\'' || it == '’' || it == '‘' || it == '´' || it == '`' }
+                .replace('’', '\'')
+                .replace('‘', '\'')
+                .replace('´', '\'')
+                .replace('`', '\'')
             if (!FlorisNative.isAvailable()) return emptyList()
             // A blank prev is a sentence start: the native side answers
             // with capitalized starters instead of going silent.
@@ -311,7 +314,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
             // 2. Native Safe Rust Trie Word Predictions
             if (FlorisNative.isAvailable()) {
-                val cleanWordQuery = query.takeLastWhile { it.isLetter() || it == '\'' }
+                val cleanWordQuery = query
+                    .takeLastWhile { it.isLetter() || it == '\'' || it == '’' || it == '‘' || it == '´' || it == '`' }
+                    .replace('’', '\'')
+                    .replace('‘', '\'')
+                    .replace('´', '\'')
+                    .replace('`', '\'')
                 if (cleanWordQuery.isNotBlank()) {
                     val candidates = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
                     for ((index, candidate) in candidates.withIndex()) {
