@@ -20,6 +20,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,6 +47,8 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.WarningAmber
@@ -54,6 +57,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
@@ -70,11 +74,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -95,7 +104,6 @@ private val CyberEmerald = Color(0xFF10B981)
 private val ElectricCyan = Color(0xFF06B6D4)
 private val CyberAmber = Color(0xFFF59E0B)
 private val CyberCrimson = Color(0xFFEF4444)
-private val CyberPurple = Color(0xFF8B5CF6)
 private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
@@ -110,7 +118,8 @@ fun SnippetsScreen() = FlorisScreen {
 
     var snippetList by remember { mutableStateOf(emptyList<UserDictionaryEntry>()) }
     var searchQuery by remember { mutableStateOf("") }
-    var selectedFilter by remember { mutableStateOf("ALL") } // ALL, CRYPTO, CUSTOM
+    var selectedFilter by remember { mutableStateOf("ALL") }
+    var showAllChains by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var editingEntry by remember { mutableStateOf<UserDictionaryEntry?>(null) }
     var inputTrigger by remember { mutableStateOf("") }
@@ -151,7 +160,7 @@ fun SnippetsScreen() = FlorisScreen {
                 val shortcut = entry.shortcut.orEmpty()
                 val text = entry.word
                 val chain = CryptoChain.detectFromShortcut(shortcut) ?: CryptoChain.detectFromAddress(text)
-                
+
                 val matchesFilter = when (selectedFilter) {
                     "CRYPTO" -> chain != null
                     "CUSTOM" -> chain == null
@@ -183,190 +192,153 @@ fun SnippetsScreen() = FlorisScreen {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 8.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                     colors = CardDefaults.cardColors(containerColor = CardSurface),
                     border = BorderStroke(1.dp, CardBorder),
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        // Title Header (Centered)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        Brush.linearGradient(listOf(ElectricCyan.copy(alpha = 0.2f), CyberEmerald.copy(alpha = 0.2f)))
-                                    ),
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(ElectricCyan.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.FlashOn,
                                     contentDescription = null,
                                     tint = ElectricCyan,
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(18.dp),
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "AIR-GAPPED SNIPPET ENGINE",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.5.sp,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = Color.White,
-                                )
-                                Text(
-                                    text = "Type shortcut triggers (e.g. !btc1, !time, !email) to instantly expand",
-                                    fontSize = 11.sp,
-                                    color = TextMuted,
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Category Section 1: Crypto Wallet Presets
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CurrencyBitcoin,
-                                contentDescription = null,
-                                tint = CyberAmber,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "SUPPORTED CRYPTO CHAINS (TAP TO CONFIGURE)",
+                                text = "AIR-GAPPED SNIPPET STUDIO",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
+                                fontSize = 13.sp,
                                 fontFamily = FontFamily.Monospace,
-                                color = CyberAmber,
+                                color = Color.White,
                             )
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Type shortcut triggers (e.g. !btc1, !time, !email) to instantly expand in any app",
+                            fontSize = 11.sp,
+                            color = TextMuted,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Section 1: Crypto Wallet Presets (Centered Header)
+                        CenteredSectionHeader(
+                            icon = Icons.Default.CurrencyBitcoin,
+                            title = "SUPPORTED CRYPTO CHAINS",
+                            color = CyberAmber,
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Scrollable Crypto Presets Row
+                        // Core Featured Crypto Chains (3-4 in Focus)
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            CryptoPresetBadge("!sol1", "Solana", "SOL") { t ->
+                            CryptoCardPill("!sol1", "Solana", "SOL", Modifier.weight(1f)) {
                                 editingEntry = null
-                                inputTrigger = t
+                                inputTrigger = "!sol1"
                                 inputExpansion = ""
                                 showDialog = true
                             }
-                            CryptoPresetBadge("!btc1", "Bitcoin", "BTC") { t ->
+                            CryptoCardPill("!btc1", "Bitcoin", "BTC", Modifier.weight(1f)) {
                                 editingEntry = null
-                                inputTrigger = t
+                                inputTrigger = "!btc1"
                                 inputExpansion = ""
                                 showDialog = true
                             }
-                            CryptoPresetBadge("!eth1", "Ethereum", "ETH") { t ->
+                            CryptoCardPill("!eth1", "Ethereum", "ETH", Modifier.weight(1f)) {
                                 editingEntry = null
-                                inputTrigger = t
+                                inputTrigger = "!eth1"
                                 inputExpansion = ""
                                 showDialog = true
                             }
-                            CryptoPresetBadge("!trx1", "Tron", "TRX") { t ->
+                            CryptoCardPill("!xmr1", "Monero", "XMR", Modifier.weight(1f)) {
                                 editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!xmr1", "Monero", "XMR") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!ltc1", "Litecoin", "LTC") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!bnb1", "BNB Chain", "BNB") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!pol1", "Polygon", "POL") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!avax1", "Avalanche", "AVAX") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!base1", "Base", "BASE") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!ada1", "Cardano", "ADA") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!doge1", "Dogecoin", "DOGE") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!xrp1", "Ripple", "XRP") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!dot1", "Polkadot", "DOT") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!rune1", "THORChain", "RUNE") { t ->
-                                editingEntry = null
-                                inputTrigger = t
-                                inputExpansion = ""
-                                showDialog = true
-                            }
-                            CryptoPresetBadge("!atom1", "Cosmos", "ATOM") { t ->
-                                editingEntry = null
-                                inputTrigger = t
+                                inputTrigger = "!xmr1"
                                 inputExpansion = ""
                                 showDialog = true
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                        // Category Section 2: Dynamic Macros
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.AutoAwesome,
-                                contentDescription = null,
-                                tint = ElectricCyan,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "BUILT-IN DYNAMIC MACROS",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
-                                fontFamily = FontFamily.Monospace,
-                                color = ElectricCyan,
-                            )
+                        // Fading Horizontal Scroller for Additional Chains
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                                .drawWithContent {
+                                    drawContent()
+                                    drawRect(
+                                        brush = Brush.horizontalGradient(
+                                            0.0f to Color.Transparent,
+                                            0.05f to Color.Black,
+                                            0.95f to Color.Black,
+                                            1.0f to Color.Transparent,
+                                        ),
+                                        blendMode = BlendMode.DstIn,
+                                    )
+                                },
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                val remainingChains = listOf(
+                                    Triple("!trx1", "Tron", "TRX"),
+                                    Triple("!ltc1", "Litecoin", "LTC"),
+                                    Triple("!bnb1", "BNB Chain", "BNB"),
+                                    Triple("!pol1", "Polygon", "POL"),
+                                    Triple("!avax1", "Avalanche", "AVAX"),
+                                    Triple("!base1", "Base", "BASE"),
+                                    Triple("!ada1", "Cardano", "ADA"),
+                                    Triple("!doge1", "Dogecoin", "DOGE"),
+                                    Triple("!xrp1", "Ripple", "XRP"),
+                                    Triple("!dot1", "Polkadot", "DOT"),
+                                    Triple("!rune1", "THORChain", "RUNE"),
+                                    Triple("!atom1", "Cosmos", "ATOM"),
+                                )
+                                for ((t, name, sym) in remainingChains) {
+                                    CryptoPresetBadge(t, name, sym) { trigger ->
+                                        editingEntry = null
+                                        inputTrigger = trigger
+                                        inputExpansion = ""
+                                        showDialog = true
+                                    }
+                                }
+                            }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Section 2: Dynamic Macros (Centered Header)
+                        CenteredSectionHeader(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "BUILT-IN DYNAMIC MACROS",
+                            color = ElectricCyan,
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         val now = remember { Date() }
@@ -375,51 +347,40 @@ fun SnippetsScreen() = FlorisScreen {
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             MacroPill("!time", timeStr, Modifier.weight(1f))
                             MacroPill("!date", dateStr, Modifier.weight(1f))
                             MacroPill("!now", "Full ISO", Modifier.weight(1f))
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Category Section 3: General Presets
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                tint = CyberEmerald,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "GENERAL TEMPLATES",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.5.sp,
-                                fontFamily = FontFamily.Monospace,
-                                color = CyberEmerald,
-                            )
-                        }
+                        // Section 3: General Templates (Centered Header & Single-Line Balanced Pills)
+                        CenteredSectionHeader(
+                            icon = Icons.Default.Edit,
+                            title = "GENERAL TEMPLATES",
+                            color = CyberEmerald,
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
-                            PresetBadge("!email", "name@example.com") { t, e ->
+                            TemplatePill("!email", "name@example.com", Modifier.weight(1f)) { t, e ->
                                 editingEntry = null
                                 inputTrigger = t
                                 inputExpansion = e
                                 showDialog = true
                             }
-                            PresetBadge("!addr", "123 Cyber St, Suite 404") { t, e ->
+                            TemplatePill("!addr", "123 Cyber St", Modifier.weight(1f)) { t, e ->
                                 editingEntry = null
                                 inputTrigger = t
                                 inputExpansion = e
                                 showDialog = true
                             }
-                            PresetBadge("!shrug", "¯\\_(ツ)_/¯") { t, e ->
+                            TemplatePill("!shrug", "¯\\_(ツ)_/¯", Modifier.weight(1f)) { t, e ->
                                 editingEntry = null
                                 inputTrigger = t
                                 inputExpansion = e
@@ -829,6 +790,123 @@ fun SnippetsScreen() = FlorisScreen {
 }
 
 @Composable
+private fun CenteredSectionHeader(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    color: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = CardBorder,
+            thickness = 1.dp,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(13.dp),
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.5.sp,
+            fontFamily = FontFamily.Monospace,
+            color = color,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = CardBorder,
+            thickness = 1.dp,
+        )
+    }
+}
+
+@Composable
+private fun CryptoCardPill(
+    trigger: String,
+    chainName: String,
+    symbol: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF131C2E)),
+        border = BorderStroke(1.dp, CyberAmber.copy(alpha = 0.35f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = trigger,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = CyberAmber,
+                maxLines = 1,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = symbol,
+                fontSize = 9.5.sp,
+                color = TextMuted,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TemplatePill(
+    trigger: String,
+    preview: String,
+    modifier: Modifier = Modifier,
+    onClick: (String, String) -> Unit,
+) {
+    Card(
+        modifier = modifier.clickable { onClick(trigger, preview) },
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1A24)),
+        border = BorderStroke(1.dp, CyberEmerald.copy(alpha = 0.35f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = trigger,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = CyberEmerald,
+                maxLines = 1,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = preview,
+                fontSize = 9.5.sp,
+                color = TextMuted,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
 private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(8.dp),
@@ -850,54 +928,32 @@ private fun FilterChip(label: String, isSelected: Boolean, onClick: () -> Unit) 
 private fun MacroPill(trigger: String, description: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1624)),
-        border = BorderStroke(1.dp, Color(0xFF1E283A)),
+        border = BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.35f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(vertical = 8.dp, horizontal = 4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = trigger,
-                fontSize = 12.sp,
+                fontSize = 11.5.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 color = ElectricCyan,
+                maxLines = 1,
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = description,
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
                 color = TextMuted,
                 maxLines = 1,
             )
         }
-    }
-}
-
-@Composable
-private fun PresetBadge(
-    trigger: String,
-    expansion: String,
-    onClick: (String, String) -> Unit,
-) {
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1624)),
-        border = BorderStroke(1.dp, CyberEmerald.copy(alpha = 0.3f)),
-        modifier = Modifier.clickable { onClick(trigger, expansion) },
-    ) {
-        Text(
-            text = trigger,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            color = CyberEmerald,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-        )
     }
 }
 
@@ -911,24 +967,24 @@ private fun CryptoPresetBadge(
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF151C2C)),
-        border = BorderStroke(1.dp, CyberAmber.copy(alpha = 0.4f)),
+        border = BorderStroke(1.dp, CyberAmber.copy(alpha = 0.3f)),
         modifier = Modifier.clickable { onClick(trigger) },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = trigger,
-                fontSize = 11.5.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 color = CyberAmber,
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = "($symbol)",
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
                 color = TextMuted,
             )
         }
