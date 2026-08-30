@@ -1035,6 +1035,8 @@ fun TextKeyboardLayout(
             TextKeyButton(
                 textKey, evaluator, desiredKey,
                 debugShowTouchBoundaries,
+                themeAccentColor = themeAccentColor,
+                isBorderlessTheme = isBorderlessTheme,
                 hideHint = hasFlick,
                 eggTriggerTime = eggKeyTriggerTime,
                 sunConureTriggerTime = sunConureKeyTriggerTime,
@@ -7610,6 +7612,8 @@ private fun TextKeyButton(
     evaluator: ComputingEvaluator,
     desiredKey: TextKey,
     debugShowTouchBoundaries: Boolean,
+    themeAccentColor: Color,
+    isBorderlessTheme: Boolean,
     hideHint: Boolean = false,
     eggTriggerTime: Long = 0L,
     sunConureTriggerTime: Long = 0L,
@@ -7619,37 +7623,6 @@ private fun TextKeyButton(
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
     val editorInstance by context.editorInstance()
-    val activeContent by editorInstance.activeContentFlow.collectAsState()
-    val themeManager by context.themeManager()
-    val activeThemeInfo by themeManager.activeThemeInfo.collectAsState()
-    val activeThemeCompId = activeThemeInfo.name.componentId
-    val isBorderlessTheme = "borderless" in activeThemeCompId
-    val chameleonEnabled by prefs.theme.chameleonAppAccentMatcher.collectAsState()
-    val packageName = editorInstance.activeInfo.packageName
-    val themeAccentColor = remember(activeThemeCompId, chameleonEnabled, packageName) {
-        val pkg = (packageName ?: "").lowercase()
-        if (chameleonEnabled && pkg.isNotBlank()) {
-            when {
-                pkg.contains("whatsapp") || pkg.contains("signal") || pkg.contains("wechat") -> Color(0xFF00E5A3)
-                pkg.contains("telegram") || pkg.contains("twitter") || pkg.contains("bluesky") -> Color(0xFF00D2FF)
-                pkg.contains("discord") || pkg.contains("twitch") -> Color(0xFFA78BFA)
-                pkg.contains("reddit") || pkg.contains("youtube") -> Color(0xFFFF4500)
-                pkg.contains("slack") || pkg.contains("github") || pkg.contains("obsidian") -> Color(0xFFF59E0B)
-                pkg.contains("spotify") -> Color(0xFF1DB954)
-                else -> Color(0xFF00D2FF)
-            }
-        } else {
-            when {
-                "purple" in activeThemeCompId -> Color(0xFFA855F7)
-                "crimson" in activeThemeCompId -> Color(0xFFEF4444)
-                "sakura" in activeThemeCompId -> Color(0xFFEC4899)
-                "emerald" in activeThemeCompId -> Color(0xFF00E5A3)
-                "amber" in activeThemeCompId -> Color(0xFFF59E0B)
-                "ghost" in activeThemeCompId -> Color(0xFFF8FAFC)
-                else -> Color(0xFF00D2FF)
-            }
-        }
-    }
 
     // Trigger detection for the per-key egg layers happens ONCE in the
     // parent layout (it already scans the text for the other eggs) and

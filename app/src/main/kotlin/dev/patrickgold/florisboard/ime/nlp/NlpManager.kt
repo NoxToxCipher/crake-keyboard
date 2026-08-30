@@ -40,7 +40,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.florisboard.lib.kotlin.guardedByLock
@@ -274,10 +273,11 @@ class NlpManager(context: Context) {
     }
 
     fun providerForcesSuggestionOn(subtype: Subtype): Boolean {
-        // Using a cache because I have no idea how fast the runBlocking is
         return providersForceSuggestionOn.getOrPut(subtype.nlpProviders.suggestion) {
-            runBlocking {
-                getSuggestionProvider(subtype).forcesSuggestionOn
+            when (subtype.nlpProviders.suggestion) {
+                LatinLanguageProvider.ProviderId -> true
+                HanShapeBasedLanguageProvider.ProviderId -> true
+                else -> true
             }
         }
     }
@@ -354,16 +354,12 @@ class NlpManager(context: Context) {
 
     fun suggestDirectly(suggestions: List<SuggestionCandidate>) {
         val reqTime = SystemClock.uptimeMillis()
-        runBlocking {
-            internalSuggestions = reqTime to suggestions
-        }
+        internalSuggestions = reqTime to suggestions
     }
 
     fun clearSuggestions() {
         val reqTime = SystemClock.uptimeMillis()
-        runBlocking {
-            internalSuggestions = reqTime to emptyList()
-        }
+        internalSuggestions = reqTime to emptyList()
     }
 
     fun getAutoCommitCandidate(): SuggestionCandidate? {
@@ -371,43 +367,40 @@ class NlpManager(context: Context) {
     }
 
     fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
-        return runBlocking { candidate.sourceProvider?.removeSuggestion(subtype, candidate) == true }.also { result ->
+        scope.launch {
+            val result = candidate.sourceProvider?.removeSuggestion(subtype, candidate) == true
             if (result) {
-                scope.launch {
-                    // Need to re-trigger the suggestions algorithm
-                    if (candidate is ClipboardSuggestionCandidate) {
-                        assembleCandidates()
-                    } else {
-                        suggest(subtypeManager.activeSubtype, editorInstance.activeContent)
-                    }
+                if (candidate is ClipboardSuggestionCandidate) {
+                    assembleCandidates()
+                } else {
+                    suggest(subtypeManager.activeSubtype, editorInstance.activeContent)
                 }
             }
         }
+        return true
     }
 
-    private fun assembleCandidates() {
-        runBlocking {
-            val candidates = when {
-                isSuggestionOn() -> {
-                    clipboardSuggestionProvider.suggest(
-                        subtype = Subtype.DEFAULT,
-                        content = editorInstance.activeContent,
-                        maxCandidateCount = 8,
-                        allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = keyboardManager.activeState.isIncognitoMode,
-                    ).ifEmpty {
-                        buildList {
-                            internalSuggestionsGuard.withLock {
-                                addAll(internalSuggestions.second)
-                            }
+    private suspend fun assembleCandidates() {
+        val candidates = when {
+            isSuggestionOn() -> {
+                clipboardSuggestionProvider.suggest(
+                    subtype = Subtype.DEFAULT,
+                    content = editorInstance.activeContent,
+                    maxCandidateCount = 8,
+                    allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+                    isPrivateSession = keyboardManager.activeState.isIncognitoMode,
+                ).ifEmpty {
+                    buildList {
+                        internalSuggestionsGuard.withLock {
+                            addAll(internalSuggestions.second)
                         }
                     }
                 }
-                else -> emptyList()
             }
-            activeCandidates = candidates
-            autoExpandCollapseSmartbarActions(candidates, NlpInlineAutofill.suggestions.value)
+            else -> emptyList()
         }
+        activeCandidates = candidates
+        autoExpandCollapseSmartbarActions(candidates, NlpInlineAutofill.suggestions.value)
     }
 
     fun autoExpandCollapseSmartbarActions(list1: List<*>?, list2: List<*>?) {
