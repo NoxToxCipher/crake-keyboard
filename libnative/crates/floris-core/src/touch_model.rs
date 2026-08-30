@@ -96,9 +96,9 @@ impl BivariateGaussianKey {
         }
     }
 
-    /// Updates the Gaussian parameters using online Welford updates with exponential decay.
-    pub fn update(&mut self, x: f32, y: f32) {
-        if !x.is_finite() || !y.is_finite() {
+    /// Updates the Gaussian parameters using online Welford updates with exponential decay and bounding guards.
+    pub fn update(&mut self, x: f32, y: f32, origin_cx: f32, origin_cy: f32, max_drift: f32, min_var: f32) {
+        if !x.is_finite() || !y.is_finite() || !origin_cx.is_finite() || !origin_cy.is_finite() || !max_drift.is_finite() || !min_var.is_finite() {
             return;
         }
         self.sample_count = self.sample_count.saturating_add(1);
@@ -107,15 +107,20 @@ impl BivariateGaussianKey {
         let dx = x - self.mean_x;
         let dy = y - self.mean_y;
         
-        self.mean_x += weight * dx;
-        self.mean_y += weight * dy;
+        // Update mean with strict spatial clamping guard (prevents drift beyond visual key boundary)
+        let new_mean_x = self.mean_x + weight * dx;
+        let new_mean_y = self.mean_y + weight * dy;
+        self.mean_x = new_mean_x.clamp(origin_cx - max_drift, origin_cx + max_drift);
+        self.mean_y = new_mean_y.clamp(origin_cy - max_drift, origin_cy + max_drift);
         
         let new_dx = x - self.mean_x;
         let new_dy = y - self.mean_y;
         
-        self.var_x = ((1.0 - weight) * self.var_x + weight * (dx * new_dx)).max(4.0);
-        self.var_y = ((1.0 - weight) * self.var_y + weight * (dy * new_dy)).max(4.0);
+        // Update variances with biomechanical touch-pad lower bound guard (min_var)
+        self.var_x = ((1.0 - weight) * self.var_x + weight * (dx * new_dx)).max(min_var);
+        self.var_y = ((1.0 - weight) * self.var_y + weight * (dy * new_dy)).max(min_var);
         
+        // Clamp covariance to guarantee positive determinant: det = var_x * var_y - cov_xy^2 >= 0.15 * var_x * var_y
         let max_cov = (self.var_x * self.var_y).sqrt() * 0.85;
         self.cov_xy = ((1.0 - weight) * self.cov_xy + weight * (dx * new_dy)).clamp(-max_cov, max_cov);
     }
@@ -131,11 +136,16 @@ impl BivariateGaussianKey {
         sq.max(0.0)
     }
 
-    /// Evaluates the unnormalized Gaussian density score exp(-0.5 * d_M^2).
+    /// Evaluates the Gaussian density score with covariance normalization.
     #[inline]
     pub fn density(&self, x: f32, y: f32) -> f32 {
+        if !x.is_finite() || !y.is_finite() {
+            return 0.0;
+        }
         let d_sq = self.mahalanobis_sq(x, y);
-        (-0.5 * d_sq).exp()
+        let det = (self.var_x * self.var_y - self.cov_xy * self.cov_xy).max(1e-4);
+        let norm = (1000.0 / det.sqrt()).min(10.0);
+        norm * (-0.5 * d_sq).exp()
     }
 }
 
@@ -209,6 +219,9 @@ impl TouchModel {
 
     /// Evaluates the best matching key and its spatial probability distribution for a given touch.
     pub fn evaluate_spatial_touch(&self, x: f32, y: f32) -> Option<(char, f32)> {
+        if !x.is_finite() || !y.is_finite() {
+            return None;
+        }
         let mut best_key = ' ';
         let mut best_score = -1.0f32;
         let mut total_density = 0.0f32;
@@ -221,7 +234,7 @@ impl TouchModel {
                 best_key = ch;
             }
         }
-        if total_density > 1e-6 {
+        if total_density > 1e-8 {
             Some((best_key, best_score / total_density))
         } else {
             None
@@ -230,8 +243,13 @@ impl TouchModel {
 
     /// Records a true user tap to adaptively train the 2D Gaussian touch centroid for the aimed key.
     pub fn record_touch_hit(&mut self, aimed_key: char, touch_x: f32, touch_y: f32) {
-        if let Some(gkey) = self.gaussian_keys.get_mut(&aimed_key.to_ascii_lowercase()) {
-            gkey.update(touch_x, touch_y);
+        let ch = aimed_key.to_ascii_lowercase();
+        let pitch = self.near_dist_sq.sqrt() / NEAR_FACTOR;
+        let max_drift = (pitch * 0.35).max(4.0);
+        let min_sigma = (pitch * 0.28).max(4.0);
+        let min_var = min_sigma * min_sigma;
+        if let (Some(&origin_c), Some(gkey)) = (self.centers.get(&ch), self.gaussian_keys.get_mut(&ch)) {
+            gkey.update(touch_x, touch_y, origin_c.0, origin_c.1, max_drift, min_var);
         }
     }
 

@@ -221,6 +221,15 @@ pub fn spatial_substitution_cost(a: char, b: char, touch_model: Option<&crate::T
     }
 
     if let Some(model) = touch_model {
+        // If Bivariate Gaussian model has learned key distribution for candidate 'b', evaluate Mahalanobis cost
+        if let (Some(p1), Some(gkey_b)) = (model.get_center(a_low), model.gaussian_keys.get(&b_low)) {
+            let m_sq = gkey_b.mahalanobis_sq(p1.0, p1.1);
+            if m_sq <= 9.0 {
+                // Within 3-sigma ellipse of candidate key: smooth Mahalanobis substitution cost
+                let density = (-0.5 * m_sq).exp();
+                return 0.25 + 0.65 * (1.0 - density);
+            }
+        }
         if let (Some(p1), Some(p2)) = (model.get_center(a_low), model.get_center(b_low)) {
             let dx = p1.0 - p2.0;
             let dy = p1.1 - p2.1;
