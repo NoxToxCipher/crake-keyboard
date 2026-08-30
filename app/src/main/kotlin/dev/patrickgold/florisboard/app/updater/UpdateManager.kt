@@ -51,7 +51,7 @@ import kotlin.time.Duration.Companion.hours
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
     const val CURRENT_MILESTONE = 289
-    private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases/latest"
+    private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
     private const val NOTIFICATION_ID = 28901
     private const val RESOLVED_NOTIFICATION_ID = 28902
@@ -187,42 +187,52 @@ object UpdateManager {
                 throw IllegalStateException("GitHub API returned HTTP ${connection.responseCode}")
             }
 
-            val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(responseBody)
+            val responseBody = connection.inputStream.bufferedReader().use { it.readText() }.trim()
+            val releasesArray = if (responseBody.startsWith("[")) {
+                JSONArray(responseBody)
+            } else {
+                JSONArray().apply { put(JSONObject(responseBody)) }
+            }
 
-            val tagName = json.optString("tag_name", "")
-            val name = json.optString("name", tagName)
-            val body = json.optString("body", "")
-            val publishedAt = json.optString("published_at", "")
-            val milestone = parseMilestoneNumber(if (name.isNotBlank()) name else tagName)
+            var bestRelease: ReleaseInfo? = null
+            for (idx in 0 until releasesArray.length()) {
+                val json = releasesArray.getJSONObject(idx)
+                val tagName = json.optString("tag_name", "")
+                val name = json.optString("name", tagName)
+                val body = json.optString("body", "")
+                val publishedAt = json.optString("published_at", "")
+                val milestone = parseMilestoneNumber(if (name.isNotBlank()) name else tagName)
 
-            val assets = json.optJSONArray("assets") ?: JSONArray()
-            var apkUrl = ""
-            var apkSize = 0L
+                val assets = json.optJSONArray("assets") ?: JSONArray()
+                var apkUrl = ""
+                var apkSize = 0L
 
-            for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
-                val assetName = asset.optString("name", "")
-                if (assetName.endsWith(".apk", ignoreCase = true)) {
-                    apkUrl = asset.optString("browser_download_url", "")
-                    apkSize = asset.optLong("size", 0L)
-                    break
+                for (i in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(i)
+                    val assetName = asset.optString("name", "")
+                    if (assetName.endsWith(".apk", ignoreCase = true)) {
+                        apkUrl = asset.optString("browser_download_url", "")
+                        apkSize = asset.optLong("size", 0L)
+                        break
+                    }
+                }
+
+                if (apkUrl.isNotEmpty()) {
+                    val candidate = ReleaseInfo(
+                        tagName = tagName,
+                        name = name,
+                        milestone = milestone,
+                        changelog = body,
+                        apkDownloadUrl = apkUrl,
+                        apkSize = apkSize,
+                        publishedAt = publishedAt,
+                    )
+                    if (bestRelease == null || candidate.milestone > bestRelease.milestone) {
+                        bestRelease = candidate
+                    }
                 }
             }
-
-            if (apkUrl.isEmpty()) {
-                null
-            } else {
-                ReleaseInfo(
-                    tagName = tagName,
-                    name = name,
-                    milestone = milestone,
-                    changelog = body,
-                    apkDownloadUrl = apkUrl,
-                    apkSize = apkSize,
-                    publishedAt = publishedAt,
-                )
-            }
+            bestRelease
         }
     }
 
