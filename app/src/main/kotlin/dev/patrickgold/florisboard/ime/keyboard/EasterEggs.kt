@@ -243,7 +243,7 @@ enum class EasterEgg(
         "licorice",
         "Licorice the Guinea Pig",
         "Sweet sleeping black guinea pig resting peacefully on the Enter key",
-        listOf("licorice", "guinea pig", "guineapig", "cavy"),
+        listOf("licorice"),
     ),
 }
 

@@ -776,7 +776,7 @@ fun TextKeyboardLayout(
             if (isGoKartMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.GO_KART)) goKartTriggerTime = System.currentTimeMillis()
             }
-            val isLicoriceMatch = listOf("licorice", "guineapig", "guinea pig", "cavy").any { k ->
+            val isLicoriceMatch = listOf("licorice").any { k ->
                 val delimiters = triggerDelimitersWithEmpty
                 delimiters.any { d ->
                     tb.equals("$k$d", ignoreCase = true) ||
