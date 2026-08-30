@@ -1,10 +1,10 @@
 {
-  "milestone": 319,
-  "tagName": "v0.319.0",
-  "name": "Milestone 319 (Polished Snippets Studio Layout)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.319.0/CrakeKeyboard_Milestone_319.apk",
+  "milestone": 320,
+  "tagName": "v0.320.0",
+  "name": "Milestone 320 (Gestures 1D-CNN Hero Studio Polish)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.320.0/CrakeKeyboard_Milestone_320.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 319: Refined Snippets Studio: single-line balanced templates (!email, !addr, !shrug), centered cyber dividers, core 4-chain focus with smooth edge-faded horizontal scrolling.",
+  "changelog": "Milestone 320: Added 1D-CNN Neural Glide & Trackpad Engine Hero Banner to Gestures Settings with real-time status badges and 6-channel kinematic telemetry indicators.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -40,6 +40,7 @@
     "316": "Implemented 1D-CNN / Temporal Convolutional Network (TCN) Neural Glide Stroke Decoder in Rust (floris-core): zero-allocation stack execution, dilated convolutions, and continuous character emission alignment for corner-cut glide rescue.",
     "317": "Reset main currency set to Dollar ($) across all keyboard subtype presets and automatically migrated active tester profiles.",
     "318": "Expanded Air-Gapped Crypto Snippets (16 chains + Solana/Tron/EVM) with sleek visual overhaul, search bar, and one-tap clipboard copy; coupled Easter Egg registry bounds strictly to 36 valid entries.",
-    "319": "Refined Snippets Studio: single-line balanced templates (!email, !addr, !shrug), centered cyber dividers, core 4-chain focus with smooth edge-faded horizontal scrolling."
+    "319": "Refined Snippets Studio: single-line balanced templates (!email, !addr, !shrug), centered cyber dividers, core 4-chain focus with smooth edge-faded horizontal scrolling.",
+    "320": "Added 1D-CNN Neural Glide & Trackpad Engine Hero Banner to Gestures Settings with real-time status badges and 6-channel kinematic telemetry indicators."
   }
 }
