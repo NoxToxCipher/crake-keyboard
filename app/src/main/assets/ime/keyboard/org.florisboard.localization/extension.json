@@ -19,11 +19,11 @@
     {
       "id": "default",
       "label": "Default",
-      "symbolsPrecedingAutoSpace": ".,?\u203d!\"&%)]}\u00bb",
+      "symbolsPrecedingAutoSpace": ".,?‽!\"&%)]}»",
       "symbolsFollowingAutoSpace": "",
-      "symbolsPrecedingPhantomSpace": ".,;:?\u203d!&%)]}\u00bb\u00a9\u00ae\u2122",
-      "symbolsFollowingPhantomSpace": "\u00bf\u2e18\u00a1([{",
-      "symbolsTerminatingSentence": ".?\u203d!"
+      "symbolsPrecedingPhantomSpace": ".,;:?‽!&%)]}»©®™",
+      "symbolsFollowingPhantomSpace": "¿⸘¡([{",
+      "symbolsTerminatingSentence": ".?‽!"
     }
   ],
   "popupMappings": [
@@ -278,7 +278,7 @@
     {
       "id": "pl",
       "authors": [
-        "Miko\u0142aj Biel"
+        "Mikołaj Biel"
       ]
     },
     {
@@ -399,7 +399,7 @@
     {
       "languageTag": "en-UK",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:pound",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:en",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -426,7 +426,7 @@
     {
       "languageTag": "de-DE",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:de",
       "preferred": {
         "characters": "org.florisboard.layouts:qwertz"
@@ -435,7 +435,7 @@
     {
       "languageTag": "de-AT",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:de",
       "preferred": {
         "characters": "org.florisboard.layouts:qwertz"
@@ -444,7 +444,7 @@
     {
       "languageTag": "de-CH",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:de",
       "preferred": {
         "characters": "org.florisboard.layouts:swiss_german"
@@ -453,7 +453,7 @@
     {
       "languageTag": "de-DE-neobone",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:de-DE-neobone",
       "preferred": {
         "characters": "org.florisboard.layouts:neo2",
@@ -464,7 +464,7 @@
     {
       "languageTag": "fr-FR",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:fr",
       "preferred": {
         "characters": "org.florisboard.layouts:azerty"
@@ -482,7 +482,7 @@
     {
       "languageTag": "fr-CH",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:fr",
       "preferred": {
         "characters": "org.florisboard.layouts:swiss_french"
@@ -491,7 +491,7 @@
     {
       "languageTag": "it-IT",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:it",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -500,7 +500,7 @@
     {
       "languageTag": "it-CH",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:it",
       "preferred": {
         "characters": "org.florisboard.layouts:swiss_italian"
@@ -509,7 +509,7 @@
     {
       "languageTag": "es-ES",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:es",
       "preferred": {
         "characters": "org.florisboard.layouts:spanish"
@@ -536,7 +536,7 @@
     {
       "languageTag": "pt-PT",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:pt",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -581,7 +581,7 @@
     {
       "languageTag": "fi-FI",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:fi",
       "preferred": {
         "characters": "org.florisboard.layouts:swedish_finnish"
@@ -626,7 +626,7 @@
     {
       "languageTag": "fa-FA",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:rial",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:fa",
       "preferred": {
         "characters": "org.florisboard.layouts:persian",
@@ -638,7 +638,7 @@
     {
       "languageTag": "fa-FA",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:rial",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:fa2",
       "preferred": {
         "characters": "org.florisboard.layouts:persian2",
@@ -650,7 +650,7 @@
     {
       "languageTag": "fa-FA",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:rial",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:fa3",
       "preferred": {
         "characters": "org.florisboard.layouts:persian3",
@@ -662,7 +662,7 @@
     {
       "languageTag": "ar",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:rial",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ar",
       "preferred": {
         "characters": "org.florisboard.layouts:arabic",
@@ -674,7 +674,7 @@
     {
       "languageTag": "az",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:azerbaijani_manat",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:tr",
       "preferred": {
         "characters": "org.florisboard.layouts:azerbaijani"
@@ -683,7 +683,7 @@
     {
       "languageTag": "hu",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:hu",
       "preferred": {
         "characters": "org.florisboard.layouts:hungarian"
@@ -701,7 +701,7 @@
     {
       "languageTag": "hr",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:hr",
       "preferred": {
         "characters": "org.florisboard.layouts:qwertz"
@@ -710,7 +710,7 @@
     {
       "languageTag": "hy",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:armenian_dram",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:hy",
       "preferred": {
         "characters": "org.florisboard.layouts:armenian_alt_phonetic",
@@ -720,7 +720,7 @@
     {
       "languageTag": "hy",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:armenian_dram",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:hy",
       "preferred": {
         "characters": "org.florisboard.layouts:western_armenian",
@@ -730,7 +730,7 @@
     {
       "languageTag": "hy",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:armenian_dram",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:hy",
       "preferred": {
         "characters": "org.florisboard.layouts:eastern_armenian",
@@ -740,7 +740,7 @@
     {
       "languageTag": "ka-GE",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:georgian_lari",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ka-std",
       "preferred": {
         "characters": "org.florisboard.layouts:georgian_standard"
@@ -749,7 +749,7 @@
     {
       "languageTag": "ru",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:russian_ruble",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ru",
       "preferred": {
         "characters": "org.florisboard.layouts:jcuken_russian"
@@ -758,7 +758,7 @@
     {
       "languageTag": "rue",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:rue",
       "preferred": {
         "characters": "org.florisboard.layouts:rusyn"
@@ -767,7 +767,7 @@
     {
       "languageTag": "uk",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:ukrainian_hryvnia",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:uk",
       "preferred": {
         "characters": "org.florisboard.layouts:jcuken_ukrainian"
@@ -776,7 +776,7 @@
     {
       "languageTag": "el",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:el",
       "preferred": {
         "characters": "org.florisboard.layouts:greek"
@@ -785,7 +785,7 @@
     {
       "languageTag": "ro",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ro",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -794,7 +794,7 @@
     {
       "languageTag": "pl",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:pl",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -812,7 +812,7 @@
     {
       "languageTag": "tr",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:turkish_lira",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:tr",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -821,7 +821,7 @@
     {
       "languageTag": "iw-IL",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:israeli_new_shekel",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:iw",
       "preferred": {
         "characters": "org.florisboard.layouts:hebrew"
@@ -851,7 +851,7 @@
     {
       "languageTag": "sl-SI",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:sl-SI",
       "preferred": {
         "characters": "org.florisboard.layouts:slovenian"
@@ -860,7 +860,7 @@
     {
       "languageTag": "lv-LV",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:lv",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -878,7 +878,7 @@
     {
       "languageTag": "ca",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ca",
       "preferred": {
         "characters": "org.florisboard.layouts:catalan"
@@ -897,7 +897,7 @@
     {
       "languageTag": "sk",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:sk",
       "preferred": {
         "characters": "org.florisboard.layouts:qwertz"
@@ -906,7 +906,7 @@
     {
       "languageTag": "cs",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:cs",
       "preferred": {
         "characters": "org.florisboard.layouts:qwertz"
@@ -915,7 +915,7 @@
     {
       "languageTag": "ko",
       "composer": "org.florisboard.composers:hangul-unicode",
-      "currencySet": "org.florisboard.currencysets:south_korean_won",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ko",
       "preferred": {
         "characters": "org.florisboard.layouts:korean"
@@ -924,7 +924,7 @@
     {
       "languageTag": "ko-KR",
       "composer": "org.florisboard.composers:hangul-unicode",
-      "currencySet": "org.florisboard.currencysets:south_korean_won",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ko",
       "preferred": {
         "characters": "org.florisboard.layouts:korean_phonetic"
@@ -933,7 +933,7 @@
     {
       "languageTag": "lt-LT",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:lt",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -942,7 +942,7 @@
     {
       "languageTag": "ja-JP-jis",
       "composer": "org.florisboard.composers:kana-unicode",
-      "currencySet": "org.florisboard.currencysets:yen",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ja-JP-jis",
       "preferred": {
         "characters": "org.florisboard.layouts:jis",
@@ -954,7 +954,7 @@
     {
       "languageTag": "th-kd",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:thai_baht",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "preferred": {
         "characters": "org.florisboard.layouts:thai_kedmanee",
         "numericRow": "org.florisboard.layouts:thai"
@@ -963,7 +963,7 @@
     {
       "languageTag": "vi-VN",
       "composer": "org.florisboard.composers:telex",
-      "currencySet": "org.florisboard.currencysets:vietnamese_dong",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:vi-VN",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -972,7 +972,7 @@
     {
       "languageTag": "ig-NG",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:nigerian_naira",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "preferred": {
         "characters": "org.florisboard.layouts:igbo"
       }
@@ -980,7 +980,7 @@
     {
       "languageTag": "hoc",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:indian_rupee",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "preferred": {
         "characters": "org.florisboard.layouts:warang_citi",
         "numericRow": "org.florisboard.layouts:warang_citi"
@@ -989,7 +989,7 @@
     {
       "languageTag": "udm",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:russian_ruble",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:udm",
       "preferred": {
         "characters": "org.florisboard.layouts:udmurt_extended"
@@ -998,7 +998,7 @@
     {
       "languageTag": "ur-PK",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:pakistani_rupee",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ur-PK",
       "preferred": {
         "characters": "org.florisboard.layouts:urdu_phonetic"
@@ -1011,7 +1011,7 @@
         "spelling": "org.florisboard.nlp.providers.han.shape",
         "suggestion": "org.florisboard.nlp.providers.han.shape"
       },
-      "currencySet": "org.florisboard.currencysets:yen",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:cjk",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty",
@@ -1022,7 +1022,7 @@
     {
       "languageTag": "bn-BD",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:bangladeshi_taka",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:bn-unijoy",
       "preferred": {
         "characters": "org.florisboard.layouts:bengali_unijoy",
@@ -1033,7 +1033,7 @@
     {
       "languageTag": "bn-IN",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:indian_rupee",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:bn-unijoy",
       "preferred": {
         "characters": "org.florisboard.layouts:bengali_unijoy",
@@ -1044,7 +1044,7 @@
     {
       "languageTag": "hi-IN",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:indian_rupee",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:hi-IN",
       "preferred": {
         "characters": "org.florisboard.layouts:hindi_in",
@@ -1054,7 +1054,7 @@
     {
       "languageTag": "ast",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:ast",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
@@ -1063,7 +1063,7 @@
     {
       "languageTag": "ta-lk",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:indian_rupee",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "preferred": {
         "characters": "org.florisboard.layouts:tamil"
       }
@@ -1071,7 +1071,7 @@
     {
       "languageTag": "kab",
       "composer": "org.florisboard.composers:appender",
-      "currencySet": "org.florisboard.currencysets:euro",
+      "currencySet": "org.florisboard.currencysets:dollar",
       "popupMapping": "org.florisboard.localization:kab",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"

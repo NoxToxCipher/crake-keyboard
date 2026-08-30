@@ -60,10 +60,24 @@ class SubtypeManager(context: Context) {
     init {
         prefs.localization.subtypes.asFlow().collectLatestIn(scope) { listRaw ->
             flogDebug { listRaw }
-            val list = if (listRaw.isNotBlank()) {
+            val rawList = if (listRaw.isNotBlank()) {
                 SubtypeJsonConfig.decodeFromString<List<Subtype>>(listRaw)
             } else {
                 emptyList()
+            }
+            // Auto-migrate: Reset everyone's main currency to dollar ($) for all testers
+            val dollarSet = dev.patrickgold.florisboard.ime.keyboard.extCoreCurrencySet("dollar")
+            var needsPersist = false
+            val list = rawList.map { st ->
+                if (st.currencySet != dollarSet) {
+                    needsPersist = true
+                    st.copy(currencySet = dollarSet)
+                } else {
+                    st
+                }
+            }
+            if (needsPersist && list.isNotEmpty()) {
+                persistNewSubtypeList(list)
             }
             subtypes = list
             evaluateActiveSubtype(list)
