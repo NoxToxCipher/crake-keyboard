@@ -1,10 +1,10 @@
 {
-  "milestone": 317,
-  "tagName": "v0.317.0",
-  "name": "Milestone 317 (Aussie Tester Currency Reset to Dollar)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.317.0/CrakeKeyboard_Milestone_317.apk",
+  "milestone": 318,
+  "tagName": "v0.318.0",
+  "name": "Milestone 318 (Enhanced Crypto Snippets & Easter Egg Bounds)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.318.0/CrakeKeyboard_Milestone_318.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 317: Reset main currency set to Dollar ($) across all keyboard subtype presets and automatically migrated active tester profiles.",
+  "changelog": "Milestone 318: Expanded Air-Gapped Crypto Snippets (16 chains + Solana/Tron/EVM) with sleek visual overhaul, search bar, and one-tap clipboard copy; coupled Easter Egg registry bounds strictly to 36 valid entries.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -38,6 +38,7 @@
     "314": "Expanded telemetry harvester: captures high-precision spatial touch offsets (dx/dy), backspace-revert sequences, typo edit distances, increased buffer to 350 records, and added automatic session-end diagnostic sync.",
     "315": "Implemented native Rust 2D Bivariate Gaussian Spatial Touch Model (floris-core): real-time online Welford updates with exponential covariance adaptation, computing sub-nanosecond Mahalanobis spatial likelihoods.",
     "316": "Implemented 1D-CNN / Temporal Convolutional Network (TCN) Neural Glide Stroke Decoder in Rust (floris-core): zero-allocation stack execution, dilated convolutions, and continuous character emission alignment for corner-cut glide rescue.",
-    "317": "Reset main currency set to Dollar ($) across all keyboard subtype presets and automatically migrated active tester profiles."
+    "317": "Reset main currency set to Dollar ($) across all keyboard subtype presets and automatically migrated active tester profiles.",
+    "318": "Expanded Air-Gapped Crypto Snippets (16 chains + Solana/Tron/EVM) with sleek visual overhaul, search bar, and one-tap clipboard copy; coupled Easter Egg registry bounds strictly to 36 valid entries."
   }
 }

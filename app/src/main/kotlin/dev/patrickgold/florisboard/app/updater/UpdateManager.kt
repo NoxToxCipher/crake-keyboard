@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 317
+    const val CURRENT_MILESTONE = 318
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 31701
-    private const val RESOLVED_NOTIFICATION_ID = 31702
+    private const val NOTIFICATION_ID = 31801
+    private const val RESOLVED_NOTIFICATION_ID = 31802
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            318 -> "Expanded Air-Gapped Crypto Snippets (16 chains + Solana/Tron/EVM) with sleek visual overhaul, search bar, and one-tap clipboard copy; coupled Easter Egg registry bounds strictly to 36 valid entries."
             317 -> "Reset main currency set to Dollar ($) across all keyboard subtype presets and automatically migrated active tester profiles."
             316 -> "Implemented 1D-CNN / Temporal Convolutional Network (TCN) Neural Glide Stroke Decoder in Rust (floris-core): zero-allocation stack execution, dilated convolutions, and continuous character emission alignment for corner-cut glide rescue."
             315 -> "Implemented native Rust 2D Bivariate Gaussian Spatial Touch Model (floris-core): real-time online Welford updates with exponential covariance adaptation, computing sub-nanosecond Mahalanobis spatial likelihoods."

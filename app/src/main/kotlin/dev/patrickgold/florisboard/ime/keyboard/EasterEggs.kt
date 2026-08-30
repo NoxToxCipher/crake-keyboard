@@ -255,8 +255,10 @@ object EasterEggs {
 
     fun parseIds(csv: String): Set<String> {
         if (csv.isBlank()) return emptySet()
+        val validIds = EasterEgg.entries.map { it.id }.toSet()
         return csv.split(SEPARATOR).mapNotNull { entry ->
-            entry.trim().ifEmpty { null }
+            val id = entry.trim()
+            if (id.isNotEmpty() && id in validIds) id else null
         }.toSet()
     }
 

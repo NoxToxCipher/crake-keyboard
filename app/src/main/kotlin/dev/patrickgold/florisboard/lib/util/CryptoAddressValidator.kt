@@ -17,26 +17,48 @@
 package dev.patrickgold.florisboard.lib.util
 
 enum class CryptoChain(val displayName: String, val symbol: String, val prefixHint: String) {
-    BTC("Bitcoin", "BTC", "bc1q..., 1..., 3..."),
+    BTC("Bitcoin", "BTC", "bc1q..., bc1p..., 1..., 3..."),
     ETH("Ethereum", "ETH", "0x... (42 hex chars)"),
-    LTC("Litecoin", "LTC", "ltc1..., L..., M..."),
+    SOL("Solana", "SOL", "32-44 Base58 chars"),
     XMR("Monero", "XMR", "4... or 8... (95-106 chars)"),
+    TRX("Tron / USDT", "TRX", "T... (34 Base58 chars)"),
+    LTC("Litecoin", "LTC", "ltc1..., L..., M..."),
+    BNB("BNB Chain", "BNB", "0x... or bnb1..."),
+    POL("Polygon", "POL", "0x... (42 hex chars)"),
+    AVAX("Avalanche", "AVAX", "0x... or X-avax1..."),
+    BASE("Base", "BASE", "0x... (42 hex chars)"),
+    ARB("Arbitrum", "ARB", "0x... (42 hex chars)"),
+    OP("Optimism", "OP", "0x... (42 hex chars)"),
+    ADA("Cardano", "ADA", "addr1... (Bech32)"),
+    DOGE("Dogecoin", "DOGE", "D... (34 chars)"),
+    XRP("Ripple", "XRP", "r... (25-35 chars)"),
+    DOT("Polkadot", "DOT", "1... (47-48 chars)"),
     RUNE("THORChain", "RUNE", "thor1... (38-44 chars)"),
     ATOM("Cosmos Hub", "ATOM", "cosmos1... (38-45 chars)"),
-    ARB("Arbitrum", "ARB", "0x... (42 hex chars)"),
     UNKNOWN("Generic / Other", "CUSTOM", "");
 
     companion object {
         fun detectFromShortcut(shortcut: String): CryptoChain? {
-            val s = shortcut.lowercase().removePrefix("!")
+            val s = shortcut.lowercase().removePrefix("!").trim()
             return when {
                 s.startsWith("btc") -> BTC
                 s.startsWith("eth") -> ETH
-                s.startsWith("ltc") -> LTC
+                s.startsWith("sol") -> SOL
                 s.startsWith("xmr") -> XMR
+                s.startsWith("trx") || s.startsWith("usdt") -> TRX
+                s.startsWith("ltc") -> LTC
+                s.startsWith("bnb") || s.startsWith("bsc") -> BNB
+                s.startsWith("pol") || s.startsWith("matic") -> POL
+                s.startsWith("avax") -> AVAX
+                s.startsWith("base") -> BASE
+                s.startsWith("arb") -> ARB
+                s.startsWith("op") -> OP
+                s.startsWith("ada") || s.startsWith("cardano") -> ADA
+                s.startsWith("doge") -> DOGE
+                s.startsWith("xrp") || s.startsWith("ripple") -> XRP
+                s.startsWith("dot") || s.startsWith("polkadot") -> DOT
                 s.startsWith("rune") || s.startsWith("thor") -> RUNE
                 s.startsWith("atom") || s.startsWith("cosmos") -> ATOM
-                s.startsWith("arb") -> ARB
                 else -> null
             }
         }
@@ -46,9 +68,15 @@ enum class CryptoChain(val displayName: String, val symbol: String, val prefixHi
             if (a.isBlank()) return null
             return when {
                 XMR.validate(a).isValid -> XMR
+                SOL.validate(a).isValid -> SOL
+                TRX.validate(a).isValid -> TRX
                 BTC.validate(a).isValid -> BTC
                 ETH.validate(a).isValid -> ETH
                 LTC.validate(a).isValid -> LTC
+                ADA.validate(a).isValid -> ADA
+                DOGE.validate(a).isValid -> DOGE
+                XRP.validate(a).isValid -> XRP
+                DOT.validate(a).isValid -> DOT
                 RUNE.validate(a).isValid -> RUNE
                 ATOM.validate(a).isValid -> ATOM
                 else -> null
@@ -68,15 +96,33 @@ enum class CryptoChain(val displayName: String, val symbol: String, val prefixHi
                 if (btcLegacySegwit.matches(trimmed) || btcBech32.matches(trimmed)) {
                     ValidationResult(true, "Valid Bitcoin address (Base58 / Bech32 / Taproot)")
                 } else {
-                    ValidationResult(false, "This does not look like a valid BTC address (expected bc1q..., 1..., or 3...)")
+                    ValidationResult(false, "This does not look like a valid BTC address (expected bc1q..., bc1p..., 1..., or 3...)")
                 }
             }
-            ETH, ARB -> {
+            ETH, POL, AVAX, BASE, ARB, OP, BNB -> {
                 val ethRegex = Regex("^0x[0-9a-fA-F]{40}$")
-                if (ethRegex.matches(trimmed)) {
-                    ValidationResult(true, "Valid ${displayName} address (42-char hex)")
+                val bnbBech32 = Regex("^bnb1[02-9ac-hj-np-z]{38,45}$", RegexOption.IGNORE_CASE)
+                val avaxChain = Regex("^[XP]-avax1[02-9ac-hj-np-z]{38,45}$", RegexOption.IGNORE_CASE)
+                if (ethRegex.matches(trimmed) || (this == BNB && bnbBech32.matches(trimmed)) || (this == AVAX && avaxChain.matches(trimmed))) {
+                    ValidationResult(true, "Valid ${displayName} address")
                 } else {
                     ValidationResult(false, "This does not look like a valid ${symbol} address (expected 0x followed by 40 hex characters)")
+                }
+            }
+            SOL -> {
+                val solRegex = Regex("^[1-9A-HJ-NP-Za-km-z]{32,44}$")
+                if (solRegex.matches(trimmed)) {
+                    ValidationResult(true, "Valid Solana address (Base58, ${trimmed.length} chars)")
+                } else {
+                    ValidationResult(false, "This does not look like a valid Solana address (expected 32-44 Base58 characters)")
+                }
+            }
+            TRX -> {
+                val trxRegex = Regex("^T[1-9A-HJ-NP-Za-km-z]{33}$")
+                if (trxRegex.matches(trimmed)) {
+                    ValidationResult(true, "Valid Tron (TRC20 / TRX) address")
+                } else {
+                    ValidationResult(false, "This does not look like a valid Tron address (expected 34 chars starting with 'T')")
                 }
             }
             LTC -> {
@@ -94,6 +140,38 @@ enum class CryptoChain(val displayName: String, val symbol: String, val prefixHi
                     ValidationResult(true, "Valid Monero address (Standard / Subaddress / Integrated)")
                 } else {
                     ValidationResult(false, "This does not look like a valid XMR address (expected 95 or 106 chars starting with 4 or 8)")
+                }
+            }
+            ADA -> {
+                val adaRegex = Regex("^(addr1|addr_test1)[02-9ac-hj-np-z]{50,110}$", RegexOption.IGNORE_CASE)
+                if (adaRegex.matches(trimmed) || (trimmed.startsWith("Ae2") || trimmed.startsWith("DdzFF"))) {
+                    ValidationResult(true, "Valid Cardano (ADA) address")
+                } else {
+                    ValidationResult(false, "This does not look like a valid Cardano address (expected addr1...)")
+                }
+            }
+            DOGE -> {
+                val dogeRegex = Regex("^D[5-9A-HJ-NP-U][1-9A-HJ-NP-Za-km-z]{32}$")
+                if (dogeRegex.matches(trimmed)) {
+                    ValidationResult(true, "Valid Dogecoin address")
+                } else {
+                    ValidationResult(false, "This does not look like a valid Dogecoin address (expected 34 chars starting with 'D')")
+                }
+            }
+            XRP -> {
+                val xrpRegex = Regex("^r[0-9a-zA-Z]{24,34}$")
+                if (xrpRegex.matches(trimmed)) {
+                    ValidationResult(true, "Valid Ripple (XRP) address")
+                } else {
+                    ValidationResult(false, "This does not look like a valid XRP address (expected r...)")
+                }
+            }
+            DOT -> {
+                val dotRegex = Regex("^1[0-9a-zA-Z]{46,47}$")
+                if (dotRegex.matches(trimmed)) {
+                    ValidationResult(true, "Valid Polkadot (DOT) address")
+                } else {
+                    ValidationResult(false, "This does not look like a valid DOT address (expected 1...)")
                 }
             }
             RUNE -> {
