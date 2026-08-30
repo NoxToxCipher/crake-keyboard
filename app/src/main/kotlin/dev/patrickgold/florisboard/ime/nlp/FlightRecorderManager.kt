@@ -152,9 +152,30 @@ object FlightRecorderManager {
         appContext = context.applicationContext
     }
 
-    private fun isLoggingAllowed(keyVariation: KeyVariation? = null): Boolean {
+    private val EMAIL_REGEX = Regex("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}")
+    private val PHONE_REGEX = Regex("(\\+?\\d{1,3}[- ]?)?\\(?\\d{3}\\)?[- ]?\\d{3}[- ]?\\d{4}")
+    private val CREDIT_CARD_REGEX = Regex("\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\\b")
+
+    fun sanitizePii(text: String?): String? {
+        if (text == null) return null
+        var sanitized = text
+        sanitized = EMAIL_REGEX.replace(sanitized, "[EMAIL]")
+        sanitized = CREDIT_CARD_REGEX.replace(sanitized, "[CARD]")
+        sanitized = PHONE_REGEX.replace(sanitized, "[PHONE]")
+        return sanitized
+    }
+
+    private fun isLoggingAllowed(keyVariation: KeyVariation? = null, packageName: String? = null): Boolean {
         if (!prefs.devtools.flightRecorderEnabled.get()) return false
         if (keyVariation == KeyVariation.PASSWORD) return false
+        if (packageName != null) {
+            val pkg = packageName.lowercase()
+            if (pkg.contains("keepass") || pkg.contains("bitwarden") || pkg.contains("1password") ||
+                pkg.contains("authenticator") || pkg.contains("keychain") || pkg.contains("dashlane") ||
+                pkg.contains("lastpass") || pkg.contains("nordpass") || pkg.contains("vault")) {
+                return false
+            }
+        }
         return true
     }
 
@@ -164,12 +185,12 @@ object FlightRecorderManager {
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
     ) {
-        if (!isLoggingAllowed(keyVariation)) return
+        if (!isLoggingAllowed(keyVariation, packageName)) return
         val record = Record(
             mode = InputMode.TYPING,
             action = ActionType.KEY_TAP,
             rawInput = keyLabel,
-            contextBefore = contextBefore?.takeLast(32),
+            contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
         recordChannel.trySend(record)
@@ -184,7 +205,7 @@ object FlightRecorderManager {
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
     ) {
-        if (!isLoggingAllowed(keyVariation)) return
+        if (!isLoggingAllowed(keyVariation, packageName)) return
         val record = Record(
             mode = InputMode.GLIDING,
             action = ActionType.GLIDE_STROKE,
@@ -192,7 +213,7 @@ object FlightRecorderManager {
             correctedTo = chosenWord,
             candidates = if (prefs.devtools.flightRecorderIncludeSuggestions.get()) topCandidates.take(8) else null,
             gestureMetrics = GestureMetrics(pointCount, durationMs),
-            contextBefore = contextBefore?.takeLast(32),
+            contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
         lastCommittedWord = chosenWord
@@ -213,7 +234,7 @@ object FlightRecorderManager {
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
     ) {
-        if (!isLoggingAllowed(keyVariation)) return
+        if (!isLoggingAllowed(keyVariation, packageName)) return
 
         val isMissedCorrection = !isKnownWord && !isAutocorrected && rawInput.length >= 2 && topCandidates.isNotEmpty()
         val action = when {
@@ -225,11 +246,11 @@ object FlightRecorderManager {
         val record = Record(
             mode = mode,
             action = action,
-            rawInput = rawInput,
-            correctedTo = committedWord,
+            rawInput = sanitizePii(rawInput),
+            correctedTo = sanitizePii(committedWord),
             candidates = if (prefs.devtools.flightRecorderIncludeSuggestions.get()) topCandidates.take(8) else null,
             isTypo = isMissedCorrection,
-            contextBefore = contextBefore?.takeLast(32),
+            contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
 
@@ -249,14 +270,14 @@ object FlightRecorderManager {
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
     ) {
-        if (!isLoggingAllowed(keyVariation)) return
+        if (!isLoggingAllowed(keyVariation, packageName)) return
         val record = Record(
             mode = lastCommittedMode,
             action = ActionType.MANUAL_REVERT,
-            rawInput = deletedWord,
-            intendedWord = retypedWord,
+            rawInput = sanitizePii(deletedWord),
+            intendedWord = sanitizePii(retypedWord),
             candidates = lastCandidates.take(8),
-            contextBefore = contextBefore?.takeLast(32),
+            contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
         recordChannel.trySend(record)
@@ -271,14 +292,14 @@ object FlightRecorderManager {
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
     ) {
-        if (!isLoggingAllowed(keyVariation)) return
+        if (!isLoggingAllowed(keyVariation, packageName)) return
         val record = Record(
             mode = mode,
             action = ActionType.SUGGESTION_PICKED,
-            rawInput = rawPrefix,
-            correctedTo = selectedWord,
+            rawInput = sanitizePii(rawPrefix),
+            correctedTo = sanitizePii(selectedWord),
             candidates = allCandidates.take(8),
-            contextBefore = contextBefore?.takeLast(32),
+            contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
         lastCommittedWord = selectedWord
