@@ -239,6 +239,12 @@ enum class EasterEgg(
         "Golden mysterious glowing Crake egg badge",
         listOf("egg", "easter egg", "easteregg", "easter", "crake egg"),
     ),
+    LICORICE(
+        "licorice",
+        "Licorice the Guinea Pig",
+        "Sweet sleeping black guinea pig resting peacefully on the Enter key",
+        listOf("licorice", "guinea pig", "guineapig", "cavy"),
+    ),
 }
 
 /**

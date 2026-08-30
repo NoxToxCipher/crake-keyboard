@@ -509,6 +509,7 @@ fun TextKeyboardLayout(
     var thorTriggerTime by remember { mutableStateOf(0L) }
     var mushuTriggerTime by remember { mutableStateOf(0L) }
     var goKartTriggerTime by remember { mutableStateOf(0L) }
+    var licoriceTriggerTime by remember { mutableStateOf(0L) }
         // Per-key egg layers (BlackBerry keycap flip, egg wobble, sun conure
         // perch): detected once here, consumed by every TextKeyButton via
         // parameters.
@@ -774,6 +775,18 @@ fun TextKeyboardLayout(
             }
             if (isGoKartMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.GO_KART)) goKartTriggerTime = System.currentTimeMillis()
+            }
+            val isLicoriceMatch = listOf("licorice", "guineapig", "guinea pig", "cavy").any { k ->
+                val delimiters = triggerDelimitersWithEmpty
+                delimiters.any { d ->
+                    tb.equals("$k$d", ignoreCase = true) ||
+                    tb.endsWith(" $k$d", ignoreCase = true) ||
+                    tb.endsWith("\n$k$d", ignoreCase = true) ||
+                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
+                }
+            }
+            if (isLicoriceMatch) {
+                if (prefs.easterEggs.fire(EasterEgg.LICORICE)) licoriceTriggerTime = System.currentTimeMillis()
             }
             // Per-key egg layers, hoisted out of TextKeyButton (previously
             // every key button re-ran these scans on each content change).
@@ -1046,6 +1059,7 @@ fun TextKeyboardLayout(
                 sunConureTriggerTime = sunConureKeyTriggerTime,
                 bbTriggerTime = bbKeyTriggerTime,
                 spaceRainTriggerTime = spaceRainTriggerTime,
+                licoriceTriggerTime = licoriceTriggerTime,
             )
         }
 
@@ -7623,6 +7637,7 @@ private fun TextKeyButton(
     sunConureTriggerTime: Long = 0L,
     bbTriggerTime: Long = 0L,
     spaceRainTriggerTime: Long = 0L,
+    licoriceTriggerTime: Long = 0L,
 ) = with(LocalDensity.current) {
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
@@ -7637,6 +7652,31 @@ private fun TextKeyButton(
     val sunConurePulseAlpha = remember { Animatable(0f) }
     // BlackBerry Physical Keycap 3D Flip Easter Egg (15.8s: 0.8s 3D flip, 5s physical mode, 10s smooth fade)
     val bbProgress = remember { Animatable(0f) }
+    val licoriceAlphaAnim = remember { Animatable(0f) }
+    val licoriceBreathingAnim = remember { Animatable(0f) }
+
+    LaunchedEffect(licoriceTriggerTime) {
+        if (licoriceTriggerTime > 0L) {
+            licoriceAlphaAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 600, easing = EaseOutCubic),
+            )
+            kotlinx.coroutines.delay(9800L)
+            licoriceAlphaAnim.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = 600, easing = EaseInCubic),
+            )
+        }
+    }
+
+    LaunchedEffect(licoriceTriggerTime) {
+        if (licoriceTriggerTime > 0L) {
+            while (licoriceAlphaAnim.value > 0.01f || System.currentTimeMillis() - licoriceTriggerTime < 11000L) {
+                licoriceBreathingAnim.animateTo(1f, tween(1300, easing = FastOutSlowInEasing))
+                licoriceBreathingAnim.animateTo(0f, tween(1300, easing = FastOutSlowInEasing))
+            }
+        }
+    }
 
 
     LaunchedEffect(bbTriggerTime) {
@@ -8216,6 +8256,186 @@ private fun TextKeyButton(
                         shape = RoundedCornerShape(8.dp),
                     )
             )
+            if (licoriceAlphaAnim.value > 0.001f) {
+                val alpha = licoriceAlphaAnim.value
+                val breath = licoriceBreathingAnim.value
+                val pxDensity: Float = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .padding(2.dp)
+                ) {
+                    val w = size.width.toPx()
+                    val h = size.height.toPx()
+                    drawContext.canvas.nativeCanvas.save()
+                    val breathScaleY = 1.0f + (breath * 0.04f)
+                    val breathShiftY = breath * 0.8f * pxDensity
+                    val cx = w * 0.50f
+                    val cy = h * 0.52f + breathShiftY
+                    val paintAlpha: Int = (alpha * 255).toInt().coerceIn(0, 255)
+
+                    // 1. Soft sleeping halo / warm dreamy background glow
+                    val glowPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb((alpha * 45).toInt(), 0, 229, 255)
+                    }
+                    drawContext.canvas.nativeCanvas.drawRoundRect(
+                        cx - 19f * pxDensity, cy - 11f * pxDensity,
+                        cx + 19f * pxDensity, cy + 11f * pxDensity,
+                        12f * pxDensity, 12f * pxDensity,
+                        glowPaint
+                    )
+
+                    // 2. Chubby Bean Body (Jet Black Guinea Pig Coat)
+                    val bodyPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb(paintAlpha, 18, 19, 23)
+                    }
+                    val bodyPath = android.graphics.Path().apply {
+                        val rect = android.graphics.RectF(
+                            cx - 16f * pxDensity,
+                            cy - (8.5f * breathScaleY) * pxDensity,
+                            cx + 16f * pxDensity,
+                            cy + (8.5f * breathScaleY) * pxDensity,
+                        )
+                        addRoundRect(rect, 9f * pxDensity, 8f * pxDensity, android.graphics.Path.Direction.CW)
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(bodyPath, bodyPaint)
+
+                    // Fur shine / contour along the back
+                    val spineShinePaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.STROKE
+                        this.strokeWidth = 1.6f * pxDensity
+                        this.strokeCap = android.graphics.Paint.Cap.ROUND
+                        this.color = android.graphics.Color.argb((paintAlpha * 0.35f).toInt(), 120, 130, 150)
+                    }
+                    drawContext.canvas.nativeCanvas.drawLine(
+                        cx - 10f * pxDensity, cy - (6.5f * breathScaleY) * pxDensity,
+                        cx + 8f * pxDensity, cy - (6.5f * breathScaleY) * pxDensity,
+                        spineShinePaint
+                    )
+
+                    // 3. Cute Little Dropped Ears
+                    val outerEarPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb(paintAlpha, 25, 26, 32)
+                    }
+                    val innerEarPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb((paintAlpha * 0.85f).toInt(), 255, 180, 200)
+                    }
+                    drawContext.canvas.nativeCanvas.drawOval(
+                        android.graphics.RectF(cx - 15f * pxDensity, cy - 8f * pxDensity, cx - 10f * pxDensity, cy - 3f * pxDensity),
+                        outerEarPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawOval(
+                        android.graphics.RectF(cx - 14f * pxDensity, cy - 7f * pxDensity, cx - 11f * pxDensity, cy - 4f * pxDensity),
+                        innerEarPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawOval(
+                        android.graphics.RectF(cx - 5f * pxDensity, cy - 8.5f * pxDensity, cx - 0.5f * pxDensity, cy - 3.5f * pxDensity),
+                        outerEarPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawOval(
+                        android.graphics.RectF(cx - 4f * pxDensity, cy - 7.5f * pxDensity, cx - 1.5f * pxDensity, cy - 4.5f * pxDensity),
+                        innerEarPaint
+                    )
+
+                    // 4. Sweet Rosy Cheeks
+                    val cheekPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb((paintAlpha * 0.50f).toInt(), 255, 140, 175)
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(cx - 9.5f * pxDensity, cy + 1.5f * pxDensity, 2.2f * pxDensity, cheekPaint)
+
+                    // 5. Sleeping Eyes (Curved happy shut-eyes with eyelashes)
+                    val eyePaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.STROKE
+                        this.strokeWidth = 1.3f * pxDensity
+                        this.strokeCap = android.graphics.Paint.Cap.ROUND
+                        this.color = android.graphics.Color.argb(paintAlpha, 230, 235, 245)
+                    }
+                    val eyePath = android.graphics.Path().apply {
+                        moveTo(cx - 12f * pxDensity, cy - 1.5f * pxDensity)
+                        quadTo(cx - 9.5f * pxDensity, cy + 0.5f * pxDensity, cx - 7f * pxDensity, cy - 1.5f * pxDensity)
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(eyePath, eyePaint)
+
+                    // 6. Tiny Pink Button Nose & Sleeping Mouth
+                    val nosePaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb(paintAlpha, 255, 160, 185)
+                    }
+                    val nosePath = android.graphics.Path().apply {
+                        moveTo(cx - 15f * pxDensity, cy + 2f * pxDensity)
+                        lineTo(cx - 13.2f * pxDensity, cy + 0.8f * pxDensity)
+                        lineTo(cx - 13.2f * pxDensity, cy + 3.2f * pxDensity)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(nosePath, nosePaint)
+
+                    // 7. Whiskers (Delicate silver strands)
+                    val whiskerPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.STROKE
+                        this.strokeWidth = 0.75f * pxDensity
+                        this.strokeCap = android.graphics.Paint.Cap.ROUND
+                        this.color = android.graphics.Color.argb((paintAlpha * 0.55f).toInt(), 220, 230, 245)
+                    }
+                    drawContext.canvas.nativeCanvas.drawLine(
+                        cx - 13.5f * pxDensity, cy + 1.2f * pxDensity,
+                        cx - 18.5f * pxDensity, cy - 0.8f * pxDensity,
+                        whiskerPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawLine(
+                        cx - 13.5f * pxDensity, cy + 2.2f * pxDensity,
+                        cx - 19f * pxDensity, cy + 2.5f * pxDensity,
+                        whiskerPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawLine(
+                        cx - 13.5f * pxDensity, cy + 3.2f * pxDensity,
+                        cx - 18f * pxDensity, cy + 5.2f * pxDensity,
+                        whiskerPaint
+                    )
+
+                    // 8. Tucked Little Paws
+                    val pawPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.style = android.graphics.Paint.Style.FILL
+                        this.color = android.graphics.Color.argb(paintAlpha, 255, 180, 200)
+                    }
+                    drawContext.canvas.nativeCanvas.drawOval(
+                        android.graphics.RectF(cx - 8f * pxDensity, cy + 5.5f * pxDensity, cx - 4f * pxDensity, cy + 8f * pxDensity),
+                        pawPaint
+                    )
+                    drawContext.canvas.nativeCanvas.drawOval(
+                        android.graphics.RectF(cx + 6f * pxDensity, cy + 5.5f * pxDensity, cx + 10f * pxDensity, cy + 8f * pxDensity),
+                        pawPaint
+                    )
+
+                    // 9. Floating Peaceful "z Z z" Dream Particles
+                    val zPhase = ((System.currentTimeMillis() - licoriceTriggerTime) % 3000L) / 3000f
+                    val zPaint = android.graphics.Paint().apply {
+                        this.isAntiAlias = true
+                        this.textSize = 8f * pxDensity
+                        this.typeface = android.graphics.Typeface.DEFAULT_BOLD
+                        this.color = android.graphics.Color.argb((alpha * 200 * (1f - (zPhase * 0.6f))).toInt().coerceIn(0, 255), 0, 229, 255)
+                    }
+                    drawContext.canvas.nativeCanvas.drawText("z", cx + 5f * pxDensity + (zPhase * 3f * pxDensity), cy - 6f * pxDensity - (zPhase * 6f * pxDensity), zPaint)
+                    zPaint.textSize = 10f * pxDensity
+                    drawContext.canvas.nativeCanvas.drawText("Z", cx + 11f * pxDensity + (zPhase * 4f * pxDensity), cy - 10f * pxDensity - (zPhase * 8f * pxDensity), zPaint)
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
+            }
         }
         if (key.computedData.code == KeyCode.DELETE && key.isPressed) {
             Box(

@@ -1,8 +1,8 @@
 {
-  "milestone": 292,
-  "tagName": "v0.292.0",
-  "name": "Milestone 292 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.292.0/CrakeKeyboard_Milestone_292.apk",
+  "milestone": 293,
+  "tagName": "v0.293.0",
+  "name": "Milestone 293 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.293.0/CrakeKeyboard_Milestone_293.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 292: Comprehensive apostrophe & contraction spacing audit (zero rogue spaces on it's, don't, I'm, Daya's), default tester name Daya (Hidaya), and typographic quote normalization."
+  "changelog": "Milestone 293: Brand new ultra-cute Easter Egg: Licorice the sweet sleeping black guinea pig on the Enter key!"
 }
