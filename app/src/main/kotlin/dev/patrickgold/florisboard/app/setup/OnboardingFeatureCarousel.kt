@@ -647,6 +647,46 @@ private fun ScientificTypographyCard(
 }
 
 @Composable
+private fun CompactGesturePill(
+    emoji: String,
+    title: String,
+    detail: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF162033)),
+        border = BorderStroke(1.dp, CardBorder),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = emoji, fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                )
+                Text(
+                    text = detail,
+                    color = TextMuted,
+                    fontSize = 9.sp,
+                    lineHeight = 11.5.sp,
+                    maxLines = 2,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProGesturesAndTestDriveCard() {
     var testText by remember { mutableStateOf("") }
 
@@ -658,28 +698,43 @@ private fun ProGesturesAndTestDriveCard() {
         subtitle = "Master these lightning-fast gestures, then take your new keyboard for a test drive below:",
     )
 
-    FeaturePillItem(
-        emoji = "⬆️",
-        title = "Upward Word Flick (BB10)",
-        detail = "Flick upward on any letter key to fling the floating predicted word directly into your text.",
-    )
-    FeaturePillItem(
-        emoji = "↔️",
-        title = "Spacebar Cursor Scrub",
-        detail = "Drag left or right across the spacebar to glide your cursor with sub-millimeter precision.",
-    )
-    FeaturePillItem(
-        emoji = "⌫",
-        title = "Backspace Word Flick",
-        detail = "Swipe left from the delete key to instantly erase the previous word.",
-    )
-    FeaturePillItem(
-        emoji = "🏎️",
-        title = "Hidden Easter Eggs",
-        detail = "Type 'go-kart', 'kart', or 'rocket' to trigger secret interactive keyboard animations!",
-    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        CompactGesturePill(
+            modifier = Modifier.weight(1f),
+            emoji = "⬆️",
+            title = "Word Flick",
+            detail = "Flick up on letters to insert predicted words",
+        )
+        CompactGesturePill(
+            modifier = Modifier.weight(1f),
+            emoji = "↔️",
+            title = "Spacebar Scrub",
+            detail = "Drag spacebar to move cursor precisely",
+        )
+    }
+    Spacer(modifier = Modifier.height(6.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        CompactGesturePill(
+            modifier = Modifier.weight(1f),
+            emoji = "⌫",
+            title = "Delete Flick",
+            detail = "Swipe left from backspace to erase word",
+        )
+        CompactGesturePill(
+            modifier = Modifier.weight(1f),
+            emoji = "🏎️",
+            title = "Easter Eggs",
+            detail = "Type 'kart' or 'rocket' for animations",
+        )
+    }
 
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(8.dp))
 
     // Interactive Test Drive Box
     OutlinedTextField(
@@ -689,12 +744,12 @@ private fun ProGesturesAndTestDriveCard() {
             Text(
                 text = "Tap here to test typing & gestures...",
                 color = TextMuted,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
             )
         },
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp)),
+            .clip(RoundedCornerShape(10.dp)),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color(0xFF162033),
             unfocusedContainerColor = Color(0xFF162033),

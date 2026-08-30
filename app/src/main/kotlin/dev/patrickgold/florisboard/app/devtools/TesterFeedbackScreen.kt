@@ -682,6 +682,12 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 311 fixes (Eliminated unnecessary vertical scrolling on final tour card via 2x2 grid)
+                    combined.contains("much nicer") || (combined.contains("scroll") && (combined.contains("last page") || combined.contains("unnecessary"))) -> 311
+
+                    // Milestone 310 fixes (Telemetry timestamp PII scrubber accuracy)
+                    combined.contains("timestamp") || combined.contains("pii scrubber") -> 310
+
                     // Milestone 309 fixes (Dynamic cloud changelog sync and retrospective history dictionary)
                     combined.contains("the truth") || (combined.contains("same thing") && combined.contains("updates")) || combined.contains("last 4 updates") -> 309
 

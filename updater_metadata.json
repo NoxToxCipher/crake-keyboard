@@ -1,10 +1,10 @@
 {
-  "milestone": 310,
-  "tagName": "v0.310.0",
-  "name": "Milestone 310 (Telemetry Timestamp PII Scrubber Fix)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.310.0/CrakeKeyboard_Milestone_310.apk",
+  "milestone": 311,
+  "tagName": "v0.311.0",
+  "name": "Milestone 311 (Onboarding Tour 2x2 Grid)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.311.0/CrakeKeyboard_Milestone_311.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 310: Telemetry timestamp PII scrubber accuracy (preserving 13-digit Unix flight log timestamps while shielding payment card numbers).",
+  "changelog": "Milestone 311: Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -31,6 +31,7 @@
     "287": "Dynamic resolution tagging & feedback queue indicators.",
     "286": "Battery overcharge protection • Currency probe on startup • Spoiler-free egg recorder alerts.",
     "285": "Dollar sign Western popup • Secret Easter Egg layout adjustments.",
-    "310": "Telemetry timestamp PII scrubber accuracy (preserving 13-digit Unix flight log timestamps while shielding payment card numbers)."
+    "310": "Telemetry timestamp PII scrubber accuracy (preserving 13-digit Unix flight log timestamps while shielding payment card numbers).",
+    "311": "Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling."
   }
 }
