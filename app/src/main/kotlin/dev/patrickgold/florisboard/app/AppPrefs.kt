@@ -275,6 +275,10 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "easter_eggs__discovered",
             default = "",
         )
+        val recorded = string(
+            key = "easter_eggs__recorded",
+            default = "",
+        )
         val disabled = string(
             key = "easter_eggs__disabled",
             default = "",
@@ -290,8 +294,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         private val mutationMutex = Mutex()
 
         /**
-         * Records the egg as discovered (making its off switch visible in
-         * Settings) and reports whether it is currently allowed to fire.
+         * Records the egg as discovered (fired on-device) and reports whether it is currently allowed to fire.
          * Call this exactly when the egg's trigger condition matched.
          */
         fun fire(egg: EasterEgg): Boolean {
@@ -306,6 +309,21 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 }
             }
             return EasterEggs.isEnabled(disabled.get(), egg)
+        }
+
+        suspend fun recordGuess(phrase: String): EasterEgg? {
+            val egg = EasterEggs.matchTriggerPhrase(phrase) ?: return null
+            mutationMutex.withLock {
+                val freshRecorded = recorded.get()
+                if (!EasterEggs.isRecorded(freshRecorded, egg)) {
+                    recorded.set(EasterEggs.withId(freshRecorded, egg.id))
+                }
+                val freshDiscovered = discovered.get()
+                if (!EasterEggs.isDiscovered(freshDiscovered, egg)) {
+                    discovered.set(EasterEggs.withId(freshDiscovered, egg.id))
+                }
+            }
+            return egg
         }
 
         fun setEggEnabled(egg: EasterEgg, enabled: Boolean) {

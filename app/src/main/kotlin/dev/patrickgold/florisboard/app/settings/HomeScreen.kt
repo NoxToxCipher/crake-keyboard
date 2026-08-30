@@ -425,17 +425,26 @@ fun HomeScreen() = FlorisScreen {
             summary = "Legibility-tested fonts with research evidence",
             onClick = { navController.navigate(Routes.Settings.Fonts) },
         )
-        // Appears only once at least one easter egg has been discovered —
-        // the off switches surface after first trigger, never before.
         val discoveredEggsCsv by prefs.easterEggs.discovered.collectAsState()
-        if (EasterEggs.parseIds(discoveredEggsCsv).isNotEmpty()) {
-            CrakeNavTile(
-                icon = Icons.Default.Egg,
-                title = "Easter eggs",
-                summary = "Discovered easter eggs and toggle switches",
-                onClick = { navController.navigate(Routes.Settings.EasterEggs) },
-            )
-        }
+        val recordedEggsCsv by prefs.easterEggs.recorded.collectAsState()
+        val discoveredCount = EasterEggs.parseIds(discoveredEggsCsv).size
+        val recordedCount = EasterEggs.parseIds(recordedEggsCsv).size
+        CrakeNavTile(
+            icon = Icons.Default.Egg,
+            title = "Secret Easter Eggs",
+            summary = "Triggered: $discoveredCount/33 • Recorded: $recordedCount/33",
+            badgeText = "$recordedCount/33",
+            accentColor = CyberEmerald,
+            onClick = { navController.navigate(Routes.Settings.EasterEggs) },
+        )
+        CrakeNavTile(
+            icon = Icons.Default.Spellcheck,
+            title = "Tester Feedback & Bug Reports",
+            summary = "Submit suggestions, missed corrections & bug reports",
+            badgeText = "TESTERS",
+            accentColor = ElectricCyan,
+            onClick = { navController.navigate(Routes.Devtools.TesterFeedback) },
+        )
         CrakeNavTile(
             icon = Icons.Outlined.Keyboard,
             title = stringRes(R.string.settings__keyboard__title),

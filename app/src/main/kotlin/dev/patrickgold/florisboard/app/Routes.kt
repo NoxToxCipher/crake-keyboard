@@ -40,6 +40,7 @@ import dev.patrickgold.florisboard.app.devtools.AndroidLocalesScreen
 import dev.patrickgold.florisboard.app.devtools.AndroidSettingsScreen
 import dev.patrickgold.florisboard.app.devtools.DevtoolsScreen
 import dev.patrickgold.florisboard.app.devtools.ExportDebugLogScreen
+import dev.patrickgold.florisboard.app.devtools.TesterFeedbackScreen
 import dev.patrickgold.florisboard.app.ext.CheckUpdatesScreen
 import dev.patrickgold.florisboard.app.ext.ExtensionEditScreen
 import dev.patrickgold.florisboard.app.ext.ExtensionExportScreen
@@ -229,6 +230,10 @@ object Routes {
         @Serializable
         @Deeplink("export-debug-log")
         object ExportDebugLog
+
+        @Serializable
+        @Deeplink("devtools/tester-feedback")
+        object TesterFeedback
     }
 
     object Ext {
@@ -369,6 +374,7 @@ object Routes {
                 AndroidSettingsScreen(payload.name)
             }
             composableWithDeepLink(Devtools.ExportDebugLog::class) { ExportDebugLogScreen() }
+            composableWithDeepLink(Devtools.TesterFeedback::class) { TesterFeedbackScreen() }
 
             composableWithDeepLink(Ext.Home::class) { ExtensionHomeScreen() }
             composableWithDeepLink(Ext.List::class) { navBackStack ->
