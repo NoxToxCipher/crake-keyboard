@@ -1,10 +1,10 @@
 {
-  "milestone": 314,
-  "tagName": "v0.314.0",
-  "name": "Milestone 314 (High-Fidelity Telemetry & Typo Harvester Engine)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.314.0/CrakeKeyboard_Milestone_314.apk",
+  "milestone": 315,
+  "tagName": "v0.315.0",
+  "name": "Milestone 315 (Rust 2D Gaussian Spatial Touch Model)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.315.0/CrakeKeyboard_Milestone_315.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 314: Expanded telemetry harvester: captures high-precision spatial touch offsets (dx/dy), backspace-revert sequences, typo edit distances, increased buffer to 350 records, and added automatic session-end diagnostic sync.",
+  "changelog": "Milestone 315: Implemented native Rust 2D Bivariate Gaussian Spatial Touch Model (floris-core): real-time online Welford updates with exponential covariance adaptation, computing sub-nanosecond Mahalanobis spatial likelihoods.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -35,6 +35,7 @@
     "311": "Compacted final onboarding tour card into a responsive 2x2 gesture grid, completely eliminating unnecessary vertical scrolling.",
     "312": "Fixed initial touch-origin preservation in gesture engine (preventing touch-move bounds checks from resetting letter origins during upward word flicks) • Embedded numbered Ticket IDs (#CRK-xxx) across feedback hub.",
     "313": "Synchronized Home menu Easter Egg count calculations with valid registry entries (strictly filtering orphaned legacy IDs to ensure Discovered & Solved scores accurately cap at 36/36).",
-    "314": "Expanded telemetry harvester: captures high-precision spatial touch offsets (dx/dy), backspace-revert sequences, typo edit distances, increased buffer to 350 records, and added automatic session-end diagnostic sync."
+    "314": "Expanded telemetry harvester: captures high-precision spatial touch offsets (dx/dy), backspace-revert sequences, typo edit distances, increased buffer to 350 records, and added automatic session-end diagnostic sync.",
+    "315": "Implemented native Rust 2D Bivariate Gaussian Spatial Touch Model (floris-core): real-time online Welford updates with exponential covariance adaptation, computing sub-nanosecond Mahalanobis spatial likelihoods."
   }
 }

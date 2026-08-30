@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 314
+    const val CURRENT_MILESTONE = 315
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 31401
-    private const val RESOLVED_NOTIFICATION_ID = 31402
+    private const val NOTIFICATION_ID = 31501
+    private const val RESOLVED_NOTIFICATION_ID = 31502
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            315 -> "Implemented native Rust 2D Bivariate Gaussian Spatial Touch Model (floris-core): real-time online Welford updates with exponential covariance adaptation, computing sub-nanosecond Mahalanobis spatial likelihoods."
             314 -> "Expanded telemetry harvester: captures high-precision spatial touch offsets (dx/dy), backspace-revert sequences, typo edit distances, increased buffer to 350 records, and added automatic session-end diagnostic sync."
             313 -> "Synchronized Home menu Easter Egg count calculations with valid registry entries (strictly filtering orphaned legacy IDs to ensure Discovered & Solved scores accurately cap at 36/36)."
             312 -> "Fixed initial touch-origin preservation in gesture engine (preventing touch-move bounds checks from resetting letter origins during upward word flicks) • Embedded numbered Ticket IDs (#CRK-xxx) across feedback hub."

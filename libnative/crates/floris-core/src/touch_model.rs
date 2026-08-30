@@ -69,10 +69,81 @@ impl ContactPatch {
     }
 }
 
+
+/// A 2D Bivariate Gaussian key distribution modeling user touch accuracy and thumb drift.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BivariateGaussianKey {
+    pub mean_x: f32,
+    pub mean_y: f32,
+    pub var_x: f32,
+    pub var_y: f32,
+    pub cov_xy: f32,
+    pub sample_count: u32,
+}
+
+impl BivariateGaussianKey {
+    /// Initializes a Gaussian key from visual layout center and pitch.
+    pub fn new(center_x: f32, center_y: f32, pitch: f32) -> Self {
+        let initial_sigma = (pitch * 0.40).max(1.0);
+        let initial_var = initial_sigma * initial_sigma;
+        Self {
+            mean_x: center_x,
+            mean_y: center_y,
+            var_x: initial_var,
+            var_y: initial_var,
+            cov_xy: 0.0,
+            sample_count: 0,
+        }
+    }
+
+    /// Updates the Gaussian parameters using online Welford updates with exponential decay.
+    pub fn update(&mut self, x: f32, y: f32) {
+        if !x.is_finite() || !y.is_finite() {
+            return;
+        }
+        self.sample_count = self.sample_count.saturating_add(1);
+        let weight = (1.0 / (self.sample_count as f32).min(64.0)).max(0.04);
+        
+        let dx = x - self.mean_x;
+        let dy = y - self.mean_y;
+        
+        self.mean_x += weight * dx;
+        self.mean_y += weight * dy;
+        
+        let new_dx = x - self.mean_x;
+        let new_dy = y - self.mean_y;
+        
+        self.var_x = ((1.0 - weight) * self.var_x + weight * (dx * new_dx)).max(4.0);
+        self.var_y = ((1.0 - weight) * self.var_y + weight * (dy * new_dy)).max(4.0);
+        
+        let max_cov = (self.var_x * self.var_y).sqrt() * 0.85;
+        self.cov_xy = ((1.0 - weight) * self.cov_xy + weight * (dx * new_dy)).clamp(-max_cov, max_cov);
+    }
+
+    /// Computes the squared Mahalanobis distance d_M^2 of a touch point (x, y).
+    #[inline]
+    pub fn mahalanobis_sq(&self, x: f32, y: f32) -> f32 {
+        let dx = x - self.mean_x;
+        let dy = y - self.mean_y;
+        let det = (self.var_x * self.var_y - self.cov_xy * self.cov_xy).max(1e-4);
+        
+        let sq = (self.var_y * dx * dx - 2.0 * self.cov_xy * dx * dy + self.var_x * dy * dy) / det;
+        sq.max(0.0)
+    }
+
+    /// Evaluates the unnormalized Gaussian density score exp(-0.5 * d_M^2).
+    #[inline]
+    pub fn density(&self, x: f32, y: f32) -> f32 {
+        let d_sq = self.mahalanobis_sq(x, y);
+        (-0.5 * d_sq).exp()
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct TouchModel {
     centers: HashMap<char, (f32, f32)>,
     near_dist_sq: f32,
+    pub gaussian_keys: HashMap<char, BivariateGaussianKey>,
 }
 
 impl TouchModel {
@@ -114,9 +185,14 @@ impl TouchModel {
         }
         let pitch = median_sq.sqrt();
         let near = pitch * NEAR_FACTOR;
+        let mut gaussian_keys = HashMap::new();
+        for (&ch, &(x, y)) in &centers {
+            gaussian_keys.insert(ch, BivariateGaussianKey::new(x, y, pitch));
+        }
         Some(Self {
             centers,
             near_dist_sq: near * near,
+            gaussian_keys,
         })
     }
 
@@ -128,6 +204,35 @@ impl TouchModel {
     #[inline]
     pub fn near_dist_sq(&self) -> f32 {
         self.near_dist_sq
+    }
+
+
+    /// Evaluates the best matching key and its spatial probability distribution for a given touch.
+    pub fn evaluate_spatial_touch(&self, x: f32, y: f32) -> Option<(char, f32)> {
+        let mut best_key = ' ';
+        let mut best_score = -1.0f32;
+        let mut total_density = 0.0f32;
+        
+        for (&ch, gkey) in &self.gaussian_keys {
+            let dens = gkey.density(x, y);
+            total_density += dens;
+            if dens > best_score {
+                best_score = dens;
+                best_key = ch;
+            }
+        }
+        if total_density > 1e-6 {
+            Some((best_key, best_score / total_density))
+        } else {
+            None
+        }
+    }
+
+    /// Records a true user tap to adaptively train the 2D Gaussian touch centroid for the aimed key.
+    pub fn record_touch_hit(&mut self, aimed_key: char, touch_x: f32, touch_y: f32) {
+        if let Some(gkey) = self.gaussian_keys.get_mut(&aimed_key.to_ascii_lowercase()) {
+            gkey.update(touch_x, touch_y);
+        }
     }
 
     pub fn is_near(&self, a: char, b: char) -> bool {
@@ -148,6 +253,25 @@ impl TouchModel {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn bivariate_gaussian_touch_model_adapts_to_thumb_drift() {
+        let mut m = qwerty();
+        let center_e = m.get_center('e').expect("e center");
+        
+        // Simulate user repeatedly tapping 8 pixels to the right of 'e'
+        for _ in 0..20 {
+            m.record_touch_hit('e', center_e.0 + 8.0, center_e.1 - 2.0);
+        }
+        
+        let gkey_e = m.gaussian_keys.get(&'e').expect("gkey e");
+        assert!(gkey_e.mean_x > center_e.0 + 4.0, "Mean X should drift rightward toward user's touch habits");
+        
+        // Touch at slightly offset position should score highest for 'e'
+        let (matched_char, prob) = m.evaluate_spatial_touch(center_e.0 + 7.0, center_e.1 - 2.0).expect("match");
+        assert_eq!(matched_char, 'e');
+        assert!(prob > 0.3);
+    }
+
     use super::*;
 
     fn grid(rows: &[&str], offsets: &[f32], key_w: f32, key_h: f32) -> TouchModel {
