@@ -97,6 +97,7 @@ import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.editorInstance
 import dev.patrickgold.florisboard.glideTypingManager
+import dev.patrickgold.florisboard.nlpManager
 import dev.patrickgold.florisboard.ime.editor.OperationScope
 import dev.patrickgold.florisboard.ime.editor.OperationUnit
 import dev.patrickgold.florisboard.ime.input.InputEventDispatcher
@@ -8570,6 +8571,7 @@ private class TextKeyboardLayoutController(
     private val editorInstance by context.editorInstance()
     private val keyboardManager by context.keyboardManager()
     private val glideTypingManager by context.glideTypingManager()
+    private val nlpManager by context.nlpManager()
 
     private val inputEventDispatcher get() = keyboardManager.inputEventDispatcher
     private val inputFeedbackController get() = FlorisImeService.inputFeedbackController()
@@ -9008,11 +9010,15 @@ private class TextKeyboardLayoutController(
                                     null
                                 }
                             }
-                            if (predictedWord != null) {
+                            val fallbackCandidate = nlpManager.activeCandidates.firstOrNull {
+                                it.text.startsWith(charCode, ignoreCase = true)
+                            }?.text?.toString()
+                            val wordToCommit = predictedWord ?: fallbackCandidate
+                            if (wordToCommit != null) {
                                 glideTypingDetector.cancel()
                                 isGliding = false
-                                activeCatapult = CatapultEffect(predictedWord, initialKey.visibleBounds.center)
-                                keyboardManager.commitFlickPrediction(predictedWord)
+                                activeCatapult = CatapultEffect(wordToCommit, initialKey.visibleBounds.center)
+                                keyboardManager.commitFlickPrediction(wordToCommit)
                                 inputFeedbackController?.flickCommit(initialKey.computedData)
                                 return true
                             }

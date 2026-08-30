@@ -234,7 +234,7 @@ fun HomeScreen() = FlorisScreen {
                         TesterSprintPill(
                             icon = Icons.Default.Gesture,
                             title = "How to Use Word Flicks & Quick Gestures",
-                            desc = "Flick keys up, down, or diagonally to type numbers, symbols & punctuation without layer switching. Glide smoothly across keys for rapid word completion.",
+                            desc = "Flick upward on any letter key to fling predicted words directly into your text without reaching for the top suggestion bar. Swipe spacebar to navigate cursor.",
                             accent = ElectricCyan,
                         )
 
@@ -657,9 +657,9 @@ fun HomeScreen() = FlorisScreen {
                             .padding(10.dp),
                     ) {
                         Column {
-                            Text("⬆️ Upward Flick", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = ElectricCyan)
+                            Text("⬆️ Upward Flick on Word", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = ElectricCyan)
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text("Quick numbers & capital symbols without opening symbol pad.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                            Text("Fling floating predicted words directly into the text field (BB10 flick typing).", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
                         }
                     }
                     Box(

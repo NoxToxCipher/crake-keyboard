@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 307
+    const val CURRENT_MILESTONE = 308
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 30701
-    private const val RESOLVED_NOTIFICATION_ID = 30702
+    private const val NOTIFICATION_ID = 30801
+    private const val RESOLVED_NOTIFICATION_ID = 30802
 
     data class ReleaseInfo(
         val tagName: String,
@@ -82,6 +82,7 @@ object UpdateManager {
 
     fun getMilestoneHighlights(milestone: Int): String {
         return when (milestone) {
+            308 -> "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words)."
             307 -> "Fixed theme switcher in onboarding carousel (mapped valid Crake theme component IDs so theme changes apply instantly)."
             306 -> "Interactive Word Flick & Gesture introductory guide card on Home Screen • Easter Egg registry refinement (36 pure word eggs with power surge as ambient charging touch)."
             305 -> "Battery & power-save adaptive telemetry scheduling • Zero-persistence diagnostic sync in-memory pipeline."

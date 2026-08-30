@@ -1,8 +1,8 @@
 {
-  "milestone": 307,
-  "tagName": "v0.307.0",
-  "name": "Milestone 307 (Theme Switcher Fix)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.307.0/CrakeKeyboard_Milestone_307.apk",
+  "milestone": 308,
+  "tagName": "v0.308.0",
+  "name": "Milestone 308 (Upward Word Flick Restoration)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.308.0/CrakeKeyboard_Milestone_308.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 307: Fixed theme switcher in onboarding carousel (mapped valid Crake theme component IDs so theme changes apply instantly)."
+  "changelog": "Milestone 308: Restored and reinforced BB10 Upward Word Flick prediction engine \u2022 Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words)."
 }

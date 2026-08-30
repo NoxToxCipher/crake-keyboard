@@ -659,6 +659,11 @@ private fun ProGesturesAndTestDriveCard() {
     )
 
     FeaturePillItem(
+        emoji = "⬆️",
+        title = "Upward Word Flick (BB10)",
+        detail = "Flick upward on any letter key to fling the floating predicted word directly into your text.",
+    )
+    FeaturePillItem(
         emoji = "↔️",
         title = "Spacebar Cursor Scrub",
         detail = "Drag left or right across the spacebar to glide your cursor with sub-millimeter precision.",

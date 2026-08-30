@@ -109,12 +109,14 @@ abstract class SwipeGesture {
                 // an absolute displacement of 14dp is distinct from accidental tap wobble (<=8dp)
                 // and prevents dropping fast short thumb flicks on high-density displays.
                 val effectiveThresholdWidth = if (maxVelocity >= thresholdSpeed) {
-                    (thresholdWidthDp * 0.5).coerceAtLeast(14.0)
+                    (thresholdWidthDp * 0.4).coerceAtLeast(10.0)
                 } else {
                     thresholdWidthDp
                 }
 
-                return (maxTravel > effectiveThresholdWidth) && (maxVelocity > thresholdSpeed)
+                val isSnappyFlick = (maxTravel >= 10.0f) && (maxVelocity >= 250.0)
+
+                return isSnappyFlick || ((maxTravel > effectiveThresholdWidth) && (maxVelocity > thresholdSpeed))
             }
 
             /**
