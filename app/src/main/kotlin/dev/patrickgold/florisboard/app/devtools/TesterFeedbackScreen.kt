@@ -692,6 +692,18 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val implementedMilestone: Int? = when {
                     fb.resolvedMilestone != null && fb.resolvedMilestone > 0 -> fb.resolvedMilestone
 
+                    // Milestone 319 fixes (Snippets Studio single-line templates, centered headers, edge-fading scroll)
+                    combined.contains("email was on a single line") || (combined.contains("email") && combined.contains("single line")) || combined.contains("supported crypto chains scrolling") || combined.contains("general templates") || combined.contains("fade in as we scroll") || combined.contains("should it be central") -> 319
+
+                    // Milestone 318 fixes (16-Chain Crypto Snippets & coupled Easter Egg registry bounds)
+                    combined.contains("struggled to add the wallets") || combined.contains("wallet error") || combined.contains("improve snippet visuals") || combined.contains("snippet visuals") || combined.contains("wallets") -> 318
+
+                    // Milestone 317 fixes (Subtype Dollar currency reset for Australian tester fleet)
+                    combined.contains("reset everyone's main currency") || (combined.contains("currency") && combined.contains("dollar")) || combined.contains("aussie testers") -> 317
+
+                    // Milestone 316 fixes (1D-CNN / TCN Neural Glide Stroke Decoder in Rust Core)
+                    combined.contains("gaussian spatial touch") || combined.contains("neural glide") || combined.contains("gaussian thing") || (combined.contains("rust") && combined.contains("glide")) -> 316
+
                     // Milestone 314 fixes (High-fidelity telemetry harvester & typo/backspace spatial tracker)
                     combined.contains("catch more telemetry") || combined.contains("catch it") || (combined.contains("telemetry") && combined.contains("mistakes")) -> 314
 
