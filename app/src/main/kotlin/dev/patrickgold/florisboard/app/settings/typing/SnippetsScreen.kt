@@ -438,38 +438,45 @@ fun SnippetsScreen() = FlorisScreen {
                                     fontWeight = FontWeight.Medium,
                                     fontFamily = if (detectedChain != null) FontFamily.Monospace else FontFamily.Default,
                                     color = Color.White,
-                                    maxLines = 2,
+                                    maxLines = 4,
+                                    softWrap = true,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 )
                             }
-                            IconButton(
-                                onClick = {
-                                    editingEntry = entry
-                                    inputTrigger = entry.shortcut ?: "!"
-                                    inputExpansion = entry.word
-                                    showDialog = true
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = {
+                                        editingEntry = entry
+                                        inputTrigger = entry.shortcut ?: "!"
+                                        inputExpansion = entry.word
+                                        showDialog = true
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        tint = ElectricCyan,
+                                        modifier = Modifier.size(16.dp),
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit",
-                                    tint = ElectricCyan,
-                                    modifier = Modifier.size(18.dp),
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    scope.launch(Dispatchers.IO) {
-                                        dictionaryManager.florisUserDictionaryDao()?.delete(entry)
-                                        refreshSnippets()
-                                    }
+                                IconButton(
+                                    onClick = {
+                                        scope.launch(Dispatchers.IO) {
+                                            dictionaryManager.florisUserDictionaryDao()?.delete(entry)
+                                            refreshSnippets()
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = Color(0xFFFF5252),
+                                        modifier = Modifier.size(16.dp),
+                                    )
                                 }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color(0xFFFF5252),
-                                    modifier = Modifier.size(18.dp),
-                                )
                             }
                         }
                     }

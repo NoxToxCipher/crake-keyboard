@@ -309,19 +309,97 @@ fun EasterEggsScreen() = FlorisScreen {
                     )
                 }
 
-                feedbackMessage?.let { msg ->
+                // Feedback displayed cleanly below action
+                if (feedbackMessage != null) {
                     Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = msg,
-                        fontSize = 12.sp,
-                        color = if (lastUnlockedEgg != null) CyberEmerald else CyberAmber,
-                        fontWeight = FontWeight.Medium,
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (lastUnlockedEgg != null) CyberEmerald.copy(alpha = 0.15f) else CyberAmber.copy(alpha = 0.15f)
+                        ),
+                        border = BorderStroke(1.dp, if (lastUnlockedEgg != null) CyberEmerald else CyberAmber),
+                    ) {
+                        Text(
+                            text = feedbackMessage!!,
+                            fontSize = 12.sp,
+                            color = if (lastUnlockedEgg != null) CyberEmerald else CyberAmber,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(10.dp),
+                        )
+                    }
                 }
             }
         }
 
-        // 5. RECORDED EASTER EGGS (WITH INDIVIDUAL TOGGLES)
+        // 5. TRIGGERED IN TYPING (DISCOVERED ON DEVICE)
+        val unrecordedDiscovered = discovered.filter { it !in recorded }
+        if (unrecordedDiscovered.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            CrakeSectionHeader(
+                title = "Triggered in Typing",
+                badgeText = "${unrecordedDiscovered.size} READY TO RECORD",
+                accentColor = ElectricCyan,
+            )
+            for (egg in unrecordedDiscovered) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardSurface),
+                    border = BorderStroke(1.dp, ElectricCyan.copy(alpha = 0.4f)),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(ElectricCyan.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AutoAwesome,
+                                contentDescription = null,
+                                tint = ElectricCyan,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = egg.label,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.5.sp,
+                                color = Color.White,
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = egg.description,
+                                fontSize = 11.sp,
+                                color = TextMuted,
+                            )
+                        }
+                        Text(
+                            text = "TRIGGERED",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ElectricCyan,
+                            modifier = Modifier
+                                .background(ElectricCyan.copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // 6. RECORDED EASTER EGGS (WITH INDIVIDUAL TOGGLES)
         Spacer(modifier = Modifier.height(8.dp))
         CrakeSectionHeader(
             title = "Recorded Easter Eggs",
