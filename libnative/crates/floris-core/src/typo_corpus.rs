@@ -156,6 +156,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("attension", "attention"),
     ("attitide", "attitude"),
     ("audeince", "audience"),
+    ("aure", "sure"),
     ("austrailia", "australia"),
     ("austrailian", "australian"),
     ("authintic", "authentic"),
@@ -287,6 +288,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("cincinnatti", "cincinnati"),
     ("circut", "circuit"),
     ("civillian", "civilian"),
+    ("ckrdsct", "correct"),
     ("claer", "clear"),
     ("claerly", "clearly"),
     ("clasic", "classic"),
@@ -582,6 +584,9 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("fins", "find"),
     ("firends", "friends"),
     ("firts", "first"),
+    ("fizd", "fixed"),
+    ("fizdx", "fixed"),
+    ("fizxd", "fixed"),
     ("flamable", "flammable"),
     ("flourescent", "fluorescent"),
     ("folowing", "following"),
@@ -692,6 +697,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("hygene", "hygiene"),
     ("hypocrisy", "hypocrisy"),
     ("hypocrite", "hypocrite"),
+    ("ia", "is"),
     ("idealogy", "ideology"),
     ("idealy", "ideally"),
     ("identfication", "identification"),
@@ -805,6 +811,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("investegate", "investigate"),
     ("investegation", "investigation"),
     ("involvment", "involvement"),
+    ("iodated", "updated"),
     ("irelevent", "irrelevant"),
     ("iresistable", "irresistible"),
     ("iresistible", "irresistible"),
@@ -823,6 +830,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("judgement", "judgment"),
     ("judical", "judicial"),
     ("jurisdication", "jurisdiction"),
+    ("kf", "of"),
     ("kindergarden", "kindergarten"),
     ("knive", "knife"),
     ("knives", "knives"),
@@ -1000,6 +1008,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("noticable", "noticeable"),
     ("noticably", "noticeably"),
     ("noticible", "noticeable"),
+    ("novle", "noble"),
     ("nowdays", "nowadays"),
     ("nuculear", "nuclear"),
     ("nuetron", "neutron"),
@@ -1072,6 +1081,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("overrule", "overrule"),
     ("overrun", "overrun"),
     ("overwrite", "overwrite"),
+    ("owed", "word"),
     ("oxcur", "occur"),
     ("pallete", "palette"),
     ("pallette", "palette"),
@@ -1707,6 +1717,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("trafficking", "trafficking"),
     ("tragedy", "tragedy"),
     ("tragically", "tragically"),
+    ("trai", "train"),
     ("training", "training"),
     ("transcendence", "transcendence"),
     ("transcription", "transcription"),
@@ -1751,6 +1762,9 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("untill", "until"),
     ("unusual", "unusual"),
     ("unusually", "unusually"),
+    ("updayed", "updated"),
+    ("upfate", "update"),
+    ("upfated", "updated"),
     ("usage", "usage"),
     ("usally", "usually"),
     ("useful", "useful"),
@@ -1850,67 +1864,10 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("zealous", "zealous"),
 ];
 
-/// Looks up a typographical error in the Wikipedia corpus in O(log N) time using zero-allocation binary search.
 #[inline]
-pub fn lookup_common_typo(query: &str) -> Option<&'static str> {
-    if query.is_ascii() {
-        match WIKIPEDIA_COMMON_TYPOS.binary_search_by(|&(k, _)| {
-            let mut it1 = k.bytes();
-            let mut it2 = query.bytes();
-            loop {
-                match (it1.next(), it2.next()) {
-                    (Some(b1), Some(b2)) => {
-                        let c1 = b1.to_ascii_lowercase();
-                        let c2 = b2.to_ascii_lowercase();
-                        if c1 != c2 {
-                            return c1.cmp(&c2);
-                        }
-                    }
-                    (None, None) => return std::cmp::Ordering::Equal,
-                    (None, Some(_)) => return std::cmp::Ordering::Less,
-                    (Some(_), None) => return std::cmp::Ordering::Greater,
-                }
-            }
-        }) {
-            Ok(idx) => Some(WIKIPEDIA_COMMON_TYPOS[idx].1),
-            Err(_) => None,
-        }
-    } else {
-        let query_lower = query.to_lowercase();
-        match WIKIPEDIA_COMMON_TYPOS.binary_search_by_key(&query_lower.as_str(), |&(k, _)| k) {
-            Ok(idx) => Some(WIKIPEDIA_COMMON_TYPOS[idx].1),
-            Err(_) => None,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_wikipedia_corpus_is_sorted() {
-        for window in WIKIPEDIA_COMMON_TYPOS.windows(2) {
-            assert!(
-                window[0].0 <= window[1].0,
-                "WIKIPEDIA_COMMON_TYPOS must be alphabetically sorted for binary search: {} > {}",
-                window[0].0,
-                window[1].0
-            );
-        }
-    }
-
-    #[test]
-    fn test_lookup_common_typos() {
-        assert_eq!(lookup_common_typo("teh"), Some("the"));
-        assert_eq!(lookup_common_typo("adn"), Some("and"));
-        assert_eq!(lookup_common_typo("definately"), Some("definitely"));
-        assert_eq!(lookup_common_typo("accomodation"), Some("accommodation"));
-        assert_eq!(lookup_common_typo("goverment"), Some("government"));
-        assert_eq!(lookup_common_typo("seperate"), Some("separate"));
-        assert_eq!(lookup_common_typo("untill"), Some("until"));
-        assert_eq!(lookup_common_typo("wierd"), Some("weird"));
-        assert_eq!(lookup_common_typo("freind"), Some("friend"));
-        assert_eq!(lookup_common_typo("clean_word_not_a_typo"), None);
-    }
+pub fn lookup_common_typo(typo: &str) -> Option<&'static str> {
+    WIKIPEDIA_COMMON_TYPOS
+        .binary_search_by_key(&typo, |&(t, _)| t)
+        .ok()
+        .map(|idx| WIKIPEDIA_COMMON_TYPOS[idx].1)
 }

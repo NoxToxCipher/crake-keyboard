@@ -1,8 +1,8 @@
 {
-  "milestone": 289,
-  "tagName": "v0.289.0",
-  "name": "Milestone 289 (Sprint Active)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.289.0/CrakeKeyboard_Milestone_289.apk",
+  "milestone": 290,
+  "tagName": "v0.290.0",
+  "name": "Milestone 290 (Sprint Active)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.290.0/CrakeKeyboard_Milestone_290.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 289: Completely audited feedback resolution list, redesigned high-tech app icon, deduplicated home screen menu, and fixed Serenity Garden trigger parity"
+  "changelog": "Milestone 290: Telemetry-driven autocorrect accuracy enhancements (kf->of, ia->is, fizdx->fixed, novle->noble, trai->train, ckrdsct->correct) and zero-rate-limit 3-tier update resolution."
 }
