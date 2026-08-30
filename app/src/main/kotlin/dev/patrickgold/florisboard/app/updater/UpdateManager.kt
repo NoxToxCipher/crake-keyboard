@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 288
+    const val CURRENT_MILESTONE = 289
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases/latest"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 28801
-    private const val RESOLVED_NOTIFICATION_ID = 28802
+    private const val NOTIFICATION_ID = 28901
+    private const val RESOLVED_NOTIFICATION_ID = 28902
 
     data class ReleaseInfo(
         val tagName: String,

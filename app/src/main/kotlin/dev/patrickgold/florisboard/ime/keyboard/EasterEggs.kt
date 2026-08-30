@@ -195,7 +195,7 @@ enum class EasterEgg(
         "serenity_garden",
         "Serenity Garden",
         "Cherry blossoms & peaceful garden koi ripples",
-        listOf("zen", "serenity", "peace", "calm", "meditate", "breathe", "relax"),
+        listOf("zen", "serenity", "peace", "calm", "meditate", "breathe", "relax", "sad", "stress", "stressed", "anxious", "anxiety", "depressed", "unhappy", "zen garden", "garden"),
     ),
     SNIPER_DUDE(
         "sniper_dude",

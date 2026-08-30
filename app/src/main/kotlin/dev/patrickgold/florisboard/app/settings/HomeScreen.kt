@@ -716,16 +716,24 @@ fun HomeScreen() = FlorisScreen {
         // CRAKE CYBER COMMAND HUB NAVIGATION CARDS
         CrakeNavTile(
             icon = Icons.Default.Spellcheck,
-            title = "Typing & Glide NLP Core",
-            summary = "5.3M word/s Radix Trie, Damerau-Levenshtein & gesture typing",
+            title = "Typing & Prediction Core",
+            summary = "5.3M word/s Radix Trie, Damerau-Levenshtein & autocorrect",
             badgeText = "SAFE RUST",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Typing) },
         )
         CrakeNavTile(
+            icon = Icons.Default.Gesture,
+            title = "Gestures & Glide Typing",
+            summary = "Continuous glide trail, directional flicks & cursor drag",
+            badgeText = "GESTURES",
+            accentColor = ElectricCyan,
+            onClick = { navController.navigate(Routes.Settings.Gestures) },
+        )
+        CrakeNavTile(
             icon = Icons.Default.FlashOn,
             title = "Smart Text Expansion & Snippets",
-            summary = "Custom expansion triggers (!addr, !email, macros)",
+            summary = "Custom expansion triggers (!addr, !email, crypto macros)",
             badgeText = "MACROS",
             accentColor = ElectricCyan,
             onClick = { navController.navigate(Routes.Settings.Snippets) },
@@ -774,6 +782,7 @@ fun HomeScreen() = FlorisScreen {
             summary = "Legibility-tested fonts with research evidence",
             onClick = { navController.navigate(Routes.Settings.Fonts) },
         )
+        val totalEggs = dev.patrickgold.florisboard.ime.keyboard.EasterEgg.entries.size
         val discoveredEggsCsv by prefs.easterEggs.discovered.collectAsState()
         val recordedEggsCsv by prefs.easterEggs.recorded.collectAsState()
         val discoveredCount = EasterEggs.parseIds(discoveredEggsCsv).size
@@ -781,8 +790,8 @@ fun HomeScreen() = FlorisScreen {
         CrakeNavTile(
             icon = Icons.Default.Egg,
             title = "Secret Easter Eggs",
-            summary = "Triggered: $discoveredCount/33 • Recorded: $recordedCount/33",
-            badgeText = "$recordedCount/33",
+            summary = "Triggered: $discoveredCount/$totalEggs • Recorded: $recordedCount/$totalEggs",
+            badgeText = "$recordedCount/$totalEggs",
             accentColor = CyberEmerald,
             onClick = { navController.navigate(Routes.Settings.EasterEggs) },
         )
@@ -798,12 +807,6 @@ fun HomeScreen() = FlorisScreen {
             title = stringRes(R.string.settings__smartbar__title),
             summary = "Action tiles, candidate capsules & quick actions bar",
             onClick = { navController.navigate(Routes.Settings.Smartbar) },
-        )
-        CrakeNavTile(
-            icon = Icons.Default.Gesture,
-            title = stringRes(R.string.settings__gestures__title),
-            summary = "Spatial swipe flicks, neon aurora trail & cursor drag",
-            onClick = { navController.navigate(Routes.Settings.Gestures) },
         )
         CrakeNavTile(
             icon = Icons.Default.SentimentSatisfiedAlt,

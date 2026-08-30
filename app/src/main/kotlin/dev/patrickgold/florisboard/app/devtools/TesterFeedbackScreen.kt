@@ -627,11 +627,27 @@ fun TesterFeedbackScreen() = FlorisScreen {
                 val combined = "$t $d"
 
                 val implementedMilestone: Int? = when {
-                    combined.contains("battery") || combined.contains("egg records") || combined.contains("first start") || (t.contains("notification") && fb.timestamp >= 1788065000000L) || combined.contains("raw writing") || combined.contains("for testers") -> 286
-                    combined.contains("tester box") || combined.contains("dollar sign") || combined.contains("noble train") || combined.contains("testing error") -> 285
-                    combined.contains("email line") || (combined.contains("easter egg") && fb.timestamp < 1788062000000L) || combined.contains("poor visual") -> 284
-                    combined.contains("screenshot") || combined.contains("resolution notification") || combined.contains("automatic update") || combined.contains("high menu") -> 282
-                    fb.timestamp < System.currentTimeMillis() - 60_000L && (combined.contains("updater") || combined.contains("email") || combined.contains("currency") || combined.contains("recorder") || combined.contains("icon")) -> 286
+                    // Milestone 289 (New Icon, Menu deduplication, Easter Egg Serenity Sad/Stress triggers, Audited Badges)
+                    combined.contains("icon") || combined.contains("doubling") || combined.contains("incorrect") || combined.contains("tester bug") -> 289
+
+                    // Milestone 288 (Notification spam eradication & silent check gates)
+                    combined.contains("getting this notification") || (t == "notification" && combined.contains("every single time")) -> 288
+
+                    // Milestone 287 (Dynamic resolution tagging & queue indicators)
+                    combined.contains("notification when our feature") || combined.contains("implemented or our bug") || (t == "notification" && combined.contains("notified when their errors")) -> 287
+
+                    // Milestone 286 (Battery Overcharge, Currency probe on first start, already-recorded egg alert, email 1-line polish, raw writing notice)
+                    combined.contains("battery") || combined.contains("egg records") || combined.contains("first start") || combined.contains("currency") || combined.contains("for testers") || combined.contains("raw writing") || combined.contains("tester beginning") || combined.contains("direct them to the section") -> 286
+
+                    // Milestone 285 (Tester box header & 'No Update' phrasing, dollar sign western popup, noble train separation)
+                    combined.contains("dollar sign") || combined.contains("train & noble train") || combined.contains("testing error") || (t == "tester box" && fb.timestamp >= 1788063000000L) -> 285
+
+                    // Milestone 284 (Easter egg recorder trigger sync, email line expand, verification status card placement)
+                    combined.contains("easter egg recorder") || (t == "email line" && fb.timestamp < 1788062000000L) || combined.contains("poor visual") -> 284
+
+                    // Milestone 282 (Screenshots attachment, top tester card placement, automatic background update loop)
+                    combined.contains("screenshot") || combined.contains("tester feedback box") || combined.contains("high menu") || (t == "updates" && combined.contains("automatic")) -> 282
+
                     else -> null
                 }
                 val isResolved = implementedMilestone != null

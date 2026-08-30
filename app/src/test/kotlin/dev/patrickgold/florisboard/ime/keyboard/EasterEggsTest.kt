@@ -54,6 +54,8 @@ class EasterEggsTest : FunSpec({
         EasterEggs.matchTriggerPhrase("train").shouldNotBeNull().id shouldBe EasterEgg.STEAM_TRAIN.id
         EasterEggs.matchTriggerPhrase("noble train").shouldNotBeNull().id shouldBe EasterEgg.NOBLE_TRAIN.id
         EasterEggs.matchTriggerPhrase("battery").shouldNotBeNull().id shouldBe EasterEgg.BATTERY_OVERCHARGE.id
+        EasterEggs.matchTriggerPhrase("sad").shouldNotBeNull().id shouldBe EasterEgg.SERENITY_GARDEN.id
+        EasterEggs.matchTriggerPhrase("stress").shouldNotBeNull().id shouldBe EasterEgg.SERENITY_GARDEN.id
         EasterEggs.matchTriggerPhrase("unknown nonsense 12345").shouldBeNull()
         EasterEggs.matchTriggerPhrase("").shouldBeNull()
     }
