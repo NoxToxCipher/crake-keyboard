@@ -141,6 +141,7 @@ class FlorisApplication : Application() {
                 clipboardManager.value.initializeForContext(this@FlorisApplication)
                 DictionaryManager.init(this@FlorisApplication)
                 dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.init(this@FlorisApplication)
+                dev.patrickgold.florisboard.app.updater.UpdateManager.init(this@FlorisApplication)
             } catch (_: Throwable) {}
         }
 

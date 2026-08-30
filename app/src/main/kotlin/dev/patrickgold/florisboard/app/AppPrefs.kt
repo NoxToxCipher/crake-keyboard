@@ -233,6 +233,30 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
     }
 
+    val updater = Updater()
+    inner class Updater {
+        val autoCheckEnabled = boolean(
+            key = "updater__auto_check_enabled",
+            default = true,
+        )
+        val checkIntervalHours = int(
+            key = "updater__check_interval_hours",
+            default = 1,
+        )
+        val lastCheckTimestamp = string(
+            key = "updater__last_check_timestamp",
+            default = "0",
+        )
+        val testerName = string(
+            key = "updater__tester_name",
+            default = "Tester",
+        )
+        val autoDownloadOnWifi = boolean(
+            key = "updater__auto_download_on_wifi",
+            default = true,
+        )
+    }
+
     val dictionary = Dictionary()
     inner class Dictionary {
         val enableSystemUserDictionary = boolean(

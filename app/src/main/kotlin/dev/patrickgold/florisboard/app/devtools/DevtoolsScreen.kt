@@ -68,6 +68,7 @@ import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisConfirmDeleteDialog
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
+import androidx.compose.runtime.collectAsState as collectFlowAsState
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.AndroidSettings
 import org.florisboard.lib.android.AndroidVersion
@@ -490,7 +491,93 @@ fun DevtoolsScreen() = FlorisScreen {
             }
         }
 
-        // 5. ANDROID SYSTEM CONFIGURATION
+        // 5. TESTER CIRCLE & HOURLY OTA UPDATES
+        Spacer(modifier = Modifier.height(10.dp))
+        CrakeSectionHeader(title = "Tester Circle & OTA Updates", badgeText = "AUTO-OTA", accentColor = CyberEmerald)
+        CrakeRadioPreference(
+            pref = prefs.updater.autoCheckEnabled,
+            title = "Hourly Auto-Update Checks",
+            summary = "Checks GitHub Releases every hour for new milestone APKs and notifies you",
+            icon = Icons.Default.Refresh,
+            accentColor = CyberEmerald,
+        )
+        val updateStatus by dev.patrickgold.florisboard.app.updater.UpdateManager.status.collectFlowAsState()
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            onClick = {
+                when (val st = updateStatus) {
+                    is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.UpdateAvailable -> {
+                        dev.patrickgold.florisboard.app.updater.UpdateManager.downloadAndInstall(context, st.release)
+                    }
+                    is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.ReadyToInstall -> {
+                        dev.patrickgold.florisboard.app.updater.UpdateManager.promptInstall(context, st.apkFile)
+                    }
+                    else -> {
+                        dev.patrickgold.florisboard.app.updater.UpdateManager.checkForUpdates(silent = false)
+                    }
+                }
+            },
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(CyberEmerald.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Adb,
+                        contentDescription = null,
+                        tint = CyberEmerald,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    val titleText = when (val st = updateStatus) {
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.Checking -> "Checking for Updates..."
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.UpdateAvailable -> "Update Available: Milestone ${st.release.milestone}"
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.Downloading -> "Downloading Update: ${st.progressPercent}%"
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.ReadyToInstall -> "Ready to Install Milestone ${st.release.milestone}"
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.UpToDate -> "Keyboard Up to Date (Milestone ${dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE})"
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.Error -> "Check Failed: ${st.message}"
+                        else -> "Check for Updates Now"
+                    }
+                    val subtitleText = when (val st = updateStatus) {
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.UpdateAvailable -> "Tap to download and install latest APK"
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.Downloading -> "${st.bytesDownloaded / 1024} KB of ${st.totalBytes / 1024} KB"
+                        is dev.patrickgold.florisboard.app.updater.UpdateManager.UpdateStatus.ReadyToInstall -> "Tap to launch package installer"
+                        else -> "Current: Milestone ${dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE} • Hourly auto-polling active"
+                    }
+
+                    Text(
+                        text = titleText,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.5.sp,
+                        color = Color.White,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitleText,
+                        fontSize = 11.5.sp,
+                        color = TextMuted,
+                    )
+                }
+            }
+        }
+
+        // 6. ANDROID SYSTEM CONFIGURATION
         Spacer(modifier = Modifier.height(10.dp))
         CrakeSectionHeader(title = "Android System Settings", badgeText = "SYSTEM", accentColor = CyberAmber)
         Card(

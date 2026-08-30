@@ -1,0 +1,342 @@
+/*
+ * Copyright (C) 2026 The Crake Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.patrickgold.florisboard.app.updater
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.FileProvider
+import dev.patrickgold.florisboard.R
+import dev.patrickgold.florisboard.app.FlorisAppActivity
+import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.time.Duration.Companion.hours
+
+object UpdateManager {
+    private const val TAG = "CrakeUpdater"
+    const val CURRENT_MILESTONE = 277
+    private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases/latest"
+    private const val CHANNEL_ID = "crake_updates_channel"
+    private const val NOTIFICATION_ID = 27701
+
+    data class ReleaseInfo(
+        val tagName: String,
+        val name: String,
+        val milestone: Int,
+        val changelog: String,
+        val apkDownloadUrl: String,
+        val apkSize: Long,
+        val publishedAt: String,
+    )
+
+    sealed interface UpdateStatus {
+        data object Idle : UpdateStatus
+        data object Checking : UpdateStatus
+        data class UpdateAvailable(val release: ReleaseInfo) : UpdateStatus
+        data class UpToDate(val lastChecked: Long) : UpdateStatus
+        data class Downloading(val progressPercent: Int, val bytesDownloaded: Long, val totalBytes: Long) : UpdateStatus
+        data class ReadyToInstall(val apkFile: File, val release: ReleaseInfo) : UpdateStatus
+        data class Error(val message: String) : UpdateStatus
+    }
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var appContext: Context? = null
+    private val prefs by FlorisPreferenceStore
+
+    private val _status = MutableStateFlow<UpdateStatus>(UpdateStatus.Idle)
+    val status = _status.asStateFlow()
+
+    fun init(context: Context) {
+        appContext = context.applicationContext
+        createNotificationChannel(context)
+        startPeriodicCheckLoop()
+    }
+
+    private fun createNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Crake Keyboard Updates",
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = "Notifications for automatic background keyboard updates"
+            }
+            val nm = context.getSystemService(NotificationManager::class.java)
+            nm?.createNotificationChannel(channel)
+        }
+    }
+
+    private fun startPeriodicCheckLoop() {
+        scope.launch {
+            while (isActive) {
+                if (prefs.updater.autoCheckEnabled.get()) {
+                    val intervalHours = prefs.updater.checkIntervalHours.get().coerceAtLeast(1)
+                    val lastCheckStr = prefs.updater.lastCheckTimestamp.get()
+                    val lastCheck = lastCheckStr.toLongOrNull() ?: 0L
+                    val now = System.currentTimeMillis()
+                    val intervalMs = intervalHours.hours.inWholeMilliseconds
+
+                    if (now - lastCheck >= intervalMs) {
+                        checkForUpdates(silent = true)
+                    }
+                }
+                // Periodic wake every 15 minutes to evaluate hourly gate
+                delay(15 * 60 * 1000L)
+            }
+        }
+    }
+
+    fun parseMilestoneNumber(tagOrName: String): Int {
+        val mMatch = Regex("""(?i)(?:milestone[\s_\-]*|(?:\b|[_\-])m)(\d+)""").find(tagOrName)
+        if (mMatch != null) {
+            return mMatch.groupValues[1].toIntOrNull() ?: 0
+        }
+        val vMatch = Regex("""(?i)(?:^|[^a-z0-9])v(\d{2,4})(?:[^0-9]|$)""").find(tagOrName)
+        if (vMatch != null) {
+            return vMatch.groupValues[1].toIntOrNull() ?: 0
+        }
+        val generalMatch = Regex("""\b(\d{2,4})\b""").find(tagOrName)
+        if (generalMatch != null) {
+            return generalMatch.groupValues[1].toIntOrNull() ?: 0
+        }
+        return 0
+    }
+
+    fun checkForUpdates(silent: Boolean = false) {
+        scope.launch {
+            _status.value = UpdateStatus.Checking
+            val result = fetchLatestRelease()
+            val now = System.currentTimeMillis()
+            prefs.updater.lastCheckTimestamp.set(now.toString())
+
+            result.fold(
+                onSuccess = { release ->
+                    if (release != null && release.milestone > CURRENT_MILESTONE) {
+                        _status.value = UpdateStatus.UpdateAvailable(release)
+                        appContext?.let { ctx ->
+                            notifyUpdateAvailable(ctx, release)
+                        }
+                    } else {
+                        _status.value = UpdateStatus.UpToDate(now)
+                    }
+                },
+                onFailure = { error ->
+                    Log.w(TAG, "Failed to check for updates: ${error.message}")
+                    _status.value = if (silent) UpdateStatus.Idle else UpdateStatus.Error(error.localizedMessage ?: "Network error")
+                }
+            )
+        }
+    }
+
+    private suspend fun fetchLatestRelease(): Result<ReleaseInfo?> = withContext(Dispatchers.IO) {
+        runCatching {
+            val url = URL(GITHUB_REPO_API)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("Accept", "application/vnd.github.v3+json")
+                setRequestProperty("User-Agent", "CrakeKeyboard-Updater")
+            }
+
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                throw IllegalStateException("GitHub API returned HTTP ${connection.responseCode}")
+            }
+
+            val responseBody = connection.inputStream.bufferedReader().use { it.readText() }
+            val json = JSONObject(responseBody)
+
+            val tagName = json.optString("tag_name", "")
+            val name = json.optString("name", tagName)
+            val body = json.optString("body", "")
+            val publishedAt = json.optString("published_at", "")
+            val milestone = parseMilestoneNumber(if (name.isNotBlank()) name else tagName)
+
+            val assets = json.optJSONArray("assets") ?: JSONArray()
+            var apkUrl = ""
+            var apkSize = 0L
+
+            for (i in 0 until assets.length()) {
+                val asset = assets.getJSONObject(i)
+                val assetName = asset.optString("name", "")
+                if (assetName.endsWith(".apk", ignoreCase = true)) {
+                    apkUrl = asset.optString("browser_download_url", "")
+                    apkSize = asset.optLong("size", 0L)
+                    break
+                }
+            }
+
+            if (apkUrl.isEmpty()) {
+                null
+            } else {
+                ReleaseInfo(
+                    tagName = tagName,
+                    name = name,
+                    milestone = milestone,
+                    changelog = body,
+                    apkDownloadUrl = apkUrl,
+                    apkSize = apkSize,
+                    publishedAt = publishedAt,
+                )
+            }
+        }
+    }
+
+    fun downloadAndInstall(context: Context, release: ReleaseInfo) {
+        scope.launch {
+            _status.value = UpdateStatus.Downloading(progressPercent = 0, bytesDownloaded = 0, totalBytes = release.apkSize)
+
+            val downloadResult = downloadApk(context, release)
+            downloadResult.fold(
+                onSuccess = { apkFile ->
+                    _status.value = UpdateStatus.ReadyToInstall(apkFile, release)
+                    promptInstall(context, apkFile)
+                },
+                onFailure = { error ->
+                    _status.value = UpdateStatus.Error("Download failed: ${error.localizedMessage}")
+                }
+            )
+        }
+    }
+
+    private suspend fun downloadApk(context: Context, release: ReleaseInfo): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
+            val targetFile = File(updatesDir, "CrakeKeyboard_M${release.milestone}.apk")
+
+            val url = URL(release.apkDownloadUrl)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15000
+                readTimeout = 30000
+                setRequestProperty("User-Agent", "CrakeKeyboard-Updater")
+                instanceFollowRedirects = true
+            }
+
+            var redirectedConn = connection
+            var redirectCount = 0
+            while (redirectedConn.responseCode in listOf(HttpURLConnection.HTTP_MOVED_PERM, HttpURLConnection.HTTP_MOVED_TEMP, 307, 308) && redirectCount < 5) {
+                val newUrl = redirectedConn.getHeaderField("Location")
+                redirectedConn = (URL(newUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 30000
+                    setRequestProperty("User-Agent", "CrakeKeyboard-Updater")
+                }
+                redirectCount++
+            }
+
+            val totalSize = redirectedConn.contentLengthLong.let { if (it > 0) it else release.apkSize }
+            var downloaded = 0L
+
+            redirectedConn.inputStream.use { input ->
+                FileOutputStream(targetFile).use { output ->
+                    val buffer = ByteArray(32 * 1024)
+                    var bytesRead: Int
+                    var lastReportPercent = 0
+
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        downloaded += bytesRead
+
+                        val percent = if (totalSize > 0) ((downloaded * 100) / totalSize).toInt() else 0
+                        if (percent != lastReportPercent) {
+                            lastReportPercent = percent
+                            _status.value = UpdateStatus.Downloading(percent, downloaded, totalSize)
+                        }
+                    }
+                }
+            }
+            targetFile
+        }
+    }
+
+    fun promptInstall(context: Context, apkFile: File) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(settingsIntent)
+                return
+            }
+
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider.file",
+                apkFile,
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+            }
+            context.startActivity(installIntent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch package installer", e)
+            _status.value = UpdateStatus.Error("Failed to launch installer: ${e.localizedMessage}")
+        }
+    }
+
+    private fun notifyUpdateAvailable(context: Context, release: ReleaseInfo) {
+        try {
+            val intent = Intent(context, FlorisAppActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+
+            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.mipmap.floris_app_icon)
+                .setContentTitle("Crake Update Available (Milestone ${release.milestone})")
+                .setContentText("Tap to review and install the latest keyboard update.")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            val nm = NotificationManagerCompat.from(context)
+            nm.notify(NOTIFICATION_ID, builder.build())
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not post update notification: ${e.message}")
+        }
+    }
+}
