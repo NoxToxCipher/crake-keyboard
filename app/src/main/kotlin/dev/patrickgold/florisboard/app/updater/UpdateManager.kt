@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 340
+    const val CURRENT_MILESTONE = 341
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 34001
-    private const val RESOLVED_NOTIFICATION_ID = 34002
+    private const val NOTIFICATION_ID = 34101
+    private const val RESOLVED_NOTIFICATION_ID = 34102
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            341 -> "Smartbar Compose Recomposition Speed Boost: Immutability contracts on suggestion candidates enable skipping unchanged candidate chips for instantaneous Smartbar redraws."
             340 -> "Zero-Allocation Token Pipeline: Backwards index scanner eliminates heap allocations during typing in long documents for smoother keystroke cadence."
             339 -> "Shift Latency Speed Boost: Memoized vector resource caching (sub-0.1ms shift responses) and mechanical slip typo recovery."
             338 -> "Peregrine Falcon Icon Suite: Brand-new high-res adaptive icon assets, crisp monochrome notification vectors, and dark slate backgrounds."

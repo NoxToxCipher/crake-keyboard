@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.patrickgold.florisboard.ime.clipboard.provider.ClipboardItem
 import dev.patrickgold.florisboard.ime.clipboard.provider.ItemType
@@ -34,6 +35,7 @@ import dev.patrickgold.florisboard.lib.util.NetworkUtils
  * Interface for a candidate item, which is returned by a suggestion provider and used by the UI logic to render
  * the candidate row.
  */
+@Immutable
 interface SuggestionCandidate {
     /**
      * Required primary text of a candidate item, must be non-null and non-blank. The value of this property will
@@ -104,6 +106,7 @@ interface SuggestionCandidate {
  *
  * @see SuggestionCandidate
  */
+@Immutable
 data class WordSuggestionCandidate(
     override val text: CharSequence,
     override val secondaryText: CharSequence? = null,
@@ -124,6 +127,7 @@ data class WordSuggestionCandidate(
  *
  * @see EditorInstance.commitCompletion
  */
+@Immutable
 data class MergedWordSuggestionCandidate(
     override val text: CharSequence,
     override val secondaryText: CharSequence? = null,
@@ -143,6 +147,7 @@ data class MergedWordSuggestionCandidate(
  *
  * @see SuggestionCandidate
  */
+@Immutable
 data class ClipboardSuggestionCandidate(
     val clipboardItem: ClipboardItem,
     override val sourceProvider: SuggestionProvider?,
@@ -179,6 +184,7 @@ data class ClipboardSuggestionCandidate(
  *
  * @see SuggestionCandidate
  */
+@Immutable
 data class EmojiSuggestionCandidate(
     val emoji: Emoji,
     val showName: Boolean,
