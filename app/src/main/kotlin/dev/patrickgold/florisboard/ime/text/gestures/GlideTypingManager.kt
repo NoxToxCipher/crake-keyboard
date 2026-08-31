@@ -38,7 +38,7 @@ import org.florisboard.libnative.FlorisNative
  * Links [GlideTypingGesture.Detector] with the native Safe Rust DTW
  * trajectory-matching engine, which is the single glide classifier.
  */
-class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
+class GlideTypingManager(private val context: Context) : GlideTypingGesture.Listener {
     companion object {
         private const val MAX_SUGGESTION_COUNT = 8
 
@@ -242,11 +242,45 @@ class GlideTypingManager(context: Context) : GlideTypingGesture.Listener {
                             "commit prev=\"$prevWordForTrace\" top=$top n=${pts.size}"
                         )
                     }
+                    var pathDistPx = 0.0f
+                    var inflections = 0
+                    for (i in 0 until pts.size - 1) {
+                        val dx = pts[i + 1].x - pts[i].x
+                        val dy = pts[i + 1].y - pts[i].y
+                        pathDistPx += kotlin.math.sqrt(dx * dx + dy * dy)
+                        if (i >= 1 && i < pts.size - 1) {
+                            val p0 = pts[i - 1]
+                            val p1 = pts[i]
+                            val p2 = pts[i + 1]
+                            val v1x = p1.x - p0.x
+                            val v1y = p1.y - p0.y
+                            val v2x = p2.x - p1.x
+                            val v2y = p2.y - p1.y
+                            val dot = v1x * v2x + v1y * v2y
+                            val mag1 = kotlin.math.sqrt(v1x * v1x + v1y * v1y)
+                            val mag2 = kotlin.math.sqrt(v2x * v2x + v2y * v2y)
+                            if (mag1 > 1f && mag2 > 1f) {
+                                val cosTheta = (dot / (mag1 * mag2)).coerceIn(-1.0f, 1.0f)
+                                if (cosTheta < 0.707f) { // Turn angle > 45 degrees
+                                    inflections++
+                                }
+                            }
+                        }
+                    }
+                    val density = context.resources.displayMetrics.density
+                    val distanceDp = (pathDistPx / density).coerceAtLeast(0f)
+                    val velocityDpPerSec = if (strokeDurationMs > 0L) (distanceDp / strokeDurationMs) * 1000f else 0.0f
+                    val curvatureScore = if (distanceDp > 0f) (inflections * 100f / distanceDp) else 0.0f
+
                     dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logGlideStroke(
                         pointCount = pts.size,
                         durationMs = strokeDurationMs,
                         chosenWord = suggestions.firstOrNull(),
                         topCandidates = suggestions,
+                        distanceDp = distanceDp,
+                        velocityDpPerSec = velocityDpPerSec,
+                        inflectionCount = inflections,
+                        curvatureScore = curvatureScore,
                         contextBefore = prevWordForTrace,
                         keyVariation = keyboardManager.activeState.keyVariation,
                         packageName = editorInstance.activeInfo.packageName,

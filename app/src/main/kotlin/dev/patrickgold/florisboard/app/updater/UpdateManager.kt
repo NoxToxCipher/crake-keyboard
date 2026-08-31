@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 324
+    const val CURRENT_MILESTONE = 325
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 32401
-    private const val RESOLVED_NOTIFICATION_ID = 32402
+    private const val NOTIFICATION_ID = 32501
+    private const val RESOLVED_NOTIFICATION_ID = 32502
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            325 -> "Completed Keyboard Roadmap Phases 4-6: Neural Glide Kinematics (curvature & inflection tracking), Touch-to-Visual Frame Pacing latency telemetry, and Air-Gapped Vault TTL zeroization."
             324 -> "Implemented Phase 3 Autocorrect False-Positive Auto-Tuner: progressive confidence dampening on backspaced corrections, zero-allocation rejection suppression, and flight recorder revert logging."
             323 -> "Implemented Phase 2 Dynamic Bivariate Hitbox Warping: anisotropic contact patch apex tilt correction, thumb reach scaling, and Gaussian Mahalanobis dispersion weighting to cut boundary mis-taps."
             322 -> "Expanded Phase 1 Kinematic Telemetry: added elliptical touchMajor/touchMinor geometry, contact pressure, key dwell time, autocorrect false-positive undo tracker, and suggestion slot metrics."

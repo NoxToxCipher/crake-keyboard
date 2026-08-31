@@ -8843,6 +8843,7 @@ private class TextKeyboardLayoutController(
             val offX = (touchX - cx) / density
             val offY = (touchY - cy) / density
             val label = key.computedData.asString(isForDisplay = true).ifEmpty { key.computedData.code.toString() }
+            val latency = (android.os.SystemClock.uptimeMillis() - event.eventTime).coerceIn(0L, 5000L)
             dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
                 keyLabel = label,
                 spatialOffsetX = offX,
@@ -8851,6 +8852,7 @@ private class TextKeyboardLayoutController(
                 touchMinor = touchMinor,
                 pressure = pressure,
                 dwellTimeMs = dwellTime,
+                latencyMs = latency,
                 contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
                 keyVariation = keyboardManager.activeState.keyVariation,
                 packageName = editorInstance.activeInfo.packageName,

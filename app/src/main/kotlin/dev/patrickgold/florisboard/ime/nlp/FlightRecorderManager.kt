@@ -68,12 +68,18 @@ object FlightRecorderManager {
         val durationMs: Long,
         val distanceDp: Float = 0.0f,
         val velocityDpPerSec: Float = 0.0f,
+        val inflectionCount: Int = 0,
+        val curvatureScore: Float = 0.0f,
+        val logitMargin: Float? = null,
     ) {
         fun toJsonString(): String = buildString {
             append("{\"pointCount\":").append(pointCount)
             append(",\"durationMs\":").append(durationMs)
-            if (distanceDp > 0.0f) append(",\"distanceDp\":").append(distanceDp)
-            if (velocityDpPerSec > 0.0f) append(",\"velocity\":").append(velocityDpPerSec)
+            if (distanceDp > 0.0f && distanceDp.isFinite()) append(String.format(Locale.US, ",\"distanceDp\":%.1f", distanceDp))
+            if (velocityDpPerSec > 0.0f && velocityDpPerSec.isFinite()) append(String.format(Locale.US, ",\"velocity\":%.1f", velocityDpPerSec))
+            if (inflectionCount > 0) append(",\"inflections\":").append(inflectionCount)
+            if (curvatureScore > 0.0f && curvatureScore.isFinite()) append(String.format(Locale.US, ",\"curvature\":%.2f", curvatureScore))
+            logitMargin?.let { if (it.isFinite()) append(String.format(Locale.US, ",\"logitMargin\":%.2f", it)) }
             append("}")
         }
     }
@@ -92,6 +98,7 @@ object FlightRecorderManager {
         val touchMinor: Float? = null,
         val pressure: Float? = null,
         val dwellTimeMs: Long? = null,
+        val latencyMs: Long? = null,
         val autocorrectUndo: Boolean = false,
         val suggestionSlot: Int? = null,
         val trieSearchDurationUs: Long? = null,
@@ -129,6 +136,7 @@ object FlightRecorderManager {
             touchMinor?.let { append(String.format(Locale.US, ",\"touchMinor\":%.1f", it)) }
             pressure?.let { append(String.format(Locale.US, ",\"pressure\":%.2f", it)) }
             dwellTimeMs?.let { append(",\"dwellTimeMs\":").append(it) }
+            latencyMs?.let { append(",\"latencyMs\":").append(it) }
             editDistance?.let { append(",\"editDistance\":").append(it) }
             contextBefore?.let { append(",\"contextBefore\":\"").append(escapeJson(it)).append("\"") }
             packageName?.let { append(",\"packageName\":\"").append(escapeJson(it)).append("\"") }
@@ -211,6 +219,7 @@ object FlightRecorderManager {
         touchMinor: Float? = null,
         pressure: Float? = null,
         dwellTimeMs: Long? = null,
+        latencyMs: Long? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
@@ -223,6 +232,7 @@ object FlightRecorderManager {
         val validTouchMinor = touchMinor?.takeIf { it.isFinite() && it > 0f }
         val validPressure = pressure?.takeIf { it.isFinite() && it >= 0f }
         val validDwell = dwellTimeMs?.coerceIn(0L, 10000L)
+        val validLatency = latencyMs?.coerceIn(0L, 10000L)
 
         val record = Record(
             mode = InputMode.TYPING,
@@ -233,6 +243,7 @@ object FlightRecorderManager {
             touchMinor = validTouchMinor,
             pressure = validPressure,
             dwellTimeMs = validDwell,
+            latencyMs = validLatency,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
@@ -295,6 +306,11 @@ object FlightRecorderManager {
         durationMs: Long,
         chosenWord: String?,
         topCandidates: List<String>,
+        distanceDp: Float = 0.0f,
+        velocityDpPerSec: Float = 0.0f,
+        inflectionCount: Int = 0,
+        curvatureScore: Float = 0.0f,
+        logitMargin: Float? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
@@ -306,7 +322,15 @@ object FlightRecorderManager {
             rawInput = chosenWord,
             correctedTo = chosenWord,
             candidates = if (prefs.devtools.flightRecorderIncludeSuggestions.get()) topCandidates.take(8) else null,
-            gestureMetrics = GestureMetrics(pointCount, durationMs),
+            gestureMetrics = GestureMetrics(
+                pointCount = pointCount,
+                durationMs = durationMs,
+                distanceDp = distanceDp,
+                velocityDpPerSec = velocityDpPerSec,
+                inflectionCount = inflectionCount,
+                curvatureScore = curvatureScore,
+                logitMargin = logitMargin,
+            ),
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
