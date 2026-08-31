@@ -8838,10 +8838,18 @@ private class TextKeyboardLayoutController(
             val offX = (touchX - cx) / density
             val offY = (touchY - cy) / density
             val label = key.computedData.asString(isForDisplay = true).ifEmpty { key.computedData.code.toString() }
+            val touchMajor = try { event.getTouchMajor(pointer.index) } catch (_: Exception) { null }
+            val touchMinor = try { event.getTouchMinor(pointer.index) } catch (_: Exception) { null }
+            val pressure = try { event.getPressure(pointer.index) } catch (_: Exception) { null }
+            val dwellTime = (event.eventTime - event.downTime).coerceAtLeast(0)
             dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
                 keyLabel = label,
                 spatialOffsetX = offX,
                 spatialOffsetY = offY,
+                touchMajor = touchMajor,
+                touchMinor = touchMinor,
+                pressure = pressure,
+                dwellTimeMs = dwellTime,
                 contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
                 keyVariation = keyboardManager.activeState.keyVariation,
                 packageName = editorInstance.activeInfo.packageName,

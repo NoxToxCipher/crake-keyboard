@@ -96,4 +96,43 @@ class FlightRecorderTest : FunSpec({
         jsonStr shouldContain "\"rawInput\":\"dorrwct\""
         jsonStr shouldContain "\"intendedWord\":\"correct\""
     }
+
+    test("FlightRecorder serializes kinematic touch geometry and dwell time metrics") {
+        val record = FlightRecorderManager.Record(
+            mode = FlightRecorderManager.InputMode.TYPING,
+            action = FlightRecorderManager.ActionType.KEY_TAP,
+            rawInput = "c",
+            spatialOffset = "-3.5,12.2",
+            touchMajor = 18.5f,
+            touchMinor = 14.0f,
+            pressure = 0.85f,
+            dwellTimeMs = 45L,
+        )
+
+        val jsonStr = record.toJsonString()
+        jsonStr shouldContain "\"rawInput\":\"c\""
+        jsonStr shouldContain "\"spatialOffset\":\"-3.5,12.2\""
+        jsonStr shouldContain "\"touchMajor\":18.5"
+        jsonStr shouldContain "\"touchMinor\":14.0"
+        jsonStr shouldContain "\"pressure\":0.85"
+        jsonStr shouldContain "\"dwellTimeMs\":45"
+    }
+
+    test("FlightRecorder serializes autocorrectUndo and suggestionSlot metrics") {
+        val record = FlightRecorderManager.Record(
+            mode = FlightRecorderManager.InputMode.TYPING,
+            action = FlightRecorderManager.ActionType.SUGGESTION_PICKED,
+            rawInput = "teh",
+            correctedTo = "the",
+            suggestionSlot = 0,
+            trieSearchDurationUs = 240L,
+            autocorrectUndo = true,
+        )
+
+        val jsonStr = record.toJsonString()
+        jsonStr shouldContain "\"action\":\"SUGGESTION_PICKED\""
+        jsonStr shouldContain "\"suggestionSlot\":0"
+        jsonStr shouldContain "\"trieSearchDurationUs\":240"
+        jsonStr shouldContain "\"autocorrectUndo\":true"
+    }
 })

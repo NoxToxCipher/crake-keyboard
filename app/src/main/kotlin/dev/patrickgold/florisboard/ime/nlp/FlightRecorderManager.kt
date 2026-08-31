@@ -88,6 +88,13 @@ object FlightRecorderManager {
         val candidates: List<String>? = null,
         val gestureMetrics: GestureMetrics? = null,
         val spatialOffset: String? = null,
+        val touchMajor: Float? = null,
+        val touchMinor: Float? = null,
+        val pressure: Float? = null,
+        val dwellTimeMs: Long? = null,
+        val autocorrectUndo: Boolean = false,
+        val suggestionSlot: Int? = null,
+        val trieSearchDurationUs: Long? = null,
         val editDistance: Int? = null,
         val contextBefore: String? = null,
         val packageName: String? = null,
@@ -103,6 +110,9 @@ object FlightRecorderManager {
             correctedTo?.let { append(",\"correctedTo\":\"").append(escapeJson(it)).append("\"") }
             intendedWord?.let { append(",\"intendedWord\":\"").append(escapeJson(it)).append("\"") }
             if (isTypo) append(",\"isTypo\":true")
+            if (autocorrectUndo) append(",\"autocorrectUndo\":true")
+            suggestionSlot?.let { append(",\"suggestionSlot\":").append(it) }
+            trieSearchDurationUs?.let { append(",\"trieSearchDurationUs\":").append(it) }
             candidates?.let { list ->
                 append(",\"candidates\":[")
                 list.forEachIndexed { i, cand ->
@@ -115,6 +125,10 @@ object FlightRecorderManager {
                 append(",\"gestureMetrics\":").append(it.toJsonString())
             }
             spatialOffset?.let { append(",\"spatialOffset\":\"").append(escapeJson(it)).append("\"") }
+            touchMajor?.let { append(String.format(Locale.US, ",\"touchMajor\":%.1f", it)) }
+            touchMinor?.let { append(String.format(Locale.US, ",\"touchMinor\":%.1f", it)) }
+            pressure?.let { append(String.format(Locale.US, ",\"pressure\":%.2f", it)) }
+            dwellTimeMs?.let { append(",\"dwellTimeMs\":").append(it) }
             editDistance?.let { append(",\"editDistance\":").append(it) }
             contextBefore?.let { append(",\"contextBefore\":\"").append(escapeJson(it)).append("\"") }
             packageName?.let { append(",\"packageName\":\"").append(escapeJson(it)).append("\"") }
@@ -142,6 +156,8 @@ object FlightRecorderManager {
     private var lastCommittedMode: InputMode = InputMode.TYPING
     @Volatile
     private var lastCommittedTime: Long = 0L
+    @Volatile
+    private var lastCommittedAction: ActionType? = null
     @Volatile
     private var lastRawInput: String? = null
     @Volatile
@@ -191,6 +207,10 @@ object FlightRecorderManager {
         keyLabel: String,
         spatialOffsetX: Float? = null,
         spatialOffsetY: Float? = null,
+        touchMajor: Float? = null,
+        touchMinor: Float? = null,
+        pressure: Float? = null,
+        dwellTimeMs: Long? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
@@ -204,6 +224,10 @@ object FlightRecorderManager {
             action = ActionType.KEY_TAP,
             rawInput = keyLabel,
             spatialOffset = offsetStr,
+            touchMajor = touchMajor,
+            touchMinor = touchMinor,
+            pressure = pressure,
+            dwellTimeMs = dwellTimeMs,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
@@ -218,13 +242,22 @@ object FlightRecorderManager {
         packageName: String? = null,
     ) {
         if (!isLoggingAllowed(keyVariation, packageName)) return
+        val now = System.currentTimeMillis()
+        val isUndo = lastCommittedAction == ActionType.AUTOCORRECTION && (now - lastCommittedTime <= 1500L)
+        val action = if (isUndo) ActionType.MANUAL_REVERT else ActionType.BACKSPACE_DELETE
         val record = Record(
             mode = InputMode.TYPING,
-            action = ActionType.BACKSPACE_DELETE,
-            rawInput = deletedChar,
+            action = action,
+            rawInput = if (isUndo) lastCommittedWord ?: deletedChar else deletedChar,
+            intendedWord = if (isUndo) lastRawInput else null,
+            autocorrectUndo = isUndo,
+            candidates = if (isUndo) lastCandidates.take(8) else null,
             contextBefore = sanitizePii((contextBefore ?: remainingPrefix)?.takeLast(32)),
             packageName = packageName,
         )
+        if (isUndo) {
+            lastCommittedAction = null
+        }
         recordChannel.trySend(record)
     }
 
@@ -275,6 +308,7 @@ object FlightRecorderManager {
         lastCommittedWord = chosenWord
         lastCommittedMode = InputMode.GLIDING
         lastCommittedTime = System.currentTimeMillis()
+        lastCommittedAction = ActionType.GLIDE_STROKE
         lastCandidates = topCandidates
         recordChannel.trySend(record)
     }
@@ -314,6 +348,7 @@ object FlightRecorderManager {
         lastCommittedWord = committedWord
         lastCommittedMode = mode
         lastCommittedTime = System.currentTimeMillis()
+        lastCommittedAction = action
         lastCandidates = topCandidates
 
         recordChannel.trySend(record)
@@ -333,6 +368,7 @@ object FlightRecorderManager {
             rawInput = sanitizePii(deletedWord),
             intendedWord = sanitizePii(retypedWord),
             candidates = lastCandidates.take(8),
+            autocorrectUndo = true,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
@@ -344,6 +380,8 @@ object FlightRecorderManager {
         selectedWord: String,
         allCandidates: List<String>,
         mode: InputMode = InputMode.TYPING,
+        slotIndex: Int? = null,
+        trieSearchDurationUs: Long? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
@@ -355,12 +393,15 @@ object FlightRecorderManager {
             rawInput = sanitizePii(rawPrefix),
             correctedTo = sanitizePii(selectedWord),
             candidates = allCandidates.take(8),
+            suggestionSlot = slotIndex,
+            trieSearchDurationUs = trieSearchDurationUs,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
         lastCommittedWord = selectedWord
         lastCommittedMode = mode
         lastCommittedTime = System.currentTimeMillis()
+        lastCommittedAction = ActionType.SUGGESTION_PICKED
         recordChannel.trySend(record)
     }
 

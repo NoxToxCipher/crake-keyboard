@@ -1,10 +1,10 @@
 {
-  "milestone": 321,
-  "tagName": "v0.321.0",
-  "name": "Milestone 321 (Encrypted Clipboard Vault Hero Studio Polish)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.321.0/CrakeKeyboard_Milestone_321.apk",
+  "milestone": 322,
+  "tagName": "v0.322.0",
+  "name": "Milestone 322 (Phase 1 Kinematic Telemetry Expansion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.322.0/CrakeKeyboard_Milestone_322.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 321: Added Zero-Knowledge Encrypted Vault Hero Banner to Clipboard Settings with ChaCha20-Poly1305 security telemetry chips and auto-burn status.",
+  "changelog": "Milestone 322: Expanded Phase 1 Kinematic Telemetry (elliptical touchMajor/touchMinor geometry, contact pressure, key dwell time, autocorrect false-positive undo detection, and suggestion slot metrics).",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -42,6 +42,7 @@
     "318": "Expanded Air-Gapped Crypto Snippets (16 chains + Solana/Tron/EVM) with sleek visual overhaul, search bar, and one-tap clipboard copy; coupled Easter Egg registry bounds strictly to 36 valid entries.",
     "319": "Refined Snippets Studio: single-line balanced templates (!email, !addr, !shrug), centered cyber dividers, core 4-chain focus with smooth edge-faded horizontal scrolling.",
     "320": "Added 1D-CNN Neural Glide & Trackpad Engine Hero Banner to Gestures Settings with real-time status badges and 6-channel kinematic telemetry indicators.",
-    "321": "Added Zero-Knowledge Encrypted Vault Hero Banner to Clipboard Settings with ChaCha20-Poly1305 security telemetry chips and auto-burn status."
+    "321": "Added Zero-Knowledge Encrypted Vault Hero Banner to Clipboard Settings with ChaCha20-Poly1305 security telemetry chips and auto-burn status.",
+    "322": "Expanded Phase 1 Kinematic Telemetry: added elliptical touchMajor/touchMinor geometry, contact pressure, key dwell time, autocorrect false-positive undo tracker, and suggestion slot metrics."
   }
 }
