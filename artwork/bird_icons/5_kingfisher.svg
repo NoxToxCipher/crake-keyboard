@@ -1,0 +1,9 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="115" fill="#0F1418"/>
+  <rect x="4" y="4" width="504" height="504" rx="111" fill="none" stroke="#1D262F" stroke-width="4"/>
+  <g transform="translate(68, 68) scale(1.46)">
+    <!-- Darting Dagger Beak & Head -->
+    <path d="M12 242 L88 142 C92 136 102 132 112 132 C126 132 138 140 144 154 L236 78 C218 108 198 136 172 160 C194 158 216 158 238 162 C210 184 178 200 142 208 C160 196 172 178 174 158 L124 186 C102 198 82 216 66 238 Z" fill="#2DD4BF"/>
+    <path d="M144 154 L224 88 C206 116 186 142 162 164 Z" fill="#14B8A6" opacity="0.9"/>
+  </g>
+</svg>

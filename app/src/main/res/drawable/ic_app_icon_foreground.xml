@@ -5,45 +5,35 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-  <!-- Cyber Shield & Keyboard Matrix Hexagon -->
-  <path
-      android:pathData="M 54,18 L 84,34 L 84,74 L 54,90 L 24,74 L 24,34 Z"
-      android:strokeWidth="2.5"
-      android:strokeLineCap="round"
-      android:strokeLineJoin="round">
-    <aapt:attr name="android:strokeColor">
-      <gradient
-          android:startX="24"
-          android:startY="18"
-          android:endX="84"
-          android:endY="90"
-          android:type="linear">
-        <item android:offset="0.0" android:color="#FF00E5FF" />
-        <item android:offset="0.5" android:color="#FF00E5A3" />
-        <item android:offset="1.0" android:color="#FF38EF7D" />
-      </gradient>
-    </aapt:attr>
-  </path>
+  <group
+      android:pivotX="54"
+      android:pivotY="54">
+    <!-- Peregrine Falcon Body and Wings -->
+    <path
+        android:pathData="M 24,32 L 68,68 L 44,74 L 20,86 L 48,88 L 78,98 C 88,102 96,98 100,90 C 102,86 102,82 98,78 L 82,58 C 76,50 70,38 68,26 L 56,22 L 58,44 L 38,24 Z"
+        android:strokeLineJoin="round">
+      <aapt:attr name="android:fillColor">
+        <gradient
+            android:startX="20"
+            android:startY="22"
+            android:endX="100"
+            android:endY="98"
+            android:type="linear">
+          <item android:offset="0.0" android:color="#FF2DD4BF" />
+          <item android:offset="0.6" android:color="#FF14B8A6" />
+          <item android:offset="1.0" android:color="#FF0D9488" />
+        </gradient>
+      </aapt:attr>
+    </path>
 
-  <!-- High-Tech Neon Crake Wing & Flight Crest -->
-  <path
-      android:pathData="M 36,44 C 44,36 60,34 72,42 C 64,46 54,49 46,55 C 56,53 66,54 74,60 C 64,63 56,67 48,73 C 58,70 68,71 76,77 L 34,77 C 32,65 33,53 36,44 Z">
-    <aapt:attr name="android:fillColor">
-      <gradient
-          android:startX="32"
-          android:startY="34"
-          android:endX="76"
-          android:endY="77"
-          android:type="linear">
-        <item android:offset="0.0" android:color="#FF00F0FF" />
-        <item android:offset="0.5" android:color="#FF00E5A3" />
-        <item android:offset="1.0" android:color="#FF00B4D8" />
-      </gradient>
-    </aapt:attr>
-  </path>
+    <!-- Secondary Aerodynamic Wing Highlight -->
+    <path
+        android:pathData="M 68,26 L 82,58 C 76,50 70,38 68,26 Z"
+        android:fillColor="#FF5EEAD4" />
 
-  <!-- Precision Cyber Eye Sensor -->
-  <path
-      android:pathData="M 68,41 A 2.2,2.2 0 1,1 68,41.01 Z"
-      android:fillColor="#FFFFFFFF" />
+    <!-- Piercing Falcon Eye Cutout -->
+    <path
+        android:pathData="M 90,82 A 2.2,2.2 0 1,1 90,82.01 Z"
+        android:fillColor="#FF0F1418" />
+  </group>
 </vector>

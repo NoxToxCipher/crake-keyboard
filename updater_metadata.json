@@ -1,11 +1,12 @@
 {
-  "milestone": 337,
-  "tagName": "v0.337.0",
-  "name": "Milestone 337 (Twin Rams Keyboard Fret Easter Egg)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.337.0/CrakeKeyboard_Milestone_337.apk",
-  "apkSize": 56834190,
-  "changelog": "Milestone 337: Added Twin Rams Easter Egg: cute mini bighorn sheep charges across top fret (QWERTY), followed 5 seconds later by a mini medieval battering ram rolling across the second fret (ASDFG).",
+  "milestone": 338,
+  "tagName": "v0.338.0",
+  "name": "Milestone 338 (Peregrine Falcon Artwork & Notification Icon Suite)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.338.0/CrakeKeyboard_Milestone_338.apk",
+  "apkSize": 56891230,
+  "changelog": "Milestone 338: Deployed brand-new Peregrine Falcon adaptive icon suite, dark slate backgrounds, and crisp monochrome notification vector drawables across all densities.",
   "history": {
+    "338": "Deployed brand-new Peregrine Falcon adaptive icon suite, dark slate backgrounds, and crisp monochrome notification vector drawables across all densities.",
     "337": "Twin Rams Easter Egg: cute mini bighorn sheep charges across top fret (QWERTY), followed 5 seconds later by a mini medieval battering ram rolling across the second fret (ASDFG).",
     "336": "Decoupled global tester name fallback so individual testers maintain their own user accounts without defaulting to Daya.",
     "335": "Adaptive Biometric Hitbox Engine (online Gaussian centroid tuning from contact angle & sub-pixel offsets), Cognitive Smartbar Prioritizer (perception-latency candidate arrangement), and DevTools Biometric Drift Dashboard.",

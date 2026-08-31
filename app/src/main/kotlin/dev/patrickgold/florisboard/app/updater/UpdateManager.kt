@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 337
+    const val CURRENT_MILESTONE = 338
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 33701
-    private const val RESOLVED_NOTIFICATION_ID = 33702
+    private const val NOTIFICATION_ID = 33801
+    private const val RESOLVED_NOTIFICATION_ID = 33802
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            338 -> "Peregrine Falcon Icon Suite: Brand-new high-res adaptive icon assets, crisp monochrome notification vectors, and dark slate backgrounds."
             337 -> "Twin Rams Easter Egg: Mini bighorn sheep and medieval battering ram 2-stage keyboard fret charge animation."
             336 -> "Uncoupled default tester name: removed global 'Daya' fallback so testers (Charlton, Daya, etc.) maintain their own individual user account names."
             335 -> "Adaptive Biometric Hitbox Engine: online Gaussian centroid tuning from contact angle & sub-pixel offsets, and Cognitive Smartbar Prioritizer."
@@ -525,14 +526,14 @@ object UpdateManager {
                 .bigText("✨ Milestone ${release.milestone} is now available!$versionNote\n\n$cumulativeChangelog\n\nTap to install instantly.")
 
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.floris_app_icon)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setColor(0xFF00E5FF.toInt())
                 .setContentTitle("✨ Crake Milestone ${release.milestone} Ready")
                 .setContentText("Milestone ${release.milestone} update is ready to install • Tap to review")
                 .setStyle(bigTextStyle)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .addAction(R.mipmap.floris_app_icon, "Install Update", pendingIntent)
+                .addAction(R.drawable.ic_notification, "Install Update", pendingIntent)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
 
@@ -567,7 +568,7 @@ object UpdateManager {
             )
 
             val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(R.mipmap.floris_app_icon)
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("Milestone ${release.milestone} Ready to Install")
                 .setContentText("Update downloaded automatically. Tap to install!")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -614,7 +615,7 @@ object UpdateManager {
                 if (addressed.isNotEmpty()) {
                     val resolvedTitle = addressed.first()
                     val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-                        .setSmallIcon(R.mipmap.floris_app_icon)
+                        .setSmallIcon(R.drawable.ic_notification)
                         .setContentTitle("🎉 Crake Fix Deployed (Milestone $CURRENT_MILESTONE)")
                         .setContentText("Your request '$resolvedTitle' has been implemented!")
                         .setPriority(NotificationCompat.PRIORITY_DEFAULT)

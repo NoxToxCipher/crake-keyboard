@@ -1,0 +1,9 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="115" fill="#0F1418"/>
+  <rect x="4" y="4" width="504" height="504" rx="111" fill="none" stroke="#1D262F" stroke-width="4"/>
+  <g transform="translate(64, 64) scale(1.50)">
+    <!-- Raven Body & Feathers -->
+    <path d="M42 46 C74 72 108 108 126 142 C154 132 186 120 216 112 C204 126 186 138 168 148 C188 152 208 156 226 160 C210 170 190 176 172 180 C156 208 128 228 92 238 C112 216 122 192 118 168 C96 174 74 184 52 198 C64 172 82 148 102 128 C82 124 62 118 42 106 C58 92 78 82 98 74 Z" fill="#2DD4BF"/>
+    <path d="M126 142 C150 148 174 154 198 162 C184 170 168 174 152 178 C138 198 116 212 88 220 C102 202 110 182 106 162 Z" fill="#14B8A6" opacity="0.85"/>
+  </g>
+</svg>

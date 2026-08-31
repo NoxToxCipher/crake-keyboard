@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="115" fill="#0F1418"/>
+  <rect x="4" y="4" width="504" height="504" rx="111" fill="none" stroke="#1D262F" stroke-width="4"/>
+  <g transform="translate(68, 70) scale(1.48)">
+    <!-- Primary Crescent Wing & Body -->
+    <path d="M12 48 C68 42 142 68 194 122 C214 142 228 160 236 172 C222 164 204 158 184 156 C148 188 108 214 48 226 C76 198 94 168 96 138 C68 142 42 152 16 168 C34 136 56 108 86 86 C54 84 28 72 12 48 Z" fill="#2DD4BF"/>
+    <!-- Secondary Wing Crescent -->
+    <path d="M112 186 C134 148 152 108 166 62 C152 92 136 122 116 148 C102 166 88 182 72 196 Z" fill="#14B8A6" opacity="0.9"/>
+  </g>
+</svg>
