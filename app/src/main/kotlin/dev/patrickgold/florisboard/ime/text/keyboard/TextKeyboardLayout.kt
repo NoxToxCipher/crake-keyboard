@@ -8597,6 +8597,7 @@ private class TextKeyboardLayoutController(
     )
     var activeCatapult by mutableStateOf<CatapultEffect?>(null)
     var currentFlickPredictions: Map<Char, String> = emptyMap()
+    private var lastKeyUpTimestamp: Long = 0L
 
     lateinit var keyboard: TextKeyboard
     var size = Size.Zero
@@ -8756,8 +8757,10 @@ private class TextKeyboardLayoutController(
         val touchY = event.getY(pointer.index)
         val touchMajor = try { event.getTouchMajor(pointer.index) } catch (_: Exception) { null }
         val touchMinor = try { event.getTouchMinor(pointer.index) } catch (_: Exception) { null }
+        val touchOrientation = try { event.getOrientation(pointer.index) } catch (_: Exception) { null }
         val pressure = try { event.getPressure(pointer.index) } catch (_: Exception) { null }
         val dwellTime = (event.eventTime - event.downTime).coerceAtLeast(0)
+        val flightTime = if (lastKeyUpTimestamp > 0L) (event.eventTime - lastKeyUpTimestamp).coerceIn(0L, 5000L) else null
 
         val key = if (prefs.keyboard.adaptiveHitboxExpansion.get() && keyboard.mode == KeyboardMode.CHARACTERS) {
             val activeContent = editorInstance.activeContent
@@ -8851,9 +8854,11 @@ private class TextKeyboardLayoutController(
                 spatialOffsetY = offY,
                 touchMajor = touchMajor,
                 touchMinor = touchMinor,
+                touchOrientation = touchOrientation,
                 pressure = pressure,
                 dwellTimeMs = dwellTime,
                 latencyMs = latency,
+                interKeyFlightTimeMs = flightTime,
                 contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
                 keyVariation = keyboardManager.activeState.keyVariation,
                 packageName = editorInstance.activeInfo.packageName,
@@ -8912,6 +8917,7 @@ private class TextKeyboardLayoutController(
 
     private fun onTouchUpInternal(event: MotionEvent, pointer: TouchPointer) {
         flogDebug(LogTopic.TEXT_KEYBOARD_VIEW) { "pointer=$pointer" }
+        lastKeyUpTimestamp = event.eventTime
         pointer.pressedKeyInfo?.cancelJobs()
         pointer.pressedKeyInfo = null
 

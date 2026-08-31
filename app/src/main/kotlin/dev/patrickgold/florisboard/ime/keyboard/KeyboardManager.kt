@@ -289,7 +289,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    fun commitCandidate(candidate: SuggestionCandidate, withSpace: Boolean = false) {
+    fun commitCandidate(candidate: SuggestionCandidate, withSpace: Boolean = false, slotIndex: Int? = null) {
         // In incognito mode nothing may be learned from what the user types:
         // word acceptance feeds the native trie and emoji acceptance persists
         // usage history, so both are skipped. Clipboard candidates still
@@ -303,11 +303,31 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         val rawBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }.toString()
         val committedText = candidate.text.toString()
         val isAutocorrect = rawBefore.isNotBlank() && rawBefore != committedText
+        val allCands = nlpManager.activeCandidates.map { it.text.toString() }
+        val now = System.currentTimeMillis()
+        val presentedTime = nlpManager.candidatesPresentedTime
+        val dwellMs = if (presentedTime > 0L) (now - presentedTime).coerceIn(0L, 30000L) else null
+        val effSlot = slotIndex ?: nlpManager.activeCandidates.indexOfFirst { it.text == candidate.text }.takeIf { it >= 0 }
+
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logSuggestionPicked(
+            rawPrefix = rawBefore,
+            selectedWord = committedText,
+            allCandidates = allCands,
+            mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
+            slotIndex = effSlot,
+            stripDwellMs = dwellMs,
+            totalCandidates = allCands.size,
+            isFlickPrediction = false,
+            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            keyVariation = activeState.keyVariation,
+            packageName = editorInstance.activeInfo.packageName,
+        )
+
         dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logWordCommitted(
             rawInput = rawBefore,
             committedWord = committedText,
             mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
-            topCandidates = nlpManager.activeCandidates.map { it.text.toString() },
+            topCandidates = allCands,
             isAutocorrected = isAutocorrect,
             isKnownWord = true,
             contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
@@ -326,7 +346,21 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     fun commitFlickPrediction(word: String) {
-        editorInstance.commitFlickPrediction(fixCase(word))
+        val fixed = fixCase(word)
+        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logSuggestionPicked(
+            rawPrefix = "",
+            selectedWord = fixed,
+            allCandidates = listOf(fixed),
+            mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
+            slotIndex = 0,
+            stripDwellMs = null,
+            totalCandidates = 1,
+            isFlickPrediction = true,
+            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            keyVariation = activeState.keyVariation,
+            packageName = editorInstance.activeInfo.packageName,
+        )
+        editorInstance.commitFlickPrediction(fixed)
     }
 
     fun commitGesture(word: String) {

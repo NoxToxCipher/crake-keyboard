@@ -135,4 +135,53 @@ class FlightRecorderTest : FunSpec({
         jsonStr shouldContain "\"trieSearchDurationUs\":240"
         jsonStr shouldContain "\"autocorrectUndo\":true"
     }
+
+    test("FlightRecorder serializes biometric touchOrientation and interKeyFlightTimeMs") {
+        val record = FlightRecorderManager.Record(
+            mode = FlightRecorderManager.InputMode.TYPING,
+            action = FlightRecorderManager.ActionType.KEY_TAP,
+            rawInput = "y",
+            spatialOffset = "4.2,-1.8",
+            touchMajor = 22.0f,
+            touchMinor = 15.5f,
+            touchOrientation = 0.45f,
+            dwellTimeMs = 52L,
+            interKeyFlightTimeMs = 135L,
+        )
+
+        val jsonStr = record.toJsonString()
+        jsonStr shouldContain "\"rawInput\":\"y\""
+        jsonStr shouldContain "\"spatialOffset\":\"4.2,-1.8\""
+        jsonStr shouldContain "\"touchOrientation\":0.45"
+        jsonStr shouldContain "\"flightTimeMs\":135"
+        jsonStr shouldContain "\"dwellTimeMs\":52"
+    }
+
+    test("FlightRecorder serializes Smartbar perception metrics and flick predictions") {
+        val record = FlightRecorderManager.Record(
+            mode = FlightRecorderManager.InputMode.TYPING,
+            action = FlightRecorderManager.ActionType.SUGGESTION_PICKED,
+            rawInput = "Charl",
+            correctedTo = "Charlton",
+            suggestionSlot = 1,
+            stripDwellMs = 185L,
+            totalCandidates = 3,
+            isFlickPrediction = false,
+        )
+
+        val jsonStr = record.toJsonString()
+        jsonStr shouldContain "\"action\":\"SUGGESTION_PICKED\""
+        jsonStr shouldContain "\"suggestionSlot\":1"
+        jsonStr shouldContain "\"stripDwellMs\":185"
+        jsonStr shouldContain "\"totalCandidates\":3"
+
+        val flickRecord = FlightRecorderManager.Record(
+            mode = FlightRecorderManager.InputMode.TYPING,
+            action = FlightRecorderManager.ActionType.SUGGESTION_PICKED,
+            correctedTo = "the",
+            isFlickPrediction = true,
+        )
+        val flickJson = flickRecord.toJsonString()
+        flickJson shouldContain "\"isFlickPrediction\":true"
+    }
 })

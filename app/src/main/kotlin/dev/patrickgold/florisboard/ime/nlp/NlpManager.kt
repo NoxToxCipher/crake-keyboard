@@ -171,10 +171,15 @@ class NlpManager(context: Context) {
 
     private val _activeCandidatesFlow = MutableStateFlow(listOf<SuggestionCandidate>())
     val activeCandidatesFlow = _activeCandidatesFlow.asStateFlow()
+    var candidatesPresentedTime: Long = 0L
+        private set
     inline var activeCandidates
         get() = activeCandidatesFlow.value
         private set(v) {
             _activeCandidatesFlow.value = v
+            if (v.isNotEmpty()) {
+                candidatesPresentedTime = System.currentTimeMillis()
+            }
         }
 
     val debugOverlaySuggestionsInfos = LruCache<Long, Pair<String, SpellingResult>>(10)

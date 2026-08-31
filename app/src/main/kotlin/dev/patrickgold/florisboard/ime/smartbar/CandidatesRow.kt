@@ -154,7 +154,7 @@ fun CandidatesRow(modifier: Modifier = Modifier) {
                         candidate = candidate,
                         displayMode = displayMode,
                         onClick = {
-                            keyboardManager.commitCandidate(candidates[n], withSpace = true)
+                            keyboardManager.commitCandidate(candidates[n], withSpace = true, slotIndex = n)
                         },
                         onLongPress = {
                             val candidateItem = candidates[n]

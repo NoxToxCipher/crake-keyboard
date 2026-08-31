@@ -97,9 +97,14 @@ object FlightRecorderManager {
         val spatialOffset: String? = null,
         val touchMajor: Float? = null,
         val touchMinor: Float? = null,
+        val touchOrientation: Float? = null,
         val pressure: Float? = null,
         val dwellTimeMs: Long? = null,
         val latencyMs: Long? = null,
+        val interKeyFlightTimeMs: Long? = null,
+        val stripDwellMs: Long? = null,
+        val totalCandidates: Int? = null,
+        val isFlickPrediction: Boolean = false,
         val autocorrectUndo: Boolean = false,
         val suggestionSlot: Int? = null,
         val trieSearchDurationUs: Long? = null,
@@ -121,7 +126,11 @@ object FlightRecorderManager {
             intendedWord?.let { append(",\"intendedWord\":\"").append(escapeJson(it)).append("\"") }
             if (isTypo) append(",\"isTypo\":true")
             if (autocorrectUndo) append(",\"autocorrectUndo\":true")
+            if (isFlickPrediction) append(",\"isFlickPrediction\":true")
             suggestionSlot?.let { append(",\"suggestionSlot\":").append(it) }
+            totalCandidates?.let { append(",\"totalCandidates\":").append(it) }
+            stripDwellMs?.let { append(",\"stripDwellMs\":").append(it) }
+            interKeyFlightTimeMs?.let { append(",\"flightTimeMs\":").append(it) }
             trieSearchDurationUs?.let { append(",\"trieSearchDurationUs\":").append(it) }
             candidates?.let { list ->
                 append(",\"candidates\":[")
@@ -137,6 +146,7 @@ object FlightRecorderManager {
             spatialOffset?.let { append(",\"spatialOffset\":\"").append(escapeJson(it)).append("\"") }
             touchMajor?.let { append(String.format(Locale.US, ",\"touchMajor\":%.1f", it)) }
             touchMinor?.let { append(String.format(Locale.US, ",\"touchMinor\":%.1f", it)) }
+            touchOrientation?.let { append(String.format(Locale.US, ",\"touchOrientation\":%.2f", it)) }
             pressure?.let { append(String.format(Locale.US, ",\"pressure\":%.2f", it)) }
             dwellTimeMs?.let { append(",\"dwellTimeMs\":").append(it) }
             latencyMs?.let { append(",\"latencyMs\":").append(it) }
@@ -222,9 +232,11 @@ object FlightRecorderManager {
         spatialOffsetY: Float? = null,
         touchMajor: Float? = null,
         touchMinor: Float? = null,
+        touchOrientation: Float? = null,
         pressure: Float? = null,
         dwellTimeMs: Long? = null,
         latencyMs: Long? = null,
+        interKeyFlightTimeMs: Long? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
@@ -235,9 +247,11 @@ object FlightRecorderManager {
         } else null
         val validTouchMajor = touchMajor?.takeIf { it.isFinite() && it > 0f }
         val validTouchMinor = touchMinor?.takeIf { it.isFinite() && it > 0f }
+        val validOrientation = touchOrientation?.takeIf { it.isFinite() }
         val validPressure = pressure?.takeIf { it.isFinite() && it >= 0f }
         val validDwell = dwellTimeMs?.coerceIn(0L, 10000L)
         val validLatency = latencyMs?.coerceIn(0L, 10000L)
+        val validFlightTime = interKeyFlightTimeMs?.coerceIn(0L, 10000L)
 
         val record = Record(
             mode = InputMode.TYPING,
@@ -246,9 +260,11 @@ object FlightRecorderManager {
             spatialOffset = offsetStr,
             touchMajor = validTouchMajor,
             touchMinor = validTouchMinor,
+            touchOrientation = validOrientation,
             pressure = validPressure,
             dwellTimeMs = validDwell,
             latencyMs = validLatency,
+            interKeyFlightTimeMs = validFlightTime,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
@@ -445,12 +461,16 @@ object FlightRecorderManager {
         allCandidates: List<String>,
         mode: InputMode = InputMode.TYPING,
         slotIndex: Int? = null,
+        stripDwellMs: Long? = null,
+        totalCandidates: Int? = null,
+        isFlickPrediction: Boolean = false,
         trieSearchDurationUs: Long? = null,
         contextBefore: String? = null,
         keyVariation: KeyVariation? = null,
         packageName: String? = null,
     ) {
         if (!isLoggingAllowed(keyVariation, packageName)) return
+        val validDwell = stripDwellMs?.coerceIn(0L, 30000L)
         val record = Record(
             mode = mode,
             action = ActionType.SUGGESTION_PICKED,
@@ -458,6 +478,9 @@ object FlightRecorderManager {
             correctedTo = sanitizePii(selectedWord),
             candidates = allCandidates.take(8),
             suggestionSlot = slotIndex,
+            stripDwellMs = validDwell,
+            totalCandidates = totalCandidates,
+            isFlickPrediction = isFlickPrediction,
             trieSearchDurationUs = trieSearchDurationUs,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
