@@ -734,6 +734,61 @@ private fun ProGesturesAndTestDriveCard() {
         )
     }
 
+    Spacer(modifier = Modifier.height(10.dp))
+
+    val prefs by FlorisPreferenceStore
+    val scope = rememberCoroutineScope()
+    var testerNameInput by remember { mutableStateOf(prefs.updater.testerName.get().takeUnless { it == "Tester" } ?: "") }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "Your Tester Username:",
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "(identifies your test feedback)",
+            fontSize = 10.sp,
+            color = TextMuted,
+        )
+    }
+    Spacer(modifier = Modifier.height(4.dp))
+    OutlinedTextField(
+        value = testerNameInput,
+        onValueChange = {
+            testerNameInput = it
+            scope.launch {
+                val cleaned = it.trim().ifEmpty { "Daya" }
+                prefs.updater.testerName.set(cleaned)
+                prefs.updater.testerPromptedMilestone.set(dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE)
+            }
+        },
+        placeholder = {
+            Text(
+                text = "e.g. Lochran, Overlord, Daya",
+                color = TextMuted,
+                fontSize = 11.sp,
+            )
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp)),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color(0xFF162033),
+            unfocusedContainerColor = Color(0xFF162033),
+            focusedBorderColor = CyberEmerald,
+            unfocusedBorderColor = CardBorder,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+        ),
+        singleLine = true,
+    )
+
     Spacer(modifier = Modifier.height(8.dp))
 
     // Interactive Test Drive Box

@@ -130,13 +130,24 @@ fun HomeScreen() = FlorisScreen {
         val scope = rememberCoroutineScope()
         val isFlorisBoardEnabled by InputMethodUtils.observeIsFlorisboardEnabled(foregroundOnly = true)
         val testerOnboardingDismissed by prefs.updater.testerOnboardingDismissed.collectAsState()
-        var showTesterModal by remember { mutableStateOf(!testerOnboardingDismissed) }
-        var inputTesterName by remember { mutableStateOf(prefs.updater.testerName.get()) }
+        val testerPromptedMilestone by prefs.updater.testerPromptedMilestone.collectAsState()
+        val currentTesterName by prefs.updater.testerName.collectAsState()
+        var showTesterModal by remember {
+            mutableStateOf(
+                !testerOnboardingDismissed ||
+                testerPromptedMilestone < dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE ||
+                currentTesterName.isBlank()
+            )
+        }
+        var inputTesterName by remember {
+            mutableStateOf(if (currentTesterName.isBlank() || currentTesterName.equals("Tester", ignoreCase = true)) "" else currentTesterName)
+        }
 
         if (showTesterModal) {
             Dialog(
                 onDismissRequest = {
                     scope.launch {
+                        prefs.updater.testerPromptedMilestone.set(dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE)
                         prefs.updater.testerOnboardingDismissed.set(true)
                     }
                     showTesterModal = false
@@ -264,16 +275,17 @@ fun HomeScreen() = FlorisScreen {
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = {
-                                val name = inputTesterName.trim().ifEmpty { "Tester" }
+                                val name = inputTesterName.trim().ifEmpty { "Daya" }
                                 scope.launch {
                                     prefs.updater.testerName.set(name)
+                                    prefs.updater.testerPromptedMilestone.set(dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE)
                                     prefs.updater.testerOnboardingDismissed.set(true)
                                     prefs.updater.autoCheckEnabled.set(true)
                                     prefs.updater.logSyncEnabled.set(true)
                                     showTesterModal = false
                                     DiagnosticSyncManager.performSync(silent = true)
                                     dev.patrickgold.florisboard.app.updater.UpdateManager.checkForUpdates(silent = true)
-                                    Toast.makeText(context, "Welcome to the Sprint, $name!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Tester handle set: $name!", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
