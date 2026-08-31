@@ -75,81 +75,90 @@ class TextKeyboard(
         touchMajor: Float? = null,
         touchMinor: Float? = null,
     ): TextKey? {
+        if (!pointerX.isFinite() || !pointerY.isFinite()) {
+            return null
+        }
         val exactKey = getKeyForPos(pointerX, pointerY)
         // Never hijack functional or non-character keys (Space, Backspace, Shift, Enter)
         if (exactKey != null && exactKey.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
             return exactKey
         }
 
-        // A MISS whose nearest key is functional must stay a miss: pulling a
-        // tap at the delete key's edge onto a predicted letter made the
-        // backward delete-word swipe type letters (field report 2026-08-27).
-        // Functional keys never join the letter-catchment competition, so
-        // check plain proximity to them explicitly before expanding.
-        if (exactKey == null) {
-            var nearest: TextKey? = null
-            var nearestDist = Float.MAX_VALUE
-            for (key in keys()) {
-                if (!key.isEnabled) continue
-                val center = key.visibleBounds.center
-                val dx = pointerX - center.x
-                val dy = pointerY - center.y
-                val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                if (dist < nearestDist) {
-                    nearestDist = dist
-                    nearest = key
+        return try {
+            // A MISS whose nearest key is functional must stay a miss: pulling a
+            // tap at the delete key's edge onto a predicted letter made the
+            // backward delete-word swipe type letters (field report 2026-08-27).
+            // Functional keys never join the letter-catchment competition, so
+            // check plain proximity to them explicitly before expanding.
+            if (exactKey == null) {
+                var nearest: TextKey? = null
+                var nearestDist = Float.MAX_VALUE
+                for (key in keys()) {
+                    if (!key.isEnabled) continue
+                    val center = key.visibleBounds.center
+                    val dx = pointerX - center.x
+                    val dy = pointerY - center.y
+                    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                    if (dist < nearestDist) {
+                        nearestDist = dist
+                        nearest = key
+                    }
+                }
+                val nearestCode = nearest?.computedData?.code ?: 0
+                if (nearestCode <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
+                    return null
                 }
             }
-            val nearestCode = nearest?.computedData?.code ?: 0
-            if (nearestCode <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
-                return null
+
+            if (predictedNextLetters.isEmpty()) {
+                return exactKey
             }
-        }
 
-        if (predictedNextLetters.isEmpty()) {
-            return exactKey
-        }
+            // Contact Patch Biomechanical Apex Compensation:
+            // Human thumb pads strike with an elliptical contact tilted from the true bone apex.
+            val validMajor = touchMajor?.takeIf { it.isFinite() && it > 0f } ?: 0f
+            val validMinor = touchMinor?.takeIf { it.isFinite() && it > 0f } ?: 0f
+            val eccentricity = (validMajor - validMinor).coerceAtLeast(0f)
+            val apexShiftY = if (eccentricity > 1.0f) (eccentricity * 0.19f).coerceIn(2.0f, 10.0f) else 4.0f
+            val compensatedY = pointerY - apexShiftY
 
-        // Contact Patch Biomechanical Apex Compensation:
-        // Human thumb pads strike with an elliptical contact tilted from the true bone apex.
-        val eccentricity = ((touchMajor ?: 0f) - (touchMinor ?: 0f)).coerceAtLeast(0f)
-        val apexShiftY = if (eccentricity > 1.0f) (eccentricity * 0.19f).coerceIn(2.0f, 10.0f) else 4.0f
-        val compensatedY = pointerY - apexShiftY
+            var bestKey: TextKey? = exactKey
+            var minWeightedDist = Float.MAX_VALUE
 
-        var bestKey: TextKey? = exactKey
-        var minWeightedDist = Float.MAX_VALUE
+            // Catchment reach expansion based on thumb contact size:
+            val reachFactor = if (validMajor > 20.0f) 1.85f else 1.60f
 
-        // Catchment reach expansion based on thumb contact size:
-        val reachFactor = if ((touchMajor ?: 0f) > 20.0f) 1.85f else 1.60f
+            for (key in keys()) {
+                if (!key.isEnabled) continue
+                if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
+                val center = key.visibleBounds.center
+                val dx = pointerX - center.x
+                // Anisotropic Bivariate Weighting: thumb variance is wider horizontally (dx * 0.85) than vertically
+                val dy = (compensatedY - center.y) * 1.15f
+                val dist = kotlin.math.sqrt((dx * 0.85f) * (dx * 0.85f) + dy * dy)
 
-        for (key in keys()) {
-            if (!key.isEnabled) continue
-            if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
-            val center = key.visibleBounds.center
-            val dx = pointerX - center.x
-            // Anisotropic Bivariate Weighting: thumb variance is wider horizontally (dx * 0.85) than vertically
-            val dy = (compensatedY - center.y) * 1.15f
-            val dist = kotlin.math.sqrt((dx * 0.85f) * (dx * 0.85f) + dy * dy)
+                val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * reachFactor
+                if (dist > maxReach) continue
 
-            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * reachFactor
-            if (dist > maxReach) continue
+                val charCode = key.computedData.code.toChar().lowercaseChar()
+                val isHighProbability = predictedNextLetters.contains(charCode)
 
-            val charCode = key.computedData.code.toChar().lowercaseChar()
-            val isHighProbability = predictedNextLetters.contains(charCode)
+                // Bayesian probability distance weighting:
+                // High-probability next letters get a 40% distance reduction bonus combined with language letter-frequency priors
+                val priorFactor = LETTER_FREQUENCY_PRIORS[charCode] ?: 1.0f
+                val probFactor = if (isHighProbability) 0.60f else 1.0f
+                val weightedDist = dist * probFactor * priorFactor
 
-            // Bayesian probability distance weighting:
-            // High-probability next letters get a 40% distance reduction bonus combined with language letter-frequency priors
-            val priorFactor = LETTER_FREQUENCY_PRIORS[charCode] ?: 1.0f
-            val probFactor = if (isHighProbability) 0.60f else 1.0f
-            val weightedDist = dist * probFactor * priorFactor
-
-            if (weightedDist < minWeightedDist) {
-                minWeightedDist = weightedDist
-                bestKey = key
+                if (weightedDist < minWeightedDist) {
+                    minWeightedDist = weightedDist
+                    bestKey = key
+                }
             }
-        }
 
-        return bestKey ?: exactKey
+            bestKey ?: exactKey
+        } catch (_: Exception) {
+            exactKey ?: getKeyForPos(pointerX, pointerY)
+        }
     }
 
     override fun layout(

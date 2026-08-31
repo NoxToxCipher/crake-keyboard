@@ -672,7 +672,11 @@ impl NlpEngine {
     pub fn record_rejected_correction(&mut self, typo: &str, wrong_suggestion: &str) {
         let t = typo.trim().to_ascii_lowercase();
         let w = wrong_suggestion.trim().to_ascii_lowercase();
-        if !t.is_empty() && !w.is_empty() {
+        if !t.is_empty() && !w.is_empty() && t.len() <= 64 && w.len() <= 64 {
+            // Capacity guard: keep map bounded to prevent heap exhaustion
+            if self.rejected_corrections.len() >= 512 {
+                self.rejected_corrections.retain(|_, &mut v| v >= 2);
+            }
             let entry = self.rejected_corrections.entry((t, w)).or_insert(0);
             *entry = entry.saturating_add(1);
         }
@@ -2199,15 +2203,15 @@ impl NlpEngine {
             }
         }
 
-        // The user's spoken: a correction they have rejected twice (via
-        // backspace revert) never auto-commits for that typed token again.
-        // One gate here covers every lane — corpus, fuzzy, homophone,
-        // rescues — instead of each lane consulting separately. The word
-        // stays visible as a plain suggestion.
+        // The user's spoken: a correction they have rejected twice (via backspace revert)
+        // never auto-commits for that typed token again.
         if !self.rejected_corrections.is_empty() {
             for c in candidates.iter_mut() {
-                if c.is_autocorrect && self.is_rejected_correction(&trimmed_lower, &c.word) {
-                    c.is_autocorrect = false;
+                let c_word = c.word.to_ascii_lowercase();
+                if let Some(&rejections) = self.rejected_corrections.get(&(trimmed_lower.clone(), c_word)) {
+                    if rejections >= 2 {
+                        c.is_autocorrect = false;
+                    }
                 }
             }
         }

@@ -473,6 +473,13 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         if (unit == OperationUnit.CHARACTERS) {
             val original = editorInstance.revertPreviousCommit()
             if (original != null) {
+                dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logManualRevertOrRetype(
+                    deletedWord = revertCandidate?.text?.toString() ?: "[AUTOCORRECT]",
+                    retypedWord = original,
+                    contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+                    keyVariation = activeState.keyVariation,
+                    packageName = editorInstance.activeInfo.packageName,
+                )
                 // A performed revert is the strongest "that correction was
                 // wrong" signal — let the provider learn the user's word.
                 // Never in incognito.

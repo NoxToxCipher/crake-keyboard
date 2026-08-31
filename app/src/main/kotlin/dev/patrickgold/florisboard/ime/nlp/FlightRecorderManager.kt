@@ -216,18 +216,23 @@ object FlightRecorderManager {
         packageName: String? = null,
     ) {
         if (!isLoggingAllowed(keyVariation, packageName)) return
-        val offsetStr = if (spatialOffsetX != null && spatialOffsetY != null) {
+        val offsetStr = if (spatialOffsetX != null && spatialOffsetY != null && spatialOffsetX.isFinite() && spatialOffsetY.isFinite()) {
             String.format(Locale.US, "%.1f,%.1f", spatialOffsetX, spatialOffsetY)
         } else null
+        val validTouchMajor = touchMajor?.takeIf { it.isFinite() && it > 0f }
+        val validTouchMinor = touchMinor?.takeIf { it.isFinite() && it > 0f }
+        val validPressure = pressure?.takeIf { it.isFinite() && it >= 0f }
+        val validDwell = dwellTimeMs?.coerceIn(0L, 10000L)
+
         val record = Record(
             mode = InputMode.TYPING,
             action = ActionType.KEY_TAP,
             rawInput = keyLabel,
             spatialOffset = offsetStr,
-            touchMajor = touchMajor,
-            touchMinor = touchMinor,
-            pressure = pressure,
-            dwellTimeMs = dwellTimeMs,
+            touchMajor = validTouchMajor,
+            touchMinor = validTouchMinor,
+            pressure = validPressure,
+            dwellTimeMs = validDwell,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
         )
