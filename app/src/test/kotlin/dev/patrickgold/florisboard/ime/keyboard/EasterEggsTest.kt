@@ -56,6 +56,9 @@ class EasterEggsTest : FunSpec({
         EasterEggs.matchTriggerPhrase("battery").shouldNotBeNull().id shouldBe EasterEgg.BATTERY_OVERCHARGE.id
         EasterEggs.matchTriggerPhrase("sad").shouldNotBeNull().id shouldBe EasterEgg.SERENITY_GARDEN.id
         EasterEggs.matchTriggerPhrase("stress").shouldNotBeNull().id shouldBe EasterEgg.SERENITY_GARDEN.id
+        EasterEggs.matchTriggerPhrase("ram").shouldNotBeNull().id shouldBe EasterEgg.RAM_DUO.id
+        EasterEggs.matchTriggerPhrase("rams").shouldNotBeNull().id shouldBe EasterEgg.RAM_DUO.id
+        EasterEggs.matchTriggerPhrase("battering ram").shouldNotBeNull().id shouldBe EasterEgg.RAM_DUO.id
         EasterEggs.matchTriggerPhrase("unknown nonsense 12345").shouldBeNull()
         EasterEggs.matchTriggerPhrase("").shouldBeNull()
     }
@@ -72,8 +75,8 @@ class EasterEggsTest : FunSpec({
         list.map { it.id } shouldContain EasterEgg.BAWEN_CAT.id
     }
 
-    test("EasterEgg enum contains exactly 36 pure word-triggered Easter Eggs") {
-        EasterEgg.entries shouldHaveSize 36
+    test("EasterEgg enum contains exactly 37 pure word-triggered Easter Eggs") {
+        EasterEgg.entries shouldHaveSize 37
         EasterEgg.entries.any { it.id == "power_surge" } shouldBe false
     }
 })

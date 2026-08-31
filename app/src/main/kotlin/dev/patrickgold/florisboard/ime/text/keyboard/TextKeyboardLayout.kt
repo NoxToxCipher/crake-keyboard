@@ -196,6 +196,7 @@ private val sniperKeysHoisted = listOf("snipe", "snipes", "sniper", "sniped", "s
 private val thorKeysHoisted = listOf("thor", "mjolnir", "god of thunder", "asgard", "odinson")
 private val mushuKeysHoisted = listOf("mushu", "mulan", "mulsn", "cri-kee", "dishonor on your cow", "dragon", "great stone dragon")
 private val goKartKeysHoisted = listOf("go-kart", "gokart", "kart", "karting", "go kart", "gokarts", "karts", "go-karts", "go karts", "kartings")
+private val ramKeysHoisted = listOf("ram", "rams", "battering ram", "batteringram")
 
 @Composable
 fun TextKeyboardLayout(
@@ -510,6 +511,7 @@ fun TextKeyboardLayout(
     var goKartTriggerTime by remember { mutableStateOf(0L) }
     var licoriceTriggerTime by remember { mutableStateOf(0L) }
     var pokeBankTriggerTime by remember { mutableStateOf(0L) }
+    var ramDuoTriggerTime by remember { mutableStateOf(0L) }
         // Per-key egg layers (BlackBerry keycap flip, egg wobble, sun conure
         // perch): detected once here, consumed by every TextKeyButton via
         // parameters.
@@ -800,6 +802,16 @@ fun TextKeyboardLayout(
             }
             if (isPokeBankMatch) {
                 if (prefs.easterEggs.fire(EasterEgg.POKEMON_BANK)) pokeBankTriggerTime = System.currentTimeMillis()
+            }
+            val ramKeys = ramKeysHoisted
+            val isRamMatch = comp.isEmpty() && ramKeys.any { k ->
+                val delimiters = triggerDelimiters
+                delimiters.any { d ->
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb.endsWith("\"$k$d") || tb.endsWith("'$k$d")
+                }
+            }
+            if (isRamMatch) {
+                if (prefs.easterEggs.fire(EasterEgg.RAM_DUO)) ramDuoTriggerTime = System.currentTimeMillis()
             }
             // Per-key egg layers, hoisted out of TextKeyButton (previously
             // every key button re-ran these scans on each content change).
@@ -1160,6 +1172,273 @@ fun TextKeyboardLayout(
                 }
 
                 drawContext.canvas.nativeCanvas.restore()
+            }
+        }
+
+        // =========================================================================
+        // TWIN RAMS (RAM & BATTERING RAM) EASTER EGG OVERLAY (9.0s duration)
+        // Stage 1 (0ms - 3800ms): Mini Bighorn Sheep Charging Top Fret (QWERTY)
+        // Stage 2 (4500ms - 8800ms): Mini Medieval Battering Ram Charging Second Fret (ASDFG)
+        // =========================================================================
+        if (ramDuoTriggerTime > 0L && System.currentTimeMillis() - ramDuoTriggerTime < 9000L) {
+            val elapsed = System.currentTimeMillis() - ramDuoTriggerTime
+            val pxDensity = LocalDensity.current.density
+
+            androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {
+                val canvasW = size.width
+                val canvasH = size.height
+                val d = pxDensity
+
+                // -------------------------------------------------------------
+                // STAGE 1: MINI BIGHORN SHEEP (0ms - 3800ms) on Top Fret (Row 0)
+                // -------------------------------------------------------------
+                if (elapsed in 0L..3800L) {
+                    val s1Progress = (elapsed / 3400f).coerceIn(0f, 1f)
+                    val s1Alpha = (when {
+                        s1Progress < 0.08f -> s1Progress / 0.08f
+                        s1Progress > 0.90f -> (1f - s1Progress) / 0.10f
+                        else -> 1f
+                    }).coerceIn(0f, 1f)
+
+                    val startX = -35f * d
+                    val endX = canvasW + 35f * d
+                    val sheepX = startX + s1Progress * (endX - startX)
+                    val topFretY = canvasH * 0.15f
+                    // Galloping bounce
+                    val gallopCycle = (elapsed % 320f) / 320f
+                    val gallopBounce = -kotlin.math.abs(kotlin.math.sin(gallopCycle * Math.PI.toFloat())) * 3.5f * d
+                    val sheepY = topFretY + gallopBounce
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(sheepX, sheepY)
+
+                    val paintAlpha = (s1Alpha * 255).toInt().coerceIn(0, 255)
+
+                    // 1. Dust Puffs behind Sheep
+                    val dustPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((s1Alpha * 140).toInt().coerceIn(0, 255), 226, 232, 240)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val dustOffset = (elapsed % 180f) / 180f
+                    drawContext.canvas.nativeCanvas.drawCircle(-14f * d - dustOffset * 8f * d, 6f * d - dustOffset * 3f * d, (2.5f + dustOffset * 2f) * d, dustPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-18f * d - dustOffset * 12f * d, 4f * d - dustOffset * 4f * d, (1.8f + dustOffset * 1.5f) * d, dustPaint)
+
+                    // 2. Galloping Legs (Black Hooves)
+                    val hoofPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 30, 41, 59)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.8f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val legSwing = kotlin.math.sin(gallopCycle * 2f * Math.PI.toFloat())
+                    // Front Leg
+                    drawContext.canvas.nativeCanvas.drawLine(6f * d, 4f * d, 6f * d + legSwing * 5f * d, 10f * d, hoofPaint)
+                    // Back Leg
+                    drawContext.canvas.nativeCanvas.drawLine(-6f * d, 4f * d, -6f * d - legSwing * 5f * d, 10f * d, hoofPaint)
+
+                    // 3. Fluffy Wool Body (Cream / White Cloud)
+                    val woolPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 250, 250, 249) // Soft White Wool
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val woolShadePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 229, 231, 235)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-10f * d, -6f * d, 7f * d, 5f * d, 6f * d, 6f * d, woolShadePaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-5f * d, -2f * d, 5.5f * d, woolPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(1f * d, -2f * d, 5f * d, woolPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(-2f * d, 1f * d, 5f * d, woolPaint)
+                    // Fluffy Little Tail
+                    drawContext.canvas.nativeCanvas.drawCircle(-11f * d, -2f * d, 2.5f * d, woolPaint)
+
+                    // 4. Ram Face & Muzzle
+                    val facePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 243, 232, 219) // Warm Fawn Face
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val muzzlePath = android.graphics.Path().apply {
+                        moveTo(4f * d, -4f * d)
+                        lineTo(13f * d, -2f * d)
+                        quadTo(15f * d, 0f, 13f * d, 2.5f * d)
+                        lineTo(5f * d, 3f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(muzzlePath, facePaint)
+
+                    // Cute Eye & Nose
+                    val eyePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 15, 23, 42)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    drawContext.canvas.nativeCanvas.drawCircle(9f * d, -1f * d, 1f * d, eyePaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(13.5f * d, 0.5f * d, 0.8f * d, eyePaint) // Nose dot
+
+                    // 5. Majestic Curled Bighorn Horns (Golden Amber)
+                    val hornPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 217, 119, 6) // Golden Horn
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 2.4f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val hornGleam = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((paintAlpha * 0.8f).toInt(), 251, 191, 36)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.2f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    // Spiral curl arching backward and looping down-forward
+                    val hornPath = android.graphics.Path().apply {
+                        moveTo(6f * d, -4f * d)
+                        cubicTo(4f * d, -10f * d, -2f * d, -9f * d, -1f * d, -4f * d)
+                        quadTo(0f, -1f * d, 4f * d, -1f * d)
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(hornPath, hornPaint)
+                    drawContext.canvas.nativeCanvas.drawPath(hornPath, hornGleam)
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
+
+                // -------------------------------------------------------------
+                // STAGE 2: MINI MEDIEVAL BATTERING RAM (4500ms - 8800ms) on 2nd Fret (Row 1)
+                // -------------------------------------------------------------
+                if (elapsed in 4500L..8800L) {
+                    val s2Elapsed = elapsed - 4500L
+                    val s2Progress = (s2Elapsed / 3600f).coerceIn(0f, 1f)
+                    val s2Alpha = (when {
+                        s2Progress < 0.08f -> s2Progress / 0.08f
+                        s2Progress > 0.90f -> (1f - s2Progress) / 0.10f
+                        else -> 1f
+                    }).coerceIn(0f, 1f)
+
+                    val startX = -50f * d
+                    val endX = canvasW + 50f * d
+                    val ramX = startX + s2Progress * (endX - startX)
+                    val secondFretY = canvasH * 0.40f
+                    // Heavy rumbling heave
+                    val rumble = kotlin.math.sin(s2Progress * 40f * Math.PI.toFloat()) * 1.2f * d
+                    val ramY = secondFretY + rumble
+
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(ramX, ramY)
+
+                    val paintAlpha = (s2Alpha * 255).toInt().coerceIn(0, 255)
+
+                    // 1. Rolling Iron-Studded Wooden Wheels & Suspension
+                    val wheelWoodPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 120, 53, 15) // Deep Oak
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val ironPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 71, 85, 105) // Slate Iron
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val ironStroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 148, 163, 184)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1f * d
+                    }
+                    val wheelRot = (s2Progress * 720f)
+
+                    // Front Wheel
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(8f * d, 6.5f * d)
+                    drawContext.canvas.nativeCanvas.rotate(wheelRot)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 3.8f * d, wheelWoodPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 3.8f * d, ironStroke)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 1.2f * d, ironPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Rear Wheel
+                    drawContext.canvas.nativeCanvas.save()
+                    drawContext.canvas.nativeCanvas.translate(-14f * d, 6.5f * d)
+                    drawContext.canvas.nativeCanvas.rotate(wheelRot)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 3.8f * d, wheelWoodPaint)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 3.8f * d, ironStroke)
+                    drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, 1.2f * d, ironPaint)
+                    drawContext.canvas.nativeCanvas.restore()
+
+                    // Suspension Ropes & Timber Chassis A-Frame
+                    val ropePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 202, 138, 4)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.2f * d
+                    }
+                    drawContext.canvas.nativeCanvas.drawLine(-16f * d, 6.5f * d, -10f * d, -5f * d, ropePaint)
+                    drawContext.canvas.nativeCanvas.drawLine(10f * d, 6.5f * d, 6f * d, -5f * d, ropePaint)
+
+                    // 2. Heavy Timber Tree Trunk / Battering Log
+                    val logPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 146, 64, 14) // Hewn Oak Log
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val logGrainPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb((paintAlpha * 0.7f).toInt(), 113, 63, 18)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 0.8f * d
+                    }
+                    drawContext.canvas.nativeCanvas.drawRoundRect(-20f * d, -4.5f * d, 14f * d, 4.5f * d, 2.5f * d, 2.5f * d, logPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(-18f * d, -1.5f * d, 10f * d, -1.5f * d, logGrainPaint)
+                    drawContext.canvas.nativeCanvas.drawLine(-16f * d, 1.5f * d, 8f * d, 1.5f * d, logGrainPaint)
+
+                    // 3. Iron Strapping Bands & Rivets
+                    val bandXOffsets = listOf(-12f * d, -2f * d, 8f * d)
+                    for (bx in bandXOffsets) {
+                        drawContext.canvas.nativeCanvas.drawRoundRect(bx - 1.5f * d, -5f * d, bx + 1.5f * d, 5f * d, 1f * d, 1f * d, ironPaint)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, -2.5f * d, 0.7f * d, ironStroke)
+                        drawContext.canvas.nativeCanvas.drawCircle(bx, 2.5f * d, 0.7f * d, ironStroke)
+                    }
+
+                    // 4. Solid Bronze Ram Head Prow on Tip
+                    val bronzePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 217, 119, 6) // Forged Bronze Ram
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val bronzeGleamPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 251, 191, 36)
+                        style = android.graphics.Paint.Style.FILL
+                    }
+                    val bronzeHeadPath = android.graphics.Path().apply {
+                        moveTo(13f * d, -5f * d)
+                        lineTo(22f * d, -2.5f * d)
+                        lineTo(24f * d, 0f)
+                        lineTo(22f * d, 2.5f * d)
+                        lineTo(13f * d, 5f * d)
+                        close()
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(bronzeHeadPath, bronzePaint)
+
+                    // Curled Bronze Horn on Ram Head Tip
+                    val bronzeHorn = android.graphics.Path().apply {
+                        moveTo(16f * d, -4.5f * d)
+                        cubicTo(14f * d, -9f * d, 9f * d, -8f * d, 10f * d, -4f * d)
+                        quadTo(11f * d, -2f * d, 14f * d, -2.5f * d)
+                    }
+                    val bronzeHornStroke = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = android.graphics.Color.argb(paintAlpha, 245, 158, 11)
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.8f * d
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    drawContext.canvas.nativeCanvas.drawPath(bronzeHorn, bronzeHornStroke)
+                    drawContext.canvas.nativeCanvas.drawCircle(22f * d, 0f, 1.2f * d, bronzeGleamPaint)
+
+                    // 5. Wood Splinters / Comic Impact Shockwave near right edge
+                    if (s2Progress > 0.82f) {
+                        val impactT = (s2Progress - 0.82f) / 0.18f
+                        val splinterPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.argb(((1f - impactT) * 255).toInt().coerceIn(0, 255), 245, 158, 11)
+                            style = android.graphics.Paint.Style.STROKE
+                            strokeWidth = 1.4f * d
+                            strokeCap = android.graphics.Paint.Cap.ROUND
+                        }
+                        drawContext.canvas.nativeCanvas.drawLine(24f * d, 0f, 24f * d + impactT * 12f * d, -impactT * 8f * d, splinterPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(24f * d, 0f, 24f * d + impactT * 15f * d, 0f, splinterPaint)
+                        drawContext.canvas.nativeCanvas.drawLine(24f * d, 0f, 24f * d + impactT * 12f * d, impactT * 8f * d, splinterPaint)
+                    }
+
+                    drawContext.canvas.nativeCanvas.restore()
+                }
             }
         }
 

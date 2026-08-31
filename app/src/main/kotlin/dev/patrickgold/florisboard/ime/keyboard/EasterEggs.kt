@@ -245,6 +245,12 @@ enum class EasterEgg(
         "Mystery digital creature vault Easter Egg",
         listOf("pokemon bank", "pokebank"),
     ),
+    RAM_DUO(
+        "ram_duo",
+        "Twin Rams",
+        "Mini bighorn sheep and medieval battering ram charge across keyboard frets",
+        listOf("ram", "rams", "battering ram"),
+    ),
 }
 
 /**

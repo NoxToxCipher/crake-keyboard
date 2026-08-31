@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 336
+    const val CURRENT_MILESTONE = 337
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 33601
-    private const val RESOLVED_NOTIFICATION_ID = 33602
+    private const val NOTIFICATION_ID = 33701
+    private const val RESOLVED_NOTIFICATION_ID = 33702
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            337 -> "Twin Rams Easter Egg: Mini bighorn sheep and medieval battering ram 2-stage keyboard fret charge animation."
             336 -> "Uncoupled default tester name: removed global 'Daya' fallback so testers (Charlton, Daya, etc.) maintain their own individual user account names."
             335 -> "Adaptive Biometric Hitbox Engine: online Gaussian centroid tuning from contact angle & sub-pixel offsets, and Cognitive Smartbar Prioritizer."
             332 -> "Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'."
