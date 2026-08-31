@@ -8753,6 +8753,11 @@ private class TextKeyboardLayoutController(
 
         val touchX = event.getX(pointer.index)
         val touchY = event.getY(pointer.index)
+        val touchMajor = try { event.getTouchMajor(pointer.index) } catch (_: Exception) { null }
+        val touchMinor = try { event.getTouchMinor(pointer.index) } catch (_: Exception) { null }
+        val pressure = try { event.getPressure(pointer.index) } catch (_: Exception) { null }
+        val dwellTime = (event.eventTime - event.downTime).coerceAtLeast(0)
+
         val key = if (prefs.keyboard.adaptiveHitboxExpansion.get() && keyboard.mode == KeyboardMode.CHARACTERS) {
             val activeContent = editorInstance.activeContent
             val textBefore = activeContent.textBeforeSelection.toString()
@@ -8775,7 +8780,7 @@ private class TextKeyboardLayoutController(
             val predictedLetters = org.florisboard.libnative.FlorisNative
                 .predictNextLetterWordsCached(prefix, prevWord)?.keys
             if (predictedLetters != null) {
-                keyboard.getKeyForPosAdaptive(touchX, touchY, predictedLetters)
+                keyboard.getKeyForPosAdaptive(touchX, touchY, predictedLetters, touchMajor, touchMinor)
             } else {
                 keyboard.getKeyForPos(touchX, touchY)
             }
@@ -8838,10 +8843,6 @@ private class TextKeyboardLayoutController(
             val offX = (touchX - cx) / density
             val offY = (touchY - cy) / density
             val label = key.computedData.asString(isForDisplay = true).ifEmpty { key.computedData.code.toString() }
-            val touchMajor = try { event.getTouchMajor(pointer.index) } catch (_: Exception) { null }
-            val touchMinor = try { event.getTouchMinor(pointer.index) } catch (_: Exception) { null }
-            val pressure = try { event.getPressure(pointer.index) } catch (_: Exception) { null }
-            val dwellTime = (event.eventTime - event.downTime).coerceAtLeast(0)
             dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
                 keyLabel = label,
                 spatialOffsetX = offX,

@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 322
+    const val CURRENT_MILESTONE = 323
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 32201
-    private const val RESOLVED_NOTIFICATION_ID = 32202
+    private const val NOTIFICATION_ID = 32301
+    private const val RESOLVED_NOTIFICATION_ID = 32302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            323 -> "Implemented Phase 2 Dynamic Bivariate Hitbox Warping: anisotropic contact patch apex tilt correction, thumb reach scaling, and Gaussian Mahalanobis dispersion weighting to cut boundary mis-taps."
             322 -> "Expanded Phase 1 Kinematic Telemetry: added elliptical touchMajor/touchMinor geometry, contact pressure, key dwell time, autocorrect false-positive undo tracker, and suggestion slot metrics."
             321 -> "Added Zero-Knowledge Encrypted Vault Hero Banner to Clipboard Settings with ChaCha20-Poly1305 security telemetry chips and auto-burn status."
             320 -> "Added 1D-CNN Neural Glide & Trackpad Engine Hero Banner to Gestures Settings with real-time status badges and 6-channel kinematic telemetry indicators."

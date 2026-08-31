@@ -64,10 +64,17 @@ class TextKeyboard(
     }
 
     /**
-     * Authentic BlackBerry 10 Bayesian Adaptive Hitbox Resolution.
-     * Expands touch catchment zones toward predicted next letters when finger taps land on ambiguous key boundaries.
+     * Authentic BlackBerry 10 Bayesian Adaptive Hitbox Resolution with Bivariate Gaussian Touch Warping.
+     * Expands touch catchment zones toward predicted next letters when finger taps land on ambiguous key boundaries,
+     * correcting for capacitive contact patch eccentricity and thumb tilt.
      */
-    fun getKeyForPosAdaptive(pointerX: Float, pointerY: Float, predictedNextLetters: Set<Char>): TextKey? {
+    fun getKeyForPosAdaptive(
+        pointerX: Float,
+        pointerY: Float,
+        predictedNextLetters: Set<Char>,
+        touchMajor: Float? = null,
+        touchMinor: Float? = null,
+    ): TextKey? {
         val exactKey = getKeyForPos(pointerX, pointerY)
         // Never hijack functional or non-character keys (Space, Backspace, Shift, Enter)
         if (exactKey != null && exactKey.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
@@ -103,22 +110,28 @@ class TextKeyboard(
             return exactKey
         }
 
-        // Thumb contact center compensation:
-        // Human thumb pads strike slightly below the optical key center (~4px).
-        val compensatedY = pointerY - 4.0f
+        // Contact Patch Biomechanical Apex Compensation:
+        // Human thumb pads strike with an elliptical contact tilted from the true bone apex.
+        val eccentricity = ((touchMajor ?: 0f) - (touchMinor ?: 0f)).coerceAtLeast(0f)
+        val apexShiftY = if (eccentricity > 1.0f) (eccentricity * 0.19f).coerceIn(2.0f, 10.0f) else 4.0f
+        val compensatedY = pointerY - apexShiftY
 
         var bestKey: TextKey? = exactKey
         var minWeightedDist = Float.MAX_VALUE
+
+        // Catchment reach expansion based on thumb contact size:
+        val reachFactor = if ((touchMajor ?: 0f) > 20.0f) 1.85f else 1.60f
 
         for (key in keys()) {
             if (!key.isEnabled) continue
             if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
             val center = key.visibleBounds.center
             val dx = pointerX - center.x
-            val dy = compensatedY - center.y
-            val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+            // Anisotropic Bivariate Weighting: thumb variance is wider horizontally (dx * 0.85) than vertically
+            val dy = (compensatedY - center.y) * 1.15f
+            val dist = kotlin.math.sqrt((dx * 0.85f) * (dx * 0.85f) + dy * dy)
 
-            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * 1.6f
+            val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * reachFactor
             if (dist > maxReach) continue
 
             val charCode = key.computedData.code.toChar().lowercaseChar()
