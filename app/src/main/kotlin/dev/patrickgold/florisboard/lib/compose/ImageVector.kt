@@ -21,11 +21,23 @@ import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 
+private val vectorResourceCache = java.util.concurrent.ConcurrentHashMap<Long, ImageVector>()
+
 fun Context.vectorResource(@DrawableRes id: Int): ImageVector? {
     val theme = this.theme
-    return try {
+    val key = (id.toLong() shl 32) or (theme?.hashCode()?.toLong()?.and(0xFFFFFFFFL) ?: 0L)
+    val cached = vectorResourceCache[key]
+    if (cached != null) {
+        return cached
+    }
+    val loaded = try {
         ImageVector.vectorResource(theme = theme, resId = id, res = this.resources)
     } catch (_: Exception) {
         null
     }
+    if (loaded != null) {
+        vectorResourceCache[key] = loaded
+    }
+    return loaded
 }
+

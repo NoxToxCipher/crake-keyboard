@@ -1,11 +1,12 @@
 {
-  "milestone": 338,
-  "tagName": "v0.338.0",
-  "name": "Milestone 338 (Peregrine Falcon Artwork & Notification Icon Suite)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.338.0/CrakeKeyboard_Milestone_338.apk",
-  "apkSize": 56891230,
-  "changelog": "Milestone 338: Deployed brand-new Peregrine Falcon adaptive icon suite, dark slate backgrounds, and crisp monochrome notification vector drawables across all densities.",
+  "milestone": 339,
+  "tagName": "v0.339.0",
+  "name": "Milestone 339 (Shift Latency Speed Boost & Typo Recovery)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.339.0/CrakeKeyboard_Milestone_339.apk",
+  "apkSize": 56894500,
+  "changelog": "Milestone 339: Shift Latency Speed Boost (memoized ImageVector resource cache), 45-min autonomous loop setup, and expanded mechanical typo recoveries (obscructing -> obstructing, etc.).",
   "history": {
+    "339": "Shift Latency Speed Boost (memoized ImageVector resource cache), 45-min autonomous loop setup, and expanded mechanical typo recoveries (obscructing -> obstructing, etc.).",
     "338": "Deployed brand-new Peregrine Falcon adaptive icon suite, dark slate backgrounds, and crisp monochrome notification vector drawables across all densities.",
     "337": "Twin Rams Easter Egg: cute mini bighorn sheep charges across top fret (QWERTY), followed 5 seconds later by a mini medieval battering ram rolling across the second fret (ASDFG).",
     "336": "Decoupled global tester name fallback so individual testers maintain their own user accounts without defaulting to Daya.",
