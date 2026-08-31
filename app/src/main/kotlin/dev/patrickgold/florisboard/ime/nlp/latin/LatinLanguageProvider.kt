@@ -249,21 +249,15 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
 
-        // Previous token, for spurious-space repair ("shou kd" -> "should").
-        val prevToken = content.textBeforeSelection
-            .dropLast(query.length)
-            .trimEnd()
-            .takeLastWhile { !it.isWhitespace() }
-        // One more token back: context witness for two-slip merge repair
-        // ("I ho or" -> the "I" arbitrates hope vs door).
-        val precedingToken = content.textBeforeSelection
-            .dropLast(query.length)
-            .trimEnd()
-            .dropLast(prevToken.length)
-            .trimEnd()
-            .takeLastWhile { !it.isWhitespace() }
-            .toString()
-        lastPrevToken = prevToken.toString()
+        // Zero-allocation backward token scan for merge repairs ("shou kd" -> "should", "cha nbn ges" -> "changes")
+        val fullText = content.textBeforeSelection
+        val searchEnd = (fullText.length - query.length).coerceAtLeast(0)
+        val (prevStart, prevEnd) = findTokenBackwards(fullText, searchEnd)
+        val prevToken = if (prevStart < prevEnd) fullText.substring(prevStart, prevEnd) else ""
+
+        val (precStart, precEnd) = if (prevStart > 0) findTokenBackwards(fullText, prevStart) else 0 to 0
+        val precedingToken = if (precStart < precEnd) fullText.substring(precStart, precEnd) else ""
+        lastPrevToken = prevToken
 
         return buildList {
             // 0. Spurious mid-word space repair: offered first, never
@@ -283,13 +277,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 } else if (precedingToken.isNotEmpty()) {
                     // Three-fragment repair ("cha nbn ges"): witness is one
                     // more token back.
-                    val witness = content.textBeforeSelection
-                        .dropLast(query.length).trimEnd()
-                        .dropLast(prevToken.length).trimEnd()
-                        .dropLast(precedingToken.length).trimEnd()
-                        .takeLastWhile { !it.isWhitespace() }
-                        .toString()
-                    val merged3 = FlorisNative.mergeRepair3(precedingToken, prevToken.toString(), query.toString(), witness)
+                    val (witStart, witEnd) = if (precStart > 0) findTokenBackwards(fullText, precStart) else 0 to 0
+                    val witness = if (witStart < witEnd) fullText.substring(witStart, witEnd) else ""
+                    val merged3 = FlorisNative.mergeRepair3(precedingToken, prevToken, query, witness)
                     if (merged3 != null) {
                         add(
                             MergedWordSuggestionCandidate(
@@ -419,6 +409,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
         flogDebug { "suggestion removal requested (${candidate.javaClass.simpleName})" }
         return false
+    }
+
+    private fun findTokenBackwards(text: CharSequence, endIndex: Int): Pair<Int, Int> {
+        var end = endIndex
+        while (end > 0 && text[end - 1].isWhitespace()) {
+            end--
+        }
+        var start = end
+        while (start > 0 && !text[start - 1].isWhitespace()) {
+            start--
+        }
+        return start to end
     }
 
 }
