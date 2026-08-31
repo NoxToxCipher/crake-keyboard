@@ -253,6 +253,32 @@ impl TouchModel {
         }
     }
 
+    /// Records a touch with capacitive contact ellipse and orientation angle correction.
+    pub fn record_touch_hit_with_biometrics(
+        &mut self,
+        aimed_key: char,
+        touch_x: f32,
+        touch_y: f32,
+        touch_major: f32,
+        touch_minor: f32,
+        orientation: f32,
+    ) {
+        let patch = ContactPatch::new(touch_x, touch_y, touch_major, touch_minor, orientation);
+        let (apex_x, apex_y) = patch.corrected_apex();
+        self.record_touch_hit(aimed_key, apex_x, apex_y);
+    }
+
+    /// Returns the adaptive centroid offset (dx, dy) relative to visual center for a key.
+    #[inline]
+    pub fn get_centroid_offset(&self, ch: char) -> (f32, f32) {
+        let ch_lower = ch.to_ascii_lowercase();
+        if let (Some(&origin_c), Some(gkey)) = (self.centers.get(&ch_lower), self.gaussian_keys.get(&ch_lower)) {
+            (gkey.mean_x - origin_c.0, gkey.mean_y - origin_c.1)
+        } else {
+            (0.0, 0.0)
+        }
+    }
+
     pub fn is_near(&self, a: char, b: char) -> bool {
         let a = a.to_ascii_lowercase();
         let b = b.to_ascii_lowercase();

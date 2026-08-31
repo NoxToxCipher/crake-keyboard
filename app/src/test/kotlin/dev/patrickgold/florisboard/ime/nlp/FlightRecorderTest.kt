@@ -184,4 +184,12 @@ class FlightRecorderTest : FunSpec({
         val flickJson = flickRecord.toJsonString()
         flickJson shouldContain "\"isFlickPrediction\":true"
     }
+
+    test("FlorisNative touch offset query gracefully handles uninitialized native library in unit test context") {
+        val offset = org.florisboard.libnative.FlorisNative.getTouchOffset('e')
+        offset shouldBe Pair(0f, 0f)
+
+        val allOffsets = org.florisboard.libnative.FlorisNative.getAllTouchOffsets()
+        allOffsets shouldBe emptyList()
+    }
 })

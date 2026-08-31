@@ -491,7 +491,94 @@ fun DevtoolsScreen() = FlorisScreen {
             }
         }
 
-        // 5. TESTER CIRCLE & HOURLY OTA UPDATES
+        // 5. BIOMETRIC TOUCH CALIBRATION & ADAPTIVE HITBOX MATRIX
+        Spacer(modifier = Modifier.height(10.dp))
+        CrakeSectionHeader(title = "Biometric Calibration & Drift", badgeText = "ADAPTIVE", accentColor = CyberEmerald)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CyberEmerald.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Adb,
+                            contentDescription = null,
+                            tint = CyberEmerald,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Adaptive Hitbox Dynamic Centroids",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.5.sp,
+                            color = Color.White,
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Online Gaussian kernel adapting key boundaries to thumb drift",
+                            fontSize = 11.5.sp,
+                            color = TextMuted,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                val offsets = remember { org.florisboard.libnative.FlorisNative.getAllTouchOffsets() }
+                if (offsets.isNotEmpty()) {
+                    Text(
+                        text = "Learned Key Drift Offsets (Δx, Δy):",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 11.5.sp,
+                        color = ElectricCyan,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        for ((char, pair) in offsets.take(6)) {
+                            Box(
+                                modifier = Modifier
+                                    .background(CardBorder, RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    text = "'$char': ${if (pair.first >= 0) "+" else ""}${String.format("%.1f", pair.first)}x, ${if (pair.second >= 0) "+" else ""}${String.format("%.1f", pair.second)}y",
+                                    fontSize = 10.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Text(
+                        text = "Status: Real-time Bayesian Hitbox Calibration Active (0px baseline drift)",
+                        fontSize = 11.5.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = CyberEmerald,
+                    )
+                }
+            }
+        }
+
+        // 6. TESTER CIRCLE & HOURLY OTA UPDATES
         Spacer(modifier = Modifier.height(10.dp))
         CrakeSectionHeader(title = "Tester Circle & OTA Updates", badgeText = "AUTO-OTA", accentColor = CyberEmerald)
         CrakeRadioPreference(

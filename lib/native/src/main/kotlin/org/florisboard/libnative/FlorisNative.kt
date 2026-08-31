@@ -87,9 +87,39 @@ object FlorisNative {
     }
 
     /** Restores per-key touch offsets; entries restored, or -1 on rejection. */
+    /** Restores per-key touch offsets; entries restored, or -1 on rejection. */
     fun importTouchOffsets(data: ByteArray): Int {
         if (!isLoaded || data.isEmpty()) return -1
         return nativeHitImportOffsets(data)
+    }
+
+    /** Records a physical biometric touch hit with contact ellipse and orientation angle correction. */
+    fun recordTouchHit(char: Char, x: Float, y: Float, major: Float = 0f, minor: Float = 0f, orientation: Float = 0f) {
+        if (!isLoaded) return
+        nativeRecordTouchHit(char.code, x, y, major, minor, orientation)
+    }
+
+    /** Returns the learned centroid offset (dx, dy) for a character. */
+    fun getTouchOffset(char: Char): Pair<Float, Float> {
+        if (!isLoaded) return Pair(0f, 0f)
+        val arr = nativeGetTouchOffset(char.code)
+        return if (arr.size >= 2) Pair(arr[0], arr[1]) else Pair(0f, 0f)
+    }
+
+    /** Returns all learned per-key offsets for DevTools telemetry visualization. */
+    fun getAllTouchOffsets(): List<Pair<Char, Pair<Float, Float>>> {
+        if (!isLoaded) return emptyList()
+        val raw = nativeGetAllTouchOffsets() ?: return emptyList()
+        return raw.mapNotNull { str ->
+            val colon = str.indexOf(':')
+            val comma = str.indexOf(',')
+            if (colon > 0 && comma > colon) {
+                val ch = str[0]
+                val dx = str.substring(colon + 1, comma).toFloatOrNull() ?: 0f
+                val dy = str.substring(comma + 1).toFloatOrNull() ?: 0f
+                Pair(ch, Pair(dx, dy))
+            } else null
+        }
     }
 
     /**
@@ -660,4 +690,12 @@ object FlorisNative {
 
     private external fun nativeToBritishSpelling(word: String): String?
 
+    @JvmStatic
+    private external fun nativeRecordTouchHit(ch: Int, x: Float, y: Float, major: Float, minor: Float, orientation: Float)
+
+    @JvmStatic
+    private external fun nativeGetTouchOffset(ch: Int): FloatArray
+
+    @JvmStatic
+    private external fun nativeGetAllTouchOffsets(): Array<String>?
 }

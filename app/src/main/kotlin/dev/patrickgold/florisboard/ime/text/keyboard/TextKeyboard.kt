@@ -131,16 +131,19 @@ class TextKeyboard(
             for (key in keys()) {
                 if (!key.isEnabled) continue
                 if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
+                val charCode = key.computedData.code.toChar().lowercaseChar()
+                val (learnedDx, learnedDy) = org.florisboard.libnative.FlorisNative.getTouchOffset(charCode)
                 val center = key.visibleBounds.center
-                val dx = pointerX - center.x
+                val effectiveCenterX = center.x + learnedDx
+                val effectiveCenterY = center.y + learnedDy
+                val dx = pointerX - effectiveCenterX
                 // Anisotropic Bivariate Weighting: thumb variance is wider horizontally (dx * 0.85) than vertically
-                val dy = (compensatedY - center.y) * 1.15f
+                val dy = (compensatedY - effectiveCenterY) * 1.15f
                 val dist = kotlin.math.sqrt((dx * 0.85f) * (dx * 0.85f) + dy * dy)
 
                 val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * reachFactor
                 if (dist > maxReach) continue
 
-                val charCode = key.computedData.code.toChar().lowercaseChar()
                 val isHighProbability = predictedNextLetters.contains(charCode)
 
                 // Bayesian probability distance weighting:

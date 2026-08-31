@@ -8863,6 +8863,16 @@ private class TextKeyboardLayoutController(
                 keyVariation = keyboardManager.activeState.keyVariation,
                 packageName = editorInstance.activeInfo.packageName,
             )
+            if (label.length == 1 && label[0].isLetter()) {
+                org.florisboard.libnative.FlorisNative.recordTouchHit(
+                    char = label[0],
+                    x = touchX,
+                    y = touchY,
+                    major = touchMajor ?: 0f,
+                    minor = touchMinor ?: 0f,
+                    orientation = touchOrientation ?: 0f,
+                )
+            }
             if (pointer.initialKey == null) {
                 pointer.initialKey = key
             }

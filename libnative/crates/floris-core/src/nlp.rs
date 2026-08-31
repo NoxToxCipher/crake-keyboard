@@ -1013,6 +1013,11 @@ impl NlpEngine {
         self.touch_model = model;
     }
 
+    #[inline]
+    pub fn touch_model_mut(&mut self) -> Option<&mut crate::TouchModel> {
+        self.touch_model.as_mut()
+    }
+
     /// Whether typing `b` while meaning `a` is a plausible physical slip:
     /// answered by the Gaussian touch model when a layout has been uploaded,
     /// by the static adjacency table otherwise. Governs the weighted fuzzy

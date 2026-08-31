@@ -253,6 +253,89 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeHitImpo
     }
 }
 
+/// Records a physical biometric touch hit with contact ellipse and orientation angle correction.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeRecordTouchHit(
+    _env: JNIEnv,
+    _class: JClass,
+    ch: jint,
+    x: jfloat,
+    y: jfloat,
+    major: jfloat,
+    minor: jfloat,
+    orientation: jfloat,
+) {
+    let char_code = match char::from_u32(ch as u32) {
+        Some(c) => c.to_ascii_lowercase(),
+        None => return,
+    };
+    if let Ok(mut tester) = HIT_TESTER.write() {
+        if let Some(index) = tester.chars().iter().position(|&c| c == char_code) {
+            let patch = floris_core::ContactPatch::new(x, y, major, minor, orientation);
+            let (ax, ay) = patch.corrected_apex();
+            tester.record_hit(index, ax, ay);
+        }
+    }
+    if let Ok(mut nlp) = NLP_ENGINE.write() {
+        if let Some(tm) = nlp.touch_model_mut() {
+            tm.record_touch_hit_with_biometrics(char_code, x, y, major, minor, orientation);
+        }
+    }
+}
+
+/// Returns the learned centroid offset (dx, dy) for a character.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGetTouchOffset(
+    env: JNIEnv,
+    _class: JClass,
+    ch: jint,
+) -> jni::sys::jfloatArray {
+    let char_code = char::from_u32(ch as u32).unwrap_or('\0');
+    let (dx, dy) = match HIT_TESTER.read() {
+        Ok(tester) => tester.offset_for(char_code),
+        Err(_) => (0.0, 0.0),
+    };
+    let arr = env.new_float_array(2).unwrap();
+    let _ = env.set_float_array_region(&arr, 0, &[dx, dy]);
+    arr.into_raw()
+}
+
+/// Returns all learned per-key offsets formatted as an array of "char:dx,dy" strings.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGetAllTouchOffsets(
+    mut env: JNIEnv,
+    _class: JClass,
+) -> jobjectArray {
+    let empty_array = env
+        .new_object_array(0, "java/lang/String", JString::default())
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+
+    let offsets: Vec<String> = match HIT_TESTER.read() {
+        Ok(tester) => tester
+            .get_all_offsets()
+            .iter()
+            .map(|&(c, dx, dy)| format!("{}:{:.1},{:.1}", c, dx, dy))
+            .collect(),
+        Err(_) => Vec::new(),
+    };
+
+    let Ok(result_array) = env.new_object_array(
+        offsets.len() as i32,
+        "java/lang/String",
+        JString::default(),
+    ) else {
+        return empty_array;
+    };
+
+    for (i, off_str) in offsets.iter().enumerate() {
+        if let Ok(jstr) = env.new_string(off_str) {
+            let _ = env.set_object_array_element(&result_array, i as i32, &jstr);
+        }
+    }
+    result_array.into_raw()
+}
+
 /// Loads the CRKB bigram language model for context re-ranking. Returns the
 /// pair count, or -1 on any parse error (in which case a previously loaded
 /// table, if any, stays in effect).

@@ -129,6 +129,15 @@ impl HitTester {
             .unwrap_or((0.0, 0.0))
     }
 
+    #[inline]
+    pub fn chars(&self) -> &[char] {
+        &self.chars
+    }
+
+    pub fn get_all_offsets(&self) -> Vec<(char, f32, f32)> {
+        self.offsets.iter().map(|(&c, &(dx, dy))| (c, dx, dy)).collect()
+    }
+
     /// Serializes learned offsets (CRKT v1: char u32, dx f32, dy f32 each).
     pub fn export_offsets(&self) -> Vec<u8> {
         let mut entries: Vec<(char, (f32, f32))> =

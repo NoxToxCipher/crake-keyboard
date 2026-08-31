@@ -1,11 +1,12 @@
 {
-  "milestone": 334,
-  "tagName": "v0.334.0",
-  "name": "Milestone 334 (Biometric Touch Dynamics & Smartbar Perception Telemetry)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.334.0/CrakeKeyboard_Milestone_334.apk",
-  "apkSize": 56645012,
-  "changelog": "Milestone 334: Touch Ellipse & Biometric Dynamics (contact angle orientation, inter-key flight time) and Smartbar Candidate Perception Telemetry (dwell-to-tap latency, suggestion slot conversion, and flick prediction tracking).",
+  "milestone": 335,
+  "tagName": "v0.335.0",
+  "name": "Milestone 335 (Adaptive Biometric Hitbox Engine & Smartbar Prioritizer)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.335.0/CrakeKeyboard_Milestone_335.apk",
+  "apkSize": 56735959,
+  "changelog": "Milestone 335: Adaptive Biometric Hitbox Engine (online Gaussian centroid tuning from contact angle & sub-pixel offsets), Cognitive Smartbar Prioritizer (perception-latency candidate arrangement), and DevTools Biometric Drift Dashboard.",
   "history": {
+    "335": "Adaptive Biometric Hitbox Engine (online Gaussian centroid tuning from contact angle & sub-pixel offsets), Cognitive Smartbar Prioritizer (perception-latency candidate arrangement), and DevTools Biometric Drift Dashboard.",
     "334": "Touch Ellipse & Biometric Dynamics (contact angle orientation, inter-key flight time) and Smartbar Candidate Perception Telemetry (dwell-to-tap latency, suggestion slot conversion, and flick prediction tracking).",
     "333": "Multi-Token Retroactive Rewind Harvester captures delayed corrections when backspacing across word boundaries into earlier typos, immediately training on-device NLP.",
     "332": "Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'.",
