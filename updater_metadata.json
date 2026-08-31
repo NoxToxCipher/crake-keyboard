@@ -1,11 +1,12 @@
 {
-  "milestone": 341,
-  "tagName": "v0.341.0",
-  "name": "Milestone 341 (Smartbar Compose Recomposition Speed Boost)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.341.0/CrakeKeyboard_Milestone_341.apk",
+  "milestone": 342,
+  "tagName": "v0.342.0",
+  "name": "Milestone 342 (Emoji Suggestion Pipeline Speed Boost)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.342.0/CrakeKeyboard_Milestone_342.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 341: Smartbar Compose Recomposition Speed Boost (@Immutable contracts for candidate skipping optimization) and 45-min autonomous maintenance loop cycle 3.",
+  "changelog": "Milestone 342: Emoji Suggestion Pipeline Speed Boost (single-pass linear scan and zero-allocation top-K collector) and 45-min autonomous maintenance loop cycle 4.",
   "history": {
+    "342": "Emoji Suggestion Pipeline Speed Boost (single-pass linear scan and zero-allocation top-K collector) and 45-min autonomous maintenance loop cycle 4.",
     "341": "Smartbar Compose Recomposition Speed Boost (@Immutable contracts for candidate skipping optimization) and 45-min autonomous maintenance loop cycle 3.",
     "340": "Zero-Allocation Token Pipeline: Backwards index scanner eliminates heap allocations during typing in long documents for smoother keystroke cadence.",
     "339": "Shift Latency Speed Boost (memoized ImageVector resource cache), 45-min autonomous loop setup, and expanded mechanical typo recoveries (obscructing -> obstructing, etc.).",

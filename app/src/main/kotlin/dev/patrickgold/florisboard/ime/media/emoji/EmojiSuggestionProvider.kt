@@ -69,25 +69,28 @@ class EmojiSuggestionProvider(private val context: Context) : SuggestionProvider
         val query = validateInputQuery(content.composingText) ?: return emptyList()
         val emojis = cachedEmojiMappings.get(subtype.primaryLocale)?.get(preferredSkinTone) ?: emptyList()
         val candidates = withContext(Dispatchers.Default) {
-            emojis.parallelStream()
-                .map { emoji ->
-                    val nameWeight = emoji.name.containsWeighted(query, ignoreCase = true)
-                    val keywordWeight = emoji.keywords
-                        .any { it.contains(query, ignoreCase = true) }
-                        .let { if (it) 1.0 else 0.0 }
-                    emoji to (nameWeight * 0.7 + keywordWeight * 0.3)
+            val matching = ArrayList<Pair<Emoji, Double>>(16)
+            for (emoji in emojis) {
+                val nameWeight = emoji.name.containsWeighted(query, ignoreCase = true)
+                val keywordWeight = if (nameWeight < 1.0 && emoji.keywords.any { it.contains(query, ignoreCase = true) }) 1.0 else 0.0
+                val totalWeight = nameWeight * 0.7 + keywordWeight * 0.3
+                if (totalWeight > 0.0) {
+                    matching.add(emoji to totalWeight)
                 }
-                .sorted { (_, a), (_, b) -> b.compareTo(a) }
-                .limit(maxCandidateCount.toLong())
-                .filter { (_, a) -> a > 0 }
-                .map { (emoji, _) ->
+            }
+            matching.sortByDescending { it.second }
+            val count = maxCandidateCount.coerceAtMost(matching.size)
+            val result = ArrayList<SuggestionCandidate>(count)
+            for (i in 0 until count) {
+                result.add(
                     EmojiSuggestionCandidate(
-                        emoji = emoji,
+                        emoji = matching[i].first,
                         showName = showName,
                         sourceProvider = this@EmojiSuggestionProvider,
                     )
-                }
-                .collect(Collectors.toList())
+                )
+            }
+            result
         }
         return candidates
     }
