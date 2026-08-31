@@ -424,9 +424,9 @@ private fun BoxScope.ImeDirectTopResizeHandle() {
     Box(
         modifier = Modifier
             .align(Alignment.TopCenter)
-            .fillMaxWidth()
-            .height(20.dp)
-            .offset(y = (-6).dp)
+            .width(72.dp)
+            .height(16.dp)
+            .offset(y = (-4).dp)
             .systemGestureExclusion()
             .pointerInput(Unit) {
                 var accumulatedOffset = Offset.Zero
