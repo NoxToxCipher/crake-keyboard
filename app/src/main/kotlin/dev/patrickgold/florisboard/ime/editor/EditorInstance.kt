@@ -35,6 +35,7 @@ import dev.patrickgold.florisboard.ime.keyboard.IncognitoMode
 import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.nlp.MergedWordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.TokenRewindTracker
 import dev.patrickgold.florisboard.ime.text.composing.Appender
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
@@ -62,10 +63,12 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     val autoSpace = AutoSpaceState()
     val phantomSpace = PhantomSpaceState()
     val massSelection = MassSelectionState()
+    val tokenRewindTracker = TokenRewindTracker()
 
     private fun currentInputConnection() = FlorisImeService.currentInputConnection()
 
     override fun handleStartInputView(editorInfo: FlorisEditorInfo, isRestart: Boolean) {
+        tokenRewindTracker.reset()
         if (!prefs.correction.rememberCapsLockState.get()) {
             activeState.inputShiftState = InputShiftState.UNSHIFTED
         }
@@ -253,6 +256,20 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         }
         val isPhantomSpaceActive = phantomSpace.determine(char)
         phantomSpace.setInactive()
+
+        tokenRewindTracker.onCharacterTyped(char)
+        if (char == " " || char == "\n" || char == "." || char == "!" || char == "?" || char == ",") {
+            val tokenBefore = textBeforeTrimmed.takeLastWhile { !it.isWhitespace() }.toString()
+            if (tokenBefore.isNotEmpty()) {
+                tokenRewindTracker.onTokenCommitted(
+                    token = tokenBefore,
+                    isRawTyping = true,
+                    keyVariation = activeState.keyVariation,
+                    packageName = activeInfo.packageName,
+                )
+            }
+        }
+
         return super.commitChar(
             char = char,
             deletePreviousSpace = isDeletePreviousSpace,
@@ -324,6 +341,12 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             candidate = candidate,
             originalText = tokenBeforeCursor.toString(),
             committedText = committed,
+        )
+        tokenRewindTracker.onTokenCommitted(
+            token = text,
+            isRawTyping = false,
+            keyVariation = activeState.keyVariation,
+            packageName = activeInfo.packageName,
         )
         return super.commitText(committed).also {
             updateLastCommitPosition()
@@ -397,6 +420,12 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         }
         val isPhantomSpaceActive = phantomSpace.determine(text)
         phantomSpace.setActive(showComposingRegion = false)
+        tokenRewindTracker.onTokenCommitted(
+            token = text,
+            isRawTyping = false,
+            keyVariation = activeState.keyVariation,
+            packageName = activeInfo.packageName,
+        )
         return super.commitText("$text$SPACE").also {
             updateLastCommitPosition()
         }
@@ -406,6 +435,12 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val isPhantomSpaceActive = phantomSpace.determine(text, forceActive = true)
         phantomSpace.setActive(showComposingRegion = true)
+        tokenRewindTracker.onTokenCommitted(
+            token = text,
+            isRawTyping = false,
+            keyVariation = activeState.keyVariation,
+            packageName = activeInfo.packageName,
+        )
         return if (isPhantomSpaceActive) {
             super.commitText("$SPACE$text")
         } else {
@@ -471,6 +506,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         }
         autoSpace.setInactive()
         phantomSpace.setInactive()
+        tokenRewindTracker.onCharacterDeleted(content.textBeforeSelection.toString())
         return if (content.selection.isSelectionMode) {
             commitText("")
         } else runBlocking {

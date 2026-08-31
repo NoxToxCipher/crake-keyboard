@@ -61,6 +61,7 @@ object FlightRecorderManager {
         TYPO_MISTAKE,
         WORD_COMMITTED,
         SUGGESTION_PICKED,
+        RETROACTIVE_REWIND,
     }
 
     data class GestureMetrics(
@@ -106,6 +107,8 @@ object FlightRecorderManager {
         val contextBefore: String? = null,
         val packageName: String? = null,
         val isTypo: Boolean = false,
+        val rewindDepth: Int? = null,
+        val cognitiveDelayChars: Int? = null,
     ) {
         fun toJsonString(): String = buildString {
             append("{\"timestamp\":").append(timestamp)
@@ -138,6 +141,8 @@ object FlightRecorderManager {
             dwellTimeMs?.let { append(",\"dwellTimeMs\":").append(it) }
             latencyMs?.let { append(",\"latencyMs\":").append(it) }
             editDistance?.let { append(",\"editDistance\":").append(it) }
+            rewindDepth?.let { append(",\"rewindDepth\":").append(it) }
+            cognitiveDelayChars?.let { append(",\"cognitiveDelayChars\":").append(it) }
             contextBefore?.let { append(",\"contextBefore\":\"").append(escapeJson(it)).append("\"") }
             packageName?.let { append(",\"packageName\":\"").append(escapeJson(it)).append("\"") }
             append("}")
@@ -404,6 +409,36 @@ object FlightRecorderManager {
         recordChannel.trySend(record)
     }
 
+    fun logRetroactiveRewind(
+        erasedToken: String,
+        replacementToken: String,
+        rewindDepth: Int,
+        cognitiveDelayChars: Int,
+        keyVariation: KeyVariation? = null,
+        packageName: String? = null,
+    ) {
+        if (!isLoggingAllowed(keyVariation, packageName)) return
+        val cleanErased = sanitizePii(erasedToken)
+        val cleanReplacement = sanitizePii(replacementToken)
+        if (cleanErased.isNullOrBlank() || cleanReplacement.isNullOrBlank()) return
+
+        val editDist = computeLevenshtein(cleanErased, cleanReplacement)
+        val record = Record(
+            mode = InputMode.TYPING,
+            action = ActionType.RETROACTIVE_REWIND,
+            rawInput = cleanErased,
+            intendedWord = cleanReplacement,
+            correctedTo = cleanReplacement,
+            isTypo = true,
+            autocorrectUndo = true,
+            editDistance = editDist,
+            rewindDepth = rewindDepth,
+            cognitiveDelayChars = cognitiveDelayChars,
+            packageName = packageName,
+        )
+        recordChannel.trySend(record)
+    }
+
     fun logSuggestionPicked(
         rawPrefix: String,
         selectedWord: String,
@@ -526,6 +561,23 @@ object FlightRecorderManager {
             }
             counts.toList().sortedByDescending { it.second }.take(10)
         }.getOrDefault(emptyList())
+    }
+
+    private fun computeLevenshtein(s1: String, s2: String): Int {
+        val dp = Array(s1.length + 1) { IntArray(s2.length + 1) }
+        for (i in 0..s1.length) dp[i][0] = i
+        for (j in 0..s2.length) dp[0][j] = j
+        for (i in 1..s1.length) {
+            for (j in 1..s2.length) {
+                val cost = if (s1[i - 1].lowercaseChar() == s2[j - 1].lowercaseChar()) 0 else 1
+                dp[i][j] = minOf(
+                    dp[i - 1][j] + 1,
+                    dp[i][j - 1] + 1,
+                    dp[i - 1][j - 1] + cost,
+                )
+            }
+        }
+        return dp[s1.length][s2.length]
     }
 
     suspend fun clearLogFile(context: Context): Boolean = securePurgeDiagnostics(context)
