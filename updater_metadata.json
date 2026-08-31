@@ -1,10 +1,10 @@
 {
-  "milestone": 325,
-  "tagName": "v0.325.0",
-  "name": "Milestone 325 (Phases 4-6: Neural Glide Kinematics, Frame Pacing & Vault Zeroization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.325.0/CrakeKeyboard_Milestone_325.apk",
+  "milestone": 326,
+  "tagName": "v0.326.0",
+  "name": "Milestone 326 (Default Borderless Titanium White & Update Theme Preserver)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.326.0/CrakeKeyboard_Milestone_326.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 325: Completed Keyboard Roadmap Phases 4-6 (Neural Glide Kinematics with curvature & inflection tracking, Touch-to-Visual Frame Pacing latency telemetry, and Air-Gapped Vault TTL zeroization).",
+  "changelog": "Milestone 326: Defaulted theme to Borderless Titanium White for new users while preserving custom theme selections for existing users; eliminated bordered fallback glitch on update.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -46,6 +46,7 @@
     "322": "Expanded Phase 1 Kinematic Telemetry: added elliptical touchMajor/touchMinor geometry, contact pressure, key dwell time, autocorrect false-positive undo tracker, and suggestion slot metrics.",
     "323": "Implemented Phase 2 Dynamic Bivariate Hitbox Warping: anisotropic contact patch apex tilt correction, thumb reach scaling, and Gaussian Mahalanobis dispersion weighting to cut boundary mis-taps.",
     "324": "Implemented Phase 3 Autocorrect False-Positive Auto-Tuner: progressive confidence dampening on backspaced corrections, zero-allocation rejection suppression, and flight recorder revert logging.",
-    "325": "Completed Keyboard Roadmap Phases 4-6: Neural Glide Kinematics (curvature & inflection tracking), Touch-to-Visual Frame Pacing latency telemetry, and Air-Gapped Vault TTL zeroization."
+    "325": "Completed Keyboard Roadmap Phases 4-6: Neural Glide Kinematics (curvature & inflection tracking), Touch-to-Visual Frame Pacing latency telemetry, and Air-Gapped Vault TTL zeroization.",
+    "326": "Defaulted theme to Borderless Titanium White for new users while preserving custom theme selections for existing users; eliminated bordered fallback glitch on update."
   }
 }

@@ -114,12 +114,12 @@ enum class OnboardingThemeChoice(
     val accentColor: Color,
     val description: String,
 ) {
-    CYBER_EMERALD("Crake Obsidian Emerald", "org.florisboard.themes", "crake_emerald_bordered", CyberEmerald, "Obsidian black with neon emerald accents"),
-    ELECTRIC_CYAN("Crake Obsidian Cyan", "org.florisboard.themes", "crake_cyan_bordered", ElectricCyan, "High-contrast electric cyan keycaps"),
-    NEON_PURPLE("Crake Obsidian Purple", "org.florisboard.themes", "crake_purple_bordered", NeonPurple, "Synthwave violet & cyberpunk glow"),
-    CRIMSON_SPEEDSTER("Crake Obsidian Crimson", "org.florisboard.themes", "crake_crimson_bordered", CrimsonRed, "Race-tuned dynamic crimson"),
-    CYBER_AMBER("Crake Obsidian Amber", "org.florisboard.themes", "crake_amber_bordered", CyberAmber, "Warm amber cockpit HUD aesthetic"),
-    GHOST_SLATE("Crake Ghost Titanium White", "org.florisboard.themes", "crake_ghost_white_bordered", GhostSlate, "Ultra-clean minimalist titanium slate");
+    GHOST_SLATE("Crake Ghost Titanium White", "org.florisboard.themes", "crake_ghost_white_borderless", GhostSlate, "Ultra-clean minimalist titanium slate (Borderless)"),
+    ELECTRIC_CYAN("Crake Obsidian Cyan", "org.florisboard.themes", "crake_cyan_borderless", ElectricCyan, "High-contrast electric cyan (Borderless)"),
+    CYBER_EMERALD("Crake Obsidian Emerald", "org.florisboard.themes", "crake_emerald_borderless", CyberEmerald, "Obsidian black with neon emerald accents (Borderless)"),
+    NEON_PURPLE("Crake Obsidian Purple", "org.florisboard.themes", "crake_purple_borderless", NeonPurple, "Synthwave violet & cyberpunk glow (Borderless)"),
+    CRIMSON_SPEEDSTER("Crake Obsidian Crimson", "org.florisboard.themes", "crake_crimson_borderless", CrimsonRed, "Race-tuned dynamic crimson (Borderless)"),
+    CYBER_AMBER("Crake Obsidian Amber", "org.florisboard.themes", "crake_amber_borderless", CyberAmber, "Warm amber cockpit HUD aesthetic (Borderless)");
 }
 
 @Composable

@@ -29,19 +29,19 @@ import org.florisboard.lib.snygg.SnyggStylesheet
 
 val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
     defines {
-        "--primary" to rgbaColor(0, 229, 255)
-        "--primary-variant" to rgbaColor(0, 180, 216)
-        "--secondary" to rgbaColor(0, 229, 255)
-        "--secondary-variant" to rgbaColor(0, 180, 216)
-        "--background" to rgbaColor(10, 12, 18)
-        "--background-variant" to rgbaColor(16, 20, 28)
-        "--surface" to rgbaColor(22, 27, 38)
-        "--surface-variant" to rgbaColor(35, 42, 58)
+        "--primary" to rgbaColor(248, 250, 252)
+        "--primary-variant" to rgbaColor(148, 163, 184)
+        "--secondary" to rgbaColor(226, 232, 240)
+        "--secondary-variant" to rgbaColor(148, 163, 184)
+        "--background" to rgbaColor(10, 14, 23)
+        "--background-variant" to rgbaColor(5, 8, 14)
+        "--surface" to rgbaColor(0, 0, 0, 0f)
+        "--surface-variant" to rgbaColor(30, 41, 59)
 
         "--on-primary" to rgbaColor(10, 12, 18)
-        "--on-background" to rgbaColor(255, 255, 255)
-        "--on-background-disabled" to rgbaColor(80, 90, 105)
-        "--on-surface" to rgbaColor(255, 255, 255)
+        "--on-background" to rgbaColor(238, 238, 238)
+        "--on-background-disabled" to rgbaColor(220, 220, 220, 0.28f)
+        "--on-surface" to rgbaColor(238, 238, 238)
 
         "--shape" to roundedCornerShape(8.dp)
         "--shape-variant" to roundedCornerShape(12.dp)
@@ -56,7 +56,7 @@ val FlorisImeThemeBaseStyle = SnyggStylesheet.v2 {
         background = `var`("--surface")
         foreground = `var`("--on-surface")
         fontSize = fontSize(22.sp)
-        shadowElevation = size(2.dp)
+        shadowElevation = size(0.dp)
         shape = `var`("--shape")
         textMaxLines = textMaxLines(1)
     }

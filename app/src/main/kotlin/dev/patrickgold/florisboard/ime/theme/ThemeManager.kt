@@ -271,8 +271,8 @@ class ThemeManager(context: Context) {
 
         companion object {
             val DEFAULT = ThemeInfo(
-                name = extCoreTheme("base"),
-                config = ThemeExtensionComponentImpl(id = "base", label = "Base", authors = listOf()),
+                name = extCoreTheme("crake_ghost_white_borderless"),
+                config = ThemeExtensionComponentImpl(id = "crake_ghost_white_borderless", label = "Crake Ghost Titanium White (Borderless)", authors = listOf("NoxToxCipher")),
                 stylesheet = FlorisImeThemeBaseStyle,
                 loadedDir = null,
                 loadFailure = null,
