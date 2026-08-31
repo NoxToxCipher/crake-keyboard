@@ -596,12 +596,13 @@ fun TextKeyboardLayout(
             if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
                 if (prefs.easterEggs.fire(EasterEgg.DUKU_FRUIT)) dukuFruitTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for car so compound words like 'cardboard', 'scar', 'sidecar' never trigger it!
+            // Strict word boundary isolation for car so words like 'card', 'care', 'cart', 'cardboard' never trigger it!
+            // Strictly requires the full word 'car' or 'cars' (or other car triggers) to be completed and followed by a space or punctuation.
             val carKeys = carKeysHoisted
-            val isCarMatch = carKeys.any { k ->
+            val isCarMatch = comp.isEmpty() && carKeys.any { k ->
                 val delimiters = triggerDelimiters
                 delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
+                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb.endsWith("\"$k$d") || tb.endsWith("'$k$d")
                 }
             }
             if (isCarMatch) {

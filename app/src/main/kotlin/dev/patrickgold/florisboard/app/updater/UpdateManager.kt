@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 331
+    const val CURRENT_MILESTONE = 332
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 33101
-    private const val RESOLVED_NOTIFICATION_ID = 33102
+    private const val NOTIFICATION_ID = 33201
+    private const val RESOLVED_NOTIFICATION_ID = 33202
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            332 -> "Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'."
             331 -> "Constrained top resize grab zone to center pill area (#CRK-155), completely eliminating accidental 'blue tab' drag triggers while typing or swiping top keys."
             330 -> "Fixed consecutive punctuation (#CRK-154: uninterrupted !!, !!!, !? clusters), removed aggressive 'nfc' profanity macro (#CRK-157), and added 'toi' -> 'you' typo recovery (#CRK-156)."
             329 -> "Locked in one-time tester username prompt: once a tester confirms their handle, future milestone updates will never re-prompt them."

@@ -1,10 +1,10 @@
 {
-  "milestone": 331,
-  "tagName": "v0.331.0",
-  "name": "Milestone 331 (Top Resize Hit-Target Optimization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.331.0/CrakeKeyboard_Milestone_331.apk",
+  "milestone": 332,
+  "tagName": "v0.332.0",
+  "name": "Milestone 332 (Car Easter Egg Strict Word Boundary Isolation)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.332.0/CrakeKeyboard_Milestone_332.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 331: Constrained top resize grab zone to center pill area (#CRK-155), completely eliminating accidental 'blue tab' drag triggers while typing or swiping top keys.",
+  "changelog": "Milestone 332: Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -52,6 +52,7 @@
     "328": "Purged all legacy FlorisBoard themes and Material You assets; keyboard theme suite is now 100% proprietary Crake Cyberpunk & Titanium White colorways.",
     "329": "Locked in one-time tester username prompt: once a tester confirms their handle, future milestone updates will never re-prompt them.",
     "330": "Fixed consecutive punctuation (#CRK-154: uninterrupted !!, !!!, !? clusters), removed aggressive 'nfc' profanity macro (#CRK-157), and added 'toi' -> 'you' typo recovery (#CRK-156).",
-    "331": "Constrained top resize grab zone to center pill area (#CRK-155), completely eliminating accidental 'blue tab' drag triggers while typing or swiping top keys."
+    "331": "Constrained top resize grab zone to center pill area (#CRK-155), completely eliminating accidental 'blue tab' drag triggers while typing or swiping top keys.",
+    "332": "Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'."
   }
 }
