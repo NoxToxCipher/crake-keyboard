@@ -765,7 +765,8 @@ private fun ProGesturesAndTestDriveCard() {
             scope.launch {
                 val cleaned = it.trim().ifEmpty { "Daya" }
                 prefs.updater.testerName.set(cleaned)
-                prefs.updater.testerPromptedMilestone.set(dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE)
+                prefs.updater.testerNameConfirmed.set(true)
+                prefs.updater.testerOnboardingDismissed.set(true)
             }
         },
         placeholder = {

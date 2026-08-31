@@ -1,10 +1,10 @@
 {
-  "milestone": 328,
-  "tagName": "v0.328.0",
-  "name": "Milestone 328 (Purge Legacy FlorisBoard Themes & 100% Crake Colorways)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.328.0/CrakeKeyboard_Milestone_328.apk",
+  "milestone": 329,
+  "tagName": "v0.329.0",
+  "name": "Milestone 329 (Permanent One-Time Tester Handle Lock-in)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.329.0/CrakeKeyboard_Milestone_329.apk",
   "apkSize": 56645012,
-  "changelog": "Milestone 328: Purged all legacy FlorisBoard themes and Material You assets; keyboard theme suite is now 100% proprietary Crake Cyberpunk & Titanium White colorways.",
+  "changelog": "Milestone 329: Locked in one-time tester username prompt: once a tester confirms their handle, future milestone updates will never re-prompt them.",
   "history": {
     "309": "Dynamic Cloud Changelog Engine (live multi-version changelog sync via updater_metadata.json history dictionary, ensuring older installed APKs accurately display detailed notes for all intermediate milestones).",
     "308": "Restored and reinforced BB10 Upward Word Flick prediction engine • Corrected Home Screen & Tour gesture guides (Upward Flick flings predicted words).",
@@ -49,6 +49,7 @@
     "325": "Completed Keyboard Roadmap Phases 4-6: Neural Glide Kinematics (curvature & inflection tracking), Touch-to-Visual Frame Pacing latency telemetry, and Air-Gapped Vault TTL zeroization.",
     "326": "Defaulted theme to Borderless Titanium White for new users while preserving custom theme selections for existing users; eliminated bordered fallback glitch on update.",
     "327": "Prompted existing testers on update and new testers during onboarding to choose or confirm their tester username for diagnostic feedback attribution.",
-    "328": "Purged all legacy FlorisBoard themes and Material You assets; keyboard theme suite is now 100% proprietary Crake Cyberpunk & Titanium White colorways."
+    "328": "Purged all legacy FlorisBoard themes and Material You assets; keyboard theme suite is now 100% proprietary Crake Cyberpunk & Titanium White colorways.",
+    "329": "Locked in one-time tester username prompt: once a tester confirms their handle, future milestone updates will never re-prompt them."
   }
 }

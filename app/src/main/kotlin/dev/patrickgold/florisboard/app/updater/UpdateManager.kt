@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 328
+    const val CURRENT_MILESTONE = 329
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 32801
-    private const val RESOLVED_NOTIFICATION_ID = 32802
+    private const val NOTIFICATION_ID = 32901
+    private const val RESOLVED_NOTIFICATION_ID = 32902
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,11 +87,11 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            329 -> "Locked in one-time tester username prompt: once a tester confirms their handle, future milestone updates will never re-prompt them."
             328 -> "Purged all legacy FlorisBoard themes and Material You assets; keyboard theme suite is now 100% proprietary Crake Cyberpunk & Titanium White colorways."
             327 -> "Prompted existing testers on update and new testers during onboarding to choose or confirm their tester username for diagnostic feedback attribution."
             326 -> "Defaulted theme to Borderless Titanium White for new users while preserving custom theme selections for existing users; eliminated bordered fallback glitch on update."
             325 -> "Completed Keyboard Roadmap Phases 4-6: Neural Glide Kinematics (curvature & inflection tracking), Touch-to-Visual Frame Pacing latency telemetry, and Air-Gapped Vault TTL zeroization."
-            324 -> "Implemented Phase 3 Autocorrect False-Positive Auto-Tuner: progressive confidence dampening on backspaced corrections, zero-allocation rejection suppression, and flight recorder revert logging."
             322 -> "Expanded Phase 1 Kinematic Telemetry: added elliptical touchMajor/touchMinor geometry, contact pressure, key dwell time, autocorrect false-positive undo tracker, and suggestion slot metrics."
             321 -> "Added Zero-Knowledge Encrypted Vault Hero Banner to Clipboard Settings with ChaCha20-Poly1305 security telemetry chips and auto-burn status."
             320 -> "Added 1D-CNN Neural Glide & Trackpad Engine Hero Banner to Gestures Settings with real-time status badges and 6-channel kinematic telemetry indicators."

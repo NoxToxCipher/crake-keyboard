@@ -130,13 +130,11 @@ fun HomeScreen() = FlorisScreen {
         val scope = rememberCoroutineScope()
         val isFlorisBoardEnabled by InputMethodUtils.observeIsFlorisboardEnabled(foregroundOnly = true)
         val testerOnboardingDismissed by prefs.updater.testerOnboardingDismissed.collectAsState()
-        val testerPromptedMilestone by prefs.updater.testerPromptedMilestone.collectAsState()
+        val testerNameConfirmed by prefs.updater.testerNameConfirmed.collectAsState()
         val currentTesterName by prefs.updater.testerName.collectAsState()
         var showTesterModal by remember {
             mutableStateOf(
-                !testerOnboardingDismissed ||
-                testerPromptedMilestone < dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE ||
-                currentTesterName.isBlank()
+                !testerOnboardingDismissed && !testerNameConfirmed
             )
         }
         var inputTesterName by remember {
@@ -147,7 +145,7 @@ fun HomeScreen() = FlorisScreen {
             Dialog(
                 onDismissRequest = {
                     scope.launch {
-                        prefs.updater.testerPromptedMilestone.set(dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE)
+                        prefs.updater.testerNameConfirmed.set(true)
                         prefs.updater.testerOnboardingDismissed.set(true)
                     }
                     showTesterModal = false
@@ -278,7 +276,7 @@ fun HomeScreen() = FlorisScreen {
                                 val name = inputTesterName.trim().ifEmpty { "Daya" }
                                 scope.launch {
                                     prefs.updater.testerName.set(name)
-                                    prefs.updater.testerPromptedMilestone.set(dev.patrickgold.florisboard.app.updater.UpdateManager.CURRENT_MILESTONE)
+                                    prefs.updater.testerNameConfirmed.set(true)
                                     prefs.updater.testerOnboardingDismissed.set(true)
                                     prefs.updater.autoCheckEnabled.set(true)
                                     prefs.updater.logSyncEnabled.set(true)

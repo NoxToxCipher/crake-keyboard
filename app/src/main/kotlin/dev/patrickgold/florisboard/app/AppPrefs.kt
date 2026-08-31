@@ -251,9 +251,9 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "updater__tester_name",
             default = "Daya",
         )
-        val testerPromptedMilestone = int(
-            key = "updater__tester_prompted_milestone",
-            default = 0,
+        val testerNameConfirmed = boolean(
+            key = "updater__tester_name_confirmed",
+            default = false,
         )
         val testerOnboardingDismissed = boolean(
             key = "updater__tester_onboarding_dismissed",
