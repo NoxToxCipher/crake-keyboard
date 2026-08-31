@@ -226,6 +226,23 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                 insertSpaceAfterChar = false,
             )
         }
+        val isPunctuationChar = char.length == 1 && (char[0] == '!' || char[0] == '?' || char[0] == '.')
+        val textBeforeTrimmed = if (autoSpace.isActive) activeContent.textBeforeSelection.trimEnd() else activeContent.textBeforeSelection
+        val isRepeatingPunctuation = isPunctuationChar && textBeforeTrimmed.isNotEmpty() &&
+            (textBeforeTrimmed.last() == '!' || textBeforeTrimmed.last() == '?' || textBeforeTrimmed.last() == '.')
+
+        if (isRepeatingPunctuation) {
+            val isDeletePreviousSpace = autoSpace.isActive && activeContent.textBeforeSelection.endsWith(' ')
+            autoSpace.setInactive()
+            phantomSpace.setInactive()
+            return super.commitChar(
+                char = char,
+                deletePreviousSpace = isDeletePreviousSpace,
+                insertSpaceBeforeChar = false,
+                insertSpaceAfterChar = false,
+            )
+        }
+
         val isInsertAutoSpaceBeforeChar = shouldInsertAutoSpaceBefore(char)
         val isInsertAutoSpaceAfterChar = shouldInsertAutoSpaceAfter(char)
         val isDeletePreviousSpace = isInsertAutoSpaceAfterChar && autoSpace.isActive

@@ -158,7 +158,7 @@ pub const SHORTHAND_LEXICON: &[ShorthandEntry] = &[
     ShorthandEntry { code: "mybad", expansion: "my bad", is_autocorrect: true },
     ShorthandEntry { code: "nbd", expansion: "no big deal", is_autocorrect: true },
     ShorthandEntry { code: "ne1", expansion: "anyone", is_autocorrect: true },
-    ShorthandEntry { code: "nfc", expansion: "no fucking clue", is_autocorrect: true },
+    ShorthandEntry { code: "nfc", expansion: "NFC", is_autocorrect: false },
     ShorthandEntry { code: "ngl", expansion: "not gonna lie", is_autocorrect: true },
     ShorthandEntry { code: "nm", expansion: "not much", is_autocorrect: true },
     ShorthandEntry { code: "np", expansion: "no problem", is_autocorrect: true },
