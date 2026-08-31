@@ -763,7 +763,7 @@ private fun ProGesturesAndTestDriveCard() {
         onValueChange = {
             testerNameInput = it
             scope.launch {
-                val cleaned = it.trim().ifEmpty { "Daya" }
+                val cleaned = it.trim().ifEmpty { "Tester" }
                 prefs.updater.testerName.set(cleaned)
                 prefs.updater.testerNameConfirmed.set(true)
                 prefs.updater.testerOnboardingDismissed.set(true)

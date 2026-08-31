@@ -1,11 +1,12 @@
 {
-  "milestone": 335,
-  "tagName": "v0.335.0",
-  "name": "Milestone 335 (Adaptive Biometric Hitbox Engine & Smartbar Prioritizer)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.335.0/CrakeKeyboard_Milestone_335.apk",
-  "apkSize": 56735959,
-  "changelog": "Milestone 335: Adaptive Biometric Hitbox Engine (online Gaussian centroid tuning from contact angle & sub-pixel offsets), Cognitive Smartbar Prioritizer (perception-latency candidate arrangement), and DevTools Biometric Drift Dashboard.",
+  "milestone": 336,
+  "tagName": "v0.336.0",
+  "name": "Milestone 336 (Decoupled Account Identification & Tester Attribution)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.336.0/CrakeKeyboard_Milestone_336.apk",
+  "apkSize": 56812343,
+  "changelog": "Milestone 336: Decoupled global tester name fallback so individual testers maintain their own user accounts without defaulting to Daya.",
   "history": {
+    "336": "Decoupled global tester name fallback so individual testers maintain their own user accounts without defaulting to Daya.",
     "335": "Adaptive Biometric Hitbox Engine (online Gaussian centroid tuning from contact angle & sub-pixel offsets), Cognitive Smartbar Prioritizer (perception-latency candidate arrangement), and DevTools Biometric Drift Dashboard.",
     "334": "Touch Ellipse & Biometric Dynamics (contact angle orientation, inter-key flight time) and Smartbar Candidate Perception Telemetry (dwell-to-tap latency, suggestion slot conversion, and flick prediction tracking).",
     "333": "Multi-Token Retroactive Rewind Harvester captures delayed corrections when backspacing across word boundaries into earlier typos, immediately training on-device NLP.",

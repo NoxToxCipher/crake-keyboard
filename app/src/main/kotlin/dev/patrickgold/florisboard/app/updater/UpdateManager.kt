@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 335
+    const val CURRENT_MILESTONE = 336
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 33501
-    private const val RESOLVED_NOTIFICATION_ID = 33502
+    private const val NOTIFICATION_ID = 33601
+    private const val RESOLVED_NOTIFICATION_ID = 33602
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,7 +87,8 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
-            333 -> "Multi-Token Retroactive Rewind Harvester: captures delayed corrections when backspacing across word boundaries into earlier typos, immediately training on-device NLP."
+            336 -> "Uncoupled default tester name: removed global 'Daya' fallback so testers (Charlton, Daya, etc.) maintain their own individual user account names."
+            335 -> "Adaptive Biometric Hitbox Engine: online Gaussian centroid tuning from contact angle & sub-pixel offsets, and Cognitive Smartbar Prioritizer."
             332 -> "Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'."
             331 -> "Constrained top resize grab zone to center pill area (#CRK-155), completely eliminating accidental 'blue tab' drag triggers while typing or swiping top keys."
             330 -> "Fixed consecutive punctuation (#CRK-154: uninterrupted !!, !!!, !? clusters), removed aggressive 'nfc' profanity macro (#CRK-157), and added 'toi' -> 'you' typo recovery (#CRK-156)."

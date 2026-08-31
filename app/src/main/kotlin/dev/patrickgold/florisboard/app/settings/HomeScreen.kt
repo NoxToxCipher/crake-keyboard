@@ -273,7 +273,7 @@ fun HomeScreen() = FlorisScreen {
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = {
-                                val name = inputTesterName.trim().ifEmpty { "Daya" }
+                                val name = inputTesterName.trim().ifEmpty { "Tester" }
                                 scope.launch {
                                     prefs.updater.testerName.set(name)
                                     prefs.updater.testerNameConfirmed.set(true)
