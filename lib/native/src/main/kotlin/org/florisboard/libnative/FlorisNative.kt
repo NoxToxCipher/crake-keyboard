@@ -413,6 +413,23 @@ object FlorisNative {
         )
     }
 
+    /**
+     * Opens the hidden note page for [pin] from the encrypted [vault] bytes.
+     * Returns the page text, or "" for an unused PIN (a fresh blank page) -
+     * there is deliberately no "wrong PIN" outcome. See the note_vault Rust
+     * module for the deniability model and its honest limits.
+     */
+    fun noteVaultOpen(vault: ByteArray, pin: String): String {
+        if (!isLoaded) return ""
+        return nativeNoteVaultOpen(vault, pin) ?: ""
+    }
+
+    /** Saves [content] as the page for [pin], returning new vault bytes to persist. */
+    fun noteVaultSave(vault: ByteArray, pin: String, content: String): ByteArray {
+        if (!isLoaded) return vault
+        return nativeNoteVaultSave(vault, pin, content) ?: vault
+    }
+
     fun scanThreats(rawText: String): List<ThreatResult> {
         if (!isLoaded || rawText.isBlank()) return emptyList()
         val rawMatches = nativeScanThreats(rawText)
@@ -562,6 +579,8 @@ object FlorisNative {
     @JvmStatic
     private external fun nativeScanThreats(rawText: String): Array<String>
     private external fun nativePrivacyTelemetry(): String?
+    private external fun nativeNoteVaultOpen(vault: ByteArray, pin: String): String?
+    private external fun nativeNoteVaultSave(vault: ByteArray, pin: String, content: String): ByteArray?
 
     @JvmStatic
     private external fun nativeGenerateQrMatrix(data: String): String

@@ -630,6 +630,52 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspect
     env.new_string("0||").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
+/// Opens the hidden note page sealed under `pin` from the given vault bytes.
+/// Returns the page text (empty string for an unused PIN - a blank page,
+/// never an error). See crake_privacy::note_vault for the deniability model.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNoteVaultOpen(
+    mut env: JNIEnv,
+    _class: JClass,
+    vault: JByteArray,
+    pin: JString,
+) -> jstring {
+    let bytes = env.convert_byte_array(&vault).unwrap_or_default();
+    let pin_str = match env.get_string(&pin) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => String::new(),
+    };
+    let content = crake_privacy::note_vault::note_vault_open(&bytes, &pin_str);
+    env.new_string(&content)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+/// Saves `content` as the note page for `pin`, returning the new vault bytes
+/// for the Kotlin side to persist. Empty content removes the PIN's page.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNoteVaultSave(
+    mut env: JNIEnv,
+    _class: JClass,
+    vault: JByteArray,
+    pin: JString,
+    content: JString,
+) -> jni::sys::jbyteArray {
+    let bytes = env.convert_byte_array(&vault).unwrap_or_default();
+    let pin_str = match env.get_string(&pin) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => String::new(),
+    };
+    let content_str = match env.get_string(&content) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => String::new(),
+    };
+    let out = crake_privacy::note_vault::note_vault_save(&bytes, &pin_str, &content_str);
+    env.byte_array_from_slice(&out)
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
 /// Session privacy telemetry snapshot for the Security Telemetry board:
 /// "clips|invisibleChars|urlsSanitized|secretsCaught|borealHits|borealReady".
 /// Every value is measured by the live clipboard path — never invent these

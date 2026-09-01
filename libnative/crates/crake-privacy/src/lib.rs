@@ -18,6 +18,7 @@ pub mod intrusion;
 pub mod metascrub;
 pub mod profile;
 pub mod sanitizer;
+pub mod note_vault;
 pub mod secret_shield;
 pub mod sync_bundle;
 pub mod telemetry;

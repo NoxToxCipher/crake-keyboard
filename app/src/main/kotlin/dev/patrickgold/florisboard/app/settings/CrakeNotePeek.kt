@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,27 +47,62 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.ime.nlp.latin.LearnedStateStore
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
+import org.florisboard.libnative.FlorisNative
 
 /**
  * The Deck-style note peek: the whole homepage can be pulled to the right,
- * revealing a single lined-paper notes page tucked behind its left edge. A
- * thin paper sliver stays visible at rest as the affordance. The note is
- * one page, stored locally in prefs, and never leaves the device.
+ * revealing a single lined-paper notes page tucked behind its left edge.
+ *
+ * That visible page is an ordinary, unencrypted scratchpad - deliberately
+ * mundane, so it reads as "just a notepad" to anyone who finds it. Behind it
+ * is the part that is never mentioned anywhere in the app: a long-press on
+ * the red margin line summons the Crake PIN. Whatever PIN you enter opens the
+ * encrypted page sealed under it - your page, or a fresh blank one - and the
+ * screen never says whether a PIN is "right". See note_vault (Rust) for the
+ * deniable model and its honest limits.
  */
 @Composable
 fun CrakeNotePeek(content: @Composable () -> Unit) {
     val prefs by FlorisPreferenceStore
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val noteText by prefs.internal.crakeNote.collectAsState()
+    val plainNote by prefs.internal.crakeNote.collectAsState()
+
+    // Blends with the app's other crake_*.enc caches; Keystore-sealed on top
+    // of the PIN encryption, so an imaged file is doubly protected.
+    val vaultStore = remember { LearnedStateStore(context.filesDir, "crake_pages.crkp") }
+    var vaultBytes by remember { mutableStateOf(vaultStore.load() ?: ByteArray(0)) }
+
+    var secretPin by remember { mutableStateOf<String?>(null) }
+    var secretContent by remember { mutableStateOf("") }
+    var showPin by remember { mutableStateOf(false) }
+
+    fun leaveSecret() {
+        secretPin = null
+        secretContent = ""
+        showPin = false
+    }
+
+    // Debounced save of the secret page so the PIN key derivation does not
+    // run on every keystroke.
+    LaunchedEffect(secretContent, secretPin) {
+        val pin = secretPin ?: return@LaunchedEffect
+        kotlinx.coroutines.delay(600)
+        val updated = FlorisNative.noteVaultSave(vaultBytes, pin, secretContent)
+        vaultBytes = updated
+        vaultStore.save(updated)
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val openWidth = if (maxWidth * 0.82f < 340.dp) maxWidth * 0.82f else 340.dp
@@ -80,6 +116,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             scope.launch {
                 offsetX.animateTo(target, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
             }
+            if (target <= peekPx + 1f) leaveSecret()
         }
 
         fun settle() {
@@ -92,20 +129,40 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             animateTo(target)
         }
 
-        BackHandler(enabled = isOpen) { animateTo(peekPx) }
+        BackHandler(enabled = isOpen || showPin) {
+            if (showPin) showPin = false else animateTo(peekPx)
+        }
 
-        LinedPaperNote(
-            noteText = noteText,
-            onChange = { scope.launch { prefs.internal.crakeNote.set(it) } },
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(openWidth)
-                .fillMaxHeight()
-                .padding(vertical = 8.dp)
-                .pointerInput(isOpen) {
-                    if (!isOpen) detectTapGestures { animateTo(openPx) }
+        Box(modifier = Modifier.align(Alignment.CenterStart).width(openWidth).fillMaxHeight()) {
+            LinedPaperNote(
+                noteText = if (secretPin == null) plainNote else secretContent,
+                onChange = { new ->
+                    if (secretPin == null) {
+                        scope.launch { prefs.internal.crakeNote.set(new) }
+                    } else {
+                        secretContent = new
+                    }
                 },
-        )
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 8.dp)
+                    .pointerInput(isOpen) {
+                        if (!isOpen) detectTapGestures { animateTo(openPx) }
+                    },
+            )
+            // The unmarked door: a long-press on the red margin strip (left
+            // of the writing area, so typing never triggers it) opens the
+            // PIN. Nothing labels it.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(48.dp)
+                    .fillMaxHeight()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { showPin = true })
+                    },
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -126,7 +183,6 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                     )
                 }
                 .pointerInput(isOpen) {
-                    // The pushed-aside page closes on tap, standard drawer manners.
                     if (isOpen) detectTapGestures { animateTo(peekPx) }
                 },
         ) {
@@ -139,6 +195,17 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                 )
             }
         }
+
+        if (showPin) {
+            CrakePinScreen(
+                onComplete = { pin ->
+                    secretPin = pin
+                    secretContent = FlorisNative.noteVaultOpen(vaultBytes, pin)
+                    showPin = false
+                },
+                onCancel = { showPin = false },
+            )
+        }
     }
 }
 
@@ -147,9 +214,9 @@ private const val NOTE_MAX_CHARS = 1600
 
 /**
  * One page of lined paper: cream stock, blue rules matched to the text line
- * height (both in sp so font scaling keeps them aligned), a red margin
- * line, and nothing else. The page cannot grow - it is deliberately one
- * page, like the paper it is drawn as.
+ * height (both in sp so font scaling keeps them aligned), a red margin line,
+ * and nothing else. The page cannot grow - it is deliberately one page, like
+ * the paper it is drawn as.
  */
 @Composable
 private fun LinedPaperNote(
@@ -173,7 +240,6 @@ private fun LinedPaperNote(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val lh = lineHeight.toPx()
                 val topPad = 14.dp.toPx()
-                // A rule under each text line; 0.86 sits it near the baseline.
                 var y = topPad + lh * 0.86f
                 while (y < size.height - 10.dp.toPx()) {
                     drawLine(rule, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
