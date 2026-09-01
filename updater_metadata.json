@@ -1,11 +1,12 @@
 {
-  "milestone": 376,
-  "tagName": "v0.376.0",
-  "name": "Milestone 376 (Zero-Copy Word Token Sanitizer)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.376.0/CrakeKeyboard_Milestone_376.apk",
+  "milestone": 377,
+  "tagName": "v0.377.0",
+  "name": "Milestone 377 (Smartbar HUD Dynamic Island Dimension Scaling & Vocabulary Expansion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.377.0/CrakeKeyboard_Milestone_377.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 376: Direct reference passthrough for unclipped clean token strings in NLP tokenization.",
+  "changelog": "Milestone 377: Calibrated Smartbar Dynamic Island width scaling and ingested fleet typo slips.",
   "history": {
+    "377": "Calibrated Smartbar Dynamic Island width scaling and ingested fleet typo slips.",
     "376": "Direct reference passthrough for unclipped clean token strings in NLP tokenization.",
     "375": "Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering.",
     "374": "Deferred Dynamic Island pulse animation reads to DrawScope phase, eliminating composable tree recomposition.",

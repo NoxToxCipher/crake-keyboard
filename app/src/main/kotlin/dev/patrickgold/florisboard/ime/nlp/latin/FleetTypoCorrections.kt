@@ -149,5 +149,10 @@ object FleetTypoCorrections {
         "physcial" to "physical",
         "interactiv" to "interactive",
         "interactivty" to "interactivity",
+        "recompositon" to "recomposition",
+        "recompoistion" to "recomposition",
+        "morhping" to "morphing",
+        "moprh" to "morph",
+        "fluidty" to "fluidity",
     )
 }

@@ -116,7 +116,7 @@ fun CrakeDynamicIslandOverlay(
         )
 
         val targetWidth by animateDpAsState(
-            targetValue = if (isExpanded) 345.dp else 225.dp,
+            targetValue = if (isExpanded) 345.dp else if (!useStatusBarsPadding) 250.dp else 225.dp,
             animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
             label = "islandWidth"
         )

@@ -91,6 +91,11 @@ class FleetTypoCorrectionsTest : FunSpec({
         FleetTypoCorrections.MAP["physcial"] shouldBe "physical"
         FleetTypoCorrections.MAP["interactiv"] shouldBe "interactive"
         FleetTypoCorrections.MAP["interactivty"] shouldBe "interactivity"
+        FleetTypoCorrections.MAP["recompositon"] shouldBe "recomposition"
+        FleetTypoCorrections.MAP["recompoistion"] shouldBe "recomposition"
+        FleetTypoCorrections.MAP["morhping"] shouldBe "morphing"
+        FleetTypoCorrections.MAP["moprh"] shouldBe "morph"
+        FleetTypoCorrections.MAP["fluidty"] shouldBe "fluidity"
     }
 
     test("real words and standing abbreviations are never hard-remapped") {
