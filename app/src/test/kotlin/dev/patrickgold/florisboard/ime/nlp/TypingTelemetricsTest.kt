@@ -22,37 +22,40 @@ import io.kotest.matchers.floats.plusOrMinus
 
 class TypingTelemetricsTest : FunSpec({
     test("empty records return zeroed telemetrics with 100% baseline accuracy") {
-        val metrics = TypingTelemetricsManager.calculateMetrics(emptyList())
-        metrics.totalWordsTyped shouldBe 0
-        metrics.tapWordsTyped shouldBe 0
-        metrics.glideWordsTyped shouldBe 0
-        metrics.glidePercentage shouldBe 0f
-        metrics.tapPercentage shouldBe 0f
-        metrics.averageWpm shouldBe 0f
-        metrics.tapAccuracyPercent shouldBe 100f
-        metrics.glideAccuracyPercent shouldBe 100f
-        metrics.overallAccuracyPercent shouldBe 100f
+        val series = TypingTelemetricsManager.calculateTimeSeries(emptyList(), TelemetricsTimeWindow.ALL_TIME)
+        series.currentMetrics.totalWordsTyped shouldBe 0
+        series.currentMetrics.tapWordsTyped shouldBe 0
+        series.currentMetrics.glideWordsTyped shouldBe 0
+        series.currentMetrics.glidePercentage shouldBe 0f
+        series.currentMetrics.tapPercentage shouldBe 0f
+        series.currentMetrics.averageWpm shouldBe 0f
+        series.currentMetrics.tapAccuracyPercent shouldBe 100f
+        series.currentMetrics.glideAccuracyPercent shouldBe 100f
+        series.currentMetrics.overallAccuracyPercent shouldBe 100f
+        series.overallTrend shouldBe TrendDirection.INSUFFICIENT_DATA
     }
 
     test("accurately calculates typing speed, glide percentage, and tap accuracy") {
+        val now = 1756708800000L
         val sampleRecords = listOf(
             // Tap events
-            "{\"action\":\"KEY_TAP\",\"wpm\":60.0,\"cpm\":300.0,\"flightTimeMs\":150}",
-            "{\"action\":\"KEY_TAP\",\"wpm\":80.0,\"cpm\":400.0,\"flightTimeMs\":130}",
-            "{\"action\":\"KEY_TAP\",\"wpm\":100.0,\"cpm\":500.0,\"flightTimeMs\":110}",
+            "{\"timestamp\":$now,\"action\":\"KEY_TAP\",\"wpm\":60.0,\"cpm\":300.0,\"flightTimeMs\":150}",
+            "{\"timestamp\":$now,\"action\":\"KEY_TAP\",\"wpm\":80.0,\"cpm\":400.0,\"flightTimeMs\":130}",
+            "{\"timestamp\":$now,\"action\":\"KEY_TAP\",\"wpm\":100.0,\"cpm\":500.0,\"flightTimeMs\":110}",
             // 1 backspace while typing
-            "{\"action\":\"BACKSPACE_DELETE\"}",
-            "{\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"hello\",\"committedTo\":\"hello\"}",
-            "{\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"world\",\"committedTo\":\"world\"}",
-            "{\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"test\",\"committedTo\":\"test\"}",
+            "{\"timestamp\":$now,\"action\":\"BACKSPACE_DELETE\"}",
+            "{\"timestamp\":$now,\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"hello\",\"committedTo\":\"hello\"}",
+            "{\"timestamp\":$now,\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"world\",\"committedTo\":\"world\"}",
+            "{\"timestamp\":$now,\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"test\",\"committedTo\":\"test\"}",
             // 2 Glide events
-            "{\"action\":\"GLIDE_STROKE\",\"velocity\":450.0,\"curvature\":1.2}",
-            "{\"action\":\"WORD_COMMITTED\",\"mode\":\"GLIDING\",\"rawInput\":\"keyboard\",\"committedTo\":\"keyboard\"}",
-            "{\"action\":\"GLIDE_STROKE\",\"velocity\":480.0,\"curvature\":1.1}",
-            "{\"action\":\"WORD_COMMITTED\",\"mode\":\"GLIDING\",\"rawInput\":\"typing\",\"committedTo\":\"typing\"}"
+            "{\"timestamp\":$now,\"action\":\"GLIDE_STROKE\",\"velocity\":450.0,\"curvature\":1.2}",
+            "{\"timestamp\":$now,\"action\":\"WORD_COMMITTED\",\"mode\":\"GLIDING\",\"rawInput\":\"keyboard\",\"committedTo\":\"keyboard\"}",
+            "{\"timestamp\":$now,\"action\":\"GLIDE_STROKE\",\"velocity\":480.0,\"curvature\":1.1}",
+            "{\"timestamp\":$now,\"action\":\"WORD_COMMITTED\",\"mode\":\"GLIDING\",\"rawInput\":\"typing\",\"committedTo\":\"typing\"}"
         )
 
-        val metrics = TypingTelemetricsManager.calculateMetrics(sampleRecords)
+        val series = TypingTelemetricsManager.calculateTimeSeries(sampleRecords, TelemetricsTimeWindow.ALL_TIME, now)
+        val metrics = series.currentMetrics
         metrics.totalWordsTyped shouldBe 5
         metrics.tapWordsTyped shouldBe 3
         metrics.glideWordsTyped shouldBe 2
@@ -72,5 +75,25 @@ class TypingTelemetricsTest : FunSpec({
         metrics.glideAccuracyPercent shouldBe 100f
         metrics.totalGlideStrokes shouldBe 2
         metrics.averageGlideVelocity shouldBe (465.0f plusOrMinus 1.0f)
+    }
+
+    test("accurately tracks improvement trends over time") {
+        val now = 1756708800000L
+        val yesterday = now - 3600_000L * 30 // 30 hours ago (prior 24h window)
+        val today = now - 3600_000L * 2     // 2 hours ago (current 24h window)
+
+        val records = listOf(
+            // Prior 24h: 50 WPM
+            "{\"timestamp\":$yesterday,\"action\":\"KEY_TAP\",\"wpm\":50.0,\"cpm\":250.0}",
+            "{\"timestamp\":$yesterday,\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"old\",\"committedTo\":\"old\"}",
+            // Today (current 24h): 70 WPM (+20 WPM improvement)
+            "{\"timestamp\":$today,\"action\":\"KEY_TAP\",\"wpm\":70.0,\"cpm\":350.0}",
+            "{\"timestamp\":$today,\"action\":\"WORD_COMMITTED\",\"mode\":\"TYPING\",\"rawInput\":\"new\",\"committedTo\":\"new\"}"
+        )
+
+        val series = TypingTelemetricsManager.calculateTimeSeries(records, TelemetricsTimeWindow.PAST_24_HOURS, now)
+        series.deltaWpm shouldBe (20.0f plusOrMinus 0.1f)
+        series.speedTrend shouldBe TrendDirection.IMPROVING
+        series.overallTrend shouldBe TrendDirection.IMPROVING
     }
 })

@@ -18,6 +18,7 @@ package dev.patrickgold.florisboard.app.settings.typing
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,20 +35,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.FlashOn
-import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingFlat
+import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -70,6 +73,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager
+import dev.patrickgold.florisboard.ime.nlp.TelemetricsTimeWindow
+import dev.patrickgold.florisboard.ime.nlp.TrendDirection
 import dev.patrickgold.florisboard.ime.nlp.TypingTelemetricsManager
 import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
@@ -92,7 +97,8 @@ fun TypingTelemetricsScreen() = FlorisScreen {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val metrics by TypingTelemetricsManager.telemetrics.collectAsState()
+    val timeSeries by TypingTelemetricsManager.timeSeriesData.collectAsState()
+    val metrics = timeSeries.currentMetrics
     var liveTestText by remember { mutableStateOf("") }
     var isPurging by remember { mutableStateOf(false) }
 
@@ -101,57 +107,184 @@ fun TypingTelemetricsScreen() = FlorisScreen {
     }
 
     content {
-        // 1. Air-Gapped Privacy Shield Badge
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = CardSurface),
-            border = BorderStroke(1.dp, CardBorder),
-        ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(CyberEmerald.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Security,
-                        contentDescription = null,
-                        tint = CyberEmerald,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "100% On-Device & Air-Gapped",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Color.White,
-                    )
-                    Text(
-                        text = "All telemetry and typing calculations are strictly performed locally on your device without network calls.",
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        lineHeight = 16.sp,
-                    )
-                }
-            }
-        }
-
-        // 2. Section: Speed & Velocity
-        CrakeSectionHeader(title = "TYPING SPEED & LATENCY")
+        // 1. Time Window Segmented Selector
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B101B)),
+            border = BorderStroke(1.dp, CardBorder),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                TelemetricsTimeWindow.entries.forEach { win ->
+                    val isSelected = timeSeries.selectedWindow == win
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isSelected) ElectricCyan.copy(alpha = 0.22f) else Color.Transparent)
+                            .clickable {
+                                scope.launch {
+                                    TypingTelemetricsManager.refreshTelemetrics(context, win)
+                                }
+                            }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = win.label,
+                            fontSize = 11.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) ElectricCyan else TextMuted,
+                        )
+                    }
+                }
+            }
+        }
+
+        // 2. Trend & Evolution Diagnostic Card
+        CrakeSectionHeader(title = "TREND & ADAPTATION OVER TIME")
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, when (timeSeries.overallTrend) {
+                TrendDirection.IMPROVING -> CyberEmerald.copy(alpha = 0.6f)
+                TrendDirection.DEGRADING -> CyberAmber.copy(alpha = 0.6f)
+                else -> CardBorder
+            }),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val (icon, tint) = when (timeSeries.overallTrend) {
+                            TrendDirection.IMPROVING -> Pair(Icons.Default.TrendingUp, CyberEmerald)
+                            TrendDirection.DEGRADING -> Pair(Icons.Default.TrendingDown, CyberAmber)
+                            TrendDirection.STEADY -> Pair(Icons.Default.TrendingFlat, ElectricCyan)
+                            TrendDirection.INSUFFICIENT_DATA -> Pair(Icons.Default.Timeline, TextMuted)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(tint.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            val title = when (timeSeries.overallTrend) {
+                                TrendDirection.IMPROVING -> "Improving Performance"
+                                TrendDirection.DEGRADING -> "Fatigue / Strain Detected"
+                                TrendDirection.STEADY -> "Steady & Consistent"
+                                TrendDirection.INSUFFICIENT_DATA -> "Gathering History"
+                            }
+                            Text(text = title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                            val subtitle = when (timeSeries.selectedWindow) {
+                                TelemetricsTimeWindow.LIVE_SESSION -> "Compared to prior hour"
+                                TelemetricsTimeWindow.PAST_24_HOURS -> "Compared to yesterday"
+                                TelemetricsTimeWindow.PAST_7_DAYS -> "Compared to prior 7 days"
+                                TelemetricsTimeWindow.ALL_TIME -> "Historical trajectory"
+                            }
+                            Text(text = subtitle, fontSize = 11.sp, color = TextMuted)
+                        }
+                    }
+
+                    // Trend Badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(when (timeSeries.overallTrend) {
+                                TrendDirection.IMPROVING -> CyberEmerald.copy(alpha = 0.15f)
+                                TrendDirection.DEGRADING -> CyberAmber.copy(alpha = 0.15f)
+                                else -> ElectricCyan.copy(alpha = 0.15f)
+                            })
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = when (timeSeries.overallTrend) {
+                                TrendDirection.IMPROVING -> "+ SPEED"
+                                TrendDirection.DEGRADING -> "FATIGUE"
+                                TrendDirection.STEADY -> "STEADY"
+                                TrendDirection.INSUFFICIENT_DATA -> "BASELINE"
+                            },
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = when (timeSeries.overallTrend) {
+                                TrendDirection.IMPROVING -> CyberEmerald
+                                TrendDirection.DEGRADING -> CyberAmber
+                                else -> ElectricCyan
+                            },
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = CardBorder, thickness = 1.dp)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Delta Stats Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column {
+                        Text(text = "SPEED DELTA", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                        val wpmSign = if (timeSeries.deltaWpm >= 0f) "+" else ""
+                        Text(
+                            text = if (timeSeries.priorMetrics != null) String.format(Locale.US, "%s%.1f WPM", wpmSign, timeSeries.deltaWpm) else "--",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = if (timeSeries.deltaWpm >= 0f) CyberEmerald else CyberAmber,
+                        )
+                    }
+                    Column {
+                        Text(text = "ACCURACY DELTA", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                        val accSign = if (timeSeries.deltaAccuracyPercent >= 0f) "+" else ""
+                        Text(
+                            text = if (timeSeries.priorMetrics != null) String.format(Locale.US, "%s%.1f%%", accSign, timeSeries.deltaAccuracyPercent) else "--",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = if (timeSeries.deltaAccuracyPercent >= 0f) CyberEmerald else CyberAmber,
+                        )
+                    }
+                    Column {
+                        Text(text = "GLIDE ADOPTION", fontSize = 10.sp, color = TextMuted, fontWeight = FontWeight.Bold)
+                        val glideSign = if (timeSeries.deltaGlidePercent >= 0f) "+" else ""
+                        Text(
+                            text = if (timeSeries.priorMetrics != null) String.format(Locale.US, "%s%.1f%%", glideSign, timeSeries.deltaGlidePercent) else "--",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            color = ElectricCyan,
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Section: Speed & Velocity
+        CrakeSectionHeader(title = "TYPING SPEED & LATENCY")
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = CardSurface),
             border = BorderStroke(1.dp, CardBorder),
@@ -228,12 +361,12 @@ fun TypingTelemetricsScreen() = FlorisScreen {
             }
         }
 
-        // 3. Section: Input Distribution (Tap vs Glide)
+        // 4. Section: Input Distribution (Tap vs Glide)
         CrakeSectionHeader(title = "INPUT DISTRIBUTION (TAP VS. GLIDE)")
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = CardSurface),
             border = BorderStroke(1.dp, CardBorder),
@@ -247,8 +380,8 @@ fun TypingTelemetricsScreen() = FlorisScreen {
                         Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(ElectricCyan))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Tap: ${String.format(Locale.US, "%.1f%%", metrics.tapPercentage)} (${metrics.tapWordsTyped} words)",
-                            fontSize = 13.sp,
+                            text = "Tap: ${String.format(Locale.US, "%.1f%%", metrics.tapPercentage)} (${metrics.tapWordsTyped} w)",
+                            fontSize = 12.5.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                         )
@@ -257,8 +390,8 @@ fun TypingTelemetricsScreen() = FlorisScreen {
                         Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(CyberEmerald))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Glide: ${String.format(Locale.US, "%.1f%%", metrics.glidePercentage)} (${metrics.glideWordsTyped} words)",
-                            fontSize = 13.sp,
+                            text = "Glide: ${String.format(Locale.US, "%.1f%%", metrics.glidePercentage)} (${metrics.glideWordsTyped} w)",
+                            fontSize = 12.5.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color.White,
                         )
@@ -267,7 +400,6 @@ fun TypingTelemetricsScreen() = FlorisScreen {
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Ratio Progress Bar
                 val glideProgress = if (metrics.totalWordsTyped > 0) (metrics.glidePercentage / 100f).coerceIn(0f, 1f) else 0f
                 Box(
                     modifier = Modifier
@@ -294,15 +426,14 @@ fun TypingTelemetricsScreen() = FlorisScreen {
             }
         }
 
-        // 4. Section: Dual Accuracy Breakdown
+        // 5. Section: Dual Accuracy Breakdown
         CrakeSectionHeader(title = "ACCURACY & EFFICIENCY")
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Tap Accuracy Card
             Card(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
@@ -311,12 +442,7 @@ fun TypingTelemetricsScreen() = FlorisScreen {
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Keyboard,
-                            contentDescription = null,
-                            tint = ElectricCyan,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Icon(imageVector = Icons.Default.Keyboard, contentDescription = null, tint = ElectricCyan, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(text = "Tap Accuracy", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
@@ -335,7 +461,6 @@ fun TypingTelemetricsScreen() = FlorisScreen {
                 }
             }
 
-            // Glide Accuracy Card
             Card(
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(16.dp),
@@ -344,12 +469,7 @@ fun TypingTelemetricsScreen() = FlorisScreen {
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Gesture,
-                            contentDescription = null,
-                            tint = CyberEmerald,
-                            modifier = Modifier.size(18.dp),
-                        )
+                        Icon(imageVector = Icons.Default.Gesture, contentDescription = null, tint = CyberEmerald, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(text = "Glide Accuracy", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     }
@@ -371,12 +491,73 @@ fun TypingTelemetricsScreen() = FlorisScreen {
             }
         }
 
-        // 5. Section: Live Typing Test Box
+        // 6. Section: 7-Day Performance Timeline
+        if (timeSeries.dailyBuckets.isNotEmpty()) {
+            CrakeSectionHeader(title = "PAST 7 DAYS PERFORMANCE TIMELINE")
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CardSurface),
+                border = BorderStroke(1.dp, CardBorder),
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        timeSeries.dailyBuckets.forEach { bucket ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    text = bucket.dayLabel,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (bucket.dayLabel == "Today") ElectricCyan else TextMuted,
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                val maxWpm = (timeSeries.dailyBuckets.map { it.averageWpm }.maxOrNull() ?: 100f).coerceAtLeast(40f)
+                                val barHeightFraction = if (bucket.averageWpm > 0f) (bucket.averageWpm / maxWpm).coerceIn(0.15f, 1f) else 0.08f
+                                Box(
+                                    modifier = Modifier
+                                        .width(16.dp)
+                                        .height(48.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0xFF0F172A)),
+                                    contentAlignment = Alignment.BottomCenter,
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height((48 * barHeightFraction).dp)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(if (bucket.averageWpm > 0f) CyberEmerald else TextMuted.copy(alpha = 0.3f)),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = if (bucket.averageWpm > 0f) String.format(Locale.US, "%.0f", bucket.averageWpm) else "-",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 7. Section: Live Typing Test Box
         CrakeSectionHeader(title = "LIVE TEST PREVIEW")
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp, vertical = 4.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = CardSurface),
             border = BorderStroke(1.dp, CardBorder),

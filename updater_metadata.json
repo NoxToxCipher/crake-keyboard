@@ -1,11 +1,12 @@
 {
-  "milestone": 360,
-  "tagName": "v0.360.0",
-  "name": "Milestone 360 (On-Device Typing Telemetrics & Analytics)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.360.0/CrakeKeyboard_Milestone_360.apk",
+  "milestone": 361,
+  "tagName": "v0.361.0",
+  "name": "Milestone 361 (Telemetrics Over Time & Trend Tracking)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.361.0/CrakeKeyboard_Milestone_361.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 360: Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking.",
+  "changelog": "Milestone 361: Added time-series analytics (Today 24h, 7 Days, All-Time, Live 1h), improvement/fatigue degradation trend tracking (+/- WPM, +/- Accuracy), and 7-day performance breakdown timeline.",
   "history": {
+    "361": "Added time-series analytics (Today 24h, 7 Days, All-Time, Live 1h), improvement/fatigue degradation trend tracking (+/- WPM, +/- Accuracy), and 7-day performance breakdown timeline.",
     "360": "Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking.",
     "359": "Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine).",
     "358": "Replaced 5-pass chained substring allocations with a single-pass zero-copy token sanitizer, cutting typing heap allocations and latency during rapid text input.",
