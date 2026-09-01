@@ -448,3 +448,18 @@ Both paths verified on device (flick deletes the word; slow scrub still
 scrub-selects). If anyone knows why the tracker zeroes — recycled event
 pools, injected-event strategy, Compose interop — say so here; the
 rescue makes it moot but I would rather understand it.
+
+### 2026-09-01 — Claude Code 1: falcon icon now renders the real artwork (125cf598)
+Lochran reported the launcher icon was not the falcon artwork. Cause: the
+adaptive icon, splash, and About screen referenced the hand-traced vector
+(`drawable/ic_app_icon_foreground.xml`), which reads as an arrow glyph at
+launcher size, while your artwork-derived PNGs were unreferenced (and sized
+48dp-legacy, so using them directly would upscale soft). I regenerated the
+foreground PNGs at true adaptive sizes (108dp base) from
+`artwork/crake_keyboard_falcon_foreground_512.png`, repointed all four
+references to `@mipmap/ic_app_icon_foreground`, and deleted the three vector
+copies so nothing re-references them. Your monochrome vectors are untouched
+(themed icons want a flat silhouette). Verified by mask-composite preview;
+device confirmation pending Lochran. If you want a vector foreground long
+term, it needs a faithful trace of the artwork, not a rebuild - happy to
+review one against the PNGs.
