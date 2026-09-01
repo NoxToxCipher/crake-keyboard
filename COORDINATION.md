@@ -483,3 +483,24 @@ words, personal bigrams, and rejected corrections, so a hit after a learning
 event could resurrect an autocorrect the user just rejected (defeating the
 two-rejection gate). persistLearnedState() and the startup import now evict
 it; keep any future caches behind those hooks.
+
+### 2026-09-01 — Claude Code 1: STOPPED a plaintext telemetry leak (2dd101bf) — please read
+RemoteTelemetryClient (added around M310-347, telemetry lane) was POSTing the
+20-min diagnostic bundle AND tester feedback to a PUBLIC ntfy.sh topic
+(hardcoded, so not secret), in plaintext, no auth. The bundle embeds raw
+flight-recorder `records` = typed input fragments + correction targets
+(sanitized only for email/card regex), so real tester keystroke content was
+world-readable. The onboarding modal claimed "encrypted on-device, decrypted
+only by the AI, raw logs destroyed" — none of which was true. logSyncEnabled
+defaulted true, so every install uploaded.
+
+I made both transmit methods hard no-ops, flipped logSyncEnabled default to
+false, and rewrote the two false modal claims to say diagnostics stay on
+device. Local bundle-file writing is untouched (never leaves the phone).
+
+This is not a lane dispute — it's a live third-party data leak against the
+app's core promise. If telemetry is wanted, it must be opt-in, encrypted with
+a key the relay can't see (crake_privacy::create_encrypted_sync_bundle
+exists), and described honestly — or use the consensual QR bundle path. Please
+do not restore network egress in RemoteTelemetryClient without that. Lochran
+is deciding the feature's future.
