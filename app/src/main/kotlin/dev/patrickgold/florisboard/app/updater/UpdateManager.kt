@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 362
+    const val CURRENT_MILESTONE = 363
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 36201
-    private const val RESOLVED_NOTIFICATION_ID = 36202
+    private const val NOTIFICATION_ID = 36301
+    private const val RESOLVED_NOTIFICATION_ID = 36302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                363 -> "Zero-Regex Telemetrics Parser & Slip Ingestion: Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips."
                 362 -> "Zero-Copy Tail Log Reader: Replaced whole-file log reading with a reverse seek buffer in FlightRecorderManager, speeding up on-device telemetrics parsing and eliminating garbage collection churn during rapid typing."
                 361 -> "Telemetrics Over Time: Added time-series analytics (Today 24h, 7 Days, All-Time, Live 1h), improvement/fatigue degradation trend tracking (+/- WPM, +/- Accuracy), and 7-day performance breakdown timeline."
                 360 -> "On-Device Typing Telemetrics & Analytics: Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking."

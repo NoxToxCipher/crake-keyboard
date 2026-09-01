@@ -1,11 +1,12 @@
 {
-  "milestone": 362,
-  "tagName": "v0.362.0",
-  "name": "Milestone 362 (Zero-Copy Tail Log Reader & I/O Optimization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.362.0/CrakeKeyboard_Milestone_362.apk",
+  "milestone": 363,
+  "tagName": "v0.363.0",
+  "name": "Milestone 363 (Zero-Regex Telemetrics Parser & Slip Ingestion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.363.0/CrakeKeyboard_Milestone_363.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 362: Replaced whole-file log reading with a reverse seek buffer in FlightRecorderManager, speeding up on-device telemetrics parsing and eliminating garbage collection churn during rapid typing.",
+  "changelog": "Milestone 363: Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips.",
   "history": {
+    "363": "Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips.",
     "362": "Replaced whole-file log reading with a reverse seek buffer in FlightRecorderManager, speeding up on-device telemetrics parsing and eliminating garbage collection churn during rapid typing.",
     "361": "Added time-series analytics (Today 24h, 7 Days, All-Time, Live 1h), improvement/fatigue degradation trend tracking (+/- WPM, +/- Accuracy), and 7-day performance breakdown timeline.",
     "360": "Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking.",

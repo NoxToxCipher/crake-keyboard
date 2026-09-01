@@ -65,6 +65,8 @@ class FleetTypoCorrectionsTest : FunSpec({
         FleetTypoCorrections.MAP["acvurare"] shouldBe "accurate"
         FleetTypoCorrections.MAP["learing"] shouldBe "learning"
         FleetTypoCorrections.MAP["machne"] shouldBe "machine"
+        FleetTypoCorrections.MAP["telemtry"] shouldBe "telemetry"
+        FleetTypoCorrections.MAP["telemtrics"] shouldBe "telemetrics"
     }
 
     test("real words and standing abbreviations are never hard-remapped") {

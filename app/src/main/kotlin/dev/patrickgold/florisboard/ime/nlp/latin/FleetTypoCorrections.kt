@@ -121,5 +121,8 @@ object FleetTypoCorrections {
         "accurat" to "accurate",
         "learing" to "learning",
         "machne" to "machine",
+        "telemtry" to "telemetry",
+        "telemtrics" to "telemetrics",
+        "telemterics" to "telemetrics",
     )
 }

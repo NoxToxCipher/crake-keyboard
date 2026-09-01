@@ -111,20 +111,49 @@ object TypingTelemetricsManager {
         val rawLine: String,
     )
 
+    private inline fun extractString(line: String, key: String): String? {
+        val keyIdx = line.indexOf(key)
+        if (keyIdx < 0) return null
+        val start = keyIdx + key.length
+        val end = line.indexOf('"', start)
+        if (end < 0) return null
+        return line.substring(start, end)
+    }
+
+    private inline fun extractLong(line: String, key: String): Long? {
+        val keyIdx = line.indexOf(key)
+        if (keyIdx < 0) return null
+        val start = keyIdx + key.length
+        var end = start
+        while (end < line.length && line[end] in '0'..'9') {
+            end++
+        }
+        if (end == start) return null
+        return line.substring(start, end).toLongOrNull()
+    }
+
+    private inline fun extractFloat(line: String, key: String): Float? {
+        val keyIdx = line.indexOf(key)
+        if (keyIdx < 0) return null
+        val start = keyIdx + key.length
+        var end = start
+        while (end < line.length && (line[end] in '0'..'9' || line[end] == '.')) {
+            end++
+        }
+        if (end == start) return null
+        return line.substring(start, end).toFloatOrNull()
+    }
+
     private fun parseLine(line: String): ParsedRecord? {
-        val actionMatch = Regex("\"action\":\"([^\"]+)\"").find(line) ?: return null
-        val action = actionMatch.groupValues[1]
-        val modeMatch = Regex("\"mode\":\"([^\"]+)\"").find(line)
-        val mode = modeMatch?.groupValues?.getOrNull(1) ?: "UNKNOWN"
+        val action = extractString(line, "\"action\":\"") ?: return null
+        val mode = extractString(line, "\"mode\":\"") ?: "UNKNOWN"
+        val timestamp = extractLong(line, "\"timestamp\":") ?: 0L
 
-        val tsMatch = Regex("\"timestamp\":([0-9]+)").find(line)
-        val timestamp = tsMatch?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
-
-        val wpm = Regex("\"wpm\":([0-9.]+)").find(line)?.groupValues?.getOrNull(1)?.toFloatOrNull()?.takeIf { it in 5.0f..300.0f }
-        val cpm = Regex("\"cpm\":([0-9.]+)").find(line)?.groupValues?.getOrNull(1)?.toFloatOrNull()?.takeIf { it in 20.0f..1500.0f }
-        val flight = Regex("\"flightTimeMs\":([0-9]+)").find(line)?.groupValues?.getOrNull(1)?.toLongOrNull()?.takeIf { it in 10L..3000L }
-        val vel = Regex("\"velocity\":([0-9.]+)").find(line)?.groupValues?.getOrNull(1)?.toFloatOrNull()?.takeIf { it > 0f }
-        val curv = Regex("\"curvature\":([0-9.]+)").find(line)?.groupValues?.getOrNull(1)?.toFloatOrNull()?.takeIf { it > 0f }
+        val wpm = extractFloat(line, "\"wpm\":")?.takeIf { it in 5.0f..300.0f }
+        val cpm = extractFloat(line, "\"cpm\":")?.takeIf { it in 20.0f..1500.0f }
+        val flight = extractLong(line, "\"flightTimeMs\":")?.takeIf { it in 10L..3000L }
+        val vel = extractFloat(line, "\"velocity\":")?.takeIf { it > 0f }
+        val curv = extractFloat(line, "\"curvature\":")?.takeIf { it > 0f }
         val isAutocorrected = line.contains("\"isAutocorrected\":true") || line.contains("\"correctedTo\"")
 
         return ParsedRecord(
