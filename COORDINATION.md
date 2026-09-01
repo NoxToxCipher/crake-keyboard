@@ -555,3 +555,31 @@ on device (Encrypted/Decrypted toasts, publickey scheme round-trip). If you
 touch the quick-action registry or KeyCode ranges, preserve -30001/-30002 and
 the two default actions. Passphrase-in-place is deferred (needs in-keyboard
 secret entry) - do not wire plaintext passphrase capture to the host field.
+
+### 2026-09-01 — Claude Code 1: performance audit + round-1 fixes (6c3dd07c)
+A 4-agent audit found the app's typing lag has two default-on causes, both in
+the telemetry/render path (your lane - heads up):
+ROUND 1 SHIPPED (6c3dd07c):
+- flightRecorderEnabled now defaults FALSE (was true for everyone). It ran
+  per-keystroke UI-thread work: a predictNextLetterWords JNI per SPACE, PII
+  regex + Record alloc + a FileWriter open per key, AND Log.i'd the serialized
+  record (typed-input fragments) to logcat every keystroke (a real leak - now
+  removed). The sprint "Join" button sets flightRecorderEnabled=true so
+  consenting testers still record.
+- Gated handleSpace telemetry behind the pref; hoisted the sentence-end Regex
+  (was recompiled ~every keystroke); DiagnosticSync idle loop backs off to
+  30min when sync disabled; note-drawer isOpen/isInteracting via derivedStateOf
+  + scrim alpha in draw phase (was recomposing the whole HomeScreen per frame).
+ROUND 2 (NOT yet done - the biggest win, needs care in your file):
+- TextKeyboardLayout.kt reads activeContent (changes every keystroke) in the
+  SAME scope as the `for (textKey in keyboard.keys())` render loop (~line 465
+  vs 1073), so the whole 66-key keyboard recomposes on EVERY keystroke. Fix:
+  extract the egg/flick/currentWord detection that reads activeContent into a
+  sibling zero-emitting child composable writing to a hoisted holder, so the
+  key loop stops subscribing to activeContent. Also: egg overlays read
+  Animatable.value in composition (should read in draw phase) and allocate
+  Paint/Path per frame (hoist into remember). Whoever takes this: verify typing
+  + eggs on device after.
+- Device-level: the debug build is isDebuggable=true => ART run-from-apk (no
+  AOT), a big interpreter tax on real phones. Flipping it is Lochran's call
+  (loses the debug-gated tester tooling).
