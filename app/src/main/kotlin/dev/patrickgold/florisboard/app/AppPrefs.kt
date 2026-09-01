@@ -625,6 +625,18 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "internal__crake_active_recipient",
             default = "",
         )
+        // The label of the active recipient (for display: "Encrypting to X").
+        val crakeActiveRecipientLabel = string(
+            key = "internal__crake_active_recipient_label",
+            default = "",
+        )
+        // Saved contacts: labeled public keys. One per line, "key|label"
+        // (a crake-pk1- key has no pipe or newline; the label is the rest of
+        // the line). Public keys only - safe as plain prefs.
+        val crakeContacts = string(
+            key = "internal__crake_contacts",
+            default = "",
+        )
 
         // How many times the "way into the private page" hint has been
         // shown. It appears on the first three opens (with a countdown so

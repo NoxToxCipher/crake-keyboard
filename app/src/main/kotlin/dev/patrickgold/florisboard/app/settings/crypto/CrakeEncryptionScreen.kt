@@ -97,7 +97,7 @@ fun CrakeEncryptionScreen() = FlorisScreen {
             }
 
             Spacer(Modifier.height(14.dp))
-            InPlaceRecipientCard()
+            ContactsCard(context)
 
             Spacer(Modifier.height(14.dp))
             EncryptCard(context, myRecipientHint = myPublicKey)
@@ -115,36 +115,102 @@ fun CrakeEncryptionScreen() = FlorisScreen {
 }
 
 @Composable
-private fun InPlaceRecipientCard() {
+private fun ContactsCard(context: Context) {
     val prefs by dev.patrickgold.florisboard.app.FlorisPreferenceStore
-    val current by prefs.internal.crakeActiveRecipient.collectAsState()
-    var entry by remember { mutableStateOf(current) }
+    val contactsRaw by prefs.internal.crakeContacts.collectAsState()
+    val activeKey by prefs.internal.crakeActiveRecipient.collectAsState()
+    val activeLabel by prefs.internal.crakeActiveRecipientLabel.collectAsState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val contacts = remember(contactsRaw) { CrakeContacts.parse(contactsRaw) }
 
-    SectionCard(title = "In-place encryption recipient", accent = Emerald) {
+    var newLabel by remember { mutableStateOf("") }
+    var newKey by remember { mutableStateOf("") }
+    var addError by remember { mutableStateOf<String?>(null) }
+
+    SectionCard(title = "Contacts", accent = Emerald) {
         Text(
-            "The keyboard's Encrypt key (in the smartbar, in any app) encrypts what you've typed to this person. Paste their public key here to set who you're messaging.",
+            "Save people's public keys with a name. Pick one to set who the keyboard's in-place Encrypt key writes to - no need to open this screen each time.",
             color = InkFaint, fontSize = 12.5.sp,
         )
-        Spacer(Modifier.height(10.dp))
-        if (current.isNotBlank()) {
-            MonoBox(current)
-            Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
+        if (activeKey.isNotBlank()) {
+            Text(
+                "Encrypting to: ${activeLabel.ifBlank { "a pasted key" }}",
+                color = Cyan, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(10.dp))
         }
-        CrakeField(entry, "Recipient public key (crake-pk1-...)", { entry = it })
-        Spacer(Modifier.height(10.dp))
-        Row {
-            PillButton("Set recipient", Emerald) {
-                scope.launch { prefs.internal.crakeActiveRecipient.set(entry.trim()) }
-            }
-            if (current.isNotBlank()) {
+
+        contacts.forEach { c ->
+            val isActive = c.key.trim() == activeKey.trim()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .background(if (isActive) Color(0xFF16303A) else Color(0xFF0B1016), RoundedCornerShape(8.dp))
+                    .border(1.dp, if (isActive) Emerald else PanelBorder, RoundedCornerShape(8.dp))
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(c.label, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        c.key.take(22) + "…",
+                        color = InkFaint, fontSize = 11.sp, fontFamily = FontFamily.Monospace,
+                    )
+                }
+                if (!isActive) {
+                    PillButton("Message", Emerald) {
+                        scope.launch {
+                            prefs.internal.crakeActiveRecipient.set(c.key.trim())
+                            prefs.internal.crakeActiveRecipientLabel.set(c.label)
+                        }
+                    }
+                } else {
+                    Text("Active", color = Emerald, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
                 Spacer(Modifier.width(8.dp))
-                PillButton("Clear", InkFaint) {
-                    entry = ""
-                    scope.launch { prefs.internal.crakeActiveRecipient.set("") }
+                Text(
+                    "✕",
+                    color = InkFaint,
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .clickable {
+                            scope.launch {
+                                prefs.internal.crakeContacts.set(CrakeContacts.serialize(CrakeContacts.remove(contacts, c.key)))
+                                if (c.key.trim() == activeKey.trim()) {
+                                    prefs.internal.crakeActiveRecipient.set("")
+                                    prefs.internal.crakeActiveRecipientLabel.set("")
+                                }
+                            }
+                        }
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CrakeField(newLabel, "Name / label", { newLabel = it })
+        Spacer(Modifier.height(8.dp))
+        CrakeField(newKey, "Their public key (crake-pk1-...)", { newKey = it })
+        Spacer(Modifier.height(10.dp))
+        PillButton("Add contact", Emerald) {
+            val label = newLabel.trim()
+            val key = newKey.trim()
+            when {
+                label.isEmpty() -> addError = "Give them a name"
+                !FlorisNative.cryptoEncrypt("publickey", "test", key).ok -> addError = "That doesn't look like a valid public key"
+                else -> {
+                    scope.launch {
+                        prefs.internal.crakeContacts.set(
+                            CrakeContacts.serialize(CrakeContacts.upsert(contacts, CrakeContact(label, key)))
+                        )
+                    }
+                    newLabel = ""; newKey = ""; addError = null
                 }
             }
         }
+        addError?.let { Spacer(Modifier.height(8.dp)); Text(it, color = Color(0xFFF08A8A), fontSize = 12.sp) }
     }
 }
 
