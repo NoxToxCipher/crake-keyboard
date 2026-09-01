@@ -1,11 +1,12 @@
 {
-  "milestone": 368,
-  "tagName": "v0.368.0",
-  "name": "Milestone 368 (In-Place Keyboard Dynamic Island & Cryptographic Live HUD)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.368.0/CrakeKeyboard_Milestone_368.apk",
+  "milestone": 369,
+  "tagName": "v0.369.0",
+  "name": "Milestone 369 (In-Keyboard Encryption Dynamic Island Feedback Loop)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.369.0/CrakeKeyboard_Milestone_369.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 368: Instant capsule feedback on in-place encryption/decryption while typing, zero-overhead Smartbar layout alignment, and telemetry-tuned vocabulary additions.",
+  "changelog": "Milestone 369: Fixed keyboard manager crypto action dispatches, ensuring instant glowing Cyan & Emerald island capsules fire while typing across all messaging apps.",
   "history": {
+    "369": "Fixed keyboard manager crypto action dispatches, ensuring instant glowing Cyan & Emerald island capsules fire while typing across all messaging apps.",
     "368": "Instant capsule feedback on in-place encryption/decryption while typing, zero-overhead Smartbar layout alignment, and telemetry-tuned vocabulary additions.",
     "367": "Implemented the Crake Dynamic Island Notification System with morphing capsule overlays, spring physics, live download streaming, and interactive test triggers.",
     "366": "Unified tap and horizontal drag gestures on the visible menu sidebar to slide back effortlessly, added edge pulling support, back-gesture handler, and a dedicated Close Note button.",

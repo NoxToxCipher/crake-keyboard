@@ -136,5 +136,11 @@ object FleetTypoCorrections {
         "isaldn" to "island",
         "capsul" to "capsule",
         "capusle" to "capsule",
+        "firign" to "firing",
+        "firinf" to "firing",
+        "confirmaton" to "confirmation",
+        "confiramtion" to "confirmation",
+        "reciepient" to "recipient",
+        "recipent" to "recipient",
     )
 }
