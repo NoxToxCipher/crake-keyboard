@@ -231,8 +231,8 @@ fun HomeScreen() = FlorisScreen {
 
                         TesterSprintPill(
                             icon = Icons.Default.Refresh,
-                            title = "Automated Diagnostic Sync (Every 20 Min)",
-                            desc = "Typing accuracy, spatial swipe deltas, and missed corrections sync in lightweight bundles every 20 minutes while active.",
+                            title = "On-Device Diagnostics Only",
+                            desc = "Typing accuracy and correction metrics are recorded on this device to tune the keyboard. Nothing is sent anywhere - diagnostics stay on your phone.",
                             accent = CyberEmerald,
                         )
 
@@ -245,8 +245,8 @@ fun HomeScreen() = FlorisScreen {
 
                         TesterSprintPill(
                             icon = Icons.Default.Security,
-                            title = "On-Device Encryption & Ephemeral AI Processing",
-                            desc = "All logs are encrypted on-device and decrypted exclusively by the AI assistant. Passwords, PINs, and usernames are completely filtered and never recorded. Raw logs are permanently destroyed after analytics.",
+                            title = "Stays On Your Device",
+                            desc = "Diagnostics are stored locally and never transmitted. Nothing about your typing leaves the phone; to share feedback you send it yourself, deliberately.",
                             accent = CyberAmber,
                         )
 
