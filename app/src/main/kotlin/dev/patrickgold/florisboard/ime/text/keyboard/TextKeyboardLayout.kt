@@ -1092,8 +1092,19 @@ fun TextKeyboardLayout(
         // =========================================================================
         // POKEMON BANK EASTER EGG OVERLAY (6.0s duration)
         // =========================================================================
-        if (pokeBankTriggerTime > 0L && System.currentTimeMillis() - pokeBankTriggerTime < 6000L) {
-            val elapsed = System.currentTimeMillis() - pokeBankTriggerTime
+        if (pokeBankTriggerTime > 0L) {
+            // Frame-driven via Animatable - the raw wall-clock read froze
+            // this overlay between keystrokes, same defect as Twin Rams.
+            val pokeBankProgress = remember(pokeBankTriggerTime) { Animatable(0f) }
+            LaunchedEffect(pokeBankTriggerTime) {
+                pokeBankProgress.snapTo(0f)
+                pokeBankProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 6000, easing = LinearEasing),
+                )
+                pokeBankTriggerTime = 0L
+            }
+            val elapsed = (pokeBankProgress.value * 6000f).toLong()
             val u = (elapsed / 6000f).coerceIn(0f, 1f)
             val alpha = if (u < 0.1f) u / 0.1f else if (u > 0.85f) (1f - u) / 0.15f else 1f
             val pxDensity = LocalDensity.current.density
