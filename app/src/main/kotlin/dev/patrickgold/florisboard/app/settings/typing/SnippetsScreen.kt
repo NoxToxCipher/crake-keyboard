@@ -104,6 +104,8 @@ private val CyberEmerald = Color(0xFF10B981)
 private val ElectricCyan = Color(0xFF06B6D4)
 private val CyberAmber = Color(0xFFF59E0B)
 private val CyberCrimson = Color(0xFFEF4444)
+private val WarBronze = Color(0xFFD49B55)
+private val WarBrown = Color(0xFF6B4423)
 private val TextMuted = Color(0xFF94A3B8)
 
 @Composable
@@ -385,6 +387,51 @@ fun SnippetsScreen() = FlorisScreen {
                                 inputTrigger = t
                                 inputExpansion = e
                                 showDialog = true
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Section 4: Tribal Wars & BB-Codes (Miniaturized Deck Helmet Icon)
+                        CenteredSectionHeader(
+                            leadingContent = {
+                                TribalWarsHelmetIcon(
+                                    modifier = Modifier.size(13.dp),
+                                    tint = WarBronze,
+                                )
+                            },
+                            title = "TRIBAL WARS & BB-CODES",
+                            color = WarBronze,
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            TribalWarsPill("!cords", "[coord]...[/coord]", Modifier.weight(1f))
+                            TribalWarsPill("!player", "[player]...[/player]", Modifier.weight(1f))
+                            TribalWarsPill("!tribe", "[tribe]...[/tribe]", Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            TribalWarsPill("!claim", "[claim]...[/claim]", Modifier.weight(1f))
+                            TribalWarsPill("!report", "[report_display]", Modifier.weight(1f))
+                            TribalWarsPill("!sos", "Defense Call", Modifier.weight(1f))
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            val bbTags = listOf("!b", "!u", "!i", "!s", "!quote", "!spoiler", "!url", "!img", "!code", "!color", "!size")
+                            for (tag in bbTags) {
+                                BBCodeTagBadge(tag)
                             }
                         }
                     }
@@ -825,6 +872,140 @@ private fun CenteredSectionHeader(
             modifier = Modifier.weight(1f),
             color = CardBorder,
             thickness = 1.dp,
+        )
+    }
+}
+
+@Composable
+private fun CenteredSectionHeader(
+    leadingContent: @Composable () -> Unit,
+    title: String,
+    color: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = CardBorder,
+            thickness = 1.dp,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        leadingContent()
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.5.sp,
+            fontFamily = FontFamily.Monospace,
+            color = color,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = CardBorder,
+            thickness = 1.dp,
+        )
+    }
+}
+
+@Composable
+private fun TribalWarsHelmetIcon(
+    modifier: Modifier = Modifier,
+    tint: Color = WarBronze,
+) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val gs = minOf(w, h)
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val hw = gs * 0.25f
+
+        // Helmet Dome with a flat base
+        val helmPath = androidx.compose.ui.graphics.Path().apply {
+            moveTo(cx - hw, cy + gs * 0.20f)
+            lineTo(cx - hw, cy - gs * 0.02f)
+            quadraticTo(cx - hw, cy - gs * 0.26f, cx, cy - gs * 0.26f)
+            quadraticTo(cx + hw, cy - gs * 0.26f, cx + hw, cy - gs * 0.02f)
+            lineTo(cx + hw, cy + gs * 0.20f)
+            close()
+        }
+        drawPath(helmPath, color = tint)
+
+        // Nose Guard
+        drawRect(
+            color = tint,
+            topLeft = androidx.compose.ui.geometry.Offset(cx - gs * 0.05f, cy + gs * 0.04f),
+            size = androidx.compose.ui.geometry.Size(gs * 0.10f, gs * 0.22f),
+        )
+
+        // Two Horns curving up from the sides
+        for (s in listOf(-1f, 1f)) {
+            val hornPath = androidx.compose.ui.graphics.Path().apply {
+                moveTo(cx + s * hw, cy - gs * 0.02f)
+                quadraticTo(cx + s * gs * 0.46f, cy - gs * 0.06f, cx + s * gs * 0.40f, cy - gs * 0.32f)
+                quadraticTo(cx + s * gs * 0.33f, cy - gs * 0.15f, cx + s * gs * 0.17f, cy - gs * 0.11f)
+                close()
+            }
+            drawPath(hornPath, color = tint)
+        }
+    }
+}
+
+@Composable
+private fun TribalWarsPill(
+    trigger: String,
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A130C)),
+        border = BorderStroke(1.dp, WarBronze.copy(alpha = 0.35f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = trigger,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = WarBronze,
+                maxLines = 1,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = description,
+                fontSize = 9.5.sp,
+                color = TextMuted,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BBCodeTagBadge(tag: String) {
+    Card(
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF151009)),
+        border = BorderStroke(1.dp, WarBronze.copy(alpha = 0.25f)),
+    ) {
+        Text(
+            text = tag,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            color = WarBronze,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
         )
     }
 }
