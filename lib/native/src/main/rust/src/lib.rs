@@ -630,6 +630,36 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspect
     env.new_string("0||").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
+/// The developer's telemetry public key. Sprint diagnostic bundles are
+/// sealed to this key (X25519 + XChaCha20Poly1305) so only the holder of the
+/// matching private key - which is never on any device and never in this
+/// repo - can read them. Rotating the sprint means regenerating the keypair
+/// (crake-telemetry keygen) and replacing these bytes.
+const TELEMETRY_PUBLIC_KEY: [u8; 32] = [
+    0xe6, 0xab, 0xda, 0xaa, 0x11, 0x18, 0x32, 0x31, 0xcc, 0x1a, 0xd0, 0xd2, 0x2d, 0x4c, 0xc9, 0x57,
+    0xf7, 0x87, 0x66, 0xb9, 0xb0, 0x3a, 0x2e, 0x83, 0xb2, 0xa8, 0xd6, 0x22, 0x22, 0x2f, 0xdd, 0x76,
+];
+
+/// Seals a diagnostic bundle to the developer's telemetry public key,
+/// returning the opaque sealed blob for the Kotlin side to base64 and
+/// transmit. Nothing but the developer's private key can open the result,
+/// so the bundle is safe to carry over a public transport.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeSealTelemetry(
+    mut env: JNIEnv,
+    _class: JClass,
+    plaintext: JString,
+) -> jni::sys::jbyteArray {
+    let text = match env.get_string(&plaintext) {
+        Ok(s) => s.to_str().unwrap_or("").to_string(),
+        Err(_) => String::new(),
+    };
+    let sealed = crake_privacy::intrusion::seal(&TELEMETRY_PUBLIC_KEY, text.as_bytes());
+    env.byte_array_from_slice(&sealed)
+        .map(|arr| arr.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
 /// Opens the hidden note page sealed under `pin` from the given vault bytes.
 /// Returns the page text (empty string for an unused PIN - a blank page,
 /// never an error). See crake_privacy::note_vault for the deniability model.

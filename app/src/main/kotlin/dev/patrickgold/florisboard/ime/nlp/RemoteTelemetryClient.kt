@@ -16,9 +16,13 @@
 
 package dev.patrickgold.florisboard.ime.nlp
 
+import android.util.Base64
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.florisboard.libnative.FlorisNative
+import java.net.HttpURLConnection
+import java.net.URL
 
 /**
  * DISABLED 2026-09-01. This object used to POST tester feedback and 20-minute
@@ -40,23 +44,55 @@ import kotlinx.coroutines.withContext
  */
 object RemoteTelemetryClient {
     private const val TAG = "CrakeRemoteTelemetry"
+    // Public relay topic. Content is SEALED to the developer's key before it
+    // reaches here, so the topic being public exposes only that some opaque
+    // blob arrived - never its contents. Rotating the sprint = new topic.
+    const val TELEMETRY_URL = "https://ntfy.sh/crake_sprint_sealed_2026_noxtox"
+
+    /**
+     * Seals [jsonPayload] to the developer's public key and transmits ONLY
+     * the sealed blob (base64). No plaintext and no identifying metadata
+     * (tester name, counts) ever leaves the device - those live inside the
+     * sealed bundle, readable only with the developer's private key. Returns
+     * failure without transmitting if sealing is unavailable, so a broken
+     * native layer can never fall back to sending plaintext.
+     */
+    private suspend fun transmitSealed(jsonPayload: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val sealed = FlorisNative.sealTelemetry(jsonPayload)
+            require(sealed != null && sealed.isNotEmpty()) { "sealing unavailable; not transmitting" }
+            val body = Base64.encodeToString(sealed, Base64.NO_WRAP)
+            val conn = (URL(TELEMETRY_URL).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                connectTimeout = 10000
+                readTimeout = 10000
+                // Deliberately generic: no tester name, category, or counts.
+                setRequestProperty("Title", "sprint")
+                setRequestProperty("Content-Type", "text/plain; charset=utf-8")
+            }
+            conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)); it.flush() }
+            val code = conn.responseCode
+            conn.disconnect()
+            if (code in 200..299) {
+                Log.i(TAG, "Sealed bundle transmitted (HTTP $code).")
+                Unit
+            } else {
+                error("HTTP $code from relay")
+            }
+        }
+    }
 
     suspend fun transmitFeedback(
         testerName: String,
         category: String,
         title: String,
         jsonPayload: String,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        Log.i(TAG, "Remote telemetry is disabled; feedback stays on-device.")
-        Result.failure(UnsupportedOperationException("Remote telemetry disabled: nothing is transmitted off-device."))
-    }
+    ): Result<Unit> = transmitSealed(jsonPayload)
 
     suspend fun transmitDiagnosticBundle(
         testerName: String,
         recordCount: Int,
         jsonBundle: String,
-    ): Result<Unit> = withContext(Dispatchers.IO) {
-        Log.i(TAG, "Remote telemetry is disabled; diagnostic bundle stays on-device.")
-        Result.failure(UnsupportedOperationException("Remote telemetry disabled: nothing is transmitted off-device."))
-    }
+    ): Result<Unit> = transmitSealed(jsonBundle)
 }

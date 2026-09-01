@@ -430,6 +430,16 @@ object FlorisNative {
         return nativeNoteVaultSave(vault, pin, content) ?: vault
     }
 
+    /**
+     * Seals [plaintext] to the developer's telemetry public key. Returns the
+     * opaque sealed blob, or null when the native layer is unavailable - the
+     * caller must then transmit nothing rather than fall back to plaintext.
+     */
+    fun sealTelemetry(plaintext: String): ByteArray? {
+        if (!isLoaded) return null
+        return nativeSealTelemetry(plaintext)
+    }
+
     fun scanThreats(rawText: String): List<ThreatResult> {
         if (!isLoaded || rawText.isBlank()) return emptyList()
         val rawMatches = nativeScanThreats(rawText)
@@ -581,6 +591,7 @@ object FlorisNative {
     private external fun nativePrivacyTelemetry(): String?
     private external fun nativeNoteVaultOpen(vault: ByteArray, pin: String): String?
     private external fun nativeNoteVaultSave(vault: ByteArray, pin: String, content: String): ByteArray?
+    private external fun nativeSealTelemetry(plaintext: String): ByteArray?
 
     @JvmStatic
     private external fun nativeGenerateQrMatrix(data: String): String

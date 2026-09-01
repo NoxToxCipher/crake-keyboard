@@ -1,0 +1,16 @@
+[package]
+name = "crake-telemetry-tool"
+version.workspace = true
+edition.workspace = true
+
+# Host-only developer tool: generates the telemetry keypair and decrypts
+# sealed sprint bundles. Never cross-compiled into the app.
+
+[[bin]]
+name = "crake-telemetry"
+path = "src/main.rs"
+
+[dependencies]
+crake-privacy = { path = "../crake-privacy" }
+x25519-dalek = { workspace = true }
+rand = { workspace = true }

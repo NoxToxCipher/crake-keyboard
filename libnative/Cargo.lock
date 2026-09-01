@@ -358,6 +358,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crake-telemetry-tool"
+version = "0.1.0"
+dependencies = [
+ "crake-privacy",
+ "rand 0.8.8",
+ "x25519-dalek",
+]
+
+[[package]]
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

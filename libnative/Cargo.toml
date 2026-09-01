@@ -2,6 +2,7 @@
 members = [
     "crates/floris-core",
     "crates/crake-privacy",
+    "crates/crake-telemetry-tool",
 ]
 resolver = "2"
 

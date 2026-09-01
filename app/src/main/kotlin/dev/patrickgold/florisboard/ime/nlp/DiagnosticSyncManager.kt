@@ -52,6 +52,16 @@ object DiagnosticSyncManager {
     private const val TAG = "CrakeDiagSync"
     const val SPRINT_NAME = "7-Day Sprint (Aug 30 - Sep 6)"
 
+    // Hard stop: after the sprint ends, no bundle is built or sent regardless
+    // of the pref, and local bundles are purged. The developer deletes the
+    // collected sealed blobs on their side (the app cannot reach those).
+    private val SPRINT_END_MS: Long = runCatching {
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).parse("2026-09-06T23:59:59+1000")!!.time
+    }.getOrDefault(Long.MAX_VALUE)
+    private const val LOCAL_RETENTION_MS = 7L * 24 * 60 * 60 * 1000
+
+    private fun sprintOver(): Boolean = System.currentTimeMillis() > SPRINT_END_MS
+
     sealed interface SyncStatus {
         data object Idle : SyncStatus
         data object Syncing : SyncStatus
@@ -74,6 +84,14 @@ object DiagnosticSyncManager {
     private fun startPeriodicSyncLoop() {
         scope.launch {
             while (isActive) {
+                if (sprintOver()) {
+                    // Sprint closed: stop collecting, turn the pref off, and
+                    // sweep any local bundles that remain.
+                    if (prefs.updater.logSyncEnabled.get()) prefs.updater.logSyncEnabled.set(false)
+                    appContext?.let { purgeLocalBundles(it, purgeAll = true) }
+                    delay(60 * 60 * 1000L)
+                    continue
+                }
                 if (prefs.updater.logSyncEnabled.get()) {
                     val intervalMin = prefs.updater.logSyncIntervalMinutes.get().coerceAtLeast(5)
                     val lastSyncStr = prefs.updater.lastLogSyncTimestamp.get()
@@ -242,11 +260,9 @@ object DiagnosticSyncManager {
                 it.write(bundleObj.toString(2))
             }
 
-            // Prune old sync files keeping last 15
-            val allFiles = syncDir.listFiles()?.sortedByDescending { it.lastModified() } ?: emptyList()
-            if (allFiles.size > 15) {
-                allFiles.drop(15).forEach { it.delete() }
-            }
+            // Prune old sync files: keep last 15 AND drop anything past the
+            // 7-day local retention window.
+            purgeLocalBundles(context, purgeAll = false)
 
             // Transmit wirelessly over HTTPS to development relay
             RemoteTelemetryClient.transmitDiagnosticBundle(
@@ -256,6 +272,25 @@ object DiagnosticSyncManager {
             )
 
             sanitizedCount
+        }
+    }
+
+    /**
+     * Sweeps the local diagnostic bundle directory. Always drops bundles
+     * older than the 7-day retention window; [purgeAll] wipes the directory
+     * entirely (used once the sprint is over). Never touches anything else.
+     */
+    private fun purgeLocalBundles(context: Context, purgeAll: Boolean) {
+        runCatching {
+            val syncDir = File(context.filesDir, "diagnostic_sync")
+            val files = syncDir.listFiles()?.sortedByDescending { it.lastModified() } ?: return
+            val now = System.currentTimeMillis()
+            files.forEachIndexed { index, f ->
+                val tooOld = now - f.lastModified() > LOCAL_RETENTION_MS
+                if (purgeAll || tooOld || index >= 15) {
+                    f.delete()
+                }
+            }
         }
     }
 

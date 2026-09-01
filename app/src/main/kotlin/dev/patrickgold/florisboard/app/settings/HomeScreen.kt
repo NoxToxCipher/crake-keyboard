@@ -231,8 +231,8 @@ fun HomeScreen() = FlorisScreen {
 
                         TesterSprintPill(
                             icon = Icons.Default.Refresh,
-                            title = "On-Device Diagnostics Only",
-                            desc = "Typing accuracy and correction metrics are recorded on this device to tune the keyboard. Nothing is sent anywhere - diagnostics stay on your phone.",
+                            title = "Encrypted Diagnostics (only if you Join)",
+                            desc = "During the sprint, typing-accuracy and correction diagnostics (which include short text fragments) are sealed on-device to the developer's key and sent every 20 minutes. Only the developer can open them; the relay and anyone watching it cannot. Skip this dialog and nothing is ever sent.",
                             accent = CyberEmerald,
                         )
 
@@ -245,8 +245,8 @@ fun HomeScreen() = FlorisScreen {
 
                         TesterSprintPill(
                             icon = Icons.Default.Security,
-                            title = "Stays On Your Device",
-                            desc = "Diagnostics are stored locally and never transmitted. Nothing about your typing leaves the phone; to share feedback you send it yourself, deliberately.",
+                            title = "Sealed, Time-Boxed, Then Gone",
+                            desc = "Bundles are encrypted so only the developer's private key reads them - never stored in the app or the repo. Passwords and card numbers are filtered out before sealing. Collection stops when the sprint ends (Sep 6) and local copies are deleted after 7 days.",
                             accent = CyberAmber,
                         )
 
