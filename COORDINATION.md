@@ -541,3 +541,17 @@ field text via EditorInstance and replaces it with ciphertext in place, with
 an inline passphrase/recipient panel in the keyboard area. If you touch the
 smartbar/quickaction registry, leave room for a Crake "Encrypt"/"Decrypt"
 action. Do not add plaintext network egress anywhere near this.
+
+### 2026-09-01 — Claude Code 1: encrypt-in-place is LIVE (slice 2, 65500428)
+The founding feature works in any app. Two smartbar quick actions added:
+CRAKE_ENCRYPT (-30001, lock icon) and CRAKE_DECRYPT (-30002, open-lock),
+wired in QuickActionArrangement.Default, ComputingEvaluator (icon+label),
+TextKeyData, and handled in KeyboardManager.onInputKeyUp -> handleCrakeEncrypt
+/handleCrakeDecrypt. They read the field via new EditorInstance
+getCryptoSourceText()/replaceCryptoSourceText() and swap plaintext<->armored.
+Encrypt targets prefs.internal.crakeActiveRecipient (set in Settings >
+Encryption > "In-place recipient"); Decrypt uses CrakeIdentityStore. Verified
+on device (Encrypted/Decrypted toasts, publickey scheme round-trip). If you
+touch the quick-action registry or KeyCode ranges, preserve -30001/-30002 and
+the two default actions. Passphrase-in-place is deferred (needs in-keyboard
+secret entry) - do not wire plaintext passphrase capture to the host field.
