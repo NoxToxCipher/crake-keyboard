@@ -1,11 +1,12 @@
 {
-  "milestone": 347,
-  "tagName": "v0.347.0",
-  "name": "Milestone 347 (Advanced Telemetry Intelligence)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.347.0/CrakeKeyboard_Milestone_347.apk",
+  "milestone": 348,
+  "tagName": "v0.348.0",
+  "name": "Milestone 348 (LRU Suggestion Speed Boost & Fleet Typos)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.348.0/CrakeKeyboard_Milestone_348.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 347: Implemented burst typing speed (WPM/CPM), typing friction ratio, display density metrics, and aggregate per-key spatial touch error summaries in telemetry sync bundles.",
+  "changelog": "Milestone 348: Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",
   "history": {
+    "348": "Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",
     "347": "Implemented burst typing speed (WPM/CPM), typing friction ratio, display density metrics, and aggregate per-key spatial touch error summaries in telemetry sync bundles.",
     "346": "Integrated real-time Easter Egg flight recorder event logging and explicit discovery/solved array telemetry in diagnostic sync bundles.",
     "345": "Ingested high-frequency fleet typos from 19k telemetry records into fast-path autocorrect (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure).",

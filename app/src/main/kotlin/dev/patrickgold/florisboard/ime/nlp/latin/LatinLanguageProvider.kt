@@ -328,9 +328,14 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     )
                 }
 
-                // 3. Native Safe Rust Trie Word Predictions
+                // 3. Native Safe Rust Trie Word Predictions with High-Speed LRU Cache
                 if (FlorisNative.isAvailable()) {
-                    val candidates = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
+                    val cacheKey = "$cleanWordQuery|$maxCandidateCount|$prevToken"
+                    val candidates = nativeSuggestCache.get(cacheKey) ?: run {
+                        val fetched = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
+                        nativeSuggestCache.put(cacheKey, fetched)
+                        fetched
+                    }
                     for ((index, candidate) in candidates.withIndex()) {
                         // Avoid duplicates if snippet or fleet correction already added
                         if (none { it.text.toString().equals(candidate.text, ignoreCase = true) }) {
@@ -349,6 +354,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
     }
+
+    private val nativeSuggestCache = object : android.util.LruCache<String, List<org.florisboard.libnative.FlorisNative.NativeCandidate>>(128) {}
 
     private val LATIN_SPACING_EXPANDED_WORDS = setOf(
         "all", "at", "but", "by", "for", "from", "in", "into", "of", "on", "or",
@@ -372,6 +379,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         "thsi" to "this",
         "thier" to "their",
         "widt" to "with",
+        "rhjs" to "this",
+        "jat" to "that",
+        "dobe" to "done",
+        "thks" to "this",
+        "thid" to "this",
+        "whag" to "what",
+        "hwy" to "why",
         "dont" to "don't",
         "cant" to "can't",
         "wont" to "won't",
