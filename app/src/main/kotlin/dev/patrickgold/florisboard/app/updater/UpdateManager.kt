@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 354
+    const val CURRENT_MILESTONE = 355
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 35401
-    private const val RESOLVED_NOTIFICATION_ID = 35402
+    private const val NOTIFICATION_ID = 35501
+    private const val RESOLVED_NOTIFICATION_ID = 35502
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                355 -> "Note Peek Fluid Physics & Parallax Flow: Overhauled Note Peek with persistent low-level gesture pipeline, velocity-driven momentum fling, zero-jank background persistence, dynamic corner curvature, and parallax slide-in."
                 354 -> "Note Peek High-Reliability Grab & Vault Auto-Lock: Dedicated 56dp edge grab interceptor ensures 100% reliable swipe-to-open, with a 60s inactivity auto-lock that seals private notes and returns to standard notepad."
                 353 -> "Universal BBCode & Tribal Wars Macro Suite: Added full formatting and village strategy macro suite (!b, !u, !i, !s, !quote, !spoiler, !url, !img, !code, !color, !size, !cords, !player, !tribe, !claim, !report, !sos) with zero regular typing collision."
                 352 -> "High-Frequency Fleet Typo Optimization: Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine."
