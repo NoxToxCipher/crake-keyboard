@@ -806,75 +806,63 @@ fun HomeScreen() = FlorisScreen {
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Security Telemetry",
+                    text = "Security Telemetry (this session)",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     color = TextMuted,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Telemetry Row 1
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "BIP-39 Secret Shield", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "ENGAGED",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CyberEmerald,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
+                // Measured counters from the live clipboard path - every
+                // value here is real or explicitly OFFLINE. Hardcoded
+                // status strings are unearned claims and must never come
+                // back to this board.
+                val telemetry = remember { org.florisboard.libnative.FlorisNative.privacyTelemetry() }
 
-                // Telemetry Row 2
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "Boreal YARA Engine", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "SCANNING",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ElectricCyan,
-                        fontFamily = FontFamily.Monospace,
-                    )
+                @Composable
+                fun telemetryRow(label: String, value: String, live: Boolean) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(text = label, fontSize = 12.sp, color = Color.White)
+                        Text(
+                            text = value,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (live) CyberEmerald else TextMuted,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(6.dp))
 
-                // Telemetry Row 3
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "MetaScrub Cleaner", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "ACTIVE",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CyberEmerald,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
+                telemetryRow(
+                    label = "BIP-39 Secret Shield",
+                    value = telemetry?.let { "ENGAGED · ${it.secretsCaught} CAUGHT" } ?: "OFFLINE",
+                    live = telemetry != null,
+                )
                 Spacer(modifier = Modifier.height(6.dp))
-
-                // Telemetry Row 4
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "Tracker URL Scrubber", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "40+ STRIPPED",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ElectricCyan,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
+                telemetryRow(
+                    label = "Boreal YARA Engine",
+                    value = when {
+                        telemetry == null -> "OFFLINE"
+                        !telemetry.borealReady -> "RULES FAILED"
+                        else -> "SCANNING · ${telemetry.borealHits} HITS"
+                    },
+                    live = telemetry?.borealReady == true,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                telemetryRow(
+                    label = "MetaScrub Cleaner",
+                    value = telemetry?.let { "${it.clipsProcessed} CLIPS CLEANED" } ?: "OFFLINE",
+                    live = telemetry != null,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                telemetryRow(
+                    label = "Tracker URL Scrubber",
+                    value = telemetry?.let { "${it.urlsSanitized} STRIPPED" } ?: "OFFLINE",
+                    live = telemetry != null,
+                )
             }
         }
 

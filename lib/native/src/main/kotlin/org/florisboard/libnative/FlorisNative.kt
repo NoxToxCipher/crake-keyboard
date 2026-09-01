@@ -384,6 +384,35 @@ object FlorisNative {
         return MetaScrubResult(removed, sanitized, cleaned)
     }
 
+    data class PrivacyTelemetry(
+        val clipsProcessed: Long,
+        val invisibleCharsRemoved: Long,
+        val urlsSanitized: Long,
+        val secretsCaught: Long,
+        val borealHits: Long,
+        val borealReady: Boolean,
+    )
+
+    /**
+     * Measured session counters from the live clipboard path. Null when the
+     * native library is unavailable - the UI must show an offline state,
+     * never a hardcoded reassuring one.
+     */
+    fun privacyTelemetry(): PrivacyTelemetry? {
+        if (!isLoaded) return null
+        val raw = nativePrivacyTelemetry() ?: return null
+        val p = raw.split("|")
+        if (p.size != 6) return null
+        return PrivacyTelemetry(
+            clipsProcessed = p[0].toLongOrNull() ?: 0L,
+            invisibleCharsRemoved = p[1].toLongOrNull() ?: 0L,
+            urlsSanitized = p[2].toLongOrNull() ?: 0L,
+            secretsCaught = p[3].toLongOrNull() ?: 0L,
+            borealHits = p[4].toLongOrNull() ?: 0L,
+            borealReady = p[5] == "1",
+        )
+    }
+
     fun scanThreats(rawText: String): List<ThreatResult> {
         if (!isLoaded || rawText.isBlank()) return emptyList()
         val rawMatches = nativeScanThreats(rawText)
@@ -532,6 +561,7 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeScanThreats(rawText: String): Array<String>
+    private external fun nativePrivacyTelemetry(): String?
 
     @JvmStatic
     private external fun nativeGenerateQrMatrix(data: String): String
