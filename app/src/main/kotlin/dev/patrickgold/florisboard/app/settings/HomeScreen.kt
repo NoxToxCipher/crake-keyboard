@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SmartButton
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Info
@@ -974,6 +975,14 @@ fun HomeScreen() = FlorisScreen {
         Spacer(modifier = Modifier.height(4.dp))
 
         // CRAKE CYBER COMMAND HUB NAVIGATION CARDS
+        CrakeNavTile(
+            icon = Icons.Default.Speed,
+            title = "Typing Telemetrics & Analytics",
+            summary = "Real-time average speed (WPM/CPM), glide vs. tap ratio & accuracy tracking",
+            badgeText = "AIR-GAPPED",
+            accentColor = ElectricCyan,
+            onClick = { navController.navigate(Routes.Settings.TypingTelemetrics) },
+        )
         CrakeNavTile(
             icon = Icons.Default.Spellcheck,
             title = "Typing & Prediction Core",

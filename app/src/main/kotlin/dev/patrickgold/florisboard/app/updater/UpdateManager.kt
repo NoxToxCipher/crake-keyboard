@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 359
+    const val CURRENT_MILESTONE = 360
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 35901
-    private const val RESOLVED_NOTIFICATION_ID = 35902
+    private const val NOTIFICATION_ID = 36001
+    private const val RESOLVED_NOTIFICATION_ID = 36002
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                360 -> "On-Device Typing Telemetrics & Analytics: Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking."
                 359 -> "Glide & Mechanical Slip Ingestion: Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine)."
                 358 -> "NLP Token Extraction Speed Boost: Replaced 5-pass chained substring allocations with a single-pass zero-copy token sanitizer, cutting typing heap allocations and latency during rapid text input."
                 357 -> "Zero-Allocation Note Canvas & Mechanical Slip Typo Ingestion: Optimized lined notepad render pipeline with memoized brush allocations, zero-alloc bounds math, and ingested mechanical slips (securtiy -> security, gestrue -> gesture, smooht -> smooth, pysics -> physics, noteapd -> notepad)."

@@ -1,11 +1,12 @@
 {
-  "milestone": 359,
-  "tagName": "v0.359.0",
-  "name": "Milestone 359 (Glide & Mechanical Slip Ingestion)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.359.0/CrakeKeyboard_Milestone_359.apk",
+  "milestone": 360,
+  "tagName": "v0.360.0",
+  "name": "Milestone 360 (On-Device Typing Telemetrics & Analytics)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.360.0/CrakeKeyboard_Milestone_360.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 359: Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine).",
+  "changelog": "Milestone 360: Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking.",
   "history": {
+    "360": "Added real-time typing speed dashboard (average/peak WPM, CPM, inter-key flight latency), glide vs. tap usage distribution, and dual precision/accuracy tracking.",
     "359": "Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine).",
     "358": "Replaced 5-pass chained substring allocations with a single-pass zero-copy token sanitizer, cutting typing heap allocations and latency during rapid text input.",
     "357": "Optimized lined notepad render pipeline with memoized brush allocations, zero-alloc bounds math, and ingested mechanical slips (securtiy -> security, gestrue -> gesture, smooht -> smooth, pysics -> physics, noteapd -> notepad).",

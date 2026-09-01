@@ -36,12 +36,14 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.SpaceBar
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import dev.patrickgold.jetpref.datastore.ui.Preference
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -135,6 +137,13 @@ fun TypingScreen() = FlorisScreen {
                 }
             }
         }
+
+        Preference(
+            icon = Icons.Default.Speed,
+            title = "Typing Telemetrics & Analytics",
+            summary = "View real-time typing speed (WPM/CPM), glide vs. tap ratio & dual accuracy breakdown",
+            onClick = { navController.navigate(Routes.Settings.TypingTelemetrics) },
+        )
 
         // 1. SUGGESTIONS & PREDICTIONS
         CrakeSectionHeader(title = "Predictive Intelligence", badgeText = "NLP", accentColor = ElectricCyan)

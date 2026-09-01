@@ -168,6 +168,10 @@ object Routes {
         object Typing
 
         @Serializable
+        @Deeplink("settings/typing-telemetrics")
+        object TypingTelemetrics
+
+        @Serializable
         @Deeplink("settings/snippets")
         object Snippets
 
@@ -350,6 +354,7 @@ object Routes {
             composableWithDeepLink(Settings.Smartbar::class) { SmartbarScreen() }
 
             composableWithDeepLink(Settings.Typing::class) { TypingScreen() }
+            composableWithDeepLink(Settings.TypingTelemetrics::class) { dev.patrickgold.florisboard.app.settings.typing.TypingTelemetricsScreen() }
             composableWithDeepLink(Settings.Snippets::class) { SnippetsScreen() }
 
             composableWithDeepLink(Settings.Dictionary::class) { DictionaryScreen() }
