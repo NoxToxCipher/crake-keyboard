@@ -82,6 +82,10 @@ import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
 
 private val DoubleSpacePeriodMatcher = """([^.!?\s]\s)""".toRegex()
+// Precompiled once: this was being `Regex(...)`-compiled on almost every
+// keystroke inside reevaluateInputShiftState (the cheap endsWith checks
+// short-circuit past it only at sentence ends).
+private val SentenceEndMatcher = """.*[.?!]\s+$""".toRegex()
 
 class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private val prefs by FlorisPreferenceStore
@@ -218,7 +222,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 textBefore.endsWith(". ") || textBefore.endsWith("? ") || textBefore.endsWith("! ") ||
                 textBefore.endsWith(".\n") || textBefore.endsWith("?\n") || textBefore.endsWith("!\n") ||
                 textBefore.endsWith("\n") ||
-                Regex(".*[.?!]\\s+$").matches(textBefore)
+                SentenceEndMatcher.matches(textBefore)
 
             val shift = prefs.correction.autoCapitalization.get()
                 && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
@@ -665,7 +669,10 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         val candidate = nlpManager.getAutoCommitCandidate()
         if (candidate != null) {
             commitCandidate(candidate)
-        } else {
+        } else if (prefs.devtools.flightRecorderEnabled.get()) {
+            // All of this exists only to feed the flight recorder, including a
+            // synchronous JNI round-trip (predictNextLetterWords) on every
+            // space. Skip it entirely unless the recorder is on.
             val wordBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
             if (wordBefore.isNotBlank()) {
                 val candidates = nlpManager.activeCandidates.map { it.text.toString() }

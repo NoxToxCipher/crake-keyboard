@@ -223,9 +223,13 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "devtools__show_window_resize_handle_boundaries",
             default = false,
         )
+        // Default OFF as of 2026-09-01: the recorder ran per-keystroke work
+        // (a JNI call per space, PII regex + a file write + a logcat line per
+        // key) on the UI thread for everyone, which was a real typing lag and
+        // a privacy surface. Testers opt in via the sprint's "Join" button.
         val flightRecorderEnabled = boolean(
             key = "devtools__flight_recorder_enabled",
-            default = true,
+            default = false,
         )
         val flightRecorderIncludeSuggestions = boolean(
             key = "devtools__flight_recorder_include_suggestions",

@@ -108,8 +108,10 @@ object DiagnosticSyncManager {
                         }
                     }
                 }
-                // Check cadence every 5 minutes
-                delay(5 * 60 * 1000L)
+                // Check cadence: 5 min while sync is on, but back off to 30
+                // min when it's disabled (the default) so the idle keyboard
+                // process isn't woken every 5 minutes to do nothing.
+                delay(if (prefs.updater.logSyncEnabled.get()) 5 * 60 * 1000L else 30 * 60 * 1000L)
             }
         }
     }

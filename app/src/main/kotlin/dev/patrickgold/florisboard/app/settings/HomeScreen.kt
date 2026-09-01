@@ -299,6 +299,10 @@ fun HomeScreen() = FlorisScreen {
                                     prefs.updater.testerOnboardingDismissed.set(true)
                                     prefs.updater.autoCheckEnabled.set(true)
                                     prefs.updater.logSyncEnabled.set(true)
+                                    // Opting into the sprint also turns on the
+                                    // flight recorder (off by default for perf
+                                    // + privacy) so joined testers still send data.
+                                    prefs.devtools.flightRecorderEnabled.set(true)
                                     showTesterModal = false
                                     DiagnosticSyncManager.performSync(silent = true)
                                     dev.patrickgold.florisboard.app.updater.UpdateManager.checkForUpdates(silent = true)

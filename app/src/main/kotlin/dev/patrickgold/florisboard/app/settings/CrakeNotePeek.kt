@@ -44,7 +44,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -186,7 +188,12 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         val edgeWidth = 56.dp
         val edgePx = with(density) { edgeWidth.toPx() }
         val offsetX = remember { Animatable(closedPx) }
-        val isOpen = offsetX.value > openPx * 0.45f
+        // Derived so a sub-pixel drag/spring frame does NOT recompose the
+        // whole wrapped home screen - these flip at most twice per open/close.
+        // The visual slide is driven entirely in the draw phase (graphicsLayer
+        // / drawBehind read offsetX.value there).
+        val isOpen by remember { derivedStateOf { offsetX.value > openPx * 0.45f } }
+        val isInteracting by remember { derivedStateOf { offsetX.value > 1f } }
 
         fun animateTo(target: Float, initialVelocity: Float = 0f) {
             scope.launch {
@@ -332,24 +339,24 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         ) {
             content()
 
-            // Dismiss Scrim Overlay when open
-            if (offsetX.value > 1f) {
-                val scrimAlpha = (offsetX.value / openPx * 0.40f).coerceIn(0f, 0.40f)
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = scrimAlpha))
-                        .pointerInput(Unit) {
-                            detectTapGestures {
-                                animateTo(closedPx)
-                            }
-                        }
-                )
-            }
+            // Dismiss scrim: always composed, alpha driven in the draw phase
+            // (no per-frame recomposition), tap-to-close only while open.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        val a = (offsetX.value / openPx * 0.40f).coerceIn(0f, 0.40f)
+                        if (a > 0.001f) drawRect(Color.Black, alpha = a)
+                    }
+                    .then(
+                        if (isInteracting) {
+                            Modifier.pointerInput(Unit) { detectTapGestures { animateTo(closedPx) } }
+                        } else Modifier,
+                    ),
+            )
 
             // Layer 3: Top-Layer Edge Grab & Drag Surface
             // Sits directly on top of content: 56dp grab strip when closed, full-width surface when active
-            val isInteracting = offsetX.value > 1f
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)

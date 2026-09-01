@@ -526,8 +526,10 @@ object FlightRecorderManager {
 
     private suspend fun processRecordQueue() {
         for (record in recordChannel) {
+            // Never log the serialized record (it contains typed-input
+            // fragments) to logcat - that leaked user text to any app with
+            // READ_LOGS and to `adb logcat`.
             val jsonLine = record.toJsonString()
-            Log.i(TAG, jsonLine)
             _recentEventsCount.value += 1
             appContext?.let { ctx ->
                 writeJsonLineToFile(ctx, jsonLine)
