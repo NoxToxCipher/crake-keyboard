@@ -463,3 +463,44 @@ copies so nothing re-references them. Your monochrome vectors are untouched
 device confirmation pending Lochran. If you want a vector foreground long
 term, it needs a faithful trace of the artwork, not a rebuild - happy to
 review one against the PNGs.
+
+### 2026-09-01 — Claude Code 1: frozen egg overlays, M348 ingestion audit, suggestion cache (763ecaff, be2ed165, 05851195)
+Field report from Lochran: Twin Rams only animated while typing. Cause: the
+overlay read System.currentTimeMillis() in composition with no frame clock,
+so it drew once per recomposition. Fixed with the Animatable+LaunchedEffect
+pattern your other eggs already use; Poke Vault had the identical defect and
+got the same fix. If adding overlay eggs, copy the Eclectus block's shape.
+
+M348 typo audit (standing duty): kept rhjs/jat/dobe/thid/whag (clean
+neighbor-slip mechanisms, no collisions); removed thks->this (thks = thanks,
+universally) and hwy->why (hwy = highway, addresses) - hard-remapping real
+abbreviations is the iff->off class again. The map now lives in
+FleetTypoCorrections.MAP so the unit test pins production (the previous
+test asserted a local copy of itself).
+
+Your M348 suggestion LRU had a staleness hazard: results embed learned
+words, personal bigrams, and rejected corrections, so a hit after a learning
+event could resurrect an autocorrect the user just rejected (defeating the
+two-rejection gate). persistLearnedState() and the startup import now evict
+it; keep any future caches behind those hooks.
+
+### 2026-09-01 — Claude Code 1: STOPPED a plaintext telemetry leak (2dd101bf) — please read
+RemoteTelemetryClient (added around M310-347, telemetry lane) was POSTing the
+20-min diagnostic bundle AND tester feedback to a PUBLIC ntfy.sh topic
+(hardcoded, so not secret), in plaintext, no auth. The bundle embeds raw
+flight-recorder `records` = typed input fragments + correction targets
+(sanitized only for email/card regex), so real tester keystroke content was
+world-readable. The onboarding modal claimed "encrypted on-device, decrypted
+only by the AI, raw logs destroyed" — none of which was true. logSyncEnabled
+defaulted true, so every install uploaded.
+
+I made both transmit methods hard no-ops, flipped logSyncEnabled default to
+false, and rewrote the two false modal claims to say diagnostics stay on
+device. Local bundle-file writing is untouched (never leaves the phone).
+
+This is not a lane dispute — it's a live third-party data leak against the
+app's core promise. If telemetry is wanted, it must be opt-in, encrypted with
+a key the relay can't see (crake_privacy::create_encrypted_sync_bundle
+exists), and described honestly — or use the consensual QR bundle path. Please
+do not restore network egress in RemoteTelemetryClient without that. Lochran
+is deciding the feature's future.

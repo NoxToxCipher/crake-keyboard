@@ -10,8 +10,10 @@
 //! All timestamps are unix epoch milliseconds supplied by the caller —
 //! this module never reads the clock itself.
 
+use crate::boreal_guard::shared_scanner;
 use crate::metascrub::metascrub_text;
 use crate::secret_shield::inspect_text;
+use crate::telemetry;
 
 /// Item kinds, matching the Kotlin `ItemType` enum values.
 pub const KIND_TEXT: u8 = 1;
@@ -57,15 +59,26 @@ pub struct IncomingClip {
     pub is_sensitive: bool,
 }
 
-/// Scrubs incoming clipboard text (invisible characters, URL trackers) and
-/// classifies its sensitivity in one pass — the single entry point for the
-/// copy path.
+/// Scrubs incoming clipboard text (invisible characters, URL trackers),
+/// scans it with the Boreal YARA engine, and classifies its sensitivity in
+/// one pass — the single entry point for the copy path. Every clip that
+/// passes through here is counted in the session telemetry the Security
+/// Telemetry board renders, so the board's numbers are measured, not copy.
 pub fn process_incoming_text(raw: &str) -> IncomingClip {
     let scrubbed = metascrub_text(raw);
-    let is_sensitive = classify_clip_text(&scrubbed.cleaned_text);
+    let shield_hit = classify_clip_text(&scrubbed.cleaned_text);
+    let boreal_hit = shared_scanner()
+        .map(|s| !s.scan_text(&scrubbed.cleaned_text).is_empty())
+        .unwrap_or(false);
+    telemetry::record_clip(
+        scrubbed.invisible_chars_removed as u64,
+        scrubbed.urls_sanitized,
+        shield_hit,
+        boreal_hit,
+    );
     IncomingClip {
         cleaned_text: scrubbed.cleaned_text,
-        is_sensitive,
+        is_sensitive: shield_hit || boreal_hit,
     }
 }
 
@@ -254,6 +267,66 @@ mod tests {
         // Pipe characters must survive the scrub untouched.
         let piped = process_incoming_text("a | b | c");
         assert_eq!(piped.cleaned_text, "a | b | c");
+    }
+
+    #[test]
+    fn boreal_fires_on_a_card_number_through_the_live_path() {
+        // The Visa test number is 16 contiguous digits: too long for the
+        // OTP heuristic, so if this clip comes back sensitive it is Boreal
+        // (or the shield) that fired — the same path a real paste takes.
+        let clip = process_incoming_text("card: 4111111111111111");
+        assert!(clip.is_sensitive, "Credit_Card_Pattern must mark the clip sensitive");
+        let direct = shared_scanner()
+            .expect("Boreal rules must compile")
+            .scan_text("4111111111111111");
+        assert!(
+            direct.iter().any(|m| m.rule_name == "Credit_Card_Pattern"),
+            "expected Credit_Card_Pattern, got {direct:?}"
+        );
+    }
+
+    #[test]
+    fn boreal_fires_on_ssn_and_confidential_stamp() {
+        let scanner = shared_scanner().expect("Boreal rules must compile");
+        assert!(scanner
+            .scan_text("ssn is 123-45-6789 ok")
+            .iter()
+            .any(|m| m.rule_name == "US_SSN_Pattern"));
+        assert!(scanner
+            .scan_text("marked PROPRIETARY AND CONFIDENTIAL do not fwd")
+            .iter()
+            .any(|m| m.rule_name == "Confidential_Document_Stamp"));
+        assert!(process_incoming_text("ssn is 123-45-6789 ok").is_sensitive);
+    }
+
+    #[test]
+    fn boreal_stays_quiet_on_ordinary_text() {
+        // Negative control: everyday clips must pass clean, or sensitivity
+        // becomes noise and the sensitive-TTL sweep starts eating history.
+        let scanner = shared_scanner().expect("Boreal rules must compile");
+        for text in [
+            "picking up milk at 5, want anything?",
+            "https://example.com/article?id=42",
+            "meeting moved to Thursday arvo",
+            "the build is green, shipping now",
+        ] {
+            assert!(scanner.scan_text(text).is_empty(), "false positive on: {text}");
+            assert!(!process_incoming_text(text).is_sensitive, "sensitive on: {text}");
+        }
+    }
+
+    #[test]
+    fn telemetry_counts_what_the_pipeline_actually_saw() {
+        // Counters are process-global and other tests also feed the
+        // pipeline, so assert deltas as at-least rather than exactly.
+        let before = crate::telemetry::snapshot(shared_scanner().is_some());
+        process_incoming_text("card: 4111111111111111");
+        process_incoming_text("harmless words");
+        let after = crate::telemetry::snapshot(shared_scanner().is_some());
+        assert!(after.clips_processed >= before.clips_processed + 2);
+        assert!(after.boreal_hits >= before.boreal_hits + 1);
+        assert!(after.secrets_caught >= before.secrets_caught);
+        assert!(after.boreal_ready, "rules compiled, engine must report ready");
     }
 
     #[test]

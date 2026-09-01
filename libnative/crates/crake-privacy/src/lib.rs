@@ -20,6 +20,7 @@ pub mod profile;
 pub mod sanitizer;
 pub mod secret_shield;
 pub mod sync_bundle;
+pub mod telemetry;
 pub mod zeroize_buffer;
 pub mod pgpony;
 

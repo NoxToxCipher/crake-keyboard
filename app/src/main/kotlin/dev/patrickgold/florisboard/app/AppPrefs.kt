@@ -267,9 +267,13 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "updater__last_notified_resolved_milestone",
             default = 288,
         )
+        // Default OFF as of 2026-09-01: the transmit path was leaking raw
+        // tester input to a public server. Kept as a pref only so an
+        // honest, encrypted, opt-in telemetry design could reuse it later;
+        // RemoteTelemetryClient is a no-op regardless of this flag.
         val logSyncEnabled = boolean(
             key = "updater__log_sync_enabled",
-            default = true,
+            default = false,
         )
         val logSyncIntervalMinutes = int(
             key = "updater__log_sync_interval_minutes",
@@ -607,6 +611,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val homeIsBetaToolboxCollapsed = boolean(
             key = "internal__home_is_beta_toolbox_collapsed_040a01",
             default = false,
+        )
+        // The one-page lined-paper note behind the homepage (CrakeNotePeek).
+        // Local-only, like everything else in this app.
+        val crakeNote = string(
+            key = "internal__crake_note",
+            default = "",
         )
         val isImeSetUp = boolean(
             key = "internal__is_ime_set_up",

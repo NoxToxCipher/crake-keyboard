@@ -95,6 +95,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import org.florisboard.lib.compose.florisVerticalScroll
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.ime.keyboard.EasterEggs
@@ -121,12 +122,19 @@ fun HomeScreen() = FlorisScreen {
     title = stringRes(R.string.settings__home__title)
     navigationIconVisible = false
     previewFieldVisible = true
+    // Scroll moves inside CrakeNotePeek's wrapper so the whole page can be
+    // pulled right to peek at the note tucked behind its left edge.
+    scrollable = false
 
     val navController = LocalNavController.current
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
 
     content {
+        CrakeNotePeek {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.fillMaxSize().florisVerticalScroll(),
+        ) {
         val scope = rememberCoroutineScope()
         val isFlorisBoardEnabled by InputMethodUtils.observeIsFlorisboardEnabled(foregroundOnly = true)
         val testerOnboardingDismissed by prefs.updater.testerOnboardingDismissed.collectAsState()
@@ -223,8 +231,8 @@ fun HomeScreen() = FlorisScreen {
 
                         TesterSprintPill(
                             icon = Icons.Default.Refresh,
-                            title = "Automated Diagnostic Sync (Every 20 Min)",
-                            desc = "Typing accuracy, spatial swipe deltas, and missed corrections sync in lightweight bundles every 20 minutes while active.",
+                            title = "On-Device Diagnostics Only",
+                            desc = "Typing accuracy and correction metrics are recorded on this device to tune the keyboard. Nothing is sent anywhere - diagnostics stay on your phone.",
                             accent = CyberEmerald,
                         )
 
@@ -237,8 +245,8 @@ fun HomeScreen() = FlorisScreen {
 
                         TesterSprintPill(
                             icon = Icons.Default.Security,
-                            title = "On-Device Encryption & Ephemeral AI Processing",
-                            desc = "All logs are encrypted on-device and decrypted exclusively by the AI assistant. Passwords, PINs, and usernames are completely filtered and never recorded. Raw logs are permanently destroyed after analytics.",
+                            title = "Stays On Your Device",
+                            desc = "Diagnostics are stored locally and never transmitted. Nothing about your typing leaves the phone; to share feedback you send it yourself, deliberately.",
                             accent = CyberAmber,
                         )
 
@@ -806,75 +814,63 @@ fun HomeScreen() = FlorisScreen {
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Security Telemetry",
+                    text = "Security Telemetry (this session)",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
                     color = TextMuted,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Telemetry Row 1
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "BIP-39 Secret Shield", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "ENGAGED",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CyberEmerald,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
+                // Measured counters from the live clipboard path - every
+                // value here is real or explicitly OFFLINE. Hardcoded
+                // status strings are unearned claims and must never come
+                // back to this board.
+                val telemetry = remember { org.florisboard.libnative.FlorisNative.privacyTelemetry() }
 
-                // Telemetry Row 2
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "Boreal YARA Engine", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "SCANNING",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ElectricCyan,
-                        fontFamily = FontFamily.Monospace,
-                    )
+                @Composable
+                fun telemetryRow(label: String, value: String, live: Boolean) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(text = label, fontSize = 12.sp, color = Color.White)
+                        Text(
+                            text = value,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (live) CyberEmerald else TextMuted,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(6.dp))
 
-                // Telemetry Row 3
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "MetaScrub Cleaner", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "ACTIVE",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CyberEmerald,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
+                telemetryRow(
+                    label = "BIP-39 Secret Shield",
+                    value = telemetry?.let { "ENGAGED · ${it.secretsCaught} CAUGHT" } ?: "OFFLINE",
+                    live = telemetry != null,
+                )
                 Spacer(modifier = Modifier.height(6.dp))
-
-                // Telemetry Row 4
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = "Tracker URL Scrubber", fontSize = 12.sp, color = Color.White)
-                    Text(
-                        text = "40+ STRIPPED",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = ElectricCyan,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                }
+                telemetryRow(
+                    label = "Boreal YARA Engine",
+                    value = when {
+                        telemetry == null -> "OFFLINE"
+                        !telemetry.borealReady -> "RULES FAILED"
+                        else -> "SCANNING · ${telemetry.borealHits} HITS"
+                    },
+                    live = telemetry?.borealReady == true,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                telemetryRow(
+                    label = "MetaScrub Cleaner",
+                    value = telemetry?.let { "${it.clipsProcessed} CLIPS CLEANED" } ?: "OFFLINE",
+                    live = telemetry != null,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                telemetryRow(
+                    label = "Tracker URL Scrubber",
+                    value = telemetry?.let { "${it.urlsSanitized} STRIPPED" } ?: "OFFLINE",
+                    live = telemetry != null,
+                )
             }
         }
 
@@ -1086,6 +1082,8 @@ fun HomeScreen() = FlorisScreen {
             onClick = { navController.navigate(Routes.Settings.About) },
         )
         Spacer(modifier = Modifier.height(16.dp))
+        }
+        }
     }
 }
 

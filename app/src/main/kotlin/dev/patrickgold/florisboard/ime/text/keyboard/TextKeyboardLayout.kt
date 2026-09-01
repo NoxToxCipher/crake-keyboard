@@ -1092,8 +1092,19 @@ fun TextKeyboardLayout(
         // =========================================================================
         // POKEMON BANK EASTER EGG OVERLAY (6.0s duration)
         // =========================================================================
-        if (pokeBankTriggerTime > 0L && System.currentTimeMillis() - pokeBankTriggerTime < 6000L) {
-            val elapsed = System.currentTimeMillis() - pokeBankTriggerTime
+        if (pokeBankTriggerTime > 0L) {
+            // Frame-driven via Animatable - the raw wall-clock read froze
+            // this overlay between keystrokes, same defect as Twin Rams.
+            val pokeBankProgress = remember(pokeBankTriggerTime) { Animatable(0f) }
+            LaunchedEffect(pokeBankTriggerTime) {
+                pokeBankProgress.snapTo(0f)
+                pokeBankProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 6000, easing = LinearEasing),
+                )
+                pokeBankTriggerTime = 0L
+            }
+            val elapsed = (pokeBankProgress.value * 6000f).toLong()
             val u = (elapsed / 6000f).coerceIn(0f, 1f)
             val alpha = if (u < 0.1f) u / 0.1f else if (u > 0.85f) (1f - u) / 0.15f else 1f
             val pxDensity = LocalDensity.current.density
@@ -1180,8 +1191,22 @@ fun TextKeyboardLayout(
         // Stage 1 (0ms - 3800ms): Mini Bighorn Sheep Charging Top Fret (QWERTY)
         // Stage 2 (4500ms - 8800ms): Mini Medieval Battering Ram Charging Second Fret (ASDFG)
         // =========================================================================
-        if (ramDuoTriggerTime > 0L && System.currentTimeMillis() - ramDuoTriggerTime < 9000L) {
-            val elapsed = System.currentTimeMillis() - ramDuoTriggerTime
+        if (ramDuoTriggerTime > 0L) {
+            // Frame-driven like every other egg: reading the wall clock in
+            // composition draws exactly once and then freezes until an
+            // unrelated recomposition (a keystroke) happens to land - the
+            // Animatable is what invalidates each frame (field report
+            // 2026-09-01: rams only moved while typing).
+            val ramDuoProgress = remember(ramDuoTriggerTime) { Animatable(0f) }
+            LaunchedEffect(ramDuoTriggerTime) {
+                ramDuoProgress.snapTo(0f)
+                ramDuoProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 9000, easing = LinearEasing),
+                )
+                ramDuoTriggerTime = 0L
+            }
+            val elapsed = (ramDuoProgress.value * 9000f).toLong()
             val pxDensity = LocalDensity.current.density
 
             androidx.compose.foundation.Canvas(modifier = Modifier.matchParentSize()) {

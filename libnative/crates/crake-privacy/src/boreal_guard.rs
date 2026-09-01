@@ -1,4 +1,17 @@
 use boreal::{Compiler, Scanner};
+use std::sync::OnceLock;
+
+/// The process-wide scanner used by the live clipboard path. Compiled once
+/// on first use; None when rule compilation fails, in which case scanning
+/// contributes nothing and telemetry reports the engine as not ready —
+/// the UI must never claim SCANNING off the back of a failed compile.
+static SHARED_SCANNER: OnceLock<Option<BorealScanner>> = OnceLock::new();
+
+pub fn shared_scanner() -> Option<&'static BorealScanner> {
+    SHARED_SCANNER
+        .get_or_init(|| BorealScanner::new().ok())
+        .as_ref()
+}
 
 pub const DEFAULT_YARA_RULES: &str = r#"
 rule US_SSN_Pattern {

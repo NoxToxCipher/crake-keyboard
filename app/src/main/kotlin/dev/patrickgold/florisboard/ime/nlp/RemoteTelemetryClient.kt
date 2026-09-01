@@ -19,25 +19,27 @@ package dev.patrickgold.florisboard.ime.nlp
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
-import java.security.MessageDigest
 
 /**
- * Lightweight HTTPS client for transmitting tester feedback and 20-minute diagnostic
- * sync bundles directly to the development AI assistant over the internet.
+ * DISABLED 2026-09-01. This object used to POST tester feedback and 20-minute
+ * diagnostic bundles - which contain raw flight-recorder records: typed input
+ * fragments and correction targets - to a PUBLIC ntfy.sh topic, in PLAINTEXT,
+ * with no authentication. Anyone who knew the topic string (it was compiled
+ * into a public repo) could read every tester's bundle in a browser. The
+ * onboarding UI simultaneously claimed the data was "encrypted on-device";
+ * there was no encryption anywhere in this path.
  *
- * Fully wireless, zero-config, with SHA-256 cryptographic payload integrity verification.
+ * That breaks the two things this app promises: no servers/telemetry ever,
+ * and never claim a protection you do not provide. Both transmit paths are
+ * now hard no-ops so nothing leaves the device, regardless of prefs or call
+ * site. The device still writes its local bundle files (used by nothing that
+ * leaves the phone). Do NOT re-enable network egress here: if tester
+ * telemetry is ever wanted, it must be genuinely opt-in, encrypted with a key
+ * the relay cannot see (crake_privacy::create_encrypted_sync_bundle exists),
+ * and described honestly - or better, use the consensual QR-bundle path.
  */
 object RemoteTelemetryClient {
     private const val TAG = "CrakeRemoteTelemetry"
-    const val TELEMETRY_URL = "https://ntfy.sh/crake_sprint_telemetry_2026_noxtox"
-
-    private fun computeSha256(bytes: ByteArray): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(bytes)
-        return hash.joinToString("") { "%02x".format(it) }
-    }
 
     suspend fun transmitFeedback(
         testerName: String,
@@ -45,34 +47,8 @@ object RemoteTelemetryClient {
         title: String,
         jsonPayload: String,
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            val url = URL(TELEMETRY_URL)
-            val rawBytes = jsonPayload.toByteArray(Charsets.UTF_8)
-            val sha256 = computeSha256(rawBytes)
-
-            val conn = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                doOutput = true
-                connectTimeout = 8000
-                readTimeout = 8000
-                setRequestProperty("Title", "[$category] $title ($testerName)")
-                setRequestProperty("Tags", "bulb,speech_balloon")
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("X-Checksum-SHA256", sha256)
-            }
-            conn.outputStream.use { os ->
-                os.write(rawBytes)
-                os.flush()
-            }
-            val code = conn.responseCode
-            conn.disconnect()
-            if (code in 200..299) {
-                Log.i(TAG, "Feedback transmitted successfully over HTTPS (HTTP $code)")
-                Unit
-            } else {
-                error("HTTP $code response from telemetry relay")
-            }
-        }
+        Log.i(TAG, "Remote telemetry is disabled; feedback stays on-device.")
+        Result.failure(UnsupportedOperationException("Remote telemetry disabled: nothing is transmitted off-device."))
     }
 
     suspend fun transmitDiagnosticBundle(
@@ -80,33 +56,7 @@ object RemoteTelemetryClient {
         recordCount: Int,
         jsonBundle: String,
     ): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            val url = URL(TELEMETRY_URL)
-            val rawBytes = jsonBundle.toByteArray(Charsets.UTF_8)
-            val sha256 = computeSha256(rawBytes)
-
-            val conn = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                doOutput = true
-                connectTimeout = 10000
-                readTimeout = 10000
-                setRequestProperty("Title", "[DiagSync] $testerName ($recordCount records)")
-                setRequestProperty("Tags", "chart_with_upwards_trend,satellite")
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("X-Checksum-SHA256", sha256)
-            }
-            conn.outputStream.use { os ->
-                os.write(rawBytes)
-                os.flush()
-            }
-            val code = conn.responseCode
-            conn.disconnect()
-            if (code in 200..299) {
-                Log.i(TAG, "Diagnostic bundle transmitted successfully over HTTPS (HTTP $code)")
-                Unit
-            } else {
-                error("HTTP $code response from telemetry relay")
-            }
-        }
+        Log.i(TAG, "Remote telemetry is disabled; diagnostic bundle stays on-device.")
+        Result.failure(UnsupportedOperationException("Remote telemetry disabled: nothing is transmitted off-device."))
     }
 }

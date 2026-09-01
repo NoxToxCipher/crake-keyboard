@@ -9,8 +9,6 @@ static NLP_ENGINE: Lazy<RwLock<NlpEngine>> = Lazy::new(|| RwLock::new(NlpEngine:
 static HIT_TESTER: Lazy<RwLock<floris_core::HitTester>> =
     Lazy::new(|| RwLock::new(floris_core::HitTester::new()));
 static GLIDE_ENGINE: Lazy<RwLock<GlideEngine>> = Lazy::new(|| RwLock::new(GlideEngine::new()));
-static BOREAL_SCANNER: Lazy<RwLock<crake_privacy::BorealScanner>> =
-    Lazy::new(|| RwLock::new(crake_privacy::BorealScanner::new().expect("Failed to init Boreal")));
 
 #[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInsertWord(
@@ -632,6 +630,31 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspect
     env.new_string("0||").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
+/// Session privacy telemetry snapshot for the Security Telemetry board:
+/// "clips|invisibleChars|urlsSanitized|secretsCaught|borealHits|borealReady".
+/// Every value is measured by the live clipboard path — never invent these
+/// numbers UI-side.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativePrivacyTelemetry(
+    env: JNIEnv,
+    _class: JClass,
+) -> jstring {
+    let ready = crake_privacy::boreal_guard::shared_scanner().is_some();
+    let t = crake_privacy::telemetry::snapshot(ready);
+    let payload = format!(
+        "{}|{}|{}|{}|{}|{}",
+        t.clips_processed,
+        t.invisible_chars_removed,
+        t.urls_sanitized,
+        t.secrets_caught,
+        t.boreal_hits,
+        if t.boreal_ready { 1 } else { 0 },
+    );
+    env.new_string(&payload)
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
 #[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeScanThreats(
     mut env: JNIEnv,
@@ -651,12 +674,9 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeScanThr
         Err(_) => return empty_array,
     };
 
-    let matches = {
-        if let Ok(scanner) = BOREAL_SCANNER.read() {
-            scanner.scan_text(&text_str)
-        } else {
-            Vec::new()
-        }
+    let matches = match crake_privacy::boreal_guard::shared_scanner() {
+        Some(scanner) => scanner.scan_text(&text_str),
+        None => Vec::new(),
     };
 
     let string_class = match env.find_class("java/lang/String") {

@@ -1,13 +1,15 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?><!--
+    The Peregrine Falcon notification silhouette, using the REAL artwork
+    path (artwork/bird_icons/1_falcon.svg) - not a hand-drawn approximation.
+    Small icons are alpha-only: the system tints this white shape itself.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108"
+    android:viewportWidth="100"
+    android:viewportHeight="100"
     android:tint="@android:color/white">
-
-  <!-- Peregrine Falcon Notification Silhouette -->
   <path
-      android:pathData="M 24,32 L 68,68 L 44,74 L 20,86 L 48,88 L 78,98 C 88,102 96,98 100,90 C 102,86 102,82 98,78 L 82,58 C 76,50 70,38 68,26 L 56,22 L 58,44 L 38,24 Z"
+      android:pathData="M 19.4,25.9 L 56.6,43.5 L 58.7,45.3 L 59.4,46.3 L 67.3,62.1 L 67.5,61.8 L 65.6,55.5 L 73.4,60.4 L 76.6,62.8 L 78.9,65.3 L 79.9,67.1 L 80.1,68.0 L 79.9,69.4 L 80.5,70.9 L 80.5,72.3 L 80.2,72.9 L 78.8,74.1 L 78.7,72.8 L 77.1,71.5 L 75.7,70.8 L 58.2,66.4 L 53.4,64.6 L 45.1,60.1 L 48.4,59.2 L 48.9,58.8 L 34.6,58.8 L 33.4,58.4 L 24.5,52.9 L 24.4,52.7 L 48.4,54.7 L 47.1,52.1 L 44.4,48.2 L 40.7,45.5 L 49.6,48.8 L 49.9,48.7 L 36.8,41.9 L 33.9,40.0 L 32.4,38.9 L 30.2,36.4 L 45.0,43.0 L 45.6,43.2 L 45.5,42.9 L 26.1,32.5 L 23.0,30.2 L 19.4,26.0 Z M 40.1,25.9 L 68.6,43.4 L 69.7,44.6 L 70.5,46.3 L 72.2,57.7 L 64.4,52.6 L 60.7,45.3 L 58.6,42.8 L 56.4,41.5 L 47.2,37.1 L 46.1,35.8 L 40.0,26.0 Z M 75.0,65.3 L 74.8,65.4 L 75.7,66.5 L 75.4,67.8 L 76.0,68.6 L 76.5,68.8 L 77.2,68.7 L 77.7,68.3 L 78.2,68.6 L 78.2,68.2 L 77.1,66.8 L 75.1,65.3 Z"
       android:fillColor="#FFFFFFFF" />
 </vector>
