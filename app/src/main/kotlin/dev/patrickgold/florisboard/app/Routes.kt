@@ -144,6 +144,10 @@ object Routes {
         object Fonts
 
         @Serializable
+        @Deeplink("settings/encryption")
+        object Encryption
+
+        @Serializable
         @Deeplink("settings/easter-eggs")
         object EasterEggs
 
@@ -338,6 +342,7 @@ object Routes {
             }
 
             composableWithDeepLink(Settings.Fonts::class) { FontsScreen() }
+            composableWithDeepLink(Settings.Encryption::class) { dev.patrickgold.florisboard.app.settings.crypto.CrakeEncryptionScreen() }
             composableWithDeepLink(Settings.EasterEggs::class) { EasterEggsScreen() }
             composableWithDeepLink(Settings.Keyboard::class) { KeyboardScreen() }
             composableWithDeepLink(Settings.InputFeedback::class) { InputFeedbackScreen() }

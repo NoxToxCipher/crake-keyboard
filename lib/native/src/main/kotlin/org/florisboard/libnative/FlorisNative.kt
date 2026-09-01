@@ -440,6 +440,55 @@ object FlorisNative {
         return nativeSealTelemetry(plaintext)
     }
 
+    /** Result of an encrypt/decrypt: [value] on success, or [error] set. */
+    data class CryptoResult(val value: String?, val error: String?) {
+        val ok get() = value != null
+    }
+
+    private fun parseCrypto(raw: String?): CryptoResult = when {
+        raw == null -> CryptoResult(null, "native layer unavailable")
+        raw.startsWith("ERR:") -> CryptoResult(null, raw.removePrefix("ERR:"))
+        else -> CryptoResult(raw, null)
+    }
+
+    /**
+     * Encrypts [plaintext] with the given [scheme] ("passphrase" or
+     * "publickey"). [secret] is the passphrase or the recipient's public
+     * key. Returns armored ciphertext or an error - plaintext never leaves
+     * the native layer except sealed.
+     */
+    fun cryptoEncrypt(scheme: String, plaintext: String, secret: String): CryptoResult {
+        if (!isLoaded) return CryptoResult(null, "native layer unavailable")
+        return parseCrypto(nativeCryptoEncrypt(scheme, plaintext, secret))
+    }
+
+    /** Decrypts [armored] with [scheme]; [secret] is the passphrase or your private key. */
+    fun cryptoDecrypt(scheme: String, armored: String, secret: String): CryptoResult {
+        if (!isLoaded) return CryptoResult(null, "native layer unavailable")
+        return parseCrypto(nativeCryptoDecrypt(scheme, armored, secret))
+    }
+
+    /** "passphrase" | "publickey" | "" for a piece of text (auto-detect decrypt path). */
+    fun cryptoScheme(text: String): String {
+        if (!isLoaded) return ""
+        return nativeCryptoScheme(text) ?: ""
+    }
+
+    /** Generates a fresh identity keypair. Returns (privateHex, publicKey) or null. */
+    fun cryptoGenerateKeypair(): Pair<String, String>? {
+        if (!isLoaded) return null
+        val raw = nativeCryptoGenerateKeypair() ?: return null
+        val parts = raw.split("|", limit = 2)
+        return if (parts.size == 2) parts[0] to parts[1] else null
+    }
+
+    /** Derives the shareable public key from a stored private key, or null if malformed. */
+    fun cryptoDerivePublic(privateHex: String): String? {
+        if (!isLoaded) return null
+        val raw = nativeCryptoDerivePublic(privateHex) ?: return null
+        return if (raw.startsWith("ERR:")) null else raw
+    }
+
     fun scanThreats(rawText: String): List<ThreatResult> {
         if (!isLoaded || rawText.isBlank()) return emptyList()
         val rawMatches = nativeScanThreats(rawText)
@@ -592,6 +641,11 @@ object FlorisNative {
     private external fun nativeNoteVaultOpen(vault: ByteArray, pin: String): String?
     private external fun nativeNoteVaultSave(vault: ByteArray, pin: String, content: String): ByteArray?
     private external fun nativeSealTelemetry(plaintext: String): ByteArray?
+    private external fun nativeCryptoEncrypt(scheme: String, plaintext: String, secret: String): String?
+    private external fun nativeCryptoDecrypt(scheme: String, armored: String, secret: String): String?
+    private external fun nativeCryptoScheme(text: String): String?
+    private external fun nativeCryptoGenerateKeypair(): String?
+    private external fun nativeCryptoDerivePublic(privateHex: String): String?
 
     @JvmStatic
     private external fun nativeGenerateQrMatrix(data: String): String

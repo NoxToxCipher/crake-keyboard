@@ -68,6 +68,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -1040,6 +1041,13 @@ fun HomeScreen() = FlorisScreen {
             title = "Fonts",
             summary = "Legibility-tested fonts with research evidence",
             onClick = { navController.navigate(Routes.Settings.Fonts) },
+        )
+        CrakeNavTile(
+            icon = Icons.Outlined.Lock,
+            title = "Encryption",
+            summary = "Encrypt messages in place - passphrase or public key",
+            accentColor = CyberEmerald,
+            onClick = { navController.navigate(Routes.Settings.Encryption) },
         )
         val totalEggs = dev.patrickgold.florisboard.ime.keyboard.EasterEgg.entries.size
         val discoveredEggsCsv by prefs.easterEggs.discovered.collectAsState()

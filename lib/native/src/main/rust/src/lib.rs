@@ -630,6 +630,100 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeInspect
     env.new_string("0||").map(|s| s.into_raw()).unwrap_or(std::ptr::null_mut())
 }
 
+/// Encrypt-in-place engine (PGPony + passphrase). Each returns a String:
+/// on success the payload; on failure "ERR:<reason>" so the Kotlin side can
+/// surface a message without a second call. Plaintext never leaves Rust
+/// except as ciphertext.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCryptoEncrypt(
+    mut env: JNIEnv,
+    _class: JClass,
+    scheme: JString,
+    plaintext: JString,
+    secret: JString,
+) -> jstring {
+    let s = jstr(&mut env, &scheme);
+    let pt = jstr(&mut env, &plaintext);
+    let sec = jstr(&mut env, &secret);
+    let result = match s.as_str() {
+        "passphrase" => crake_privacy::pgpony::passphrase_encrypt(&pt, &sec),
+        "publickey" => crake_privacy::pgpony::pgpony_encrypt(&pt, &sec),
+        _ => Err("unknown scheme".to_string()),
+    };
+    crypto_out(&mut env, result)
+}
+
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCryptoDecrypt(
+    mut env: JNIEnv,
+    _class: JClass,
+    scheme: JString,
+    armored: JString,
+    secret: JString,
+) -> jstring {
+    let s = jstr(&mut env, &scheme);
+    let arm = jstr(&mut env, &armored);
+    let sec = jstr(&mut env, &secret);
+    let result = match s.as_str() {
+        "passphrase" => crake_privacy::pgpony::passphrase_decrypt(&arm, &sec),
+        "publickey" => crake_privacy::pgpony::pgpony_decrypt(&arm, &sec),
+        _ => Err("unknown scheme".to_string()),
+    };
+    crypto_out(&mut env, result)
+}
+
+/// Returns "passphrase" | "publickey" | "" for the armored text - lets the
+/// UI auto-pick the decrypt path.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCryptoScheme(
+    mut env: JNIEnv,
+    _class: JClass,
+    text: JString,
+) -> jstring {
+    let t = jstr(&mut env, &text);
+    new_jstring(&mut env, crake_privacy::pgpony::message_scheme(&t))
+}
+
+/// Generates a PGPony identity keypair: "privateHex|publicKeyString".
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCryptoGenerateKeypair(
+    mut env: JNIEnv,
+    _class: JClass,
+) -> jstring {
+    let kp = crake_privacy::pgpony::generate_keypair();
+    new_jstring(&mut env, &format!("{}|{}", kp.private_key_hex, kp.public_key_bech))
+}
+
+/// Derives the shareable public key string from a private key hex, or
+/// "ERR:..." if the key is malformed.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCryptoDerivePublic(
+    mut env: JNIEnv,
+    _class: JClass,
+    private_hex: JString,
+) -> jstring {
+    let p = jstr(&mut env, &private_hex);
+    match crake_privacy::pgpony::derive_public_key(&p) {
+        Some(pubkey) => new_jstring(&mut env, &pubkey),
+        None => new_jstring(&mut env, "ERR:invalid private key"),
+    }
+}
+
+fn jstr(env: &mut JNIEnv, s: &JString) -> String {
+    env.get_string(s).ok().and_then(|v| v.to_str().ok().map(|x| x.to_string())).unwrap_or_default()
+}
+
+fn new_jstring(env: &mut JNIEnv, s: &str) -> jstring {
+    env.new_string(s).map(|j| j.into_raw()).unwrap_or(std::ptr::null_mut())
+}
+
+fn crypto_out(env: &mut JNIEnv, result: Result<String, String>) -> jstring {
+    match result {
+        Ok(s) => new_jstring(env, &s),
+        Err(e) => new_jstring(env, &format!("ERR:{e}")),
+    }
+}
+
 /// The developer's telemetry public key. Sprint diagnostic bundles are
 /// sealed to this key (X25519 + XChaCha20Poly1305) so only the holder of the
 /// matching private key - which is never on any device and never in this
