@@ -22,7 +22,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -48,6 +49,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -60,6 +63,7 @@ import dev.patrickgold.florisboard.ime.nlp.latin.LearnedStateStore
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
 import org.florisboard.libnative.FlorisNative
+import kotlin.math.abs
 
 /**
  * The Deck-style note peek: the whole homepage can be pulled to the right,
@@ -146,27 +150,27 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         val edgeWidth = 56.dp
         val edgePx = with(density) { edgeWidth.toPx() }
         val offsetX = remember { Animatable(closedPx) }
-        var lastDragDelta by remember { mutableStateOf(0f) }
-        var openArmed by remember { mutableStateOf(false) }
-        val isOpen = offsetX.value > openPx * 0.6f
+        val isOpen = offsetX.value > openPx * 0.45f
 
-        fun animateTo(target: Float) {
+        fun animateTo(target: Float, initialVelocity: Float = 0f) {
             scope.launch {
-                offsetX.animateTo(target, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
-            }
-            if (target <= closedPx + 1f) {
-                checkAutoLock()
+                offsetX.animateTo(
+                    targetValue = target,
+                    animationSpec = spring(
+                        dampingRatio = 0.88f,
+                        stiffness = Spring.StiffnessMediumLow,
+                        visibilityThreshold = 0.5f,
+                    ),
+                    initialVelocity = initialVelocity,
+                )
+                if (target <= closedPx + 1f) {
+                    checkAutoLock()
+                }
             }
         }
 
-        fun settle() {
-            val target = when {
-                lastDragDelta > 6f -> openPx
-                lastDragDelta < -6f -> closedPx
-                offsetX.value > openPx / 2f -> openPx
-                else -> closedPx
-            }
-            animateTo(target)
+        BackHandler(enabled = isOpen || showPin) {
+            if (showPin) showPin = false else animateTo(closedPx)
         }
 
         // Check auto-lock on open. Claim one of the three hint appearances
@@ -184,158 +188,175 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             }
         }
 
-        BackHandler(enabled = isOpen || showPin) {
-            if (showPin) showPin = false else animateTo(closedPx)
-        }
-
-        // The paper is composed ONLY while the drawer is off its resting
-        // edge. At rest it does not exist, so it cannot bleed through the
-        // homepage's transparent gaps - nothing hints the page is there.
-        if (offsetX.value > 0.5f) {
-            Box(modifier = Modifier.align(Alignment.CenterStart).width(openWidth).fillMaxHeight()) {
-                LinedPaperNote(
-                    noteText = if (secretPin == null) plainNote else secretContent,
-                    onChange = { new ->
-                        if (secretPin == null) {
-                            scope.launch { prefs.internal.crakeNote.set(new) }
-                        } else {
-                            secretContent = new
-                            lastSecretActivityTime = System.currentTimeMillis()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 8.dp),
-                )
-                // The unmarked door on the red margin strip (left of the
-                // writing area, so typing never triggers it). Two ways in,
-                // both requiring intent: a long hold, or a downward swipe
-                // running most of the line's length. Nothing labels it.
-                var stripHeightPx by remember { mutableStateOf(1f) }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .width(48.dp)
-                        .fillMaxHeight()
-                        .onSizeChanged { stripHeightPx = it.height.toFloat().coerceAtLeast(1f) }
-                        .pointerInput(Unit) {
-                            detectTapGestures(onLongPress = { showPin = true })
-                        }
-                        .pointerInput(Unit) {
-                            var travelled = 0f
-                            detectVerticalDragGestures(
-                                onDragStart = { travelled = 0f },
-                                onVerticalDrag = { change, dy ->
-                                    travelled += dy
-                                    change.consume()
-                                },
-                                onDragEnd = {
-                                    // Most of the line, downward.
-                                    if (travelled >= stripHeightPx * 0.6f) {
-                                        showPin = true
-                                    }
-                                },
-                            )
-                        },
-                )
-
-                // Shown to whoever found the note on the first three opens,
-                // counting down so they are warned before it stops. Then gone.
-                val idx = hintForThisOpen
-                if (secretPin == null && idx != null && !hintDismissed) {
-                    val countdown = when (idx) {
-                        0 -> "This hint will appear twice more, then never again. Please remember."
-                        1 -> "This hint will appear once more, and then never again. Please remember."
-                        else -> "This is the last time this hint will appear. Please remember."
-                    }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(start = 50.dp, end = 16.dp, bottom = 18.dp),
-                    ) {
-                        Surface(
-                            color = Color(0xFF243447),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.pointerInput(Unit) {
-                                detectTapGestures { hintDismissed = true }
-                            },
-                        ) {
-                            androidx.compose.material3.Text(
-                                text = "Private page: hold the red line, or swipe down it.\n$countdown\nTap to dismiss.",
-                                color = Color(0xFFF7F1E3),
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
+        // Layer 1: The Lined Paper Note (Persistent behind content with subtle parallax)
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { translationX = offsetX.value }
-                .pointerInput(openPx, isOpen) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { offset ->
-                            lastDragDelta = 0f
-                            openArmed = isOpen || offset.x < edgePx
-                        },
-                        onDragEnd = { if (openArmed) settle() },
-                        onDragCancel = { if (openArmed) settle() },
-                        onHorizontalDrag = { change, delta ->
-                            if (!openArmed) return@detectHorizontalDragGestures
-                            lastDragDelta = delta
-                            change.consume()
-                            scope.launch {
-                                offsetX.snapTo((offsetX.value + delta).coerceIn(closedPx, openPx))
-                            }
-                        },
-                    )
+                .align(Alignment.CenterStart)
+                .width(openWidth)
+                .fillMaxHeight()
+                .graphicsLayer {
+                    val progress = (offsetX.value / openPx).coerceIn(0f, 1f)
+                    translationX = (progress - 1f) * 60f
+                    alpha = (progress * 1.5f).coerceIn(0f, 1f)
                 }
-                .pointerInput(isOpen) {
-                    if (isOpen) detectTapGestures { animateTo(closedPx) }
-                },
         ) {
-            content()
-            if (isOpen) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.35f)),
-                )
-            }
-        }
+            LinedPaperNote(
+                noteText = if (secretPin == null) plainNote else secretContent,
+                onChange = { new ->
+                    if (secretPin == null) {
+                        scope.launch { prefs.internal.crakeNote.set(new) }
+                    } else {
+                        secretContent = new
+                        lastSecretActivityTime = System.currentTimeMillis()
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 8.dp),
+            )
 
-        // Dedicated edge grab strip when resting closed: captures left-edge pull-right
-        // immediately without nested vertical scrolling interference
-        if (offsetX.value <= 1f) {
+            // The unmarked door on the red margin strip (left of the
+            // writing area, so typing never triggers it). Two ways in,
+            // both requiring intent: a long hold, or a downward swipe
+            // running most of the line's length. Nothing labels it.
+            var stripHeightPx by remember { mutableStateOf(1f) }
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .width(edgeWidth)
+                    .width(48.dp)
                     .fillMaxHeight()
-                    .pointerInput(openPx) {
-                        detectHorizontalDragGestures(
-                            onDragStart = {
-                                lastDragDelta = 0f
-                                openArmed = true
+                    .onSizeChanged { stripHeightPx = it.height.toFloat().coerceAtLeast(1f) }
+                    .pointerInput(Unit) {
+                        detectTapGestures(onLongPress = { showPin = true })
+                    }
+                    .pointerInput(Unit) {
+                        var travelled = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = { travelled = 0f },
+                            onVerticalDrag = { change, dy ->
+                                travelled += dy
+                                change.consume()
                             },
-                            onDragEnd = { settle() },
-                            onDragCancel = { settle() },
-                            onHorizontalDrag = { change, delta ->
-                                if (delta > 0 || offsetX.value > 0) {
-                                    change.consume()
-                                    lastDragDelta = delta
-                                    scope.launch {
-                                        offsetX.snapTo((offsetX.value + delta).coerceIn(closedPx, openPx))
-                                    }
+                            onDragEnd = {
+                                if (travelled >= stripHeightPx * 0.6f) {
+                                    showPin = true
                                 }
                             },
                         )
-                    }
+                    },
             )
+
+            // Shown to whoever found the note on the first three opens,
+            // counting down so they are warned before it stops. Then gone.
+            val idx = hintForThisOpen
+            if (secretPin == null && idx != null && !hintDismissed) {
+                val countdown = when (idx) {
+                    0 -> "This hint will appear twice more, then never again. Please remember."
+                    1 -> "This hint will appear once more, and then never again. Please remember."
+                    else -> "This is the last time this hint will appear. Please remember."
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 50.dp, end = 16.dp, bottom = 18.dp),
+                ) {
+                    Surface(
+                        color = Color(0xFF243447),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.pointerInput(Unit) {
+                            detectTapGestures { hintDismissed = true }
+                        },
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = "Private page: hold the red line, or swipe down it.\n$countdown\nTap to dismiss.",
+                            color = Color(0xFFF7F1E3),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        // Layer 2: Main Foreground Content + Persistent Unified Touch Handler
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationX = offsetX.value
+                    val progress = (offsetX.value / openPx).coerceIn(0f, 1f)
+                    shadowElevation = progress * 16f
+                    clip = progress > 0.01f
+                    shape = RoundedCornerShape(
+                        topStart = (16f * progress).dp,
+                        bottomStart = (16f * progress).dp,
+                    )
+                }
+                .pointerInput(openPx) {
+                    val touchSlopPx = viewConfiguration.touchSlop
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val startPos = down.position
+                        val isOpened = offsetX.value > openPx * 0.4f
+                        val canDrag = isOpened || startPos.x <= edgePx
+
+                        if (!canDrag) return@awaitEachGesture
+
+                        val velocityTracker = VelocityTracker()
+                        velocityTracker.addPosition(down.uptimeMillis, down.position)
+                        var isDragging = isOpened
+
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val dragChange = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!dragChange.pressed) {
+                                val vx = velocityTracker.calculateVelocity().x
+                                val target = when {
+                                    vx > 500f -> openPx
+                                    vx < -500f -> closedPx
+                                    offsetX.value > openPx * 0.45f -> openPx
+                                    else -> closedPx
+                                }
+                                animateTo(target, vx)
+                                break
+                            }
+
+                            velocityTracker.addPosition(dragChange.uptimeMillis, dragChange.position)
+                            val totalDeltaX = dragChange.position.x - startPos.x
+                            val totalDeltaY = dragChange.position.y - startPos.y
+
+                            if (!isDragging) {
+                                if (abs(totalDeltaX) > touchSlopPx && abs(totalDeltaX) > abs(totalDeltaY)) {
+                                    isDragging = true
+                                    dragChange.consume()
+                                }
+                            }
+
+                            if (isDragging) {
+                                dragChange.consume()
+                                val newX = (offsetX.value + dragChange.positionChange().x).coerceIn(closedPx, openPx)
+                                scope.launch { offsetX.snapTo(newX) }
+                            }
+                        }
+                    }
+                }
+        ) {
+            content()
+
+            // Dismiss Scrim Overlay when open
+            if (offsetX.value > 1f) {
+                val scrimAlpha = (offsetX.value / openPx * 0.40f).coerceIn(0f, 0.40f)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = scrimAlpha))
+                        .pointerInput(Unit) {
+                            detectTapGestures {
+                                animateTo(closedPx)
+                            }
+                        }
+                )
+            }
         }
 
         if (showPin) {
