@@ -1,11 +1,12 @@
 {
-  "milestone": 358,
-  "tagName": "v0.358.0",
-  "name": "Milestone 358 (NLP Token Extraction Speed Boost)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.358.0/CrakeKeyboard_Milestone_358.apk",
+  "milestone": 359,
+  "tagName": "v0.359.0",
+  "name": "Milestone 359 (Glide & Mechanical Slip Ingestion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.359.0/CrakeKeyboard_Milestone_359.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 358: Replaced 5-pass chained substring allocations with a single-pass zero-copy token sanitizer, cutting typing heap allocations and latency during rapid text input.",
+  "changelog": "Milestone 359: Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine).",
   "history": {
+    "359": "Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine).",
     "358": "Replaced 5-pass chained substring allocations with a single-pass zero-copy token sanitizer, cutting typing heap allocations and latency during rapid text input.",
     "357": "Optimized lined notepad render pipeline with memoized brush allocations, zero-alloc bounds math, and ingested mechanical slips (securtiy -> security, gestrue -> gesture, smooht -> smooth, pysics -> physics, noteapd -> notepad).",
     "356": "Implemented native Rust zeroization (zeroize) of keys, nonces, and decrypted memory, dynamic Window FLAG_SECURE protection against screenshots/recents thumbnails, immediate onPause lifecycle auto-lock, and private IME input isolation.",

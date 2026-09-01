@@ -114,5 +114,12 @@ object FleetTypoCorrections {
         "smooht" to "smooth",
         "pysics" to "physics",
         "noteapd" to "notepad",
+        "glidinf" to "gliding",
+        "glidign" to "gliding",
+        "acvurare" to "accurate",
+        "accurte" to "accurate",
+        "accurat" to "accurate",
+        "learing" to "learning",
+        "machne" to "machine",
     )
 }

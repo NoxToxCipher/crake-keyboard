@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 358
+    const val CURRENT_MILESTONE = 359
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 35801
-    private const val RESOLVED_NOTIFICATION_ID = 35802
+    private const val NOTIFICATION_ID = 35901
+    private const val RESOLVED_NOTIFICATION_ID = 35902
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                359 -> "Glide & Mechanical Slip Ingestion: Added fast-path autocorrect resolution for high-frequency glide and mechanical typing slips (glidinf -> gliding, acvurare -> accurate, learing -> learning, machne -> machine)."
                 358 -> "NLP Token Extraction Speed Boost: Replaced 5-pass chained substring allocations with a single-pass zero-copy token sanitizer, cutting typing heap allocations and latency during rapid text input."
                 357 -> "Zero-Allocation Note Canvas & Mechanical Slip Typo Ingestion: Optimized lined notepad render pipeline with memoized brush allocations, zero-alloc bounds math, and ingested mechanical slips (securtiy -> security, gestrue -> gesture, smooht -> smooth, pysics -> physics, noteapd -> notepad)."
                 356 -> "Secret Note Vault RAM Zeroization & Window Shield: Implemented native Rust zeroization of keys, nonces, and decrypted memory, dynamic Window FLAG_SECURE protection against screenshots/recents thumbnails, immediate onPause lifecycle auto-lock, and private IME input isolation."
