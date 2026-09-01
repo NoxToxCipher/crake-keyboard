@@ -33,14 +33,21 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -212,7 +219,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             }
         }
 
-        BackHandler(enabled = isOpen || showPin) {
+        BackHandler(enabled = isOpen || showPin || offsetX.value > 5f) {
             if (showPin) showPin = false else animateTo(closedPx)
         }
 
@@ -258,6 +265,73 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                     .fillMaxSize()
                     .padding(vertical = 8.dp),
             )
+
+            // Right seam drag zone: allows dragging left from the note edge to close
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .width(48.dp)
+                    .pointerInput(openPx) {
+                        var velocityTracker = VelocityTracker()
+                        detectHorizontalDragGestures(
+                            onDragStart = { offset ->
+                                velocityTracker = VelocityTracker()
+                                velocityTracker.addPosition(0L, offset)
+                            },
+                            onDragEnd = {
+                                val vx = velocityTracker.calculateVelocity().x
+                                val target = when {
+                                    vx < -350f -> closedPx
+                                    vx > 350f -> openPx
+                                    offsetX.value > openPx * 0.4f -> openPx
+                                    else -> closedPx
+                                }
+                                animateTo(target, vx)
+                            },
+                            onDragCancel = {
+                                val target = if (offsetX.value > openPx * 0.4f) openPx else closedPx
+                                animateTo(target)
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                val newX = (offsetX.value + dragAmount).coerceIn(closedPx, openPx)
+                                scope.launch { offsetX.snapTo(newX) }
+                            }
+                        )
+                    }
+            )
+
+            // Dedicated Close Note Button in top right of note
+            Surface(
+                onClick = { animateTo(closedPx) },
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFF243447).copy(alpha = 0.92f),
+                shadowElevation = 2.dp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 10.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Close Note",
+                        tint = Color(0xFFF7F1E3),
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "Close",
+                        color = Color(0xFFF7F1E3),
+                        fontSize = 11.5.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    )
+                }
+            }
 
             // The unmarked door on the red margin strip (left of the
             // writing area, so typing never triggers it). Two ways in,
@@ -339,59 +413,97 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         ) {
             content()
 
-            // Dismiss scrim: always composed, alpha driven in the draw phase
-            // (no per-frame recomposition), tap-to-close only while open.
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .drawBehind {
-                        val a = (offsetX.value / openPx * 0.40f).coerceIn(0f, 0.40f)
-                        if (a > 0.001f) drawRect(Color.Black, alpha = a)
-                    }
-                    .then(
-                        if (isInteracting) {
-                            Modifier.pointerInput(Unit) { detectTapGestures { animateTo(closedPx) } }
-                        } else Modifier,
-                    ),
-            )
+            if (isInteracting) {
+                // Unified Tap-to-Close and Drag-to-Close overlay over the entire shifted foreground menu
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .drawBehind {
+                            val a = (offsetX.value / openPx * 0.40f).coerceIn(0f, 0.40f)
+                            if (a > 0.001f) drawRect(Color.Black, alpha = a)
+                        }
+                        .pointerInput(openPx) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                var velocityTracker = VelocityTracker()
+                                velocityTracker.addPosition(down.uptimeMillis, down.position)
+                                var totalDragX = 0f
+                                var isDragging = false
 
-            // Layer 3: Top-Layer Edge Grab & Drag Surface
-            // Sits directly on top of content: 56dp grab strip when closed, full-width surface when active
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .width(if (isInteracting) screenWidth else edgeWidth)
-                    .pointerInput(openPx) {
-                        var velocityTracker = VelocityTracker()
-                        detectHorizontalDragGestures(
-                            onDragStart = { offset ->
-                                velocityTracker = VelocityTracker()
-                                velocityTracker.addPosition(0L, offset)
-                            },
-                            onDragEnd = {
-                                val vx = velocityTracker.calculateVelocity().x
-                                val target = when {
-                                    vx > 350f -> openPx
-                                    vx < -350f -> closedPx
-                                    offsetX.value > openPx * 0.35f -> openPx
-                                    else -> closedPx
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val change = event.changes.firstOrNull() ?: break
+                                    if (!change.pressed) {
+                                        if (!isDragging) {
+                                            // Tap anywhere on the side menu -> slide back immediately!
+                                            animateTo(closedPx)
+                                        } else {
+                                            // Drag release -> spring to open or closed based on velocity & position
+                                            val vx = velocityTracker.calculateVelocity().x
+                                            val target = when {
+                                                vx < -350f -> closedPx
+                                                vx > 350f -> openPx
+                                                offsetX.value > openPx * 0.4f -> openPx
+                                                else -> closedPx
+                                            }
+                                            animateTo(target, vx)
+                                        }
+                                        break
+                                    } else {
+                                        val dragX = change.positionChange().x
+                                        velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                        if (!isDragging && abs(totalDragX + dragX) > 8f) {
+                                            isDragging = true
+                                        }
+                                        if (isDragging) {
+                                            change.consume()
+                                            totalDragX += dragX
+                                            val newX = (offsetX.value + dragX).coerceIn(closedPx, openPx)
+                                            scope.launch { offsetX.snapTo(newX) }
+                                        }
+                                    }
                                 }
-                                animateTo(target, vx)
-                            },
-                            onDragCancel = {
-                                val target = if (offsetX.value > openPx * 0.35f) openPx else closedPx
-                                animateTo(target)
-                            },
-                            onHorizontalDrag = { change, dragAmount ->
-                                change.consume()
-                                velocityTracker.addPosition(change.uptimeMillis, change.position)
-                                val newX = (offsetX.value + dragAmount).coerceIn(closedPx, openPx)
-                                scope.launch { offsetX.snapTo(newX) }
                             }
-                        )
-                    }
-            )
+                        }
+                )
+            } else {
+                // When completely closed, provide a 56dp edge grab strip on the left to pull open
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .width(edgeWidth)
+                        .pointerInput(openPx) {
+                            var velocityTracker = VelocityTracker()
+                            detectHorizontalDragGestures(
+                                onDragStart = { offset ->
+                                    velocityTracker = VelocityTracker()
+                                    velocityTracker.addPosition(0L, offset)
+                                },
+                                onDragEnd = {
+                                    val vx = velocityTracker.calculateVelocity().x
+                                    val target = when {
+                                        vx > 350f -> openPx
+                                        vx < -350f -> closedPx
+                                        offsetX.value > openPx * 0.35f -> openPx
+                                        else -> closedPx
+                                    }
+                                    animateTo(target, vx)
+                                },
+                                onDragCancel = {
+                                    val target = if (offsetX.value > openPx * 0.35f) openPx else closedPx
+                                    animateTo(target)
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                    val newX = (offsetX.value + dragAmount).coerceIn(closedPx, openPx)
+                                    scope.launch { offsetX.snapTo(newX) }
+                                }
+                            )
+                        }
+                )
+            }
         }
 
         if (showPin) {

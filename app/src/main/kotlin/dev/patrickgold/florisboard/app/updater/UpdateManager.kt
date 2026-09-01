@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 365
+    const val CURRENT_MILESTONE = 366
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 36501
-    private const val RESOLVED_NOTIFICATION_ID = 36502
+    private const val NOTIFICATION_ID = 36601
+    private const val RESOLVED_NOTIFICATION_ID = 36602
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                366 -> "Interactive Notes Side-Peek Navigation Fix: Unified tap and horizontal drag gestures on the visible menu sidebar to slide back effortlessly, added edge pulling support, back-gesture handler, and a dedicated Close Note button."
                 365 -> "Encryption First-Run Onboarding & Feature Discovery: Added dedicated step-by-step encryption guides to the beginning onboarding cards, home features dashboard, and encryption vault with in-place messaging and public key workflow tutorials."
                 364 -> "Zero-Allocation Timeline Bucketing: Replaced repeated Date formatting loops with constant-time mathematical array bucketing in TypingTelemetricsManager, eliminating garbage collection pauses on historical trend recalculations."
                 363 -> "Zero-Regex Telemetrics Parser & Slip Ingestion: Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips."

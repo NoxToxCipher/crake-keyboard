@@ -1,11 +1,12 @@
 {
-  "milestone": 365,
-  "tagName": "v0.365.0",
-  "name": "Milestone 365 (Encryption First-Run Onboarding & Feature Discovery)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.365.0/CrakeKeyboard_Milestone_365.apk",
+  "milestone": 366,
+  "tagName": "v0.366.0",
+  "name": "Milestone 366 (Interactive Notes Side-Peek Navigation Fix)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.366.0/CrakeKeyboard_Milestone_366.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 365: Added dedicated step-by-step encryption guides to the beginning onboarding cards, home features dashboard, and encryption vault with in-place messaging and public key workflow tutorials.",
+  "changelog": "Milestone 366: Unified tap and horizontal drag gestures on the visible menu sidebar to slide back effortlessly, added edge pulling support, back-gesture handler, and a dedicated Close Note button.",
   "history": {
+    "366": "Unified tap and horizontal drag gestures on the visible menu sidebar to slide back effortlessly, added edge pulling support, back-gesture handler, and a dedicated Close Note button.",
     "365": "Added dedicated step-by-step encryption guides to the beginning onboarding cards, home features dashboard, and encryption vault with in-place messaging and public key workflow tutorials.",
     "364": "Replaced repeated Date formatting loops with constant-time mathematical array bucketing in TypingTelemetricsManager, eliminating garbage collection pauses on historical trend recalculations.",
     "363": "Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips.",
