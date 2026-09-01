@@ -28,8 +28,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileWriter
+import java.io.RandomAccessFile
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -549,11 +551,57 @@ object FlightRecorderManager {
         }
     }
 
+    fun readTailLines(file: File, limit: Int): List<String> {
+        if (!file.exists() || file.length() == 0L || limit <= 0) return emptyList()
+        val length = file.length()
+        val lines = ArrayDeque<String>()
+        val buffer = ByteArray(8192)
+        var filePos = length
+        val lineBuffer = ByteArrayOutputStream()
+
+        RandomAccessFile(file, "r").use { raf ->
+            while (filePos > 0 && lines.size < limit) {
+                val bytesToRead = filePos.coerceAtMost(buffer.size.toLong()).toInt()
+                filePos -= bytesToRead
+                raf.seek(filePos)
+                raf.readFully(buffer, 0, bytesToRead)
+
+                for (i in bytesToRead - 1 downTo 0) {
+                    val b = buffer[i]
+                    if (b == '\n'.code.toByte()) {
+                        if (lineBuffer.size() > 0) {
+                            val lineBytes = lineBuffer.toByteArray()
+                            lineBytes.reverse()
+                            val line = String(lineBytes, Charsets.UTF_8).trimEnd('\r')
+                            if (line.isNotEmpty()) {
+                                lines.addFirst(line)
+                                if (lines.size >= limit) break
+                            }
+                            lineBuffer.reset()
+                        }
+                    } else if (b != '\r'.code.toByte()) {
+                        lineBuffer.write(b.toInt())
+                    }
+                }
+            }
+
+            if (lineBuffer.size() > 0 && lines.size < limit) {
+                val lineBytes = lineBuffer.toByteArray()
+                lineBytes.reverse()
+                val line = String(lineBytes, Charsets.UTF_8).trimEnd('\r')
+                if (line.isNotEmpty()) {
+                    lines.addFirst(line)
+                }
+            }
+        }
+
+        return lines.toList()
+    }
+
     private fun rotateLogFile(file: File) {
         runCatching {
-            val lines = file.readLines()
-            if (lines.size > 2000) {
-                val retained = lines.takeLast(1000)
+            val retained = readTailLines(file, limit = 1000)
+            if (retained.isNotEmpty()) {
                 file.writeText(retained.joinToString("\n") + "\n")
             }
         }
@@ -566,8 +614,8 @@ object FlightRecorderManager {
     suspend fun readRecentRecords(context: Context, limit: Int = 100): List<String> = withContext(Dispatchers.IO) {
         runCatching {
             val file = getLogFile(context)
-            if (file.exists()) {
-                file.readLines().takeLast(limit)
+            if (file.exists() && file.length() > 0L) {
+                readTailLines(file, limit)
             } else {
                 emptyList()
             }

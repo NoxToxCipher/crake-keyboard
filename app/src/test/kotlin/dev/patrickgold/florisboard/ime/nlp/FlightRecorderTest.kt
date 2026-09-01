@@ -192,4 +192,24 @@ class FlightRecorderTest : FunSpec({
         val allOffsets = org.florisboard.libnative.FlorisNative.getAllTouchOffsets()
         allOffsets shouldBe emptyList()
     }
+
+    test("readTailLines reads exact trailing records without full-file string overhead") {
+        val tempFile = java.io.File.createTempFile("crake_tail_test", ".log")
+        try {
+            val sampleLines = (1..50).map { "{\"line\":$it,\"data\":\"payload_$it\"}" }
+            tempFile.writeText(sampleLines.joinToString("\n") + "\n")
+
+            val tail10 = FlightRecorderManager.readTailLines(tempFile, limit = 10)
+            tail10.size shouldBe 10
+            tail10.first() shouldBe "{\"line\":41,\"data\":\"payload_41\"}"
+            tail10.last() shouldBe "{\"line\":50,\"data\":\"payload_50\"}"
+
+            val tailAll = FlightRecorderManager.readTailLines(tempFile, limit = 100)
+            tailAll.size shouldBe 50
+            tailAll.first() shouldBe "{\"line\":1,\"data\":\"payload_1\"}"
+            tailAll.last() shouldBe "{\"line\":50,\"data\":\"payload_50\"}"
+        } finally {
+            tempFile.delete()
+        }
+    }
 })
