@@ -187,7 +187,6 @@ class GlideTypingManager(private val context: Context) : GlideTypingGesture.List
                 val prevWord = editorInstance.activeContent.textBeforeSelection
                     .trimEnd()
                     .takeLastWhile { it.isLetter() || it == '\'' }
-                    .toString()
                 prevWordForTrace = prevWord
                 FlorisNative.glideMatch(pts, MAX_SUGGESTION_COUNT, prevWord)
             } else {
