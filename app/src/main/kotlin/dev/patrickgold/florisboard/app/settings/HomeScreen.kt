@@ -25,8 +25,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material.icons.filled.Refresh
-import dev.patrickgold.florisboard.app.updater.UpdateManager
 import androidx.compose.material.icons.filled.SystemUpdate
+import dev.patrickgold.florisboard.app.updater.UpdateManager
+import dev.patrickgold.florisboard.app.island.DynamicIslandManager
+import dev.patrickgold.florisboard.app.island.IslandNotification
+import dev.patrickgold.florisboard.app.island.IslandPriority
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Check
@@ -903,6 +906,200 @@ fun HomeScreen() = FlorisScreen {
                             Spacer(modifier = Modifier.height(2.dp))
                             Text("Copy or select crake-msg1 ciphertext to instantly reveal plaintext offline.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
                         }
+                    }
+                }
+            }
+        }
+
+        // CRAKE DYNAMIC ISLAND CAPSULE SHOWCASE CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(ElectricCyan.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FlashOn,
+                            contentDescription = null,
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "LIVE CAPSULE NOTIFICATIONS",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp,
+                                color = ElectricCyan,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(ElectricCyan.copy(alpha = 0.15f))
+                                    .padding(horizontal = 5.dp, vertical = 1.5.dp),
+                            ) {
+                                Text(
+                                    text = "DYNAMIC ISLAND",
+                                    color = ElectricCyan,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Adaptive Morphing Notification System",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "HyperOS-inspired floating dynamic capsule at the top of the screen. Morphs for background downloads, update releases, crypto seals, and typing milestones. Tap to expand into full card, swipe up to dismiss.",
+                    color = TextMuted,
+                    fontSize = 11.5.sp,
+                    lineHeight = 15.sp,
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Interactive Test Triggers:",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 11.sp,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            DynamicIslandManager.post(
+                                IslandNotification(
+                                    id = "demo_update",
+                                    title = "Update v0.367.0 Available",
+                                    subtitle = "Dynamic Island Notification System deployed with fluid spring physics.",
+                                    emoji = "🚀",
+                                    accentColor = ElectricCyan,
+                                    actionLabel = "Update",
+                                    onAction = { Toast.makeText(context, "Update triggered!", Toast.LENGTH_SHORT).show() },
+                                    durationMs = 5000L,
+                                    priority = IslandPriority.HIGH,
+                                )
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    ) {
+                        Text("🚀 Update", fontSize = 10.sp, color = ElectricCyan, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                DynamicIslandManager.post(
+                                    IslandNotification(
+                                        id = "demo_download",
+                                        title = "Downloading OTA Package",
+                                        subtitle = "0 MB / 56 MB (0%)",
+                                        emoji = "⚡",
+                                        accentColor = CyberEmerald,
+                                        progress = 0.05f,
+                                        durationMs = 0L,
+                                        priority = IslandPriority.URGENT,
+                                    )
+                                )
+                                for (p in 1..10) {
+                                    kotlinx.coroutines.delay(350)
+                                    val percent = (p * 10).coerceAtMost(100)
+                                    val mb = (56 * percent) / 100
+                                    DynamicIslandManager.updateProgress(
+                                        id = "demo_download",
+                                        progress = percent / 100f,
+                                        subtitle = "$mb MB / 56 MB ($percent%)"
+                                    )
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    ) {
+                        Text("⚡ Stream", fontSize = 10.sp, color = CyberEmerald, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            DynamicIslandManager.post(
+                                IslandNotification(
+                                    id = "demo_crypto",
+                                    title = "Message Encrypted (X25519)",
+                                    subtitle = "Sealed payload with ChaCha20-Poly1305. Ready to paste.",
+                                    emoji = "🔒",
+                                    accentColor = Color(0xFFC084FC),
+                                    actionLabel = "Copy",
+                                    onAction = { Toast.makeText(context, "Ciphertext copied!", Toast.LENGTH_SHORT).show() },
+                                    durationMs = 4500L,
+                                    priority = IslandPriority.NORMAL,
+                                )
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    ) {
+                        Text("🔒 Crypto", fontSize = 10.sp, color = Color(0xFFC084FC), fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            DynamicIslandManager.post(
+                                IslandNotification(
+                                    id = "demo_wpm",
+                                    title = "New Record: 84 WPM ⚡",
+                                    subtitle = "Glide Accuracy +14% • Top reach calibration adapted.",
+                                    emoji = "📈",
+                                    accentColor = AmberGold,
+                                    durationMs = 4500L,
+                                    priority = IslandPriority.NORMAL,
+                                )
+                            )
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                    ) {
+                        Text("📈 WPM", fontSize = 10.sp, color = AmberGold, fontWeight = FontWeight.Bold)
                     }
                 }
             }

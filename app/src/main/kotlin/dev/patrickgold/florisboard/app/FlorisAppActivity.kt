@@ -22,12 +22,16 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.displayCutoutPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Alignment
+import dev.patrickgold.florisboard.app.island.CrakeDynamicIslandOverlay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.CompositionLocalProvider
@@ -184,22 +188,29 @@ class FlorisAppActivity : ComponentActivity() {
                 dismissLabel = stringRes(R.string.action__cancel),
                 neutralLabel = stringRes(R.string.action__default),
             ) {
-                Column(
-                    modifier = Modifier
-                        //.statusBarsPadding()
-                        .navigationBarsPadding()
-                        .conditional(LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            displayCutoutPadding()
-                        }
-                        .imePadding(),
-                ) {
-                    val isSelected = remember { InputMethodUtils.isFlorisboardSelected(resourcesContext) }
-                    Routes.AppNavHost(
-                        modifier = Modifier.weight(1.0f),
-                        navController = navController,
-                        startDestination = if (isImeSetUp || isSelected) Routes.Settings.Home::class else Routes.Setup.Screen::class,
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            //.statusBarsPadding()
+                            .navigationBarsPadding()
+                            .conditional(LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                                displayCutoutPadding()
+                            }
+                            .imePadding(),
+                    ) {
+                        val isSelected = remember { InputMethodUtils.isFlorisboardSelected(resourcesContext) }
+                        Routes.AppNavHost(
+                            modifier = Modifier.weight(1.0f),
+                            navController = navController,
+                            startDestination = if (isImeSetUp || isSelected) Routes.Settings.Home::class else Routes.Setup.Screen::class,
+                        )
+                        PreviewKeyboardField(previewFieldController)
+                    }
+
+                    CrakeDynamicIslandOverlay(
+                        modifier = Modifier.align(Alignment.TopCenter)
                     )
-                    PreviewKeyboardField(previewFieldController)
                 }
             }
         }
