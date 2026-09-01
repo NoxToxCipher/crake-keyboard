@@ -269,31 +269,41 @@ object TypingTelemetricsManager {
     private fun computeDailyBuckets(records: List<ParsedRecord>, now: Long): List<DailyTrendBucket> {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
         val labelFormat = SimpleDateFormat("EEE", Locale.US)
+        val oneDayMs = 86400_000L
 
-        val past7Days = (6 downTo 0).map { dayOffset ->
-            val dayTime = now - (dayOffset * 86400_000L)
+        val dailyBucketsList = ArrayList<DailyTrendBucket>(7)
+        val buckets = Array(7) { mutableListOf<ParsedRecord>() }
+
+        for (rec in records) {
+            val ts = if (rec.timestamp > 0) rec.timestamp else now
+            val diff = now - ts
+            if (diff >= 0) {
+                val dayOffset = (diff / oneDayMs).toInt()
+                if (dayOffset in 0..6) {
+                    buckets[dayOffset].add(rec)
+                }
+            }
+        }
+
+        for (dayOffset in 6 downTo 0) {
+            val dayTime = now - (dayOffset * oneDayMs)
             val dateKey = dateFormat.format(Date(dayTime))
             val dayLabel = if (dayOffset == 0) "Today" else labelFormat.format(Date(dayTime))
-            Triple(dateKey, dayLabel, dayTime)
-        }
-
-        val groups = records.groupBy {
-            val ts = if (it.timestamp > 0) it.timestamp else now
-            dateFormat.format(Date(ts))
-        }
-
-        return past7Days.map { (dateKey, label, dayTime) ->
-            val dayRecords = groups[dateKey] ?: emptyList()
+            val dayRecords = buckets[dayOffset]
             val m = computeMetricsFromParsed(dayRecords)
-            DailyTrendBucket(
-                dayLabel = label,
-                dateKey = dateKey,
-                wordCount = m.totalWordsTyped,
-                averageWpm = m.averageWpm,
-                overallAccuracy = m.overallAccuracyPercent,
-                glidePercentage = m.glidePercentage,
+            dailyBucketsList.add(
+                DailyTrendBucket(
+                    dayLabel = dayLabel,
+                    dateKey = dateKey,
+                    wordCount = m.totalWordsTyped,
+                    averageWpm = m.averageWpm,
+                    overallAccuracy = m.overallAccuracyPercent,
+                    glidePercentage = m.glidePercentage,
+                )
             )
         }
+
+        return dailyBucketsList
     }
 
     fun computeMetricsFromParsed(records: List<ParsedRecord>): TypingTelemetrics {

@@ -1,11 +1,12 @@
 {
-  "milestone": 363,
-  "tagName": "v0.363.0",
-  "name": "Milestone 363 (Zero-Regex Telemetrics Parser & Slip Ingestion)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.363.0/CrakeKeyboard_Milestone_363.apk",
+  "milestone": 364,
+  "tagName": "v0.364.0",
+  "name": "Milestone 364 (Zero-Allocation Timeline Bucketing)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.364.0/CrakeKeyboard_Milestone_364.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 363: Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips.",
+  "changelog": "Milestone 364: Replaced repeated Date formatting loops with constant-time mathematical array bucketing in TypingTelemetricsManager, eliminating garbage collection pauses on historical trend recalculations.",
   "history": {
+    "364": "Replaced repeated Date formatting loops with constant-time mathematical array bucketing in TypingTelemetricsManager, eliminating garbage collection pauses on historical trend recalculations.",
     "363": "Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips.",
     "362": "Replaced whole-file log reading with a reverse seek buffer in FlightRecorderManager, speeding up on-device telemetrics parsing and eliminating garbage collection churn during rapid typing.",
     "361": "Added time-series analytics (Today 24h, 7 Days, All-Time, Live 1h), improvement/fatigue degradation trend tracking (+/- WPM, +/- Accuracy), and 7-day performance breakdown timeline.",
