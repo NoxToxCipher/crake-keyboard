@@ -63,7 +63,7 @@ import org.florisboard.lib.compose.stringRes
 
 enum class ExtensionListScreenType(
     val id: String,
-    @StringRes val titleResId: Int,
+    @param:StringRes val titleResId: Int,
     val getExtensionIndex: (ExtensionManager) -> ExtensionManager.ExtensionIndex<*>,
     val launchExtensionCreate: ((NavController) -> Unit)?,
 ) {
