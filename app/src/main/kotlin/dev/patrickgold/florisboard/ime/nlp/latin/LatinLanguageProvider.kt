@@ -300,7 +300,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             // 2. Fleet Telemetry Fast Typo Corrections
             val cleanWordQuery = sanitizeWordToken(query, trimTrailingWhitespace = false)
             if (cleanWordQuery.isNotBlank()) {
-                val fleetCorrection = FLEET_TYPO_CORRECTIONS[cleanWordQuery.lowercase()]
+                val fleetCorrection = FLEET_TYPO_CORRECTIONS[cleanWordQuery.fastLowercase()]
                 if (fleetCorrection != null) {
                     val formatted = when {
                         cleanWordQuery.all { it.isUpperCase() } -> fleetCorrection.uppercase()
@@ -343,6 +343,16 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 }
             }
         }
+    }
+
+    private fun String.fastLowercase(): String {
+        for (i in 0 until length) {
+            val c = this[i]
+            if (c in 'A'..'Z') {
+                return this.lowercase()
+            }
+        }
+        return this
     }
 
     private data class SuggestionCacheKey(

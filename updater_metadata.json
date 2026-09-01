@@ -1,11 +1,12 @@
 {
-  "milestone": 374,
-  "tagName": "v0.374.0",
-  "name": "Milestone 374 (Zero-Recomposition Dynamic Island Draw Pipeline)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.374.0/CrakeKeyboard_Milestone_374.apk",
+  "milestone": 375,
+  "tagName": "v0.375.0",
+  "name": "Milestone 375 (Zero-Allocation Token Sanitizer & Dynamic Island Polishing)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.375.0/CrakeKeyboard_Milestone_375.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 374: Deferred Dynamic Island pulse animation reads to DrawScope phase, eliminating composable tree recomposition.",
+  "changelog": "Milestone 375: Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering.",
   "history": {
+    "375": "Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering.",
     "374": "Deferred Dynamic Island pulse animation reads to DrawScope phase, eliminating composable tree recomposition.",
     "373": "Added audited auto-corrections for common mobile slips ('xaiomi', 'haptcis', 'physcial', 'interactivty') and vocabulary expansion.",
     "372": "Smartbar Dynamic Island Interactive Gesture Controller with context-aware tap actions and one-tap dismiss.",
