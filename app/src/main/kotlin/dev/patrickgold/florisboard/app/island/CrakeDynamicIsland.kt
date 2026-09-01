@@ -67,6 +67,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -120,6 +121,9 @@ fun CrakeDynamicIslandOverlay(
             label = "islandWidth"
         )
 
+        val cornerRadius = if (isExpanded) 20.dp else 24.dp
+        val cornerShape = RoundedCornerShape(cornerRadius)
+
         Surface(
             modifier = Modifier
                 .width(targetWidth)
@@ -128,24 +132,26 @@ fun CrakeDynamicIslandOverlay(
                 )
                 .shadow(
                     elevation = 12.dp,
-                    shape = RoundedCornerShape(if (isExpanded) 20.dp else 24.dp),
+                    shape = cornerShape,
                     spotColor = notif.accentColor.copy(alpha = 0.5f),
                     ambientColor = notif.accentColor.copy(alpha = 0.3f),
                 )
-                .clip(RoundedCornerShape(if (isExpanded) 20.dp else 24.dp))
-                .border(
-                    BorderStroke(
-                        1.2.dp,
-                        Brush.horizontalGradient(
+                .clip(cornerShape)
+                .drawWithContent {
+                    drawContent()
+                    val rPx = cornerRadius.toPx()
+                    drawRoundRect(
+                        brush = Brush.horizontalGradient(
                             listOf(
                                 notif.accentColor.copy(alpha = pulseAlpha),
                                 notif.accentColor.copy(alpha = 0.35f),
                                 notif.accentColor.copy(alpha = pulseAlpha),
                             )
-                        )
-                    ),
-                    RoundedCornerShape(if (isExpanded) 20.dp else 24.dp)
-                )
+                        ),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(rPx, rPx),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx())
+                    )
+                }
                 .pointerInput(Unit) {
                     var totalDragY = 0f
                     detectVerticalDragGestures(
