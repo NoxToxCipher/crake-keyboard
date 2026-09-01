@@ -266,6 +266,13 @@ fun HomeScreen() = FlorisScreen {
                             accent = ElectricCyan,
                         )
 
+                        TesterSprintPill(
+                            icon = Icons.Outlined.Lock,
+                            title = "How to Use In-Place Encryption",
+                            desc = "Type a message in any app, tap the 🔒 icon in the Smartbar to encrypt with ChaCha20/X25519 in place. Receive and decrypt sealed blocks directly without leaving your chat.",
+                            accent = CyberEmerald,
+                        )
+
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = "Your Tester Identity / Name:",
@@ -743,6 +750,158 @@ fun HomeScreen() = FlorisScreen {
                             Text("🌊 Glide Typing", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFFC084FC))
                             Spacer(modifier = Modifier.height(2.dp))
                             Text("Drag smoothly across letter keys for fluid word predictions.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // CRAKE END-TO-END ENCRYPTION INTRODUCTORY GUIDE CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = CardSurface),
+            border = BorderStroke(1.dp, CardBorder),
+            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(CyberEmerald.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Lock,
+                            contentDescription = null,
+                            tint = CyberEmerald,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "END-TO-END ENCRYPTION",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 1.sp,
+                                color = CyberEmerald,
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(CyberEmerald.copy(alpha = 0.15f))
+                                    .padding(horizontal = 5.dp, vertical = 1.5.dp),
+                            ) {
+                                Text(
+                                    text = "AIR-GAPPED",
+                                    color = CyberEmerald,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+                        Text(
+                            text = "How to Use Crake Encryption",
+                            fontSize = 13.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                    Button(
+                        onClick = { navController.navigate(Routes.Settings.Encryption) },
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberEmerald),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text = "Vault",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            color = Color(0xFF0F172A),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("🔐 1. In-Place Lock", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = CyberEmerald)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Type in any app (WhatsApp, SMS, Notes) & tap 🔒 in Smartbar to seal text.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("🔑 2. Public Key Exchange", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = ElectricCyan)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Share your crake-pk1 public key. Encrypt exclusively to contacts' keys.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("🛡️ 3. Shared Passphrase", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = AmberGold)
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Encrypt quick notes & payloads using Argon2id + ChaCha20-Poly1305 passwords.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0A0E17))
+                            .border(1.dp, CardBorder, RoundedCornerShape(10.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column {
+                            Text("🔓 4. One-Tap Decrypt", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = Color(0xFFC084FC))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Copy or select crake-msg1 ciphertext to instantly reveal plaintext offline.", fontSize = 9.5.sp, color = TextMuted, lineHeight = 12.sp)
                         }
                     }
                 }

@@ -77,6 +77,49 @@ fun CrakeEncryptionScreen() = FlorisScreen {
         var myPublicKey by remember { mutableStateOf(identity.publicKey() ?: "") }
 
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            SectionCard(title = "How to use encryption", accent = Emerald) {
+                Text(
+                    "Crake features zero-trust offline encryption so you can safely send secret messages over any untrusted messaging app or SMS.",
+                    color = Ink, fontSize = 12.5.sp, lineHeight = 16.sp,
+                )
+                Spacer(Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text("🔐", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("1. In-Place Keyboard Lock", color = Emerald, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Type a message in any app (WhatsApp, SMS, Telegram, Notes), tap the 🔒 icon in the keyboard Smartbar, and Crake seals the text in place into an encrypted block.", color = InkFaint, fontSize = 11.sp, lineHeight = 14.sp)
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text("🔑", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("2. Public Key Exchange (X25519)", color = Cyan, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Copy your public key below and share it with your contact. Save their public key in Contacts. Messages encrypted to a contact's key can only be read by their device.", color = InkFaint, fontSize = 11.sp, lineHeight = 14.sp)
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text("🛡️", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("3. Passphrase Encryption (ChaCha20-Poly1305)", color = Color(0xFFF59E0B), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("For quick secret chats without exchanging public keys, use a shared secret passphrase. Recipient enters the same passphrase to unseal.", color = InkFaint, fontSize = 11.sp, lineHeight = 14.sp)
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.Top) {
+                        Text("🔓", fontSize = 14.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text("4. One-Tap Decrypt", color = Color(0xFFC084FC), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Copy or select an incoming ciphertext (starts with crake-msg1- or crake-p1-) and tap Decrypt on the keyboard or in the Decrypt card below to reveal the plaintext.", color = InkFaint, fontSize = 11.sp, lineHeight = 14.sp)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
             SectionCard(title = "Your identity", accent = Emerald) {
                 Text(
                     "Share this public key so others can encrypt messages only you can open. Your private key stays on this device, sealed at rest, and is never shown.",

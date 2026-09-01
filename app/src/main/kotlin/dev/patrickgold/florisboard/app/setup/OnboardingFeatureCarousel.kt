@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.Gesture
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Security
@@ -128,7 +129,7 @@ fun OnboardingFeatureCarousel(
     modifier: Modifier = Modifier,
 ) {
     var currentPage by remember { mutableIntStateOf(0) }
-    val totalPages = 5
+    val totalPages = 6
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
@@ -223,8 +224,9 @@ fun OnboardingFeatureCarousel(
                 ) {
                     when (page) {
                         0 -> AirGappedPrivacyCard()
-                        1 -> NativeRustEngineCard()
-                        2 -> LiveThemeStudioCard(
+                        1 -> EndToEndEncryptionCard()
+                        2 -> NativeRustEngineCard()
+                        3 -> LiveThemeStudioCard(
                             currentThemeId = dayThemeId.componentId,
                             onSelectTheme = { theme ->
                                 scope.launch {
@@ -235,7 +237,7 @@ fun OnboardingFeatureCarousel(
                                 }
                             }
                         )
-                        3 -> ScientificTypographyCard(
+                        4 -> ScientificTypographyCard(
                             currentFont = keyboardFont,
                             onSelectFont = { font ->
                                 scope.launch {
@@ -244,7 +246,7 @@ fun OnboardingFeatureCarousel(
                                 }
                             }
                         )
-                        4 -> ProGesturesAndTestDriveCard()
+                        5 -> ProGesturesAndTestDriveCard()
                     }
                 }
             }
@@ -436,6 +438,42 @@ private fun AirGappedPrivacyCard() {
         emoji = "🔒",
         title = "Local Intelligence Only",
         detail = "Dictionary lookups, spelling corrections, and learning occur 100% offline.",
+    )
+}
+
+@Composable
+private fun EndToEndEncryptionCard() {
+    CardHeaderBadge(
+        icon = Icons.Default.Lock,
+        badgeText = "MILITARY-GRADE ENCRYPTION",
+        badgeColor = CyberEmerald,
+        title = "How to Use Crake Encryption",
+        subtitle = "Encrypt secret messages in place directly inside any app before sending over SMS, WhatsApp, or email.",
+    )
+
+    FeaturePillItem(
+        emoji = "🔐",
+        title = "1. In-Place Keyboard Encrypt / Decrypt",
+        detail = "Type any secret message, then tap the Lock icon on the Smartbar (or open Encryption in settings) to seal text into a cipher block.",
+        accentColor = CyberEmerald,
+    )
+    FeaturePillItem(
+        emoji = "🔑",
+        title = "2. Public Key Exchange (X25519)",
+        detail = "Share your crake-pk1 public key with friends. Messages sealed to their key can only be opened by their device.",
+        accentColor = ElectricCyan,
+    )
+    FeaturePillItem(
+        emoji = "🛡️",
+        title = "3. Passphrase Mode (ChaCha20-Poly1305)",
+        detail = "Protect quick messages with a shared secret passphrase. Unseal on any recipient Crake device instantly.",
+        accentColor = CyberAmber,
+    )
+    FeaturePillItem(
+        emoji = "🔓",
+        title = "4. One-Tap Decrypt & Reveal",
+        detail = "Copy or select an incoming crake-msg1 ciphertext block and tap Decrypt to unseal the original plaintext offline.",
+        accentColor = CyberEmerald,
     )
 }
 

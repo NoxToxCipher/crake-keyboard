@@ -1,11 +1,12 @@
 {
-  "milestone": 364,
-  "tagName": "v0.364.0",
-  "name": "Milestone 364 (Zero-Allocation Timeline Bucketing)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.364.0/CrakeKeyboard_Milestone_364.apk",
+  "milestone": 365,
+  "tagName": "v0.365.0",
+  "name": "Milestone 365 (Encryption First-Run Onboarding & Feature Discovery)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.365.0/CrakeKeyboard_Milestone_365.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 364: Replaced repeated Date formatting loops with constant-time mathematical array bucketing in TypingTelemetricsManager, eliminating garbage collection pauses on historical trend recalculations.",
+  "changelog": "Milestone 365: Added dedicated step-by-step encryption guides to the beginning onboarding cards, home features dashboard, and encryption vault with in-place messaging and public key workflow tutorials.",
   "history": {
+    "365": "Added dedicated step-by-step encryption guides to the beginning onboarding cards, home features dashboard, and encryption vault with in-place messaging and public key workflow tutorials.",
     "364": "Replaced repeated Date formatting loops with constant-time mathematical array bucketing in TypingTelemetricsManager, eliminating garbage collection pauses on historical trend recalculations.",
     "363": "Replaced multi-pattern regex matching with zero-copy direct string scanning in TypingTelemetricsManager (15x parsing speed boost), and added auto-correction mappings for telemetry/telemetrics slips.",
     "362": "Replaced whole-file log reading with a reverse seek buffer in FlightRecorderManager, speeding up on-device telemetrics parsing and eliminating garbage collection churn during rapid typing.",
