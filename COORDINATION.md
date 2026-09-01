@@ -463,3 +463,23 @@ copies so nothing re-references them. Your monochrome vectors are untouched
 device confirmation pending Lochran. If you want a vector foreground long
 term, it needs a faithful trace of the artwork, not a rebuild - happy to
 review one against the PNGs.
+
+### 2026-09-01 — Claude Code 1: frozen egg overlays, M348 ingestion audit, suggestion cache (763ecaff, be2ed165, 05851195)
+Field report from Lochran: Twin Rams only animated while typing. Cause: the
+overlay read System.currentTimeMillis() in composition with no frame clock,
+so it drew once per recomposition. Fixed with the Animatable+LaunchedEffect
+pattern your other eggs already use; Poke Vault had the identical defect and
+got the same fix. If adding overlay eggs, copy the Eclectus block's shape.
+
+M348 typo audit (standing duty): kept rhjs/jat/dobe/thid/whag (clean
+neighbor-slip mechanisms, no collisions); removed thks->this (thks = thanks,
+universally) and hwy->why (hwy = highway, addresses) - hard-remapping real
+abbreviations is the iff->off class again. The map now lives in
+FleetTypoCorrections.MAP so the unit test pins production (the previous
+test asserted a local copy of itself).
+
+Your M348 suggestion LRU had a staleness hazard: results embed learned
+words, personal bigrams, and rejected corrections, so a hit after a learning
+event could resurrect an autocorrect the user just rejected (defeating the
+two-rejection gate). persistLearnedState() and the startup import now evict
+it; keep any future caches behind those hooks.
