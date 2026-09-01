@@ -142,5 +142,12 @@ object FleetTypoCorrections {
         "confiramtion" to "confirmation",
         "reciepient" to "recipient",
         "recipent" to "recipient",
+        "xaiomi" to "Xiaomi",
+        "xiaomoi" to "Xiaomi",
+        "haptcis" to "haptics",
+        "hapticx" to "haptics",
+        "physcial" to "physical",
+        "interactiv" to "interactive",
+        "interactivty" to "interactivity",
     )
 }

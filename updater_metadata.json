@@ -1,11 +1,12 @@
 {
-  "milestone": 372,
-  "tagName": "v0.372.0",
-  "name": "Milestone 372 (Smartbar Dynamic Island Interactive Gesture Controller)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.372.0/CrakeKeyboard_Milestone_372.apk",
+  "milestone": 373,
+  "tagName": "v0.373.0",
+  "name": "Milestone 373 (Fleet Telemetry Slip Corrections & Vocabulary Engine Expansion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.373.0/CrakeKeyboard_Milestone_373.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 372: Smartbar Dynamic Island Interactive Gesture Controller with context-aware tap actions and one-tap dismiss.",
+  "changelog": "Milestone 373: Added audited auto-corrections for common mobile slips ('xaiomi', 'haptcis', 'physcial', 'interactivty') and vocabulary expansion.",
   "history": {
+    "373": "Added audited auto-corrections for common mobile slips ('xaiomi', 'haptcis', 'physcial', 'interactivty') and vocabulary expansion.",
     "372": "Smartbar Dynamic Island Interactive Gesture Controller with context-aware tap actions and one-tap dismiss.",
     "371": "Added subtle snappy haptic feedback on in-place encryption/decryption success, perfectly synchronized with Dynamic Island capsule morphing.",
     "370": "Optimized suggestion caching with zero-allocation composite keys, reducing keystroke prediction latency and GC churn across fast typing bursts.",
