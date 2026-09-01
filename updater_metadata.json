@@ -1,11 +1,12 @@
 {
-  "milestone": 378,
-  "tagName": "v0.378.0",
-  "name": "Milestone 378 (Dynamic Island Compact Subtitle Rendering & Animation Physics Optimization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.378.0/CrakeKeyboard_Milestone_378.apk",
+  "milestone": 379,
+  "tagName": "v0.379.0",
+  "name": "Milestone 379 (Type-Safe UserDictionary Language Query & Schema Cleanliness)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.379.0/CrakeKeyboard_Milestone_379.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 378: Added contextual subtitle chips in compact Dynamic Island capsule layout.",
+  "changelog": "Milestone 379: Refactored UserDictionaryDao queryLanguageList for non-null distinct locale filtering.",
   "history": {
+    "379": "Refactored UserDictionaryDao queryLanguageList for non-null distinct locale filtering.",
     "378": "Added contextual subtitle chips in compact Dynamic Island capsule layout.",
     "377": "Calibrated Smartbar Dynamic Island width scaling and ingested fleet typo slips.",
     "376": "Direct reference passthrough for unclipped clean token strings in NLP tokenization.",

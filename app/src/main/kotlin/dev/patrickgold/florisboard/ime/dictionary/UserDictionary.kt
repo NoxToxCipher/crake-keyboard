@@ -115,8 +115,8 @@ interface UserDictionaryDao {
     @Query("$SELECT_ALL_FROM_WORDS WHERE ${UserDictionary.Words.WORD} = :word AND $LOCALE_MATCHES")
     fun queryExactFuzzyLocale(word: String, locale: FlorisLocale?): List<UserDictionaryEntry>
 
-    @Query("SELECT DISTINCT ${UserDictionary.Words.LOCALE} FROM $WORDS_TABLE")
-    fun queryLanguageList(): List<FlorisLocale?>
+    @Query("SELECT DISTINCT ${UserDictionary.Words.LOCALE} FROM $WORDS_TABLE WHERE ${UserDictionary.Words.LOCALE} IS NOT NULL")
+    fun queryLanguageList(): List<FlorisLocale>
 
     @Insert
     fun insert(entry: UserDictionaryEntry)
@@ -371,7 +371,7 @@ class SystemUserDictionaryDatabase(context: Context) : UserDictionaryDatabase {
             }
         }
 
-        override fun queryLanguageList(): List<FlorisLocale?> {
+        override fun queryLanguageList(): List<FlorisLocale> {
             val resolver = applicationContext.get()?.contentResolver ?: return listOf()
             val cursor = resolver.query(
                 UserDictionary.Words.CONTENT_URI,
@@ -384,12 +384,10 @@ class SystemUserDictionaryDatabase(context: Context) : UserDictionaryDatabase {
                 return listOf()
             }
             val localeIndex = cursor.getColumnIndex(UserDictionary.Words.LOCALE)
-            val retList = mutableSetOf<FlorisLocale?>()
+            val retList = mutableSetOf<FlorisLocale>()
             while (cursor.moveToNext()) {
                 val localeStr = cursor.getString(localeIndex)
-                if (localeStr == null) {
-                    retList.add(null)
-                } else {
+                if (localeStr != null) {
                     retList.add(FlorisLocale.fromTag(localeStr))
                 }
             }
