@@ -19,8 +19,8 @@ package dev.patrickgold.florisboard.app.settings.keyboard
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -114,7 +114,7 @@ fun InputFeedbackScreen() = FlorisScreen {
             pref = prefs.inputFeedback.audioEnabled,
             title = "Keypress Audio Sounds",
             summary = "Audible clicks on typing and delete",
-            icon = Icons.Default.VolumeUp,
+            icon = Icons.AutoMirrored.Filled.VolumeUp,
             accentColor = ElectricCyan,
         )
         DialogSliderPreference(

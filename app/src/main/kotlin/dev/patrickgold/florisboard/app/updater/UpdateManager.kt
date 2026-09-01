@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 385
+    const val CURRENT_MILESTONE = 386
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 38501
-    private const val RESOLVED_NOTIFICATION_ID = 38502
+    private const val NOTIFICATION_ID = 38601
+    private const val RESOLVED_NOTIFICATION_ID = 38602
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                386 -> "Language Pack Safety & Vector Standard Harmonization: Hardened extension ingestion against missing descriptors, eliminated unsafe clipboard assertions, and modernized UI action icons."
                 385 -> "Dynamic Island DrawScope Isolation & Modernized Navigation Icons: Enhanced rendering performance with zero-recomposition animation reads and aligned feedback/telemetric icons with modern auto-mirrored vectors."
                 384 -> "Asynchronous Extension Ingestion & Annotation Cleanliness: Streamlined extension import pipeline with non-blocking UI notifications and modern parameter annotation targets."
                 383 -> "Asynchronous Extension Export & Contract Alignment: Offloaded extension packaging to background IO dispatcher and upgraded ActivityResultContracts to explicit MIME types."

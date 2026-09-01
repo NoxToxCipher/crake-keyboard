@@ -26,8 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Input
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Input
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -115,13 +115,13 @@ fun LanguagePackManagerScreen(action: LanguagePackManagerScreenAction?) = Floris
                     onClick = { navController.navigate(
                         Routes.Ext.Import(ExtensionImportScreenType.EXT_LANGUAGEPACK, null)
                     ) },
-                    icon = Icons.Default.Input,
+                    icon = Icons.AutoMirrored.Filled.Input,
                     title = stringRes(R.string.action__import),
                 )
             }
         }
         for ((extensionId, configs) in extGroupedLanguagePacks) key(extensionId) {
-            val ext = extensionManager.getExtensionById(extensionId)!!
+            val ext = extensionManager.getExtensionById(extensionId) ?: continue
             FlorisOutlinedBox(
                 modifier = Modifier.defaultFlorisOutlinedBox(),
                 title = ext.meta.title,

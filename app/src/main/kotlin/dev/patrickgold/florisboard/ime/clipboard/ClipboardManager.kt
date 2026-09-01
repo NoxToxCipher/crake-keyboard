@@ -191,8 +191,9 @@ class ClipboardManager(
                 val isEqual = internalPrimaryClip?.isEqualTo(systemPrimaryClip) == true
                 if (!isEqual) {
                     var item = ClipboardItem.fromClipData(appContext, systemPrimaryClip, cloneUri = true)
-                    if (item.type == ItemType.TEXT && item.text != null) {
-                        val processed = FlorisNative.clipboardProcessText(item.text!!)
+                    val clipText = item.text
+                    if (item.type == ItemType.TEXT && clipText != null) {
+                        val processed = FlorisNative.clipboardProcessText(clipText)
                         item = item.copy(
                             text = processed.cleanedText,
                             isSensitive = item.isSensitive || processed.isSensitive,
