@@ -608,6 +608,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "internal__home_is_beta_toolbox_collapsed_040a01",
             default = false,
         )
+        // The one-page lined-paper note behind the homepage (CrakeNotePeek).
+        // Local-only, like everything else in this app.
+        val crakeNote = string(
+            key = "internal__crake_note",
+            default = "",
+        )
         val isImeSetUp = boolean(
             key = "internal__is_ime_set_up",
             default = false,

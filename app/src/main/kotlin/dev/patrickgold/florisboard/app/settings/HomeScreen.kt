@@ -95,6 +95,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import org.florisboard.lib.compose.florisVerticalScroll
 import dev.patrickgold.florisboard.app.LocalNavController
 import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.ime.keyboard.EasterEggs
@@ -121,12 +122,19 @@ fun HomeScreen() = FlorisScreen {
     title = stringRes(R.string.settings__home__title)
     navigationIconVisible = false
     previewFieldVisible = true
+    // Scroll moves inside CrakeNotePeek's wrapper so the whole page can be
+    // pulled right to peek at the note tucked behind its left edge.
+    scrollable = false
 
     val navController = LocalNavController.current
     val context = LocalContext.current
     val prefs by FlorisPreferenceStore
 
     content {
+        CrakeNotePeek {
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.fillMaxSize().florisVerticalScroll(),
+        ) {
         val scope = rememberCoroutineScope()
         val isFlorisBoardEnabled by InputMethodUtils.observeIsFlorisboardEnabled(foregroundOnly = true)
         val testerOnboardingDismissed by prefs.updater.testerOnboardingDismissed.collectAsState()
@@ -1074,6 +1082,8 @@ fun HomeScreen() = FlorisScreen {
             onClick = { navController.navigate(Routes.Settings.About) },
         )
         Spacer(modifier = Modifier.height(16.dp))
+        }
+        }
     }
 }
 
