@@ -80,7 +80,11 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val plainNote by prefs.internal.crakeNote.collectAsState()
-    val hintSeen by prefs.internal.crakeNoteHintSeen.collectAsState()
+    val hintCount by prefs.internal.crakeNoteHintCount.collectAsState()
+    // The appearance index (0,1,2) for the current open, or null when the
+    // hint should not show this time. Local per-session dismiss on top.
+    var hintForThisOpen by remember { mutableStateOf<Int?>(null) }
+    var hintDismissed by remember { mutableStateOf(false) }
 
     // Blends with the app's other crake_*.enc caches; Keystore-sealed on top
     // of the PIN encryption, so an imaged file is doubly protected.
@@ -95,6 +99,8 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         secretPin = null
         secretContent = ""
         showPin = false
+        hintForThisOpen = null
+        hintDismissed = false
     }
 
     // Debounced save of the secret page so the PIN key derivation does not
@@ -139,6 +145,16 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             animateTo(target)
         }
 
+        // Claim one of the three hint appearances the moment the note opens
+        // to the plain page. Captures the index (0,1,2) for the countdown
+        // wording, then bumps the stored count.
+        LaunchedEffect(isOpen) {
+            if (isOpen && secretPin == null && hintForThisOpen == null && hintCount < 3) {
+                hintForThisOpen = hintCount
+                prefs.internal.crakeNoteHintCount.set(hintCount + 1)
+            }
+        }
+
         BackHandler(enabled = isOpen || showPin) {
             if (showPin) showPin = false else animateTo(closedPx)
         }
@@ -173,10 +189,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                         .fillMaxHeight()
                         .onSizeChanged { stripHeightPx = it.height.toFloat().coerceAtLeast(1f) }
                         .pointerInput(Unit) {
-                            detectTapGestures(onLongPress = {
-                                scope.launch { prefs.internal.crakeNoteHintSeen.set(true) }
-                                showPin = true
-                            })
+                            detectTapGestures(onLongPress = { showPin = true })
                         }
                         .pointerInput(Unit) {
                             var travelled = 0f
@@ -189,7 +202,6 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                                 onDragEnd = {
                                     // Most of the line, downward.
                                     if (travelled >= stripHeightPx * 0.6f) {
-                                        scope.launch { prefs.internal.crakeNoteHintSeen.set(true) }
                                         showPin = true
                                     }
                                 },
@@ -197,9 +209,15 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                         },
                 )
 
-                // First time only, shown to whoever already found the note:
-                // how to reach the private page. Never appears again.
-                if (secretPin == null && !hintSeen) {
+                // Shown to whoever found the note on the first three opens,
+                // counting down so they are warned before it stops. Then gone.
+                val idx = hintForThisOpen
+                if (secretPin == null && idx != null && !hintDismissed) {
+                    val countdown = when (idx) {
+                        0 -> "This hint will appear twice more, then never again. Please remember."
+                        1 -> "This hint will appear once more, and then never again. Please remember."
+                        else -> "This is the last time this hint will appear. Please remember."
+                    }
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -209,11 +227,11 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                             color = Color(0xFF243447),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.pointerInput(Unit) {
-                                detectTapGestures { scope.launch { prefs.internal.crakeNoteHintSeen.set(true) } }
+                                detectTapGestures { hintDismissed = true }
                             },
                         ) {
                             androidx.compose.material3.Text(
-                                text = "Private page: hold the red line, or swipe down it. Tap to dismiss.",
+                                text = "Private page: hold the red line, or swipe down it.\n$countdown\nTap to dismiss.",
                                 color = Color(0xFFF7F1E3),
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
