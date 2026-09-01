@@ -618,6 +618,14 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "internal__crake_note",
             default = "",
         )
+        // The recipient the in-place "Encrypt" keyboard action encrypts to
+        // (a crake-pk1-... public key). Set in Settings > Encryption. Empty
+        // means the in-place encrypt action asks the user to set one first.
+        val crakeActiveRecipient = string(
+            key = "internal__crake_active_recipient",
+            default = "",
+        )
+
         // How many times the "way into the private page" hint has been
         // shown. It appears on the first three opens (with a countdown so
         // the finder is warned), then never again.

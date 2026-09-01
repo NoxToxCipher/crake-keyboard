@@ -750,6 +750,68 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         )
     }
 
+    private fun crakeToast(msg: String) {
+        lastToastReference.get()?.cancel()
+        lastToastReference = WeakReference(appContext.showShortToastSync(msg))
+    }
+
+    /**
+     * Encrypts the field's text (or selection) in place to the recipient set
+     * in Settings > Encryption, so plaintext is replaced by ciphertext before
+     * the host app sees it. The founding feature. Passphrase-in-place is a
+     * later slice (it needs secret entry inside the keyboard).
+     */
+    private fun handleCrakeEncrypt() {
+        val recipient = prefs.internal.crakeActiveRecipient.get().trim()
+        if (recipient.isEmpty()) {
+            crakeToast("Set who you're messaging in Crake > Encryption first")
+            return
+        }
+        val source = editorInstance.getCryptoSourceText()
+        if (source.isBlank()) {
+            crakeToast("Nothing to encrypt")
+            return
+        }
+        if (org.florisboard.libnative.FlorisNative.cryptoScheme(source).isNotEmpty()) {
+            crakeToast("This already looks encrypted")
+            return
+        }
+        val r = org.florisboard.libnative.FlorisNative.cryptoEncrypt("publickey", source, recipient)
+        if (r.ok) {
+            editorInstance.replaceCryptoSourceText(r.value!!)
+            crakeToast("Encrypted")
+        } else {
+            crakeToast("Couldn't encrypt: ${r.error}")
+        }
+    }
+
+    /**
+     * Decrypts a Crake message in the field (or selection) in place using
+     * this device's identity. Public-key messages open with no extra input;
+     * passphrase messages are deferred to the Encryption screen for now.
+     */
+    private fun handleCrakeDecrypt() {
+        val source = editorInstance.getCryptoSourceText()
+        when (org.florisboard.libnative.FlorisNative.cryptoScheme(source)) {
+            "publickey" -> {
+                val priv = dev.patrickgold.florisboard.app.settings.crypto.CrakeIdentityStore(appContext.filesDir).privateKeyHex()
+                if (priv == null) {
+                    crakeToast("No identity yet - open Crake > Encryption")
+                    return
+                }
+                val r = org.florisboard.libnative.FlorisNative.cryptoDecrypt("publickey", source, priv)
+                if (r.ok) {
+                    editorInstance.replaceCryptoSourceText(r.value!!)
+                    crakeToast("Decrypted")
+                } else {
+                    crakeToast("Couldn't decrypt: ${r.error}")
+                }
+            }
+            "passphrase" -> crakeToast("Passphrase message - open Crake > Encryption to unlock")
+            else -> crakeToast("No Crake message here")
+        }
+    }
+
     /**
      * Handles a [KeyCode.KANA_SWITCHER] event
      */
@@ -887,6 +949,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             KeyCode.LANGUAGE_SWITCH -> handleLanguageSwitch()
             KeyCode.REDO -> editorInstance.performRedo()
             KeyCode.SETTINGS -> FlorisImeService.launchSettings()
+            KeyCode.CRAKE_ENCRYPT -> handleCrakeEncrypt()
+            KeyCode.CRAKE_DECRYPT -> handleCrakeDecrypt()
             KeyCode.SHIFT -> handleShiftUp(data)
             KeyCode.SPACE -> handleSpace(data)
             KeyCode.SYSTEM_INPUT_METHOD_PICKER -> InputMethodUtils.showImePicker(appContext)

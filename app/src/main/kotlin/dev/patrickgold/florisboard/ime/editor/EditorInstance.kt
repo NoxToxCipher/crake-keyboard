@@ -650,6 +650,38 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     }
 
     /**
+     * The full text the crypto-in-place actions operate on: the selection if
+     * there is one, otherwise the entire field (read via getExtractedText so
+     * long messages are not truncated by the cache). Empty when unavailable.
+     */
+    fun getCryptoSourceText(): String {
+        val selected = activeContent.selectedText
+        if (selected.isNotBlank()) return selected
+        val ic = currentInputConnection() ?: return activeContent.text
+        val extracted = ic.getExtractedText(android.view.inputmethod.ExtractedTextRequest(), 0)
+        return extracted?.text?.toString() ?: activeContent.text
+    }
+
+    /**
+     * Replaces the crypto source (the selection, or the whole field if there
+     * was none) with [newText], in one batch edit. Used by encrypt/decrypt in
+     * place so ciphertext or plaintext lands exactly where the message was.
+     */
+    fun replaceCryptoSourceText(newText: String): Boolean {
+        val ic = currentInputConnection() ?: return false
+        autoSpace.setInactive()
+        phantomSpace.setInactive()
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        if (activeContent.selectedText.isBlank()) {
+            ic.performContextMenuAction(android.R.id.selectAll)
+        }
+        val ok = ic.commitText(newText, 1)
+        ic.endBatchEdit()
+        return ok
+    }
+
+    /**
      * Performs an enter key press on the current input editor.
      *
      * @return True on success, false if an error occurred or the input connection is invalid.

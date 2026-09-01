@@ -125,6 +125,11 @@ object KeyCode {
     const val DRAG_MARKER =                 -991
     const val NOOP =                        -999
 
+    // Crake encrypt-in-place: transform the field's text where you type, in
+    // any app, before the app ever sees plaintext.
+    const val CRAKE_ENCRYPT =             -30001
+    const val CRAKE_DECRYPT =             -30002
+
     const val CHAR_WIDTH_SWITCHER =        -9701
     const val CHAR_WIDTH_FULL =            -9702
     const val CHAR_WIDTH_HALF =            -9703

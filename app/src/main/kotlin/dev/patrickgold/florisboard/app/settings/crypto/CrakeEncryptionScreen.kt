@@ -49,6 +49,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
+import dev.patrickgold.jetpref.datastore.model.collectAsState
+import kotlinx.coroutines.launch
 import org.florisboard.libnative.FlorisNative
 
 private val Emerald = Color(0xFF2DD4BF)
@@ -95,6 +97,9 @@ fun CrakeEncryptionScreen() = FlorisScreen {
             }
 
             Spacer(Modifier.height(14.dp))
+            InPlaceRecipientCard()
+
+            Spacer(Modifier.height(14.dp))
             EncryptCard(context, myRecipientHint = myPublicKey)
 
             Spacer(Modifier.height(14.dp))
@@ -105,6 +110,40 @@ fun CrakeEncryptionScreen() = FlorisScreen {
                 "Encryption happens on this device. A passphrase protects a message with a shared secret; a public key encrypts to one person. A short passphrase can be guessed offline, so choose a strong one.",
                 color = InkFaint, fontSize = 11.5.sp,
             )
+        }
+    }
+}
+
+@Composable
+private fun InPlaceRecipientCard() {
+    val prefs by dev.patrickgold.florisboard.app.FlorisPreferenceStore
+    val current by prefs.internal.crakeActiveRecipient.collectAsState()
+    var entry by remember { mutableStateOf(current) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+
+    SectionCard(title = "In-place encryption recipient", accent = Emerald) {
+        Text(
+            "The keyboard's Encrypt key (in the smartbar, in any app) encrypts what you've typed to this person. Paste their public key here to set who you're messaging.",
+            color = InkFaint, fontSize = 12.5.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        if (current.isNotBlank()) {
+            MonoBox(current)
+            Spacer(Modifier.height(8.dp))
+        }
+        CrakeField(entry, "Recipient public key (crake-pk1-...)", { entry = it })
+        Spacer(Modifier.height(10.dp))
+        Row {
+            PillButton("Set recipient", Emerald) {
+                scope.launch { prefs.internal.crakeActiveRecipient.set(entry.trim()) }
+            }
+            if (current.isNotBlank()) {
+                Spacer(Modifier.width(8.dp))
+                PillButton("Clear", InkFaint) {
+                    entry = ""
+                    scope.launch { prefs.internal.crakeActiveRecipient.set("") }
+                }
+            }
         }
     }
 }

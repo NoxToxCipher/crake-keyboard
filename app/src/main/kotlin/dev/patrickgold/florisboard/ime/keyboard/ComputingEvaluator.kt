@@ -44,6 +44,8 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -138,6 +140,8 @@ fun ComputingEvaluator.computeLabel(data: KeyData): String? {
         data.asString(isForDisplay = true)
     } else {
         when (data.code) {
+            KeyCode.CRAKE_ENCRYPT -> "Encrypt"
+            KeyCode.CRAKE_DECRYPT -> "Decrypt"
             KeyCode.PHONE_PAUSE -> evaluator.context()?.getString(R.string.key__phone_pause)
             KeyCode.PHONE_WAIT -> evaluator.context()?.getString(R.string.key__phone_wait)
             KeyCode.SPACE, KeyCode.CJK_SPACE -> {
@@ -267,6 +271,12 @@ fun ComputingEvaluator.computeImageVector(data: KeyData): ImageVector? {
         }
         KeyCode.SETTINGS -> {
             Icons.Default.Settings
+        }
+        KeyCode.CRAKE_ENCRYPT -> {
+            Icons.Default.Lock
+        }
+        KeyCode.CRAKE_DECRYPT -> {
+            Icons.Default.LockOpen
         }
         KeyCode.SHIFT -> {
             when (evaluator.state.inputShiftState != InputShiftState.UNSHIFTED) {

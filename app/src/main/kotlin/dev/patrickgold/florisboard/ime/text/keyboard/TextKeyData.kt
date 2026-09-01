@@ -494,6 +494,20 @@ data class TextKeyData(
             label = "settings",
         )
 
+        /** Crake: encrypt the field text in place. */
+        val CRAKE_ENCRYPT = TextKeyData(
+            type = KeyType.SYSTEM_GUI,
+            code = KeyCode.CRAKE_ENCRYPT,
+            label = "crake_encrypt",
+        )
+
+        /** Crake: decrypt the field text in place. */
+        val CRAKE_DECRYPT = TextKeyData(
+            type = KeyType.SYSTEM_GUI,
+            code = KeyCode.CRAKE_DECRYPT,
+            label = "crake_decrypt",
+        )
+
         /** Predefined key data for [KeyCode.VOICE_INPUT] */
         val VOICE_INPUT = TextKeyData(
             type = KeyType.UNSPECIFIED,
