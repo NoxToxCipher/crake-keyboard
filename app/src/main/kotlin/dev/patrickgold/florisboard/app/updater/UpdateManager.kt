@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 382
+    const val CURRENT_MILESTONE = 383
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 38201
-    private const val RESOLVED_NOTIFICATION_ID = 38202
+    private const val NOTIFICATION_ID = 38301
+    private const val RESOLVED_NOTIFICATION_ID = 38302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                383 -> "Asynchronous Extension Export & Contract Alignment: Offloaded extension packaging to background IO dispatcher and upgraded ActivityResultContracts to explicit MIME types."
                 382 -> "Asynchronous Dictionary Import/Export & Modern Contract Alignment: Offloaded dictionary file I/O to background IO dispatcher and upgraded ActivityResultContracts to explicit MIME types."
                 381 -> "Glide Typing Sentence Context Optimization: Eliminated redundant string conversions in GlideTypingManager bigram context extraction for streamlined gesture scoring."
                 380 -> "UserDictionaryScreen Type Safety & Compose Cleanliness: Streamlined language list UI rendering and eliminated deprecated nullable operators on user dictionary locale collections."
