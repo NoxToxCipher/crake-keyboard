@@ -132,10 +132,19 @@ fun HomeScreen() = FlorisScreen {
         val testerOnboardingDismissed by prefs.updater.testerOnboardingDismissed.collectAsState()
         val testerNameConfirmed by prefs.updater.testerNameConfirmed.collectAsState()
         val currentTesterName by prefs.updater.testerName.collectAsState()
+        val hasCustomTesterName = currentTesterName.isNotBlank() && !currentTesterName.equals("Tester", ignoreCase = true)
         var showTesterModal by remember {
             mutableStateOf(
-                !testerOnboardingDismissed && !testerNameConfirmed
+                !testerOnboardingDismissed && !testerNameConfirmed && !hasCustomTesterName
             )
+        }
+        androidx.compose.runtime.LaunchedEffect(hasCustomTesterName) {
+            if (hasCustomTesterName && (!testerNameConfirmed || !testerOnboardingDismissed)) {
+                scope.launch {
+                    prefs.updater.testerNameConfirmed.set(true)
+                    prefs.updater.testerOnboardingDismissed.set(true)
+                }
+            }
         }
         var inputTesterName by remember {
             mutableStateOf(if (currentTesterName.isBlank() || currentTesterName.equals("Tester", ignoreCase = true)) "" else currentTesterName)

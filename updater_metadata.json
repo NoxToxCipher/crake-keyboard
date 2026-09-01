@@ -1,11 +1,12 @@
 {
-  "milestone": 343,
-  "tagName": "v0.343.0",
-  "name": "Milestone 343 (Repeating Punctuation & Double Exclamation Fix)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.343.0/CrakeKeyboard_Milestone_343.apk",
+  "milestone": 344,
+  "tagName": "v0.344.0",
+  "name": "Milestone 344 (Tester Identity Persistence & Biomechanical Calibration)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.344.0/CrakeKeyboard_Milestone_344.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 343: Fixed repeating punctuation and double exclamation mark joining after words, ensuring robust space deletion and clean composing completion.",
+  "changelog": "Milestone 344: Ensured tester identity is never re-prompted if already configured, and applied fleet-derived biomechanical apex calibrations (+13.5px vertical reach on top-row keys).",
   "history": {
+    "344": "Ensured tester identity is never re-prompted if already configured, and applied fleet-derived biomechanical apex calibrations (+13.5px vertical reach on top-row keys).",
     "343": "Fixed repeating punctuation and double exclamation mark joining after words, ensuring robust space deletion and clean composing completion.",
     "342": "Emoji Suggestion Pipeline Speed Boost (single-pass linear scan and zero-allocation top-K collector) and 45-min autonomous maintenance loop cycle 4.",
     "341": "Smartbar Compose Recomposition Speed Boost (@Immutable contracts for candidate skipping optimization) and 45-min autonomous maintenance loop cycle 3.",

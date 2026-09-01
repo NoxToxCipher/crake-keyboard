@@ -738,57 +738,106 @@ private fun ProGesturesAndTestDriveCard() {
 
     val prefs by FlorisPreferenceStore
     val scope = rememberCoroutineScope()
-    var testerNameInput by remember { mutableStateOf(prefs.updater.testerName.get().takeUnless { it == "Tester" } ?: "") }
+    val savedTesterName by prefs.updater.testerName.collectAsState()
+    val hasConfirmedName = savedTesterName.isNotBlank() && !savedTesterName.equals("Tester", ignoreCase = true)
+    var isEditingName by remember { mutableStateOf(!hasConfirmedName) }
+    var testerNameInput by remember { mutableStateOf(savedTesterName.takeUnless { it == "Tester" } ?: "") }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = "Your Tester Username:",
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color.White,
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = "(identifies your test feedback)",
-            fontSize = 10.sp,
-            color = TextMuted,
-        )
-    }
-    Spacer(modifier = Modifier.height(4.dp))
-    OutlinedTextField(
-        value = testerNameInput,
-        onValueChange = {
-            testerNameInput = it
+    androidx.compose.runtime.LaunchedEffect(hasConfirmedName) {
+        if (hasConfirmedName) {
             scope.launch {
-                val cleaned = it.trim().ifEmpty { "Tester" }
-                prefs.updater.testerName.set(cleaned)
                 prefs.updater.testerNameConfirmed.set(true)
                 prefs.updater.testerOnboardingDismissed.set(true)
             }
-        },
-        placeholder = {
+        }
+    }
+
+    if (hasConfirmedName && !isEditingName) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFF162033))
+                .border(1.dp, CyberEmerald.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "🛡️", fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Tester Identity:",
+                        fontSize = 10.sp,
+                        color = TextMuted,
+                    )
+                    Text(
+                        text = savedTesterName,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CyberEmerald,
+                    )
+                }
+            }
+            TextButton(
+                onClick = { isEditingName = true },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text("Edit", color = ElectricCyan, fontSize = 11.sp)
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Text(
-                text = "e.g. Lochran, Overlord, Daya",
-                color = TextMuted,
-                fontSize = 11.sp,
+                text = "Your Tester Username:",
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
             )
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp)),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFF162033),
-            unfocusedContainerColor = Color(0xFF162033),
-            focusedBorderColor = CyberEmerald,
-            unfocusedBorderColor = CardBorder,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-        ),
-        singleLine = true,
-    )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "(identifies your test feedback)",
+                fontSize = 10.sp,
+                color = TextMuted,
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        OutlinedTextField(
+            value = testerNameInput,
+            onValueChange = {
+                testerNameInput = it
+                scope.launch {
+                    val cleaned = it.trim().ifEmpty { "Tester" }
+                    prefs.updater.testerName.set(cleaned)
+                    prefs.updater.testerNameConfirmed.set(true)
+                    prefs.updater.testerOnboardingDismissed.set(true)
+                }
+            },
+            placeholder = {
+                Text(
+                    text = "e.g. Lochran, Overlord, Daya",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                )
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp)),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFF162033),
+                unfocusedContainerColor = Color(0xFF162033),
+                focusedBorderColor = CyberEmerald,
+                unfocusedBorderColor = CardBorder,
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+            ),
+            singleLine = true,
+        )
+    }
 
     Spacer(modifier = Modifier.height(8.dp))
 
