@@ -28,6 +28,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -174,7 +175,8 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val openWidth = if (maxWidth * 0.82f < 340.dp) maxWidth * 0.82f else 340.dp
+        val screenWidth = maxWidth
+        val openWidth = if (screenWidth * 0.82f < 340.dp) screenWidth * 0.82f else 340.dp
         val openPx = with(density) { openWidth.toPx() }
         val closedPx = 0f
         val edgeWidth = 56.dp
@@ -309,7 +311,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             }
         }
 
-        // Layer 2: Main Foreground Content + Persistent Unified Touch Handler
+        // Layer 2: Main Foreground Content
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -322,54 +324,6 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                         topStart = (16f * progress).dp,
                         bottomStart = (16f * progress).dp,
                     )
-                }
-                .pointerInput(openPx) {
-                    val touchSlopPx = viewConfiguration.touchSlop
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        val startPos = down.position
-                        val isOpened = offsetX.value > openPx * 0.4f
-                        val canDrag = isOpened || startPos.x <= edgePx
-
-                        if (!canDrag) return@awaitEachGesture
-
-                        val velocityTracker = VelocityTracker()
-                        velocityTracker.addPosition(down.uptimeMillis, down.position)
-                        var isDragging = isOpened
-
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val dragChange = event.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!dragChange.pressed) {
-                                val vx = velocityTracker.calculateVelocity().x
-                                val target = when {
-                                    vx > 500f -> openPx
-                                    vx < -500f -> closedPx
-                                    offsetX.value > openPx * 0.45f -> openPx
-                                    else -> closedPx
-                                }
-                                animateTo(target, vx)
-                                break
-                            }
-
-                            velocityTracker.addPosition(dragChange.uptimeMillis, dragChange.position)
-                            val totalDeltaX = dragChange.position.x - startPos.x
-                            val totalDeltaY = dragChange.position.y - startPos.y
-
-                            if (!isDragging) {
-                                if (abs(totalDeltaX) > touchSlopPx && abs(totalDeltaX) > abs(totalDeltaY)) {
-                                    isDragging = true
-                                    dragChange.consume()
-                                }
-                            }
-
-                            if (isDragging) {
-                                dragChange.consume()
-                                val newX = (offsetX.value + dragChange.positionChange().x).coerceIn(closedPx, openPx)
-                                scope.launch { offsetX.snapTo(newX) }
-                            }
-                        }
-                    }
                 }
         ) {
             content()
@@ -388,6 +342,45 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                         }
                 )
             }
+
+            // Layer 3: Top-Layer Edge Grab & Drag Surface
+            // Sits directly on top of content: 56dp grab strip when closed, full-width surface when active
+            val isInteracting = offsetX.value > 1f
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .width(if (isInteracting) screenWidth else edgeWidth)
+                    .pointerInput(openPx) {
+                        var velocityTracker = VelocityTracker()
+                        detectHorizontalDragGestures(
+                            onDragStart = { offset ->
+                                velocityTracker = VelocityTracker()
+                                velocityTracker.addPosition(0L, offset)
+                            },
+                            onDragEnd = {
+                                val vx = velocityTracker.calculateVelocity().x
+                                val target = when {
+                                    vx > 350f -> openPx
+                                    vx < -350f -> closedPx
+                                    offsetX.value > openPx * 0.35f -> openPx
+                                    else -> closedPx
+                                }
+                                animateTo(target, vx)
+                            },
+                            onDragCancel = {
+                                val target = if (offsetX.value > openPx * 0.35f) openPx else closedPx
+                                animateTo(target)
+                            },
+                            onHorizontalDrag = { change, dragAmount ->
+                                change.consume()
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                val newX = (offsetX.value + dragAmount).coerceIn(closedPx, openPx)
+                                scope.launch { offsetX.snapTo(newX) }
+                            }
+                        )
+                    }
+            )
         }
 
         if (showPin) {
