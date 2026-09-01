@@ -48,6 +48,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.patrickgold.florisboard.app.island.DynamicIslandManager
+import dev.patrickgold.florisboard.app.island.IslandNotification
+import dev.patrickgold.florisboard.app.island.IslandPriority
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
@@ -130,11 +133,37 @@ fun CrakeEncryptionScreen() = FlorisScreen {
                 Spacer(Modifier.height(8.dp))
                 Row {
                     PillButton("Copy public key", Emerald) {
-                        if (myPublicKey.isNotEmpty()) copyToClipboard(context, "Crake public key", myPublicKey)
+                        if (myPublicKey.isNotEmpty()) {
+                            copyToClipboard(context, "Crake public key", myPublicKey)
+                            DynamicIslandManager.post(
+                                IslandNotification(
+                                    id = "crypto_pk_copy",
+                                    title = "Public Key Copied 📋",
+                                    subtitle = "Ready to share with your contact for secure messaging.",
+                                    emoji = "🔒",
+                                    accentColor = Emerald,
+                                    durationMs = 3500L,
+                                    priority = IslandPriority.NORMAL,
+                                )
+                            )
+                        }
                     }
                     Spacer(Modifier.width(8.dp))
                     PillButton("Regenerate", InkFaint) {
-                        if (identity.generate()) myPublicKey = identity.publicKey() ?: ""
+                        if (identity.generate()) {
+                            myPublicKey = identity.publicKey() ?: ""
+                            DynamicIslandManager.post(
+                                IslandNotification(
+                                    id = "crypto_id_gen",
+                                    title = "Identity Regenerated 🔑",
+                                    subtitle = "New X25519 keypair generated & sealed locally.",
+                                    emoji = "🔑",
+                                    accentColor = Emerald,
+                                    durationMs = 3500L,
+                                    priority = IslandPriority.NORMAL,
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -279,7 +308,26 @@ private fun EncryptCard(context: Context, myRecipientHint: String) {
         PillButton("Encrypt", Cyan) {
             val scheme = if (usePassphrase) "passphrase" else "publickey"
             val r = FlorisNative.cryptoEncrypt(scheme, message, secret.trim())
-            if (r.ok) { output = r.value!!; error = null } else { error = r.error; output = "" }
+            if (r.ok) {
+                output = r.value!!
+                error = null
+                DynamicIslandManager.post(
+                    IslandNotification(
+                        id = "crypto_encrypted_done",
+                        title = if (usePassphrase) "Encrypted (Passphrase) 🛡️" else "Encrypted (X25519) 🔒",
+                        subtitle = if (usePassphrase) "Ciphertext sealed with ChaCha20-Poly1305." else "Ciphertext sealed to recipient's public key.",
+                        emoji = "🔒",
+                        accentColor = Cyan,
+                        actionLabel = "Copy",
+                        onAction = { copyToClipboard(context, "Crake encrypted", output) },
+                        durationMs = 5000L,
+                        priority = IslandPriority.HIGH,
+                    )
+                )
+            } else {
+                error = r.error
+                output = ""
+            }
         }
         error?.let { Spacer(Modifier.height(8.dp)); Text("Couldn't encrypt: $it", color = Color(0xFFF08A8A), fontSize = 12.sp) }
         if (output.isNotEmpty()) {
@@ -317,14 +365,54 @@ private fun DecryptCard(context: Context, identity: CrakeIdentityStore) {
             when (scheme) {
                 "passphrase" -> {
                     val r = FlorisNative.cryptoDecrypt("passphrase", armored, secret)
-                    if (r.ok) { output = r.value!!; error = null } else { error = r.error; output = "" }
+                    if (r.ok) {
+                        output = r.value!!
+                        error = null
+                        DynamicIslandManager.post(
+                            IslandNotification(
+                                id = "crypto_decrypted_done",
+                                title = "Message Decrypted 🔓",
+                                subtitle = "Plaintext successfully unsealed offline.",
+                                emoji = "🔓",
+                                accentColor = Emerald,
+                                actionLabel = "Copy",
+                                onAction = { copyToClipboard(context, "Crake decrypted", output) },
+                                durationMs = 5000L,
+                                priority = IslandPriority.HIGH,
+                            )
+                        )
+                    } else {
+                        error = r.error
+                        output = ""
+                    }
                 }
                 "publickey" -> {
                     val priv = identity.privateKeyHex()
-                    if (priv == null) { error = "No identity on this device yet."; output = "" }
-                    else {
+                    if (priv == null) {
+                        error = "No identity on this device yet."
+                        output = ""
+                    } else {
                         val r = FlorisNative.cryptoDecrypt("publickey", armored, priv)
-                        if (r.ok) { output = r.value!!; error = null } else { error = r.error; output = "" }
+                        if (r.ok) {
+                            output = r.value!!
+                            error = null
+                            DynamicIslandManager.post(
+                                IslandNotification(
+                                    id = "crypto_decrypted_done",
+                                    title = "Message Decrypted 🔓",
+                                    subtitle = "Plaintext successfully unsealed with device key.",
+                                    emoji = "🔓",
+                                    accentColor = Emerald,
+                                    actionLabel = "Copy",
+                                    onAction = { copyToClipboard(context, "Crake decrypted", output) },
+                                    durationMs = 5000L,
+                                    priority = IslandPriority.HIGH,
+                                )
+                            )
+                        } else {
+                            error = r.error
+                            output = ""
+                        }
                     }
                 }
                 else -> { error = "That is not a Crake encrypted message."; output = "" }
