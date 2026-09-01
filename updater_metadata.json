@@ -1,11 +1,12 @@
 {
-  "milestone": 348,
-  "tagName": "v0.348.0",
-  "name": "Milestone 348 (LRU Suggestion Speed Boost & Fleet Typos)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.348.0/CrakeKeyboard_Milestone_348.apk",
+  "milestone": 349,
+  "tagName": "v0.349.0",
+  "name": "Milestone 349 (High-Velocity Burst Typo Resolution)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.349.0/CrakeKeyboard_Milestone_349.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 348: Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",
+  "changelog": "Milestone 349: Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate).",
   "history": {
+    "349": "Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate).",
     "348": "Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",
     "347": "Implemented burst typing speed (WPM/CPM), typing friction ratio, display density metrics, and aggregate per-key spatial touch error summaries in telemetry sync bundles.",
     "346": "Integrated real-time Easter Egg flight recorder event logging and explicit discovery/solved array telemetry in diagnostic sync bundles.",
