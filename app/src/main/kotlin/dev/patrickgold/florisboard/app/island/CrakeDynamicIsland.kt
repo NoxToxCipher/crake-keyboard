@@ -105,7 +105,7 @@ fun CrakeDynamicIslandOverlay(
         val notif = notification ?: return@AnimatedVisibility
 
         val infiniteTransition = rememberInfiniteTransition(label = "islandPulse")
-        val pulseAlpha by infiniteTransition.animateFloat(
+        val pulseAlpha = infiniteTransition.animateFloat(
             initialValue = 0.45f,
             targetValue = 0.95f,
             animationSpec = infiniteRepeatable(
@@ -140,12 +140,13 @@ fun CrakeDynamicIslandOverlay(
                 .drawWithContent {
                     drawContent()
                     val rPx = cornerRadius.toPx()
+                    val currentPulse = pulseAlpha.value
                     drawRoundRect(
                         brush = Brush.horizontalGradient(
                             listOf(
-                                notif.accentColor.copy(alpha = pulseAlpha),
+                                notif.accentColor.copy(alpha = currentPulse),
                                 notif.accentColor.copy(alpha = 0.35f),
-                                notif.accentColor.copy(alpha = pulseAlpha),
+                                notif.accentColor.copy(alpha = currentPulse),
                             )
                         ),
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(rPx, rPx),

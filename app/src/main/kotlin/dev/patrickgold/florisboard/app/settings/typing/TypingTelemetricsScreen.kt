@@ -32,6 +32,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingFlat
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
@@ -40,9 +43,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingFlat
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material3.Button
@@ -170,9 +170,9 @@ fun TypingTelemetricsScreen() = FlorisScreen {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         val (icon, tint) = when (timeSeries.overallTrend) {
-                            TrendDirection.IMPROVING -> Pair(Icons.Default.TrendingUp, CyberEmerald)
-                            TrendDirection.DEGRADING -> Pair(Icons.Default.TrendingDown, CyberAmber)
-                            TrendDirection.STEADY -> Pair(Icons.Default.TrendingFlat, ElectricCyan)
+                            TrendDirection.IMPROVING -> Pair(Icons.AutoMirrored.Filled.TrendingUp, CyberEmerald)
+                            TrendDirection.DEGRADING -> Pair(Icons.AutoMirrored.Filled.TrendingDown, CyberAmber)
+                            TrendDirection.STEADY -> Pair(Icons.AutoMirrored.Filled.TrendingFlat, ElectricCyan)
                             TrendDirection.INSUFFICIENT_DATA -> Pair(Icons.Default.Timeline, TextMuted)
                         }
                         Box(

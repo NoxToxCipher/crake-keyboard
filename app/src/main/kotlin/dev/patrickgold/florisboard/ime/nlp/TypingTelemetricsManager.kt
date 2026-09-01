@@ -111,7 +111,7 @@ object TypingTelemetricsManager {
         val rawLine: String,
     )
 
-    private inline fun extractString(line: String, key: String): String? {
+    private fun extractString(line: String, key: String): String? {
         val keyIdx = line.indexOf(key)
         if (keyIdx < 0) return null
         val start = keyIdx + key.length
@@ -120,7 +120,7 @@ object TypingTelemetricsManager {
         return line.substring(start, end)
     }
 
-    private inline fun extractLong(line: String, key: String): Long? {
+    private fun extractLong(line: String, key: String): Long? {
         val keyIdx = line.indexOf(key)
         if (keyIdx < 0) return null
         val start = keyIdx + key.length
@@ -132,7 +132,7 @@ object TypingTelemetricsManager {
         return line.substring(start, end).toLongOrNull()
     }
 
-    private inline fun extractFloat(line: String, key: String): Float? {
+    private fun extractFloat(line: String, key: String): Float? {
         val keyIdx = line.indexOf(key)
         if (keyIdx < 0) return null
         val start = keyIdx + key.length
