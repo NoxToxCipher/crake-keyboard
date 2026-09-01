@@ -1,11 +1,12 @@
 {
-  "milestone": 350,
-  "tagName": "v0.350.0",
-  "name": "Milestone 350 (Charlton Fleet Typo & Manual Revert Ingestion)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.350.0/CrakeKeyboard_Milestone_350.apk",
+  "milestone": 351,
+  "tagName": "v0.351.0",
+  "name": "Milestone 351 (Overlord 36-Egg Session Typo Ingestion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.351.0/CrakeKeyboard_Milestone_351.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 350: Ingested real-world typing slips and manual reverts from Charlton on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",
+  "changelog": "Milestone 351: Ingested high-friction typo corrections from Overlord 36-egg session (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted).",
   "history": {
+    "351": "Ingested high-friction typo corrections from Overlord 36-egg session (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted).",
     "350": "Ingested real-world typing slips and manual reverts from Charlton on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",
     "349": "Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate).",
     "348": "Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",

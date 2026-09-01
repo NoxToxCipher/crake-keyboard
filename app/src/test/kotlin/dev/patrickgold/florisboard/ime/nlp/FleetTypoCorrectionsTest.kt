@@ -42,6 +42,10 @@ class FleetTypoCorrectionsTest : FunSpec({
         FleetTypoCorrections.MAP["oerson"] shouldBe "person"
         FleetTypoCorrections.MAP["keybaord"] shouldBe "keyboard"
         FleetTypoCorrections.MAP["wjatsapp"] shouldBe "WhatsApp"
+        FleetTypoCorrections.MAP["anorhwr"] shouldBe "another"
+        FleetTypoCorrections.MAP["telemetr"] shouldBe "telemetry"
+        FleetTypoCorrections.MAP["diffcult"] shouldBe "difficult"
+        FleetTypoCorrections.MAP["encryted"] shouldBe "encrypted"
     }
 
     test("classic slips resolve") {
