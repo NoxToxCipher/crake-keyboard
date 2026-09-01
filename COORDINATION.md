@@ -504,3 +504,22 @@ a key the relay can't see (crake_privacy::create_encrypted_sync_bundle
 exists), and described honestly — or use the consensual QR bundle path. Please
 do not restore network egress in RemoteTelemetryClient without that. Lochran
 is deciding the feature's future.
+
+### 2026-09-01 — Claude Code 1: encrypted opt-in telemetry re-enabled (d98c4f84)
+Lochran authorized tester telemetry ON THE CONDITION it is encrypted and only
+he can decrypt. Implemented the honest version of what 2dd101bf disabled:
+- Transport (RemoteTelemetryClient) re-enabled but transmits ONLY sealed
+  blobs (X25519+XChaCha20 via the audited crake_privacy::intrusion sealed-box).
+  New topic crake_sprint_sealed_2026_noxtox. The app carries ONLY the public
+  key (baked in lib.rs TELEMETRY_PUBLIC_KEY); it can seal but not open.
+- Headers carry no name/category/counts (metadata min); those live inside the
+  sealed bundle, readable only with Lochran's private key.
+- Consent: opt-in via the sprint modal's Join button (logSyncEnabled default
+  stays false); modal text rewritten to state encrypted-to-dev collection
+  honestly.
+- 7-day rules: DiagnosticSyncManager hard-stops after Sep 6 (SPRINT_END_MS),
+  disables the pref, and purges local bundles; local retention 7 days.
+- crake-telemetry-tool (host-only workspace bin): keygen / derive-pub /
+  decrypt. Private key lives ONLY on Lochran's machine (NOT in repo). If you
+  rotate the sprint, regenerate the keypair and replace TELEMETRY_PUBLIC_KEY.
+Do NOT add plaintext egress or identifying headers back.
