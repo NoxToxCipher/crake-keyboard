@@ -53,6 +53,30 @@ class UserDictionaryCache {
                     val formattedDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
                     listOf(WordSuggestionCandidate(formattedDateTime, secondaryText = "Snippet • Now", confidence = 1.0, isEligibleForAutoCommit = true))
                 }
+                "!b" -> listOf(WordSuggestionCandidate("[b][/b]", secondaryText = "BBCode • Bold", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!i" -> listOf(WordSuggestionCandidate("[i][/i]", secondaryText = "BBCode • Italic", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!u" -> listOf(WordSuggestionCandidate("[u][/u]", secondaryText = "BBCode • Underline", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!s" -> listOf(WordSuggestionCandidate("[s][/s]", secondaryText = "BBCode • Strikethrough", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!quote" -> listOf(WordSuggestionCandidate("[quote][/quote]", secondaryText = "BBCode • Quote", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!spoiler" -> listOf(WordSuggestionCandidate("[spoiler][/spoiler]", secondaryText = "BBCode • Spoiler", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!url" -> listOf(WordSuggestionCandidate("[url][/url]", secondaryText = "BBCode • URL", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!img" -> listOf(WordSuggestionCandidate("[img][/img]", secondaryText = "BBCode • Image", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!code" -> listOf(WordSuggestionCandidate("[code][/code]", secondaryText = "BBCode • Code", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!color" -> listOf(WordSuggestionCandidate("[color=red][/color]", secondaryText = "BBCode • Color", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!size" -> listOf(WordSuggestionCandidate("[size=12][/size]", secondaryText = "BBCode • Size", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!cords", "!coords", "!coord" -> listOf(WordSuggestionCandidate("[coord][/coord]", secondaryText = "BBCode • Village Coord", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!player" -> listOf(WordSuggestionCandidate("[player][/player]", secondaryText = "BBCode • Player", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!tribe", "!ally" -> listOf(WordSuggestionCandidate("[tribe][/tribe]", secondaryText = "BBCode • Tribe", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!claim" -> listOf(WordSuggestionCandidate("[claim][/claim]", secondaryText = "BBCode • Claim", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!report" -> listOf(WordSuggestionCandidate("[report_display][/report_display]", secondaryText = "BBCode • Report", confidence = 1.0, isEligibleForAutoCommit = true))
+                "!sos" -> listOf(
+                    WordSuggestionCandidate(
+                        "[b]Village:[/b] [coord][/coord]\n[b]Incomings:[/b] \n[b]Landing Time:[/b] \n[b]Support Needed By:[/b] \n[b]Wall Level:[/b] 20",
+                        secondaryText = "BBCode • Defense SOS",
+                        confidence = 1.0,
+                        isEligibleForAutoCommit = true
+                    )
+                )
                 else -> emptyList()
             }
         }

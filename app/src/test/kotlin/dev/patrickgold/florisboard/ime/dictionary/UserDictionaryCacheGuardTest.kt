@@ -36,6 +36,26 @@ class UserDictionaryCacheGuardTest : FunSpec({
             "!d" to "Snippet • Date",
             "!now" to "Snippet • Now",
             "!datetime" to "Snippet • Now",
+            "!b" to "BBCode • Bold",
+            "!i" to "BBCode • Italic",
+            "!u" to "BBCode • Underline",
+            "!s" to "BBCode • Strikethrough",
+            "!quote" to "BBCode • Quote",
+            "!spoiler" to "BBCode • Spoiler",
+            "!url" to "BBCode • URL",
+            "!img" to "BBCode • Image",
+            "!code" to "BBCode • Code",
+            "!color" to "BBCode • Color",
+            "!size" to "BBCode • Size",
+            "!cords" to "BBCode • Village Coord",
+            "!coords" to "BBCode • Village Coord",
+            "!coord" to "BBCode • Village Coord",
+            "!player" to "BBCode • Player",
+            "!tribe" to "BBCode • Tribe",
+            "!ally" to "BBCode • Tribe",
+            "!claim" to "BBCode • Claim",
+            "!report" to "BBCode • Report",
+            "!sos" to "BBCode • Defense SOS",
         )
 
         for ((macro, expectedCategory) in testEntries) {
@@ -47,6 +67,15 @@ class UserDictionaryCacheGuardTest : FunSpec({
             candidate.confidence shouldBe 1.0
             candidate.text.toString().isNotBlank() shouldBe true
         }
+
+        UserDictionaryCache.evaluateMacros("!b").first().text.toString() shouldBe "[b][/b]"
+        UserDictionaryCache.evaluateMacros("!u").first().text.toString() shouldBe "[u][/u]"
+        UserDictionaryCache.evaluateMacros("!cords").first().text.toString() shouldBe "[coord][/coord]"
+        UserDictionaryCache.evaluateMacros("!coords").first().text.toString() shouldBe "[coord][/coord]"
+        UserDictionaryCache.evaluateMacros("!coord").first().text.toString() shouldBe "[coord][/coord]"
+        UserDictionaryCache.evaluateMacros("!player").first().text.toString() shouldBe "[player][/player]"
+        UserDictionaryCache.evaluateMacros("!tribe").first().text.toString() shouldBe "[tribe][/tribe]"
+        UserDictionaryCache.evaluateMacros("!claim").first().text.toString() shouldBe "[claim][/claim]"
     }
 
     test("Case Insensitivity Guard: Upper and lower case shortcut triggers match correctly") {
