@@ -1,11 +1,12 @@
 {
-  "milestone": 344,
-  "tagName": "v0.344.0",
-  "name": "Milestone 344 (Tester Identity Persistence & Biomechanical Calibration)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.344.0/CrakeKeyboard_Milestone_344.apk",
+  "milestone": 345,
+  "tagName": "v0.345.0",
+  "name": "Milestone 345 (Fleet Typo Autocorrect Ingestion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.345.0/CrakeKeyboard_Milestone_345.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 344: Ensured tester identity is never re-prompted if already configured, and applied fleet-derived biomechanical apex calibrations (+13.5px vertical reach on top-row keys).",
+  "changelog": "Milestone 345: Ingested high-frequency fleet typos from 19k telemetry records into fast-path autocorrect (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure).",
   "history": {
+    "345": "Ingested high-frequency fleet typos from 19k telemetry records into fast-path autocorrect (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure).",
     "344": "Ensured tester identity is never re-prompted if already configured, and applied fleet-derived biomechanical apex calibrations (+13.5px vertical reach on top-row keys).",
     "343": "Fixed repeating punctuation and double exclamation mark joining after words, ensuring robust space deletion and clean composing completion.",
     "342": "Emoji Suggestion Pipeline Speed Boost (single-pass linear scan and zero-allocation top-K collector) and 45-min autonomous maintenance loop cycle 4.",

@@ -302,18 +302,37 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 // Ignore
             }
 
-            // 2. Native Safe Rust Trie Word Predictions
-            if (FlorisNative.isAvailable()) {
-                val cleanWordQuery = query
-                    .takeLastWhile { it.isLetter() || it == '\'' || it == '’' || it == '‘' || it == '´' || it == '`' }
-                    .replace('’', '\'')
-                    .replace('‘', '\'')
-                    .replace('´', '\'')
-                    .replace('`', '\'')
-                if (cleanWordQuery.isNotBlank()) {
+            // 2. Fleet Telemetry Fast Typo Corrections
+            val cleanWordQuery = query
+                .takeLastWhile { it.isLetter() || it == '\'' || it == '’' || it == '‘' || it == '´' || it == '`' }
+                .replace('’', '\'')
+                .replace('‘', '\'')
+                .replace('´', '\'')
+                .replace('`', '\'')
+            if (cleanWordQuery.isNotBlank()) {
+                val fleetCorrection = FLEET_TYPO_CORRECTIONS[cleanWordQuery.lowercase()]
+                if (fleetCorrection != null) {
+                    val formatted = when {
+                        cleanWordQuery.all { it.isUpperCase() } -> fleetCorrection.uppercase()
+                        cleanWordQuery.first().isUpperCase() -> fleetCorrection.replaceFirstChar { it.uppercase() }
+                        else -> fleetCorrection
+                    }
+                    add(
+                        WordSuggestionCandidate(
+                            text = formatted,
+                            secondaryText = "Correction",
+                            confidence = 1.0,
+                            isEligibleForAutoCommit = true,
+                            sourceProvider = this@LatinLanguageProvider,
+                        )
+                    )
+                }
+
+                // 3. Native Safe Rust Trie Word Predictions
+                if (FlorisNative.isAvailable()) {
                     val candidates = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
                     for ((index, candidate) in candidates.withIndex()) {
-                        // Avoid duplicates if snippet already added
+                        // Avoid duplicates if snippet or fleet correction already added
                         if (none { it.text.toString().equals(candidate.text, ignoreCase = true) }) {
                             add(
                                 WordSuggestionCandidate(
@@ -330,6 +349,39 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
     }
+
+    private val LATIN_SPACING_EXPANDED_WORDS = setOf(
+        "all", "at", "but", "by", "for", "from", "in", "into", "of", "on", "or",
+        "the", "to", "with",
+    )
+
+    private val FLEET_TYPO_CORRECTIONS = mapOf(
+        "toi" to "you",
+        "ckrdsct" to "correct",
+        "iodated" to "updated",
+        "phr" to "put",
+        "fizdx" to "fixed",
+        "aure" to "sure",
+        "ghe" to "the",
+        "becahsd" to "because",
+        "ifs" to "it's",
+        "adn" to "and",
+        "teh" to "the",
+        "taht" to "that",
+        "waht" to "what",
+        "thsi" to "this",
+        "thier" to "their",
+        "widt" to "with",
+        "dont" to "don't",
+        "cant" to "can't",
+        "wont" to "won't",
+        "didnt" to "didn't",
+        "isnt" to "isn't",
+        "arent" to "aren't",
+        "couldnt" to "couldn't",
+        "shouldnt" to "shouldn't",
+        "wouldnt" to "wouldn't",
+    )
 
     private var lastRevertedWord: String? = null
     private var lastRevertedTimestamp: Long = 0L
