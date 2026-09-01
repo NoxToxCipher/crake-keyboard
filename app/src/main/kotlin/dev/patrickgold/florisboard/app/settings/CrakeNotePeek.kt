@@ -130,18 +130,22 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         }
     }
 
-    // Dynamic Window FLAG_SECURE Shield: Prevents screenshots, screen recorders,
-    // and Task Switcher recent app thumbnails while PIN or secret note is active
+    // Dynamic Window FLAG_SECURE Shield: blocks screenshots, screen recorders,
+    // and the recents thumbnail ONLY while the secret notes are on screen (the
+    // PIN pad or an unlocked secret page). The plain notepad and every other
+    // part of the app stay freely screenshotable. The flag is cleared whenever
+    // the vault is not active, and again on dispose, so it can never linger
+    // onto another screen.
     val isVaultActive = showPin || secretPin != null
     DisposableEffect(isVaultActive) {
-        val activity = context.findActivity()
+        val window = context.findActivity()?.window
         if (isVaultActive) {
-            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
         onDispose {
-            if (isVaultActive) {
-                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-            }
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
 
