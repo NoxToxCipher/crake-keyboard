@@ -1,11 +1,12 @@
 {
-  "milestone": 345,
-  "tagName": "v0.345.0",
-  "name": "Milestone 345 (Fleet Typo Autocorrect Ingestion)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.345.0/CrakeKeyboard_Milestone_345.apk",
+  "milestone": 346,
+  "tagName": "v0.346.0",
+  "name": "Milestone 346 (Accurate Easter Egg Telemetry Ingestion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.346.0/CrakeKeyboard_Milestone_346.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 345: Ingested high-frequency fleet typos from 19k telemetry records into fast-path autocorrect (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure).",
+  "changelog": "Milestone 346: Integrated real-time Easter Egg flight recorder event logging and explicit discovery/solved array telemetry in diagnostic sync bundles.",
   "history": {
+    "346": "Integrated real-time Easter Egg flight recorder event logging and explicit discovery/solved array telemetry in diagnostic sync bundles.",
     "345": "Ingested high-frequency fleet typos from 19k telemetry records into fast-path autocorrect (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure).",
     "344": "Ensured tester identity is never re-prompted if already configured, and applied fleet-derived biomechanical apex calibrations (+13.5px vertical reach on top-row keys).",
     "343": "Fixed repeating punctuation and double exclamation mark joining after words, ensuring robust space deletion and clean composing completion.",

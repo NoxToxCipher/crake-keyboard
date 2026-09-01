@@ -62,6 +62,7 @@ object FlightRecorderManager {
         WORD_COMMITTED,
         SUGGESTION_PICKED,
         RETROACTIVE_REWIND,
+        EASTER_EGG_TRIGGERED,
     }
 
     data class GestureMetrics(
@@ -451,6 +452,22 @@ object FlightRecorderManager {
             rewindDepth = rewindDepth,
             cognitiveDelayChars = cognitiveDelayChars,
             packageName = packageName,
+        )
+        recordChannel.trySend(record)
+    }
+
+    fun logEasterEggTriggered(
+        eggId: String,
+        triggerWord: String,
+        isRecordedGuess: Boolean = false,
+    ) {
+        val record = Record(
+            mode = InputMode.TYPING,
+            action = ActionType.EASTER_EGG_TRIGGERED,
+            rawInput = triggerWord,
+            correctedTo = eggId,
+            intendedWord = if (isRecordedGuess) "SOLVED" else "TRIGGERED",
+            contextBefore = "EasterEgg:$eggId",
         )
         recordChannel.trySend(record)
     }

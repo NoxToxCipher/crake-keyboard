@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 345
+    const val CURRENT_MILESTONE = 346
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 34501
-    private const val RESOLVED_NOTIFICATION_ID = 34502
+    private const val NOTIFICATION_ID = 34601
+    private const val RESOLVED_NOTIFICATION_ID = 34602
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            346 -> "Accurate Easter Egg Telemetry Ingestion: Real-time FlightRecorder event logging for on-device animation triggers and discovered/recorded arrays included in diagnostic sync bundles."
             345 -> "Fleet Typo Autocorrect Ingestion: Fast-path resolution for common fleet slips (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure)."
             344 -> "Tester Identity Persistence & Biomechanical Calibration: Prevents re-prompting confirmed tester handles and applies 19k-keystroke fleet-derived vertical reach calibrations to top-row keys."
             343 -> "Repeating Punctuation & Double Exclamation Fix: Collapses intervening spaces and cleanly commits consecutive exclamation marks, question marks, and interrobangs."

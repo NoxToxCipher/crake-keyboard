@@ -151,6 +151,11 @@ object DiagnosticSyncManager {
                 }
             }
 
+            val discoveredCsv = prefs.easterEggs.discovered.get()
+            val recordedCsv = prefs.easterEggs.recorded.get()
+            val discoveredList = dev.patrickgold.florisboard.ime.keyboard.EasterEggs.discoveredEggs(discoveredCsv).map { it.id }
+            val recordedList = dev.patrickgold.florisboard.ime.keyboard.EasterEggs.recordedEggs(recordedCsv).map { it.id }
+
             val bundleObj = JSONObject().apply {
                 put("timestamp", now)
                 put("time", iso)
@@ -159,6 +164,11 @@ object DiagnosticSyncManager {
                 put("deviceModel", "${Build.MANUFACTURER} ${Build.MODEL}")
                 put("androidVersion", Build.VERSION.RELEASE)
                 put("recordCount", sanitizedCount)
+                put("easterEggsDiscoveredCount", discoveredList.size)
+                put("easterEggsRecordedCount", recordedList.size)
+                put("easterEggsTotal", dev.patrickgold.florisboard.ime.keyboard.EasterEgg.entries.size)
+                put("discoveredEggs", JSONArray(discoveredList))
+                put("recordedEggs", JSONArray(recordedList))
                 put("records", jsonArray)
             }
 

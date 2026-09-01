@@ -332,6 +332,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                         val fresh = discovered.get()
                         if (!EasterEggs.isDiscovered(fresh, egg)) {
                             discovered.set(EasterEggs.withId(fresh, egg.id))
+                            dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logEasterEggTriggered(
+                                eggId = egg.id,
+                                triggerWord = egg.triggerWords.firstOrNull() ?: egg.id,
+                                isRecordedGuess = false,
+                            )
                         }
                     }
                 }
@@ -345,6 +350,11 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
                 val freshRecorded = recorded.get()
                 if (!EasterEggs.isRecorded(freshRecorded, egg)) {
                     recorded.set(EasterEggs.withId(freshRecorded, egg.id))
+                    dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logEasterEggTriggered(
+                        eggId = egg.id,
+                        triggerWord = phrase,
+                        isRecordedGuess = true,
+                    )
                 }
                 val freshDiscovered = discovered.get()
                 if (!EasterEggs.isDiscovered(freshDiscovered, egg)) {
