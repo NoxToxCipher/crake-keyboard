@@ -34,6 +34,7 @@ class FleetTypoCorrectionsTest : FunSpec({
         FleetTypoCorrections.MAP["dobe"] shouldBe "done"
         FleetTypoCorrections.MAP["thid"] shouldBe "this"
         FleetTypoCorrections.MAP["whag"] shouldBe "what"
+        FleetTypoCorrections.MAP["mitificsitons"] shouldBe "notifications"
     }
 
     test("classic slips resolve") {

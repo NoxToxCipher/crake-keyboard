@@ -54,6 +54,10 @@ object FleetTypoCorrections {
         "dobe" to "done",
         "thid" to "this",
         "whag" to "what",
+        // Live specimen 2026-09-01: five adjacent-key slips in one long
+        // word (n->m, o->i, a->s + transposition), beyond the fuzzy edit
+        // budget for len 13 - exactly what the hard map is for.
+        "mitificsitons" to "notifications",
         "actuly" to "actually",
         "actully" to "actually",
         "trigh" to "right",
