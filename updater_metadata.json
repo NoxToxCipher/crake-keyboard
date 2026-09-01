@@ -1,11 +1,12 @@
 {
-  "milestone": 352,
-  "tagName": "v0.352.0",
-  "name": "Milestone 352 (High-Frequency Fleet Typo Optimization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.352.0/CrakeKeyboard_Milestone_352.apk",
+  "milestone": 353,
+  "tagName": "v0.353.0",
+  "name": "Milestone 353 (Universal BBCode & Tribalwars Macro Engine)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.353.0/CrakeKeyboard_Milestone_353.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 352: Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine.",
+  "changelog": "Milestone 353: Added full formatting and village strategy macro suite (!b, !u, !i, !s, !quote, !spoiler, !url, !img, !code, !color, !size, !cords, !player, !tribe, !claim, !report, !sos) with zero regular typing collision.",
   "history": {
+    "353": "Added full formatting and village strategy macro suite (!b, !u, !i, !s, !quote, !spoiler, !url, !img, !code, !color, !size, !cords, !player, !tribe, !claim, !report, !sos) with zero regular typing collision.",
     "352": "Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine.",
     "351": "Ingested high-friction typo corrections from Overlord 36-egg session (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted).",
     "350": "Ingested real-world typing slips and manual reverts from Fleet Tester on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",

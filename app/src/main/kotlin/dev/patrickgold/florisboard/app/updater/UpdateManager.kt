@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 352
+    const val CURRENT_MILESTONE = 353
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 35201
-    private const val RESOLVED_NOTIFICATION_ID = 35202
+    private const val NOTIFICATION_ID = 35301
+    private const val RESOLVED_NOTIFICATION_ID = 35302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                353 -> "Universal BBCode & Tribal Wars Macro Suite: Added full formatting and village strategy macro suite (!b, !u, !i, !s, !quote, !spoiler, !url, !img, !code, !color, !size, !cords, !player, !tribe, !claim, !report, !sos) with zero regular typing collision."
                 352 -> "High-Frequency Fleet Typo Optimization: Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine."
                 351 -> "Overlord 36-Egg Session Typo Ingestion: Ingested newly identified high-friction typos and delayed rewinds (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted)."
                 350 -> "Samsung Fleet Typo & Manual Revert Ingestion: Resolved real-world typing slips and manual reverts captured on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp)."
