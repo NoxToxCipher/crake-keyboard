@@ -1,11 +1,12 @@
 {
-  "milestone": 355,
-  "tagName": "v0.355.0",
-  "name": "Milestone 355 (Note Peek Fluid Physics & Parallax Flow Overhaul)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.355.0/CrakeKeyboard_Milestone_355.apk",
+  "milestone": 356,
+  "tagName": "v0.356.0",
+  "name": "Milestone 356 (Secret Note Vault RAM Zeroization & Window Shield)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.356.0/CrakeKeyboard_Milestone_356.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 355: Overhauled Note Peek with persistent low-level gesture pipeline, velocity-driven momentum fling, zero-jank background persistence, dynamic corner curvature, and parallax slide-in.",
+  "changelog": "Milestone 356: Implemented native Rust zeroization (zeroize) of keys, nonces, and decrypted memory, dynamic Window FLAG_SECURE protection against screenshots/recents thumbnails, immediate onPause lifecycle auto-lock, and private IME input isolation.",
   "history": {
+    "356": "Implemented native Rust zeroization (zeroize) of keys, nonces, and decrypted memory, dynamic Window FLAG_SECURE protection against screenshots/recents thumbnails, immediate onPause lifecycle auto-lock, and private IME input isolation.",
     "355": "Overhauled Note Peek with persistent low-level gesture pipeline, velocity-driven momentum fling, zero-jank background persistence, dynamic corner curvature, and parallax slide-in.",
     "354": "Upgraded Note Peek with dedicated 56dp edge grab strip for 100% reliable swipe-to-open response, and added 60s inactivity auto-lock that seals private notes and returns Peek to standard notepad.",
     "353": "Added full formatting and village strategy macro suite (!b, !u, !i, !s, !quote, !spoiler, !url, !img, !code, !color, !size, !cords, !player, !tribe, !claim, !report, !sos) with zero regular typing collision.",

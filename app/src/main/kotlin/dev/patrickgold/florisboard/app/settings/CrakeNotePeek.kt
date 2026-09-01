@@ -16,6 +16,10 @@
 
 package dev.patrickgold.florisboard.app.settings
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -34,8 +38,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,12 +62,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.ime.nlp.latin.LearnedStateStore
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.launch
+import org.florisboard.lib.compose.DisposableLifecycleEffect
 import org.florisboard.libnative.FlorisNative
 import kotlin.math.abs
 
@@ -119,6 +128,27 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             }
         }
     }
+
+    // Dynamic Window FLAG_SECURE Shield: Prevents screenshots, screen recorders,
+    // and Task Switcher recent app thumbnails while PIN or secret note is active
+    val isVaultActive = showPin || secretPin != null
+    DisposableEffect(isVaultActive) {
+        val activity = context.findActivity()
+        if (isVaultActive) {
+            activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+        onDispose {
+            if (isVaultActive) {
+                activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            }
+        }
+    }
+
+    // Immediate App-Switch & Screen-Off Locking: Wipes plaintext RAM and seals vault on onPause
+    DisposableLifecycleEffect(
+        onResume = { checkAutoLock() },
+        onPause = { leaveSecret() },
+    )
 
     // Auto-lock countdown loop while secret notes are unlocked
     LaunchedEffect(secretPin, lastSecretActivityTime) {
@@ -202,6 +232,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         ) {
             LinedPaperNote(
                 noteText = if (secretPin == null) plainNote else secretContent,
+                isSecret = secretPin != null,
                 onChange = { new ->
                     if (secretPin == null) {
                         scope.launch { prefs.internal.crakeNote.set(new) }
@@ -386,6 +417,7 @@ private const val NOTE_MAX_CHARS = 1600
 private fun LinedPaperNote(
     noteText: String,
     onChange: (String) -> Unit,
+    isSecret: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val paper = Color(0xFFF7F1E3)
@@ -419,6 +451,15 @@ private fun LinedPaperNote(
                         onChange(new)
                     }
                 },
+                keyboardOptions = if (isSecret) {
+                    KeyboardOptions(
+                        autoCorrect = false,
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Default,
+                    )
+                } else {
+                    KeyboardOptions.Default
+                },
                 textStyle = TextStyle(
                     color = ink,
                     fontSize = 16.sp,
@@ -432,4 +473,13 @@ private fun LinedPaperNote(
             )
         }
     }
+}
+
+private fun Context.findActivity(): Activity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
 }

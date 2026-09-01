@@ -59,6 +59,7 @@ fn seal(key: &[u8; 32], plaintext: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(NONCE_LEN + ct.len());
     out.extend_from_slice(&nonce);
     out.extend_from_slice(&ct);
+    nonce.zeroize();
     out
 }
 
@@ -67,12 +68,16 @@ fn unseal(key: &[u8; 32], blob: &[u8]) -> Option<Vec<u8>> {
         return None;
     }
     let cipher = ChaCha20Poly1305::new(Key::from_slice(key));
-    cipher
+    let mut nonce = [0u8; NONCE_LEN];
+    nonce.copy_from_slice(&blob[..NONCE_LEN]);
+    let pt = cipher
         .decrypt(
-            Nonce::from_slice(&blob[..NONCE_LEN]),
+            Nonce::from_slice(&nonce),
             Payload { msg: &blob[NONCE_LEN..], aad: MAGIC },
         )
-        .ok()
+        .ok();
+    nonce.zeroize();
+    pt
 }
 
 /// Splits a vault file into (salt, entries). Returns None for a malformed or
@@ -110,24 +115,30 @@ fn serialize(salt: &[u8; SALT_LEN], entries: &[Vec<u8>]) -> Vec<u8> {
 
 /// Opens the page sealed under `pin`. Returns the page text, or an empty
 /// string when no page exists for this PIN (a fresh, blank page) - never an
-/// error, never a signal about whether the PIN is "known".
+/// error, never a signal about whether the PIN is "known". All derived keys
+/// and decrypted buffers in RAM are strictly zeroized before returning.
 pub fn note_vault_open(vault: &[u8], pin: &str) -> String {
     let (salt, entries) = match parse(vault) {
         Some(v) => v,
         None => return String::new(),
     };
-    let key = derive_key(pin, &salt);
+    let mut key = derive_key(pin, &salt);
     for entry in &entries {
-        if let Some(pt) = unseal(&key, entry) {
-            return String::from_utf8_lossy(&pt).into_owned();
+        if let Some(mut pt) = unseal(&key, entry) {
+            let res = String::from_utf8_lossy(&pt).into_owned();
+            pt.zeroize();
+            key.zeroize();
+            return res;
         }
     }
+    key.zeroize();
     String::new()
 }
 
 /// Saves `content` as the page for `pin`, returning the new vault bytes. Any
 /// previous page for this PIN is replaced. Saving empty content removes the
-/// PIN's page entirely (clearing a secret page leaves no trace of it).
+/// PIN's page entirely (clearing a secret page leaves no trace of it). All
+/// cryptographic keys in RAM are zeroized upon completion.
 pub fn note_vault_save(vault: &[u8], pin: &str, content: &str) -> Vec<u8> {
     let (salt, entries) = match parse(vault) {
         Some(v) => v,
@@ -137,7 +148,7 @@ pub fn note_vault_save(vault: &[u8], pin: &str, content: &str) -> Vec<u8> {
             (salt, Vec::new())
         }
     };
-    let key = derive_key(pin, &salt);
+    let mut key = derive_key(pin, &salt);
     // Keep every entry this key cannot open (other PINs' pages).
     let mut kept: Vec<Vec<u8>> = entries
         .into_iter()
@@ -146,6 +157,7 @@ pub fn note_vault_save(vault: &[u8], pin: &str, content: &str) -> Vec<u8> {
     if !content.is_empty() {
         kept.push(seal(&key, content.as_bytes()));
     }
+    key.zeroize();
     serialize(&salt, &kept)
 }
 

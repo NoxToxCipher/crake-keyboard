@@ -77,6 +77,12 @@ fun CrakePinScreen(
 
     var pin by remember { mutableStateOf("") }
 
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            pin = ""
+        }
+    }
+
     fun press(d: String) {
         if (pin.length < pinLength) {
             pin += d
