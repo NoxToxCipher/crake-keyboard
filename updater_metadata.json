@@ -1,11 +1,12 @@
 {
-  "milestone": 349,
-  "tagName": "v0.349.0",
-  "name": "Milestone 349 (High-Velocity Burst Typo Resolution)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.349.0/CrakeKeyboard_Milestone_349.apk",
+  "milestone": 350,
+  "tagName": "v0.350.0",
+  "name": "Milestone 350 (Charlton Fleet Typo & Manual Revert Ingestion)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.350.0/CrakeKeyboard_Milestone_350.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 349: Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate).",
+  "changelog": "Milestone 350: Ingested real-world typing slips and manual reverts from Charlton on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",
   "history": {
+    "350": "Ingested real-world typing slips and manual reverts from Charlton on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",
     "349": "Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate).",
     "348": "Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",
     "347": "Implemented burst typing speed (WPM/CPM), typing friction ratio, display density metrics, and aggregate per-key spatial touch error summaries in telemetry sync bundles.",

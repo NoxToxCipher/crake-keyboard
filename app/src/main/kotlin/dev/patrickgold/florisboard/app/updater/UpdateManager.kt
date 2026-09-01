@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 349
+    const val CURRENT_MILESTONE = 350
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 34901
-    private const val RESOLVED_NOTIFICATION_ID = 34902
+    private const val NOTIFICATION_ID = 35001
+    private const val RESOLVED_NOTIFICATION_ID = 35002
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            350 -> "Charlton Fleet Typo & Manual Revert Ingestion: Resolved real-world typing slips and manual reverts captured on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp)."
             349 -> "High-Velocity Burst Typo Resolution: Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate)."
             348 -> "LRU Suggestion Pipeline Speed Boost & Overlord Typo Ingestion: Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why)."
             347 -> "Advanced Telemetry Intelligence: Real-time burst typing speed (WPM/CPM), typing friction ratio, hardware display metrics, and per-key spatial touch error summaries in telemetry sync bundles."
