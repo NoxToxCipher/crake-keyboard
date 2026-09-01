@@ -107,61 +107,70 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val openWidth = if (maxWidth * 0.82f < 340.dp) maxWidth * 0.82f else 340.dp
         val openPx = with(density) { openWidth.toPx() }
-        val peekPx = with(density) { 10.dp.toPx() }
-        val offsetX = remember { Animatable(peekPx) }
+        // Fully closed = 0: no sliver, no shadow, nothing at rest. The page
+        // is meant to be sought out, not stumbled on. Opening is a deliberate
+        // pull-right that must START at the very left edge, so a stray
+        // horizontal swipe in the body never reveals it and nothing on
+        // screen hints it exists.
+        val closedPx = 0f
+        val edgePx = with(density) { 24.dp.toPx() }
+        val offsetX = remember { Animatable(closedPx) }
         var lastDragDelta by remember { mutableStateOf(0f) }
+        var openArmed by remember { mutableStateOf(false) }
         val isOpen = offsetX.value > openPx * 0.6f
 
         fun animateTo(target: Float) {
             scope.launch {
                 offsetX.animateTo(target, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
             }
-            if (target <= peekPx + 1f) leaveSecret()
+            if (target <= closedPx + 1f) leaveSecret()
         }
 
         fun settle() {
             val target = when {
                 lastDragDelta > 6f -> openPx
-                lastDragDelta < -6f -> peekPx
-                offsetX.value > (peekPx + openPx) / 2f -> openPx
-                else -> peekPx
+                lastDragDelta < -6f -> closedPx
+                offsetX.value > openPx / 2f -> openPx
+                else -> closedPx
             }
             animateTo(target)
         }
 
         BackHandler(enabled = isOpen || showPin) {
-            if (showPin) showPin = false else animateTo(peekPx)
+            if (showPin) showPin = false else animateTo(closedPx)
         }
 
-        Box(modifier = Modifier.align(Alignment.CenterStart).width(openWidth).fillMaxHeight()) {
-            LinedPaperNote(
-                noteText = if (secretPin == null) plainNote else secretContent,
-                onChange = { new ->
-                    if (secretPin == null) {
-                        scope.launch { prefs.internal.crakeNote.set(new) }
-                    } else {
-                        secretContent = new
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 8.dp)
-                    .pointerInput(isOpen) {
-                        if (!isOpen) detectTapGestures { animateTo(openPx) }
+        // The paper is composed ONLY while the drawer is off its resting
+        // edge. At rest it does not exist, so it cannot bleed through the
+        // homepage's transparent gaps - nothing hints the page is there.
+        if (offsetX.value > 0.5f) {
+            Box(modifier = Modifier.align(Alignment.CenterStart).width(openWidth).fillMaxHeight()) {
+                LinedPaperNote(
+                    noteText = if (secretPin == null) plainNote else secretContent,
+                    onChange = { new ->
+                        if (secretPin == null) {
+                            scope.launch { prefs.internal.crakeNote.set(new) }
+                        } else {
+                            secretContent = new
+                        }
                     },
-            )
-            // The unmarked door: a long-press on the red margin strip (left
-            // of the writing area, so typing never triggers it) opens the
-            // PIN. Nothing labels it.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width(48.dp)
-                    .fillMaxHeight()
-                    .pointerInput(Unit) {
-                        detectTapGestures(onLongPress = { showPin = true })
-                    },
-            )
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 8.dp),
+                )
+                // The unmarked door: a long-press on the red margin strip
+                // (left of the writing area, so typing never triggers it)
+                // opens the PIN. Nothing labels it.
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .width(48.dp)
+                        .fillMaxHeight()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onLongPress = { showPin = true })
+                        },
+                )
+            }
         }
 
         Box(
@@ -170,20 +179,28 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                 .graphicsLayer { translationX = offsetX.value }
                 .pointerInput(openPx) {
                     detectHorizontalDragGestures(
-                        onDragStart = { lastDragDelta = 0f },
-                        onDragEnd = { settle() },
-                        onDragCancel = { settle() },
+                        onDragStart = { offset ->
+                            lastDragDelta = 0f
+                            // Only a pull that begins at the left edge (or any
+                            // drag while already open, to close) moves the
+                            // page. A swipe in the middle does nothing, so the
+                            // page is never revealed by accident.
+                            openArmed = isOpen || offset.x < edgePx
+                        },
+                        onDragEnd = { if (openArmed) settle() },
+                        onDragCancel = { if (openArmed) settle() },
                         onHorizontalDrag = { change, delta ->
+                            if (!openArmed) return@detectHorizontalDragGestures
                             lastDragDelta = delta
                             change.consume()
                             scope.launch {
-                                offsetX.snapTo((offsetX.value + delta).coerceIn(peekPx, openPx))
+                                offsetX.snapTo((offsetX.value + delta).coerceIn(closedPx, openPx))
                             }
                         },
                     )
                 }
                 .pointerInput(isOpen) {
-                    if (isOpen) detectTapGestures { animateTo(peekPx) }
+                    if (isOpen) detectTapGestures { animateTo(closedPx) }
                 },
         ) {
             content()
