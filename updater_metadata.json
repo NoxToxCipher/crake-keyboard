@@ -1,11 +1,12 @@
 {
-  "milestone": 371,
-  "tagName": "v0.371.0",
-  "name": "Milestone 371 (Tactile Cryptographic Haptics & Dynamic Island Physicality)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.371.0/CrakeKeyboard_Milestone_371.apk",
+  "milestone": 372,
+  "tagName": "v0.372.0",
+  "name": "Milestone 372 (Smartbar Dynamic Island Interactive Gesture Controller)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.372.0/CrakeKeyboard_Milestone_372.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 371: Added subtle snappy haptic feedback on in-place encryption/decryption success, perfectly synchronized with Dynamic Island capsule morphing.",
+  "changelog": "Milestone 372: Smartbar Dynamic Island Interactive Gesture Controller with context-aware tap actions and one-tap dismiss.",
   "history": {
+    "372": "Smartbar Dynamic Island Interactive Gesture Controller with context-aware tap actions and one-tap dismiss.",
     "371": "Added subtle snappy haptic feedback on in-place encryption/decryption success, perfectly synchronized with Dynamic Island capsule morphing.",
     "370": "Optimized suggestion caching with zero-allocation composite keys, reducing keystroke prediction latency and GC churn across fast typing bursts.",
     "369": "Fixed keyboard manager crypto action dispatches, ensuring instant glowing Cyan & Emerald island capsules fire while typing across all messaging apps.",

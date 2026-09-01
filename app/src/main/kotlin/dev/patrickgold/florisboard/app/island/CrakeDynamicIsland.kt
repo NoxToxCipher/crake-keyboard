@@ -166,8 +166,13 @@ fun CrakeDynamicIslandOverlay(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            if (!isExpanded && notif.onClick != null) {
+                            if (notif.onClick != null) {
                                 notif.onClick.invoke()
+                            } else if (!useStatusBarsPadding && notif.onAction != null) {
+                                notif.onAction.invoke()
+                                DynamicIslandManager.dismiss(notif.id)
+                            } else if (!useStatusBarsPadding) {
+                                DynamicIslandManager.dismiss(notif.id)
                             } else {
                                 DynamicIslandManager.toggleExpanded()
                             }
