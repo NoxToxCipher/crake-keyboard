@@ -23,9 +23,13 @@ import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import dev.patrickgold.florisboard.FlorisImeService
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
+import dev.patrickgold.florisboard.app.island.DynamicIslandManager
+import dev.patrickgold.florisboard.app.island.IslandNotification
+import dev.patrickgold.florisboard.app.island.IslandPriority
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.clipboardManager
 import dev.patrickgold.florisboard.editorInstance
@@ -772,23 +776,75 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         val recipient = prefs.internal.crakeActiveRecipient.get().trim()
         if (recipient.isEmpty()) {
             crakeToast("Set who you're messaging in Crake > Encryption first")
+            DynamicIslandManager.post(
+                IslandNotification(
+                    id = "crypto_encrypt_no_recipient",
+                    title = "Recipient Needed 🔒",
+                    subtitle = "Set contact in Crake Settings > Encryption first",
+                    emoji = "🔑",
+                    accentColor = Color(0xFFF08A8A),
+                    priority = IslandPriority.HIGH,
+                )
+            )
             return
         }
         val source = editorInstance.getCryptoSourceText()
         if (source.isBlank()) {
             crakeToast("Nothing to encrypt")
+            DynamicIslandManager.post(
+                IslandNotification(
+                    id = "crypto_encrypt_empty",
+                    title = "Nothing to Encrypt 🔒",
+                    subtitle = "Type a message in the text field to seal it",
+                    emoji = "🔒",
+                    accentColor = Color(0xFFF08A8A),
+                    priority = IslandPriority.NORMAL,
+                )
+            )
             return
         }
         if (org.florisboard.libnative.FlorisNative.cryptoScheme(source).isNotEmpty()) {
             crakeToast("This already looks encrypted")
+            DynamicIslandManager.post(
+                IslandNotification(
+                    id = "crypto_already_encrypted",
+                    title = "Already Encrypted 🛡️",
+                    subtitle = "This text is already a sealed Crake block",
+                    emoji = "🛡️",
+                    accentColor = Color(0xFF38BDF8),
+                    priority = IslandPriority.NORMAL,
+                )
+            )
             return
         }
         val r = org.florisboard.libnative.FlorisNative.cryptoEncrypt("publickey", source, recipient)
         if (r.ok) {
             editorInstance.replaceCryptoSourceText(r.value!!)
             crakeToast("Encrypted")
+            val recipientLabel = prefs.internal.crakeActiveRecipientLabel.get().trim().ifBlank { "Contact" }
+            DynamicIslandManager.post(
+                IslandNotification(
+                    id = "crypto_in_place_sealed",
+                    title = "Message Encrypted 🔒",
+                    subtitle = "Sealed to $recipientLabel (X25519 + ChaCha20-Poly1305)",
+                    emoji = "🔒",
+                    accentColor = Color(0xFF22D3EE),
+                    durationMs = 4000L,
+                    priority = IslandPriority.HIGH,
+                )
+            )
         } else {
             crakeToast("Couldn't encrypt: ${r.error}")
+            DynamicIslandManager.post(
+                IslandNotification(
+                    id = "crypto_encrypt_error",
+                    title = "Encryption Failed ❌",
+                    subtitle = "${r.error}",
+                    emoji = "❌",
+                    accentColor = Color(0xFFF08A8A),
+                    priority = IslandPriority.HIGH,
+                )
+            )
         }
     }
 
@@ -804,18 +860,73 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 val priv = dev.patrickgold.florisboard.app.settings.crypto.CrakeIdentityStore(appContext.filesDir).privateKeyHex()
                 if (priv == null) {
                     crakeToast("No identity yet - open Crake > Encryption")
+                    DynamicIslandManager.post(
+                        IslandNotification(
+                            id = "crypto_decrypt_no_id",
+                            title = "No Identity Keypair 🔑",
+                            subtitle = "Generate your key in Crake Settings > Encryption",
+                            emoji = "🔑",
+                            accentColor = Color(0xFFF08A8A),
+                            priority = IslandPriority.HIGH,
+                        )
+                    )
                     return
                 }
                 val r = org.florisboard.libnative.FlorisNative.cryptoDecrypt("publickey", source, priv)
                 if (r.ok) {
                     editorInstance.replaceCryptoSourceText(r.value!!)
                     crakeToast("Decrypted")
+                    DynamicIslandManager.post(
+                        IslandNotification(
+                            id = "crypto_in_place_unsealed",
+                            title = "Message Decrypted 🔓",
+                            subtitle = "Plaintext unsealed in-place via X25519 private key",
+                            emoji = "🔓",
+                            accentColor = Color(0xFF34D399),
+                            durationMs = 4000L,
+                            priority = IslandPriority.HIGH,
+                        )
+                    )
                 } else {
                     crakeToast("Couldn't decrypt: ${r.error}")
+                    DynamicIslandManager.post(
+                        IslandNotification(
+                            id = "crypto_decrypt_error",
+                            title = "Decryption Failed ❌",
+                            subtitle = "${r.error}",
+                            emoji = "❌",
+                            accentColor = Color(0xFFF08A8A),
+                            priority = IslandPriority.HIGH,
+                        )
+                    )
                 }
             }
-            "passphrase" -> crakeToast("Passphrase message - open Crake > Encryption to unlock")
-            else -> crakeToast("No Crake message here")
+            "passphrase" -> {
+                crakeToast("Passphrase message - open Crake > Encryption to unlock")
+                DynamicIslandManager.post(
+                    IslandNotification(
+                        id = "crypto_passphrase_msg",
+                        title = "Passphrase Message 🛡️",
+                        subtitle = "Open Crake Settings > Encryption to unlock with passphrase",
+                        emoji = "🛡️",
+                        accentColor = Color(0xFFFBBF24),
+                        priority = IslandPriority.NORMAL,
+                    )
+                )
+            }
+            else -> {
+                crakeToast("No Crake message here")
+                DynamicIslandManager.post(
+                    IslandNotification(
+                        id = "crypto_no_msg",
+                        title = "No Sealed Message Found 🔍",
+                        subtitle = "Text does not contain a crake-armored block",
+                        emoji = "ℹ️",
+                        accentColor = Color(0xFF94A3B8),
+                        priority = IslandPriority.LOW,
+                    )
+                )
+            }
         }
     }
 
