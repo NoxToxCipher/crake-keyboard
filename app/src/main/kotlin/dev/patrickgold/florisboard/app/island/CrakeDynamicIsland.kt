@@ -386,6 +386,15 @@ fun CrakeDynamicIslandOverlay(
                                 fontWeight = FontWeight.Bold,
                             )
                         }
+                    } else if (notif.subtitle != null) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = notif.subtitle,
+                            color = Color(0xFF94A3B8),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }

@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 377
+    const val CURRENT_MILESTONE = 378
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 37701
-    private const val RESOLVED_NOTIFICATION_ID = 37702
+    private const val NOTIFICATION_ID = 37801
+    private const val RESOLVED_NOTIFICATION_ID = 37802
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                378 -> "Dynamic Island Compact Subtitle Rendering & Animation Physics Optimization: Added contextual subtitle chips in compact Dynamic Island capsule layout for glanceable cryptographic status."
                 377 -> "Smartbar HUD Dynamic Island Dimension Scaling & Vocabulary Ingestions: Calibrated Smartbar capsule width for enhanced notification readability and expanded telemetry typo mappings for fluid Compose animations."
                 376 -> "Zero-Copy Word Token Sanitizer: Direct reference passthrough for unclipped clean token strings in NLP tokenization, eliminating keystroke-level string duplication."
                 375 -> "Zero-Allocation Token Sanitizer & Dynamic Island Status Polishing: Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering."

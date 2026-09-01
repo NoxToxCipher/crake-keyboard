@@ -1,11 +1,12 @@
 {
-  "milestone": 377,
-  "tagName": "v0.377.0",
-  "name": "Milestone 377 (Smartbar HUD Dynamic Island Dimension Scaling & Vocabulary Expansion)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.377.0/CrakeKeyboard_Milestone_377.apk",
+  "milestone": 378,
+  "tagName": "v0.378.0",
+  "name": "Milestone 378 (Dynamic Island Compact Subtitle Rendering & Animation Physics Optimization)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.378.0/CrakeKeyboard_Milestone_378.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 377: Calibrated Smartbar Dynamic Island width scaling and ingested fleet typo slips.",
+  "changelog": "Milestone 378: Added contextual subtitle chips in compact Dynamic Island capsule layout.",
   "history": {
+    "378": "Added contextual subtitle chips in compact Dynamic Island capsule layout.",
     "377": "Calibrated Smartbar Dynamic Island width scaling and ingested fleet typo slips.",
     "376": "Direct reference passthrough for unclipped clean token strings in NLP tokenization.",
     "375": "Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering.",
