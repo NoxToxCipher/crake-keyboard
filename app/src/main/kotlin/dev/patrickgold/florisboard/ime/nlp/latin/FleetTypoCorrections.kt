@@ -1,0 +1,80 @@
+/*
+ * Copyright (C) 2026 The Crake Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package dev.patrickgold.florisboard.ime.nlp.latin
+
+/**
+ * The fleet typo hard map: a typed token on the left is offered as the word
+ * on the right ahead of the engine's fuzzy search. Ingestion rules, learned
+ * the hard way across audits:
+ *
+ *  - every entry must have a keyboard mechanism (neighbor slips,
+ *    transpositions, dropped letters) - no mechanism, no entry;
+ *  - the left side must not be a real word, standing abbreviation, or
+ *    formal term. "iff" (if-and-only-if), "thks" (thanks), and "hwy"
+ *    (highway) have all been removed on this rule - a hard map that
+ *    rewrites a real token is corpus poison.
+ *
+ * Lives outside the provider so FleetTypoCorrectionsTest pins the REAL map;
+ * the previous test asserted a private copy of itself and guarded nothing.
+ */
+object FleetTypoCorrections {
+    val MAP: Map<String, String> = mapOf(
+        "toi" to "you",
+        "ckrdsct" to "correct",
+        "iodated" to "updated",
+        "phr" to "put",
+        "fizdx" to "fixed",
+        "aure" to "sure",
+        "ghe" to "the",
+        "becahsd" to "because",
+        "ifs" to "it's",
+        "adn" to "and",
+        "teh" to "the",
+        "taht" to "that",
+        "waht" to "what",
+        "thsi" to "this",
+        "thier" to "their",
+        "widt" to "with",
+        "rhjs" to "this",
+        "jat" to "that",
+        "dobe" to "done",
+        "thid" to "this",
+        "whag" to "what",
+        "actuly" to "actually",
+        "actully" to "actually",
+        "trigh" to "right",
+        "tought" to "thought",
+        "thoght" to "thought",
+        "whcih" to "which",
+        "becasue" to "because",
+        "definitly" to "definitely",
+        "definately" to "definitely",
+        "seperate" to "separate",
+        "occured" to "occurred",
+        "untill" to "until",
+        "realy" to "really",
+        "dont" to "don't",
+        "cant" to "can't",
+        "wont" to "won't",
+        "didnt" to "didn't",
+        "isnt" to "isn't",
+        "arent" to "aren't",
+        "couldnt" to "couldn't",
+        "shouldnt" to "shouldn't",
+        "wouldnt" to "wouldn't",
+    )
+}

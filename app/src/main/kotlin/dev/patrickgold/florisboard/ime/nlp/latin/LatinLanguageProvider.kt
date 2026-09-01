@@ -131,6 +131,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             try {
                 learnedStore.load()?.let {
                     val restored = FlorisNative.importLearned(it)
+                    nativeSuggestCache.evictAll()
                     Log.i("CrakeStartup", "learned state restored: $restored words")
                 }
                 offsetsStore.load()?.let {
@@ -362,53 +363,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         "the", "to", "with",
     )
 
-    private val FLEET_TYPO_CORRECTIONS = mapOf(
-        "toi" to "you",
-        "ckrdsct" to "correct",
-        "iodated" to "updated",
-        "phr" to "put",
-        "fizdx" to "fixed",
-        "aure" to "sure",
-        "ghe" to "the",
-        "becahsd" to "because",
-        "ifs" to "it's",
-        "adn" to "and",
-        "teh" to "the",
-        "taht" to "that",
-        "waht" to "what",
-        "thsi" to "this",
-        "thier" to "their",
-        "widt" to "with",
-        "rhjs" to "this",
-        "jat" to "that",
-        "dobe" to "done",
-        "thks" to "this",
-        "thid" to "this",
-        "whag" to "what",
-        "hwy" to "why",
-        "actuly" to "actually",
-        "actully" to "actually",
-        "trigh" to "right",
-        "tought" to "thought",
-        "thoght" to "thought",
-        "whcih" to "which",
-        "becasue" to "because",
-        "definitly" to "definitely",
-        "definately" to "definitely",
-        "seperate" to "separate",
-        "occured" to "occurred",
-        "untill" to "until",
-        "realy" to "really",
-        "dont" to "don't",
-        "cant" to "can't",
-        "wont" to "won't",
-        "didnt" to "didn't",
-        "isnt" to "isn't",
-        "arent" to "aren't",
-        "couldnt" to "couldn't",
-        "shouldnt" to "shouldn't",
-        "wouldnt" to "wouldn't",
-    )
+    // In the companion so FleetTypoCorrectionsTest pins the REAL map -
+    // the previous test declared its own copy and asserted it against
+    // itself, which guards nothing.
+    private val FLEET_TYPO_CORRECTIONS = FleetTypoCorrections.MAP
 
     private var lastRevertedWord: String? = null
     private var lastRevertedTimestamp: Long = 0L
@@ -449,6 +407,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val offsetsStore by lazy { LearnedStateStore(appContext.filesDir, "crake_touch.crkt") }
 
     private fun persistLearnedState() {
+        // Every learning mutation funnels through here, so this is also
+        // where the suggestion cache dies: cached results embed learned
+        // words, personal bigrams, and rejected corrections, and serving
+        // them stale would resurrect autocorrects the user just rejected.
+        nativeSuggestCache.evictAll()
         try {
             val data = FlorisNative.exportLearned() ?: return
             learnedStore.save(data)
