@@ -618,6 +618,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
             key = "internal__crake_note",
             default = "",
         )
+        // Shown once, only to someone who has already found the note, to
+        // teach the way into the private page. Cleared after first view.
+        val crakeNoteHintSeen = boolean(
+            key = "internal__crake_note_hint_seen",
+            default = false,
+        )
         val isImeSetUp = boolean(
             key = "internal__is_ime_set_up",
             default = false,

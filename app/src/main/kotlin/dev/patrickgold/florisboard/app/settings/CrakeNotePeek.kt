@@ -24,6 +24,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -78,6 +80,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val plainNote by prefs.internal.crakeNote.collectAsState()
+    val hintSeen by prefs.internal.crakeNoteHintSeen.collectAsState()
 
     // Blends with the app's other crake_*.enc caches; Keystore-sealed on top
     // of the PIN encryption, so an imaged file is doubly protected.
@@ -158,18 +161,66 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                         .fillMaxSize()
                         .padding(vertical = 8.dp),
                 )
-                // The unmarked door: a long-press on the red margin strip
-                // (left of the writing area, so typing never triggers it)
-                // opens the PIN. Nothing labels it.
+                // The unmarked door on the red margin strip (left of the
+                // writing area, so typing never triggers it). Two ways in,
+                // both requiring intent: a long hold, or a downward swipe
+                // running most of the line's length. Nothing labels it.
+                var stripHeightPx by remember { mutableStateOf(1f) }
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .width(48.dp)
                         .fillMaxHeight()
+                        .onSizeChanged { stripHeightPx = it.height.toFloat().coerceAtLeast(1f) }
                         .pointerInput(Unit) {
-                            detectTapGestures(onLongPress = { showPin = true })
+                            detectTapGestures(onLongPress = {
+                                scope.launch { prefs.internal.crakeNoteHintSeen.set(true) }
+                                showPin = true
+                            })
+                        }
+                        .pointerInput(Unit) {
+                            var travelled = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { travelled = 0f },
+                                onVerticalDrag = { change, dy ->
+                                    travelled += dy
+                                    change.consume()
+                                },
+                                onDragEnd = {
+                                    // Most of the line, downward.
+                                    if (travelled >= stripHeightPx * 0.6f) {
+                                        scope.launch { prefs.internal.crakeNoteHintSeen.set(true) }
+                                        showPin = true
+                                    }
+                                },
+                            )
                         },
                 )
+
+                // First time only, shown to whoever already found the note:
+                // how to reach the private page. Never appears again.
+                if (secretPin == null && !hintSeen) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(start = 50.dp, end = 16.dp, bottom = 18.dp),
+                    ) {
+                        Surface(
+                            color = Color(0xFF243447),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.pointerInput(Unit) {
+                                detectTapGestures { scope.launch { prefs.internal.crakeNoteHintSeen.set(true) } }
+                            },
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = "Private page: hold the red line, or swipe down it. Tap to dismiss.",
+                                color = Color(0xFFF7F1E3),
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
 
