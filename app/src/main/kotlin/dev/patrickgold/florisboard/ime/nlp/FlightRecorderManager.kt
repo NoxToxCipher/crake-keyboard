@@ -115,6 +115,8 @@ object FlightRecorderManager {
         val isTypo: Boolean = false,
         val rewindDepth: Int? = null,
         val cognitiveDelayChars: Int? = null,
+        val wpm: Float? = null,
+        val cpm: Float? = null,
     ) {
         fun toJsonString(): String = buildString {
             append("{\"timestamp\":").append(timestamp)
@@ -133,6 +135,8 @@ object FlightRecorderManager {
             stripDwellMs?.let { append(",\"stripDwellMs\":").append(it) }
             interKeyFlightTimeMs?.let { append(",\"flightTimeMs\":").append(it) }
             trieSearchDurationUs?.let { append(",\"trieSearchDurationUs\":").append(it) }
+            wpm?.let { append(String.format(Locale.US, ",\"wpm\":%.1f", it)) }
+            cpm?.let { append(String.format(Locale.US, ",\"cpm\":%.1f", it)) }
             candidates?.let { list ->
                 append(",\"candidates\":[")
                 list.forEachIndexed { i, cand ->
@@ -384,6 +388,15 @@ object FlightRecorderManager {
             else -> ActionType.WORD_COMMITTED
         }
 
+        val now = System.currentTimeMillis()
+        val elapsedMs = if (lastCommittedTime > 0L) (now - lastCommittedTime) else 0L
+        val calculatedWpm = if (elapsedMs in 150L..5000L && committedWord.length >= 2) {
+            (60000f / elapsedMs).coerceIn(5f, 250f)
+        } else null
+        val calculatedCpm = if (calculatedWpm != null && elapsedMs > 0L) {
+            (committedWord.length * 60000f / elapsedMs).coerceIn(20f, 1500f)
+        } else null
+
         val record = Record(
             mode = mode,
             action = action,
@@ -393,12 +406,14 @@ object FlightRecorderManager {
             isTypo = isMissedCorrection,
             contextBefore = sanitizePii(contextBefore?.takeLast(32)),
             packageName = packageName,
+            wpm = calculatedWpm,
+            cpm = calculatedCpm,
         )
 
         lastRawInput = rawInput
         lastCommittedWord = committedWord
         lastCommittedMode = mode
-        lastCommittedTime = System.currentTimeMillis()
+        lastCommittedTime = now
         lastCommittedAction = action
         lastCandidates = topCandidates
 

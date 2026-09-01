@@ -151,6 +151,62 @@ object DiagnosticSyncManager {
                 }
             }
 
+            var totalKeyTaps = 0
+            var totalBackspaces = 0
+            var totalAutocorrects = 0
+            var totalAutocorrectUndos = 0
+            val wpmList = mutableListOf<Float>()
+            val spatialStats = mutableMapOf<String, Pair<Float, Float>>() // key -> (sumDx, sumDy)
+            val spatialCounts = mutableMapOf<String, Int>()
+
+            for (i in 0 until jsonArray.length()) {
+                val r = jsonArray.getJSONObject(i)
+                val action = r.optString("action", "")
+                if (action == "KEY_TAP") totalKeyTaps++
+                if (action == "BACKSPACE_DELETE" || action == "MANUAL_REVERT") totalBackspaces++
+                if (action == "AUTOCORRECTION") totalAutocorrects++
+                if (r.optBoolean("autocorrectUndo", false)) totalAutocorrectUndos++
+                if (r.has("wpm")) {
+                    val w = r.getDouble("wpm").toFloat()
+                    if (w > 0f) wpmList.add(w)
+                }
+                val spatial = r.optString("spatialOffset", "")
+                val rawInput = r.optString("rawInput", "")
+                if (spatial.isNotEmpty() && rawInput.length == 1) {
+                    val parts = spatial.split(",")
+                    if (parts.size == 2) {
+                        val dx = parts[0].toFloatOrNull()
+                        val dy = parts[1].toFloatOrNull()
+                        if (dx != null && dy != null) {
+                            val k = rawInput.lowercase()
+                            val cur = spatialStats.getOrDefault(k, 0f to 0f)
+                            spatialStats[k] = (cur.first + dx) to (cur.second + dy)
+                            spatialCounts[k] = spatialCounts.getOrDefault(k, 0) + 1
+                        }
+                    }
+                }
+            }
+
+            val spatialSummaryObj = JSONObject()
+            for ((k, count) in spatialCounts) {
+                val (sumX, sumY) = spatialStats[k] ?: (0f to 0f)
+                spatialSummaryObj.put(k, JSONObject().apply {
+                    put("mean_dx", String.format(Locale.US, "%.2f", sumX / count).toDouble())
+                    put("mean_dy", String.format(Locale.US, "%.2f", sumY / count).toDouble())
+                    put("samples", count)
+                })
+            }
+
+            val dm = context.resources.displayMetrics
+            val avgWpm = if (wpmList.isNotEmpty()) String.format(Locale.US, "%.1f", wpmList.average()).toDouble() else 0.0
+            val peakWpm = if (wpmList.isNotEmpty()) String.format(Locale.US, "%.1f", wpmList.maxOrNull() ?: 0f).toDouble() else 0.0
+            val backspaceRatio = if (totalKeyTaps + totalBackspaces > 0) {
+                String.format(Locale.US, "%.3f", totalBackspaces.toDouble() / (totalKeyTaps + totalBackspaces)).toDouble()
+            } else 0.0
+            val autocorrectAccuracy = if (totalAutocorrects > 0) {
+                String.format(Locale.US, "%.3f", 1.0 - (totalAutocorrectUndos.toDouble() / totalAutocorrects).coerceIn(0.0, 1.0)).toDouble()
+            } else 1.0
+
             val discoveredCsv = prefs.easterEggs.discovered.get()
             val recordedCsv = prefs.easterEggs.recorded.get()
             val discoveredList = dev.patrickgold.florisboard.ime.keyboard.EasterEggs.discoveredEggs(discoveredCsv).map { it.id }
@@ -163,12 +219,20 @@ object DiagnosticSyncManager {
                 put("testerName", testerName)
                 put("deviceModel", "${Build.MANUFACTURER} ${Build.MODEL}")
                 put("androidVersion", Build.VERSION.RELEASE)
+                put("screenDensityDpi", dm.densityDpi)
+                put("screenWidthPx", dm.widthPixels)
+                put("screenHeightPx", dm.heightPixels)
                 put("recordCount", sanitizedCount)
+                put("averageWpm", avgWpm)
+                put("peakWpm", peakWpm)
+                put("backspaceRatio", backspaceRatio)
+                put("autocorrectAccuracyRate", autocorrectAccuracy)
                 put("easterEggsDiscoveredCount", discoveredList.size)
                 put("easterEggsRecordedCount", recordedList.size)
                 put("easterEggsTotal", dev.patrickgold.florisboard.ime.keyboard.EasterEgg.entries.size)
                 put("discoveredEggs", JSONArray(discoveredList))
                 put("recordedEggs", JSONArray(recordedList))
+                put("keySpatialErrorSummary", spatialSummaryObj)
                 put("records", jsonArray)
             }
 
