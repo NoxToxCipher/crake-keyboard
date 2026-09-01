@@ -81,6 +81,7 @@ import androidx.compose.ui.zIndex
 @Composable
 fun CrakeDynamicIslandOverlay(
     modifier: Modifier = Modifier,
+    useStatusBarsPadding: Boolean = true,
 ) {
     val notification by DynamicIslandManager.currentNotification.collectAsState()
     val isExpanded by DynamicIslandManager.isExpanded.collectAsState()
@@ -96,8 +97,8 @@ fun CrakeDynamicIslandOverlay(
             animationSpec = tween(250)
         ) + fadeOut() + scaleOut(targetScale = 0.85f),
         modifier = modifier
-            .statusBarsPadding()
-            .padding(top = 4.dp)
+            .then(if (useStatusBarsPadding) Modifier.statusBarsPadding() else Modifier)
+            .padding(top = if (useStatusBarsPadding) 4.dp else 2.dp)
             .zIndex(9999f),
     ) {
         val notif = notification ?: return@AnimatedVisibility

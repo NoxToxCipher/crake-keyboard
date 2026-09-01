@@ -135,7 +135,8 @@ fun Smartbar() {
         }
 
         CrakeDynamicIslandOverlay(
-            modifier = Modifier.align(Alignment.TopCenter)
+            modifier = Modifier.align(Alignment.TopCenter),
+            useStatusBarsPadding = false,
         )
     }
 }

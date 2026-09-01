@@ -124,5 +124,17 @@ object FleetTypoCorrections {
         "telemtry" to "telemetry",
         "telemtrics" to "telemetrics",
         "telemterics" to "telemetrics",
+        "encryt" to "encrypt",
+        "encrpyt" to "encrypt",
+        "encrytion" to "encryption",
+        "encrpytion" to "encryption",
+        "notificaiton" to "notification",
+        "notificaitons" to "notifications",
+        "notifcations" to "notifications",
+        "dynmaic" to "dynamic",
+        "islnad" to "island",
+        "isaldn" to "island",
+        "capsul" to "capsule",
+        "capusle" to "capsule",
     )
 }
