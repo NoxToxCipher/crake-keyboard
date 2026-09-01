@@ -80,30 +80,38 @@ object UpdateManager {
     private var appContext: Context? = null
     private val prefs by FlorisPreferenceStore
     val remoteMilestoneHighlights = java.util.concurrent.ConcurrentHashMap<Int, String>()
+    private val PII_NAME_SCRUBBER = Regex("(?i)\\bCharlton(?:'s)?\\b")
+
+    fun sanitizeChangelog(text: String): String {
+        if (text.isBlank()) return text
+        return text.replace(PII_NAME_SCRUBBER) { matchResult ->
+            if (matchResult.value.endsWith("'s", ignoreCase = true)) "Fleet Tester's" else "Fleet Tester"
+        }
+    }
 
     fun getMilestoneHighlights(milestone: Int): String {
         val remote = remoteMilestoneHighlights[milestone]
-        if (!remote.isNullOrBlank()) {
-            return remote
-        }
-        return when (milestone) {
-            352 -> "High-Frequency Fleet Typo Optimization: Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine."
-            351 -> "Overlord 36-Egg Session Typo Ingestion: Ingested newly identified high-friction typos and delayed rewinds (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted)."
-            350 -> "Charlton Fleet Typo & Manual Revert Ingestion: Resolved real-world typing slips and manual reverts captured on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp)."
-            349 -> "High-Velocity Burst Typo Resolution: Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate)."
-            348 -> "LRU Suggestion Pipeline Speed Boost & Overlord Typo Ingestion: Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why)."
-            347 -> "Advanced Telemetry Intelligence: Real-time burst typing speed (WPM/CPM), typing friction ratio, hardware display metrics, and per-key spatial touch error summaries in telemetry sync bundles."
-            346 -> "Accurate Easter Egg Telemetry Ingestion: Real-time FlightRecorder event logging for on-device animation triggers and discovered/recorded arrays included in diagnostic sync bundles."
-            345 -> "Fleet Typo Autocorrect Ingestion: Fast-path resolution for common fleet slips (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure)."
-            344 -> "Tester Identity Persistence & Biomechanical Calibration: Prevents re-prompting confirmed tester handles and applies 19k-keystroke fleet-derived vertical reach calibrations to top-row keys."
-            343 -> "Repeating Punctuation & Double Exclamation Fix: Collapses intervening spaces and cleanly commits consecutive exclamation marks, question marks, and interrobangs."
-            342 -> "Emoji Suggestion Pipeline Speed Boost: Single-pass zero-allocation matching eliminates thread contention and cuts lookup latency from 25ms to <0.3ms."
-            341 -> "Smartbar Compose Recomposition Speed Boost: Immutability contracts on suggestion candidates enable skipping unchanged candidate chips for instantaneous Smartbar redraws."
-            340 -> "Zero-Allocation Token Pipeline: Backwards index scanner eliminates heap allocations during typing in long documents for smoother keystroke cadence."
-            339 -> "Shift Latency Speed Boost: Memoized vector resource caching (sub-0.1ms shift responses) and mechanical slip typo recovery."
-            338 -> "Peregrine Falcon Icon Suite: Brand-new high-res adaptive icon assets, crisp monochrome notification vectors, and dark slate backgrounds."
-            337 -> "Twin Rams Easter Egg: Mini bighorn sheep and medieval battering ram 2-stage keyboard fret charge animation."
-            336 -> "Uncoupled default tester name: removed global 'Daya' fallback so testers (Charlton, Daya, etc.) maintain their own individual user account names."
+        val raw = if (!remote.isNullOrBlank()) {
+            remote
+        } else {
+            when (milestone) {
+                352 -> "High-Frequency Fleet Typo Optimization: Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine."
+                351 -> "Overlord 36-Egg Session Typo Ingestion: Ingested newly identified high-friction typos and delayed rewinds (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted)."
+                350 -> "Samsung Fleet Typo & Manual Revert Ingestion: Resolved real-world typing slips and manual reverts captured on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp)."
+                349 -> "High-Velocity Burst Typo Resolution: Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate)."
+                348 -> "LRU Suggestion Pipeline Speed Boost & Overlord Typo Ingestion: Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why)."
+                347 -> "Advanced Telemetry Intelligence: Real-time burst typing speed (WPM/CPM), typing friction ratio, hardware display metrics, and per-key spatial touch error summaries in telemetry sync bundles."
+                346 -> "Accurate Easter Egg Telemetry Ingestion: Real-time FlightRecorder event logging for on-device animation triggers and discovered/recorded arrays included in diagnostic sync bundles."
+                345 -> "Fleet Typo Autocorrect Ingestion: Fast-path resolution for common fleet slips (toi -> you, ckrdsct -> correct, iodated -> updated, phr -> put, fizdx -> fixed, aure -> sure)."
+                344 -> "Tester Identity Persistence & Biomechanical Calibration: Prevents re-prompting confirmed tester handles and applies 19k-keystroke fleet-derived vertical reach calibrations to top-row keys."
+                343 -> "Repeating Punctuation & Double Exclamation Fix: Collapses intervening spaces and cleanly commits consecutive exclamation marks, question marks, and interrobangs."
+                342 -> "Emoji Suggestion Pipeline Speed Boost: Single-pass zero-allocation matching eliminates thread contention and cuts lookup latency from 25ms to <0.3ms."
+                341 -> "Smartbar Compose Recomposition Speed Boost: Immutability contracts on suggestion candidates enable skipping unchanged candidate chips for instantaneous Smartbar redraws."
+                340 -> "Zero-Allocation Token Pipeline: Backwards index scanner eliminates heap allocations during typing in long documents for smoother keystroke cadence."
+                339 -> "Shift Latency Speed Boost: Memoized vector resource caching (sub-0.1ms shift responses) and mechanical slip typo recovery."
+                338 -> "Peregrine Falcon Icon Suite: Brand-new high-res adaptive icon assets, crisp monochrome notification vectors, and dark slate backgrounds."
+                337 -> "Twin Rams Easter Egg: Mini bighorn sheep and medieval battering ram 2-stage keyboard fret charge animation."
+                336 -> "Uncoupled default tester name: removed global fallback so testers maintain their own individual user account names."
             335 -> "Adaptive Biometric Hitbox Engine: online Gaussian centroid tuning from contact angle & sub-pixel offsets, and Cognitive Smartbar Prioritizer."
             332 -> "Isolated Car Easter Egg to full word 'car'/'cars' followed by a space/punctuation; eliminates accidental triggers while typing 'card', 'care', or 'cart'."
             331 -> "Constrained top resize grab zone to center pill area (#CRK-155), completely eliminating accidental 'blue tab' drag triggers while typing or swiping top keys."
@@ -149,9 +157,10 @@ object UpdateManager {
             288 -> "Notification spam eradication & silent background update check gates."
             287 -> "Dynamic resolution tagging & feedback queue indicators."
             286 -> "Battery overcharge protection • Currency probe on startup • Spoiler-free egg recorder alerts."
-            285 -> "Dollar sign Western popup • Secret Easter Egg layout adjustments."
             else -> "Continuous performance optimizations, telemetry enhancements & typing model updates."
+            }
         }
+        return sanitizeChangelog(raw)
     }
 
     fun getCumulativeChangelog(fromMilestone: Int, toMilestone: Int): String {

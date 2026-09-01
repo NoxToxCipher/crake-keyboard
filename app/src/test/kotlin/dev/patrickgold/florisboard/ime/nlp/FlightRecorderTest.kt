@@ -161,8 +161,8 @@ class FlightRecorderTest : FunSpec({
         val record = FlightRecorderManager.Record(
             mode = FlightRecorderManager.InputMode.TYPING,
             action = FlightRecorderManager.ActionType.SUGGESTION_PICKED,
-            rawInput = "Charl",
-            correctedTo = "Charlton",
+            rawInput = "Char",
+            correctedTo = "Charles",
             suggestionSlot = 1,
             stripDwellMs = 185L,
             totalCandidates = 3,

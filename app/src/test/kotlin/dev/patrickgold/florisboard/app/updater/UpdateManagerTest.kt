@@ -54,4 +54,22 @@ class UpdateManagerTest : FunSpec({
         UpdateManager.remoteMilestoneHighlights[999] = "Custom Dynamic Cloud Highlight"
         UpdateManager.getMilestoneHighlights(999) shouldBe "Custom Dynamic Cloud Highlight"
     }
+
+    test("Privacy Guard: Personal tester names are never mentioned in update highlights or changelogs") {
+        // Direct method sanitizeChangelog test
+        val testInput = "Ingested Charlton's typing slips and Charlton feedback."
+        val sanitized = UpdateManager.sanitizeChangelog(testInput)
+        sanitized.contains("Charlton", ignoreCase = true) shouldBe false
+        sanitized shouldBe "Ingested Fleet Tester's typing slips and Fleet Tester feedback."
+
+        // Milestone highlight entries
+        for (m in 282..352) {
+            val hl = UpdateManager.getMilestoneHighlights(m)
+            hl.contains("Charlton", ignoreCase = true) shouldBe false
+        }
+
+        // Cumulative changelog
+        val cumulative = UpdateManager.getCumulativeChangelog(fromMilestone = 330, toMilestone = 352)
+        cumulative.contains("Charlton", ignoreCase = true) shouldBe false
+    }
 })

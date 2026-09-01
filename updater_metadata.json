@@ -8,7 +8,7 @@
   "history": {
     "352": "Integrated high-frequency typo corrections (soemthing -> something, recieve -> receive, messag -> message, appliaction -> application) into the fast-path resolution engine.",
     "351": "Ingested high-friction typo corrections from Overlord 36-egg session (anorhwr -> another, telemetr -> telemetry, diffcult -> difficult, encryted -> encrypted).",
-    "350": "Ingested real-world typing slips and manual reverts from Charlton on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",
+    "350": "Ingested real-world typing slips and manual reverts from Fleet Tester on Samsung S23 FE (downaloded -> downloaded, beither -> brother, ttoing -> typing, hsing -> using, oerson -> person, keybaord -> keyboard, wjatsapp -> WhatsApp).",
     "349": "Ingested rapid typing slip corrections from 168+ WPM telemetry sessions (actuly -> actually, trigh -> right, tought -> thought, whcih -> which, becasue -> because, definitly -> definitely, seperate -> separate).",
     "348": "Integrated native Trie query LRU memory cache (<0.1ms recall) and ingested Overlord/fleet typo corrections (rhjs -> this, jat -> that, dobe -> done, thks -> this, thid -> this, whag -> what, hwy -> why).",
     "347": "Implemented burst typing speed (WPM/CPM), typing friction ratio, display density metrics, and aggregate per-key spatial touch error summaries in telemetry sync bundles.",
