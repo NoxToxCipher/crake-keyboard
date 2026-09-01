@@ -223,13 +223,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             // Nothing being composed: offer NEXT-WORD predictions for the
             // word just committed (personal pairs outrank the shipped LM).
             // Plain suggestions only — nothing here may auto-commit.
-            val prevCommitted = content.textBeforeSelection
-                .trimEnd()
-                .takeLastWhile { it.isLetter() || it == '\'' || it == '’' || it == '‘' || it == '´' || it == '`' }
-                .replace('’', '\'')
-                .replace('‘', '\'')
-                .replace('´', '\'')
-                .replace('`', '\'')
+            val prevCommitted = sanitizeWordToken(content.textBeforeSelection, trimTrailingWhitespace = true)
             if (!FlorisNative.isAvailable()) return emptyList()
             // A blank prev is a sentence start: the native side answers
             // with capitalized starters instead of going silent.
@@ -304,12 +298,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
 
             // 2. Fleet Telemetry Fast Typo Corrections
-            val cleanWordQuery = query
-                .takeLastWhile { it.isLetter() || it == '\'' || it == '’' || it == '‘' || it == '´' || it == '`' }
-                .replace('’', '\'')
-                .replace('‘', '\'')
-                .replace('´', '\'')
-                .replace('`', '\'')
+            val cleanWordQuery = sanitizeWordToken(query, trimTrailingWhitespace = false)
             if (cleanWordQuery.isNotBlank()) {
                 val fleetCorrection = FLEET_TYPO_CORRECTIONS[cleanWordQuery.lowercase()]
                 if (fleetCorrection != null) {
@@ -460,6 +449,44 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             start--
         }
         return start to end
+    }
+
+    private fun sanitizeWordToken(text: CharSequence, trimTrailingWhitespace: Boolean = false): String {
+        if (text.isEmpty()) return ""
+        var end = text.length
+        if (trimTrailingWhitespace) {
+            while (end > 0 && text[end - 1].isWhitespace()) {
+                end--
+            }
+        }
+        if (end == 0) return ""
+        var start = end - 1
+        var hasTypographicApostrophe = false
+        while (start >= 0) {
+            val c = text[start]
+            if (c.isLetter() || c == '\'') {
+                start--
+            } else if (c == '’' || c == '‘' || c == '´' || c == '`') {
+                hasTypographicApostrophe = true
+                start--
+            } else {
+                break
+            }
+        }
+        start++
+        if (start >= end) return ""
+        if (!hasTypographicApostrophe) {
+            return text.subSequence(start, end).toString()
+        }
+        val sb = java.lang.StringBuilder(end - start)
+        for (i in start until end) {
+            val c = text[i]
+            when (c) {
+                '’', '‘', '´', '`' -> sb.append('\'')
+                else -> sb.append(c)
+            }
+        }
+        return sb.toString()
     }
 
 }
