@@ -1,11 +1,12 @@
 {
-  "milestone": 375,
-  "tagName": "v0.375.0",
-  "name": "Milestone 375 (Zero-Allocation Token Sanitizer & Dynamic Island Polishing)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.375.0/CrakeKeyboard_Milestone_375.apk",
+  "milestone": 376,
+  "tagName": "v0.376.0",
+  "name": "Milestone 376 (Zero-Copy Word Token Sanitizer)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.376.0/CrakeKeyboard_Milestone_376.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 375: Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering.",
+  "changelog": "Milestone 376: Direct reference passthrough for unclipped clean token strings in NLP tokenization.",
   "history": {
+    "376": "Direct reference passthrough for unclipped clean token strings in NLP tokenization.",
     "375": "Implemented fast non-allocating lowercase token checks for fleet corrections and refined Smartbar status pill rendering.",
     "374": "Deferred Dynamic Island pulse animation reads to DrawScope phase, eliminating composable tree recomposition.",
     "373": "Added audited auto-corrections for common mobile slips ('xaiomi', 'haptcis', 'physcial', 'interactivty') and vocabulary expansion.",

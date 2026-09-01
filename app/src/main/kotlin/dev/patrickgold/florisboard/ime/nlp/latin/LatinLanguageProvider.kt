@@ -492,6 +492,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         start++
         if (start >= end) return ""
         if (!hasTypographicApostrophe) {
+            if (start == 0 && end == text.length && text is String) {
+                return text
+            }
             return text.subSequence(start, end).toString()
         }
         val sb = java.lang.StringBuilder(end - start)
