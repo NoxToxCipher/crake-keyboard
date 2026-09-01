@@ -523,3 +523,21 @@ he can decrypt. Implemented the honest version of what 2dd101bf disabled:
   decrypt. Private key lives ONLY on Lochran's machine (NOT in repo). If you
   rotate the sprint, regenerate the keypair and replace TELEMETRY_PUBLIC_KEY.
 Do NOT add plaintext egress or identifying headers back.
+
+### 2026-09-01 — Claude Code 1: encryption foundation (3fc2e142) — the founding feature, slice 1
+Built the crypto stack for encrypt-in-place:
+- crake_privacy::pgpony now has passphrase_encrypt/decrypt (keyless, ChaCha20
+  + iterated-SHA256 KDF) alongside the existing X25519 public-key engine, plus
+  message_scheme() to auto-route decrypt. Armor: -----BEGIN CRAKE ENCRYPTED
+  MESSAGE----- with Version line (Crake-Passphrase-v1 vs publickey).
+- JNI: nativeCrypto{Encrypt,Decrypt,Scheme,GenerateKeypair,DerivePublic};
+  Kotlin FlorisNative.crypto* wrappers returning CryptoResult(value/error).
+- Identity: CrakeIdentityStore (private key Keystore-sealed via
+  LearnedStateStore, file crake_identity.crkid; only the crake-pk1-... public
+  key is shown). The in-place IME action (slice 2) MUST reuse this identity.
+- UI: Settings > Encryption (Routes.Settings.Encryption, home tile).
+SLICE 2 (next, mine): a Smartbar QuickAction + custom KeyCode that reads the
+field text via EditorInstance and replaces it with ciphertext in place, with
+an inline passphrase/recipient panel in the keyboard area. If you touch the
+smartbar/quickaction registry, leave room for a Crake "Encrypt"/"Decrypt"
+action. Do not add plaintext network egress anywhere near this.
