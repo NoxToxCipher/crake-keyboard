@@ -105,5 +105,14 @@ object FleetTypoCorrections {
         "couldnt" to "couldn't",
         "shouldnt" to "shouldn't",
         "wouldnt" to "wouldn't",
+        "securtiy" to "security",
+        "secuirty" to "security",
+        "sceret" to "secret",
+        "screet" to "secret",
+        "gestrue" to "gesture",
+        "gestue" to "gesture",
+        "smooht" to "smooth",
+        "pysics" to "physics",
+        "noteapd" to "notepad",
     )
 }

@@ -419,6 +419,8 @@ private fun LinedPaperNote(
     val margin = Color(0xFFE0A5A5)
     val lineHeight = 26.sp
 
+    val cursorBrush = remember(ink) { SolidColor(ink) }
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(topEnd = 14.dp, bottomEnd = 14.dp),
@@ -429,13 +431,18 @@ private fun LinedPaperNote(
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val lh = lineHeight.toPx()
                 val topPad = 14.dp.toPx()
+                val strokeRule = 1.dp.toPx()
+                val strokeMargin = 1.5.dp.toPx()
+                val marginX = 42.dp.toPx()
+                val endX = size.width
+                val maxY = size.height - 10.dp.toPx()
+
                 var y = topPad + lh * 0.86f
-                while (y < size.height - 10.dp.toPx()) {
-                    drawLine(rule, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+                while (y < maxY) {
+                    drawLine(rule, Offset(0f, y), Offset(endX, y), strokeWidth = strokeRule)
                     y += lh
                 }
-                val marginX = 42.dp.toPx()
-                drawLine(margin, Offset(marginX, 0f), Offset(marginX, size.height), strokeWidth = 1.5.dp.toPx())
+                drawLine(margin, Offset(marginX, 0f), Offset(marginX, size.height), strokeWidth = strokeMargin)
             }
             BasicTextField(
                 value = noteText,
@@ -459,7 +466,7 @@ private fun LinedPaperNote(
                     lineHeight = lineHeight,
                     fontFamily = FontFamily.Cursive,
                 ),
-                cursorBrush = SolidColor(ink),
+                cursorBrush = cursorBrush,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(start = 50.dp, end = 14.dp, top = 14.dp, bottom = 10.dp),

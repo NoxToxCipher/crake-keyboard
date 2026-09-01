@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 356
+    const val CURRENT_MILESTONE = 357
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 35601
-    private const val RESOLVED_NOTIFICATION_ID = 35602
+    private const val NOTIFICATION_ID = 35701
+    private const val RESOLVED_NOTIFICATION_ID = 35702
 
     data class ReleaseInfo(
         val tagName: String,
@@ -95,6 +95,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                357 -> "Zero-Allocation Note Canvas & Mechanical Slip Typo Ingestion: Optimized lined notepad render pipeline with memoized brush allocations, zero-alloc bounds math, and ingested mechanical slips (securtiy -> security, gestrue -> gesture, smooht -> smooth, pysics -> physics, noteapd -> notepad)."
                 356 -> "Secret Note Vault RAM Zeroization & Window Shield: Implemented native Rust zeroization of keys, nonces, and decrypted memory, dynamic Window FLAG_SECURE protection against screenshots/recents thumbnails, immediate onPause lifecycle auto-lock, and private IME input isolation."
                 355 -> "Note Peek Fluid Physics & Parallax Flow: Overhauled Note Peek with persistent low-level gesture pipeline, velocity-driven momentum fling, zero-jank background persistence, dynamic corner curvature, and parallax slide-in."
                 354 -> "Note Peek High-Reliability Grab & Vault Auto-Lock: Dedicated 56dp edge grab interceptor ensures 100% reliable swipe-to-open, with a 60s inactivity auto-lock that seals private notes and returns to standard notepad."
