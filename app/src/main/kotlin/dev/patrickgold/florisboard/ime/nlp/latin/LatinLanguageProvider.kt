@@ -320,7 +320,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
                 // 3. Native Safe Rust Trie Word Predictions with High-Speed LRU Cache
                 if (FlorisNative.isAvailable()) {
-                    val cacheKey = "$cleanWordQuery|$maxCandidateCount|$prevToken"
+                    val cacheKey = SuggestionCacheKey(cleanWordQuery, maxCandidateCount, prevToken)
                     val candidates = nativeSuggestCache.get(cacheKey) ?: run {
                         val fetched = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
                         nativeSuggestCache.put(cacheKey, fetched)
@@ -345,7 +345,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
-    private val nativeSuggestCache = object : android.util.LruCache<String, List<org.florisboard.libnative.FlorisNative.NativeCandidate>>(128) {}
+    private data class SuggestionCacheKey(
+        val query: String,
+        val maxCount: Int,
+        val prevToken: String,
+    )
+
+    private val nativeSuggestCache = object : android.util.LruCache<SuggestionCacheKey, List<org.florisboard.libnative.FlorisNative.NativeCandidate>>(128) {}
 
     private val LATIN_SPACING_EXPANDED_WORDS = setOf(
         "all", "at", "but", "by", "for", "from", "in", "into", "of", "on", "or",

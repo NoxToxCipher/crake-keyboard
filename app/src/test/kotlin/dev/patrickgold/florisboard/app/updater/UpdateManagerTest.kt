@@ -33,7 +33,7 @@ class UpdateManagerTest : FunSpec({
 
     test("Milestone comparisons accurately trigger update availability") {
         val currentMilestone = UpdateManager.CURRENT_MILESTONE
-        currentMilestone shouldBe 369
+        currentMilestone shouldBe 370
         val futureReleaseMilestone = currentMilestone + 1
         val pastReleaseMilestone = currentMilestone - 1
 
@@ -63,13 +63,13 @@ class UpdateManagerTest : FunSpec({
         sanitized shouldBe "Ingested Fleet Tester's typing slips and Fleet Tester feedback."
 
         // Milestone highlight entries
-        for (m in 282..369) {
+        for (m in 282..370) {
             val hl = UpdateManager.getMilestoneHighlights(m)
             hl.contains("Charlton", ignoreCase = true) shouldBe false
         }
 
         // Cumulative changelog
-        val cumulative = UpdateManager.getCumulativeChangelog(fromMilestone = 330, toMilestone = 369)
+        val cumulative = UpdateManager.getCumulativeChangelog(fromMilestone = 330, toMilestone = 370)
         cumulative.contains("Charlton", ignoreCase = true) shouldBe false
     }
 })
