@@ -127,8 +127,7 @@ fun UserDictionaryScreen(type: UserDictionaryType) = FlorisScreen {
             //subtitle = null
             languageList = userDictionaryDao()
                 ?.queryLanguageList()
-                ?.sortedBy { it?.displayLanguage() }
-                ?.map { it ?: AllLanguagesLocale }
+                ?.sortedBy { it.displayLanguage() }
                 ?: emptyList()
         }
     }
