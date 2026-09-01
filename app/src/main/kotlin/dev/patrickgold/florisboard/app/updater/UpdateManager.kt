@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 370
+    const val CURRENT_MILESTONE = 371
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 37001
-    private const val RESOLVED_NOTIFICATION_ID = 37002
+    private const val NOTIFICATION_ID = 37101
+    private const val RESOLVED_NOTIFICATION_ID = 37102
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                371 -> "Tactile Cryptographic Haptics & Dynamic Island Physicality: Added subtle snappy haptic feedback on in-place encryption/decryption success, perfectly synchronized with Dynamic Island capsule morphing."
                 370 -> "High-Speed LRU Key Predictor & Heap GC Elimination: Optimized suggestion caching with zero-allocation composite keys, reducing keystroke prediction latency and GC churn across fast typing bursts."
                 369 -> "In-Keyboard Encryption Dynamic Island Feedback Loop: Fixed keyboard manager crypto action dispatches, ensuring instant glowing Cyan & Emerald island capsules fire while typing across all messaging apps."
                 368 -> "In-Place Keyboard Dynamic Island & Cryptographic Live HUD: Instant capsule feedback on in-place encryption/decryption while typing, zero-overhead Smartbar layout alignment, and telemetry-tuned vocabulary additions."

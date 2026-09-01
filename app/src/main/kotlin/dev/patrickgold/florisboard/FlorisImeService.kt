@@ -163,6 +163,11 @@ class FlorisImeService : LifecycleInputMethodService() {
             val ims = FlorisImeServiceReference.get() ?: return null
             return ims.windowController
         }
+
+        fun inputFeedbackOrNull(): InputFeedbackController? {
+            val ims = FlorisImeServiceReference.get() ?: return null
+            return ims.inputFeedbackController
+        }
     }
 
     fun hideUi() {

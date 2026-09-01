@@ -821,6 +821,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         if (r.ok) {
             editorInstance.replaceCryptoSourceText(r.value!!)
             crakeToast("Encrypted")
+            FlorisImeService.inputFeedbackOrNull()?.crakeCryptoSuccess()
             val recipientLabel = prefs.internal.crakeActiveRecipientLabel.get().trim().ifBlank { "Contact" }
             DynamicIslandManager.post(
                 IslandNotification(
@@ -876,6 +877,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 if (r.ok) {
                     editorInstance.replaceCryptoSourceText(r.value!!)
                     crakeToast("Decrypted")
+                    FlorisImeService.inputFeedbackOrNull()?.crakeCryptoSuccess()
                     DynamicIslandManager.post(
                         IslandNotification(
                             id = "crypto_in_place_unsealed",

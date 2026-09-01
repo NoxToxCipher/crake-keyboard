@@ -91,6 +91,11 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
         if (prefs.inputFeedback.hapticFeatGestureMovingSwipe.get()) performHapticFeedback(data, 0.35)
     }
 
+    fun crakeCryptoSuccess() {
+        if (prefs.inputFeedback.audioFeatKeyPress.get()) performAudioFeedback(TextKeyData.CRAKE_ENCRYPT, 1.2)
+        if (prefs.inputFeedback.hapticFeatKeyPress.get()) performHapticFeedback(TextKeyData.CRAKE_ENCRYPT, 1.5)
+    }
+
     private fun systemPref(id: String): Boolean {
         if (contentResolver == null) return false
         return Settings.System.getInt(contentResolver, id, 0) != 0
