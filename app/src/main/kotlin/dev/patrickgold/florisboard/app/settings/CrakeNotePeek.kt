@@ -91,8 +91,11 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
     val vaultStore = remember { LearnedStateStore(context.filesDir, "crake_pages.crkp") }
     var vaultBytes by remember { mutableStateOf(vaultStore.load() ?: ByteArray(0)) }
 
+    val SECRET_AUTO_LOCK_TIMEOUT_MS = 60_000L // 60 seconds auto-locks secret notes
+
     var secretPin by remember { mutableStateOf<String?>(null) }
     var secretContent by remember { mutableStateOf("") }
+    var lastSecretActivityTime by remember { mutableStateOf(0L) }
     var showPin by remember { mutableStateOf(false) }
 
     fun leaveSecret() {
@@ -101,6 +104,29 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
         showPin = false
         hintForThisOpen = null
         hintDismissed = false
+        lastSecretActivityTime = 0L
+    }
+
+    fun checkAutoLock() {
+        if (secretPin != null) {
+            val now = System.currentTimeMillis()
+            if (now - lastSecretActivityTime > SECRET_AUTO_LOCK_TIMEOUT_MS) {
+                leaveSecret()
+            }
+        }
+    }
+
+    // Auto-lock countdown loop while secret notes are unlocked
+    LaunchedEffect(secretPin, lastSecretActivityTime) {
+        if (secretPin != null) {
+            while (true) {
+                kotlinx.coroutines.delay(1000)
+                if (System.currentTimeMillis() - lastSecretActivityTime > SECRET_AUTO_LOCK_TIMEOUT_MS) {
+                    leaveSecret()
+                    break
+                }
+            }
+        }
     }
 
     // Debounced save of the secret page so the PIN key derivation does not
@@ -116,13 +142,9 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val openWidth = if (maxWidth * 0.82f < 340.dp) maxWidth * 0.82f else 340.dp
         val openPx = with(density) { openWidth.toPx() }
-        // Fully closed = 0: no sliver, no shadow, nothing at rest. The page
-        // is meant to be sought out, not stumbled on. Opening is a deliberate
-        // pull-right that must START at the very left edge, so a stray
-        // horizontal swipe in the body never reveals it and nothing on
-        // screen hints it exists.
         val closedPx = 0f
-        val edgePx = with(density) { 24.dp.toPx() }
+        val edgeWidth = 56.dp
+        val edgePx = with(density) { edgeWidth.toPx() }
         val offsetX = remember { Animatable(closedPx) }
         var lastDragDelta by remember { mutableStateOf(0f) }
         var openArmed by remember { mutableStateOf(false) }
@@ -132,7 +154,9 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             scope.launch {
                 offsetX.animateTo(target, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow))
             }
-            if (target <= closedPx + 1f) leaveSecret()
+            if (target <= closedPx + 1f) {
+                checkAutoLock()
+            }
         }
 
         fun settle() {
@@ -145,10 +169,15 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             animateTo(target)
         }
 
-        // Claim one of the three hint appearances the moment the note opens
-        // to the plain page. Captures the index (0,1,2) for the countdown
-        // wording, then bumps the stored count.
+        // Check auto-lock on open. Claim one of the three hint appearances
+        // the moment the note opens to the plain page.
         LaunchedEffect(isOpen) {
+            if (isOpen) {
+                checkAutoLock()
+                if (secretPin != null) {
+                    lastSecretActivityTime = System.currentTimeMillis()
+                }
+            }
             if (isOpen && secretPin == null && hintForThisOpen == null && hintCount < 3) {
                 hintForThisOpen = hintCount
                 prefs.internal.crakeNoteHintCount.set(hintCount + 1)
@@ -171,6 +200,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                             scope.launch { prefs.internal.crakeNote.set(new) }
                         } else {
                             secretContent = new
+                            lastSecretActivityTime = System.currentTimeMillis()
                         }
                     },
                     modifier = Modifier
@@ -246,14 +276,10 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { translationX = offsetX.value }
-                .pointerInput(openPx) {
+                .pointerInput(openPx, isOpen) {
                     detectHorizontalDragGestures(
                         onDragStart = { offset ->
                             lastDragDelta = 0f
-                            // Only a pull that begins at the left edge (or any
-                            // drag while already open, to close) moves the
-                            // page. A swipe in the middle does nothing, so the
-                            // page is never revealed by accident.
                             openArmed = isOpen || offset.x < edgePx
                         },
                         onDragEnd = { if (openArmed) settle() },
@@ -282,11 +308,42 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
             }
         }
 
+        // Dedicated edge grab strip when resting closed: captures left-edge pull-right
+        // immediately without nested vertical scrolling interference
+        if (offsetX.value <= 1f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(edgeWidth)
+                    .fillMaxHeight()
+                    .pointerInput(openPx) {
+                        detectHorizontalDragGestures(
+                            onDragStart = {
+                                lastDragDelta = 0f
+                                openArmed = true
+                            },
+                            onDragEnd = { settle() },
+                            onDragCancel = { settle() },
+                            onHorizontalDrag = { change, delta ->
+                                if (delta > 0 || offsetX.value > 0) {
+                                    change.consume()
+                                    lastDragDelta = delta
+                                    scope.launch {
+                                        offsetX.snapTo((offsetX.value + delta).coerceIn(closedPx, openPx))
+                                    }
+                                }
+                            },
+                        )
+                    }
+            )
+        }
+
         if (showPin) {
             CrakePinScreen(
                 onComplete = { pin ->
                     secretPin = pin
                     secretContent = FlorisNative.noteVaultOpen(vaultBytes, pin)
+                    lastSecretActivityTime = System.currentTimeMillis()
                     showPin = false
                 },
                 onCancel = { showPin = false },
