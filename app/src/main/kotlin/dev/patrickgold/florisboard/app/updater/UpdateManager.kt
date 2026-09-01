@@ -50,11 +50,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 342
+    const val CURRENT_MILESTONE = 343
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 34201
-    private const val RESOLVED_NOTIFICATION_ID = 34202
+    private const val NOTIFICATION_ID = 34301
+    private const val RESOLVED_NOTIFICATION_ID = 34302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -87,6 +87,7 @@ object UpdateManager {
             return remote
         }
         return when (milestone) {
+            343 -> "Repeating Punctuation & Double Exclamation Fix: Collapses intervening spaces and cleanly commits consecutive exclamation marks, question marks, and interrobangs."
             342 -> "Emoji Suggestion Pipeline Speed Boost: Single-pass zero-allocation matching eliminates thread contention and cuts lookup latency from 25ms to <0.3ms."
             341 -> "Smartbar Compose Recomposition Speed Boost: Immutability contracts on suggestion candidates enable skipping unchanged candidate chips for instantaneous Smartbar redraws."
             340 -> "Zero-Allocation Token Pipeline: Backwards index scanner eliminates heap allocations during typing in long documents for smoother keystroke cadence."

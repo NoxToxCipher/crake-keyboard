@@ -378,7 +378,11 @@ abstract class AbstractEditorInstance(context: Context) {
             ic.setComposingRegion(content.selection.start - rm, content.selection.start)
             ic.setComposingText(finalText, 1)
             // Now set the proper composing region we expect
-            ic.setComposingRegion(newContent.composing)
+            if (newContent.composing.isValid) {
+                ic.setComposingRegion(newContent.composing.start, newContent.composing.end)
+            } else {
+                ic.finishComposingText()
+            }
             ic.endBatchEdit()
         }
         return true
