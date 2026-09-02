@@ -418,7 +418,7 @@ fun BatteryIndicatorWidget(modifier: Modifier = Modifier) {
 
     var overchargeTriggerTime by remember { mutableStateOf(0L) }
     LaunchedEffect(activeContent) {
-        val tb = activeContent.textBeforeSelection.toString().lowercase()
+        val tb = activeContent.textBeforeSelection.lowercase()
         val comp = activeContent.composingText.lowercase()
         val batteryKeys = listOf("battery", "batteries", "supercharge", "overcharge", "power", "charge")
         if (batteryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {

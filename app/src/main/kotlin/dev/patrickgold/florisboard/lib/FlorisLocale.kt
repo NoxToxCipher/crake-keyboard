@@ -71,7 +71,7 @@ class FlorisLocale private constructor(val base: Locale) {
          *
          * @return A new [FlorisLocale].
          */
-        fun from(language: String) = from(Locale(language))
+        fun from(language: String) = from(Locale.Builder().setLanguage(language).build())
 
         /**
          * Constructs a new [FlorisLocale] with given [language] and [country].
@@ -81,7 +81,7 @@ class FlorisLocale private constructor(val base: Locale) {
          *
          * @return A new [FlorisLocale].
          */
-        fun from(language: String, country: String) = from(Locale(language, country))
+        fun from(language: String, country: String) = from(Locale.Builder().setLanguage(language).setRegion(country).build())
 
         /**
          * Constructs a new [FlorisLocale] with given [language], [country] and [variant].
@@ -92,7 +92,9 @@ class FlorisLocale private constructor(val base: Locale) {
          *
          * @return A new [FlorisLocale].
          */
-        fun from(language: String, country: String, variant: String) = from(Locale(language, country, variant))
+        fun from(language: String, country: String, variant: String) = from(
+            Locale.Builder().setLanguage(language).setRegion(country).setVariant(variant).build()
+        )
 
         /**
          * Constructs a new [FlorisLocale] from given [str].

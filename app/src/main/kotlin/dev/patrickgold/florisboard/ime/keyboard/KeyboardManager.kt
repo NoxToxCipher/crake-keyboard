@@ -220,7 +220,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
 
     fun reevaluateInputShiftState() {
         if (activeState.inputShiftState != InputShiftState.CAPS_LOCK && !inputEventDispatcher.isPressed(KeyCode.SHIFT)) {
-            val textBefore = editorInstance.activeContent.textBeforeSelection.toString()
+            val textBefore = editorInstance.activeContent.textBeforeSelection
             val isSentenceStart = textBefore.isEmpty() ||
                 textBefore.endsWith(". ") || textBefore.endsWith("? ") || textBefore.endsWith("! ") ||
                 textBefore.endsWith(".\n") || textBefore.endsWith("?\n") || textBefore.endsWith("!\n") ||
@@ -307,7 +307,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
             }
         }
-        val rawBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }.toString()
+        val rawBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
         val committedText = candidate.text.toString()
         val isAutocorrect = rawBefore.isNotBlank() && rawBefore != committedText
         val allCands = nlpManager.activeCandidates.map { it.text.toString() }
@@ -325,7 +325,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             stripDwellMs = dwellMs,
             totalCandidates = allCands.size,
             isFlickPrediction = false,
-            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            contextBefore = editorInstance.activeContent.textBeforeSelection,
             keyVariation = activeState.keyVariation,
             packageName = editorInstance.activeInfo.packageName,
         )
@@ -337,7 +337,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             topCandidates = allCands,
             isAutocorrected = isAutocorrect,
             isKnownWord = true,
-            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            contextBefore = editorInstance.activeContent.textBeforeSelection,
             keyVariation = activeState.keyVariation,
             packageName = editorInstance.activeInfo.packageName,
         )
@@ -363,7 +363,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             stripDwellMs = null,
             totalCandidates = 1,
             isFlickPrediction = true,
-            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            contextBefore = editorInstance.activeContent.textBeforeSelection,
             keyVariation = activeState.keyVariation,
             packageName = editorInstance.activeInfo.packageName,
         )
@@ -517,7 +517,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logManualRevertOrRetype(
                     deletedWord = revertCandidate?.text?.toString() ?: "[AUTOCORRECT]",
                     retypedWord = original,
-                    contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+                    contextBefore = editorInstance.activeContent.textBeforeSelection,
                     keyVariation = activeState.keyVariation,
                     packageName = editorInstance.activeInfo.packageName,
                 )
@@ -538,8 +538,8 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
         dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logBackspaceDelete(
             deletedChar = if (unit == OperationUnit.WORDS) "[WORD]" else "[CHAR]",
-            remainingPrefix = editorInstance.activeContent.textBeforeSelection.takeLast(16).toString(),
-            contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+            remainingPrefix = editorInstance.activeContent.textBeforeSelection.takeLast(16),
+            contextBefore = editorInstance.activeContent.textBeforeSelection,
             keyVariation = activeState.keyVariation,
             packageName = editorInstance.activeInfo.packageName,
         )
@@ -676,7 +676,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             // All of this exists only to feed the flight recorder, including a
             // synchronous JNI round-trip (predictNextLetterWords) on every
             // space. Skip it entirely unless the recorder is on.
-            val wordBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+            val wordBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
             if (wordBefore.isNotBlank()) {
                 val candidates = nlpManager.activeCandidates.map { it.text.toString() }
                 val isKnown = if (org.florisboard.libnative.FlorisNative.isAvailable()) {
@@ -692,7 +692,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     topCandidates = candidates,
                     isAutocorrected = false,
                     isKnownWord = isKnown,
-                    contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+                    contextBefore = editorInstance.activeContent.textBeforeSelection,
                     keyVariation = activeState.keyVariation,
                     packageName = editorInstance.activeInfo.packageName,
                 )

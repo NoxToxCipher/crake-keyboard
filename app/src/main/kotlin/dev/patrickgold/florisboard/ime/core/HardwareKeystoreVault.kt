@@ -39,7 +39,7 @@ object HardwareKeystoreVault {
     }
 
     fun isHardwareBackedAvailable(): Boolean {
-        return runCatching { getOrCreateSecretKey() != null }.getOrDefault(false)
+        return runCatching { getOrCreateSecretKey() }.isSuccess
     }
 
     fun encrypt(plaintext: ByteArray): ByteArray {

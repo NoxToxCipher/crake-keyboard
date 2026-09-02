@@ -315,7 +315,7 @@ class NlpManager(context: Context) {
             val wordInput = when {
                 content.composing.isValid && content.composingText.isNotBlank() -> content.composingText
                 content.localCurrentWord.isValid && content.currentWordText.isNotBlank() -> content.currentWordText
-                else -> content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }.toString()
+                else -> content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
             }
             val macroEvaluated = evaluateMathOrMacro(wordInput)
             val macroCandidate: List<SuggestionCandidate> = if (macroEvaluated != null) {

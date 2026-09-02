@@ -269,7 +269,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
 
         tokenRewindTracker.onCharacterTyped(char)
         if (char == " " || char == "\n" || char == "." || char == "!" || char == "?" || char == ",") {
-            val tokenBefore = textBeforeTrimmed.takeLastWhile { !it.isWhitespace() }.toString()
+            val tokenBefore = textBeforeTrimmed.takeLastWhile { !it.isWhitespace() }
             if (tokenBefore.isNotEmpty()) {
                 tokenRewindTracker.onTokenCommitted(
                     token = tokenBefore,
@@ -349,7 +349,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         phantomSpace.setActive(
             showComposingRegion = false,
             candidate = candidate,
-            originalText = tokenBeforeCursor.toString(),
+            originalText = tokenBeforeCursor,
             committedText = committed,
         )
         tokenRewindTracker.onTokenCommitted(
@@ -398,7 +398,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logManualRevertOrRetype(
             deletedWord = committed,
             retypedWord = original,
-            contextBefore = tail.toString(),
+            contextBefore = tail,
             keyVariation = activeState.keyVariation,
             packageName = activeInfo.packageName,
         )
@@ -516,7 +516,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         }
         autoSpace.setInactive()
         phantomSpace.setInactive()
-        tokenRewindTracker.onCharacterDeleted(content.textBeforeSelection.toString())
+        tokenRewindTracker.onCharacterDeleted(content.textBeforeSelection)
         return if (content.selection.isSelectionMode) {
             commitText("")
         } else runBlocking {
