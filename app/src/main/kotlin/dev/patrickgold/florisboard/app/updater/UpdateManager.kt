@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 394
+    const val CURRENT_MILESTONE = 395
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 39401
-    private const val RESOLVED_NOTIFICATION_ID = 39402
+    private const val NOTIFICATION_ID = 39501
+    private const val RESOLVED_NOTIFICATION_ID = 39502
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                395 -> "Zero-Allocation Layout Merging & Pointer Dispatch Optimization: Eliminated intermediate list copies during keyboard layout row merging and streamlined multi-finger touch gesture tracking."
                 394 -> "Zero-Allocation Input Pipeline & Regex Evaluation Modernization: Optimized touch pointer map iterations, eliminated TextKeyboard and gesture list allocations, and hoisted per-keystroke regex evaluators."
                 393 -> "Clean Popup Set Hint Resolution & Coroutine State Hygiene: Resolved number hint mode condition in popup evaluation, stabilized StateFlow inheritance annotations, and eliminated legacy deprecation compiler warnings."
                 392 -> "Comprehensive Keyboard Layout Zero-Allocation & Drawing Paint Optimization: Cleaned redundant string allocations and optimized canvas paint primitive color definitions across full keyboard layout."

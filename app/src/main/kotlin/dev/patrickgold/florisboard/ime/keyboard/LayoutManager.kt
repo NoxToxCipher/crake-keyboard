@@ -240,17 +240,20 @@ class LayoutManager(context: Context) {
                     computedArrangement.add(rowArray)
                 } else {
                     // merge main and mod here
-                    val rowArray = arrayListOf<TextKey>()
                     val firstModRow = modifierLayout.arrangement.firstOrNull()
-                    for (modKey in (firstModRow ?: listOf())) {
-                        if (modKey is TextKeyData && modKey.code == 0) {
-                            rowArray.addAll(mainRow.map { TextKey(it) })
-                        } else {
-                            rowArray.add(TextKey(modKey))
+                    val rowKeys = ArrayList<TextKey>(mainRow.size + (firstModRow?.size ?: 0))
+                    if (firstModRow != null) {
+                        for (modKey in firstModRow) {
+                            if (modKey is TextKeyData && modKey.code == 0) {
+                                for (mainKey in mainRow) {
+                                    rowKeys.add(TextKey(mainKey))
+                                }
+                            } else {
+                                rowKeys.add(TextKey(modKey))
+                            }
                         }
                     }
-                    val temp = Array(rowArray.size) { rowArray[it] }
-                    computedArrangement.add(temp)
+                    computedArrangement.add(rowKeys.toTypedArray())
                 }
             }
             for (modRowI in 1 until modifierLayout.arrangement.size) {
