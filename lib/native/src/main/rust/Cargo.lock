@@ -137,6 +137,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "crake-core"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "crake-privacy"
 version = "0.1.0"
 dependencies = [
@@ -208,18 +216,10 @@ checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 name = "fl_native_rust"
 version = "0.1.0"
 dependencies = [
- "crake-privacy",
  "crake-core",
+ "crake-privacy",
  "jni",
  "once_cell",
-]
-
-[[package]]
-name = "crake-core"
-version = "0.1.0"
-dependencies = [
- "thiserror",
- "unicode-segmentation",
 ]
 
 [[package]]
