@@ -79,8 +79,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.florisboard.lib.android.AndroidKeyguardManager
 import org.florisboard.lib.android.showLongToast
-import org.florisboard.lib.android.showLongToastSync
-import org.florisboard.lib.android.showShortToastSync
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.android.systemService
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
@@ -756,14 +755,18 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     private fun handleToggleAutocorrect() {
         lastToastReference.get()?.cancel()
-        lastToastReference = WeakReference(
-            appContext.showLongToastSync("Autocorrect toggle is a placeholder and not yet implemented")
-        )
+        scope.launch(Dispatchers.Main) {
+            val toast = appContext.showLongToast("Autocorrect toggle is a placeholder and not yet implemented")
+            lastToastReference = WeakReference(toast)
+        }
     }
 
     private fun crakeToast(msg: String) {
         lastToastReference.get()?.cancel()
-        lastToastReference = WeakReference(appContext.showShortToastSync(msg))
+        scope.launch(Dispatchers.Main) {
+            val toast = appContext.showShortToast(msg)
+            lastToastReference = WeakReference(toast)
+        }
     }
 
     /**
@@ -1042,7 +1045,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     clipboardManager.primaryClip?.let { clipboardManager.deleteClip(it, onlyIfUnpinned = true) }
                 }
                 clipboardManager.updatePrimaryClip(null)
-                appContext.showShortToastSync(R.string.clipboard__cleared_primary_clip)
+                scope.launch(Dispatchers.Main) {
+                    appContext.showShortToast(R.string.clipboard__cleared_primary_clip)
+                }
             }
             KeyCode.TOGGLE_FLOATING_WINDOW -> windowController.actions.toggleFloatingWindow()
             KeyCode.TOGGLE_COMPACT_LAYOUT -> windowController.actions.toggleCompactLayout()

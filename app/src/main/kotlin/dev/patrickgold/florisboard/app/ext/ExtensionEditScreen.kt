@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -90,7 +91,8 @@ import org.florisboard.lib.compose.FlorisInfoCard
 import org.florisboard.lib.compose.FlorisOutlinedBox
 import org.florisboard.lib.compose.defaultFlorisOutlinedBox
 import org.florisboard.lib.compose.stringRes
-import org.florisboard.lib.android.showLongToastSync
+import kotlinx.coroutines.launch
+import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
 import org.florisboard.lib.kotlin.io.subDir
 import org.florisboard.lib.kotlin.io.subFile
@@ -242,6 +244,7 @@ private fun EditScreen(
     })
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val navController = LocalNavController.current
 
     val extEditor = workspace.editor ?: return@FlorisScreen
@@ -288,7 +291,7 @@ private fun EditScreen(
                             stylesheetFile.writeText(stylesheet)
                         }.onFailure {
                             // TODO: better error handling
-                            context.showLongToastSync(it.message.toString())
+                            scope.launch { context.showLongToast(it.message.toString()) }
                             return
                         }
                     } else {
@@ -617,6 +620,7 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
     })
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val extensionManager by context.extensionManager()
     val themeManager by context.themeManager()
 
@@ -666,7 +670,7 @@ private fun <T : ExtensionComponent> CreateComponentScreen(
                     when (createFrom) {
                         CreateFrom.EMPTY -> {
                             if (editor.themes.any { it.id == newId.trim() }) {
-                                context.showLongToastSync("A theme with this ID already exists!")
+                                scope.launch { context.showLongToast("A theme with this ID already exists!") }
                             } else {
                                 val componentEditor = ThemeExtensionComponentEditor(
                                     id = newId.trim(),

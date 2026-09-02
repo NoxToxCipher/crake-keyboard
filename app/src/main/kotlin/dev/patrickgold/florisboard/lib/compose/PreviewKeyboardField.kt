@@ -89,7 +89,6 @@ import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
 import kotlinx.coroutines.launch
-import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.compose.verticalTween
 

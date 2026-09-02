@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 388
+    const val CURRENT_MILESTONE = 389
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 38801
-    private const val RESOLVED_NOTIFICATION_ID = 38802
+    private const val NOTIFICATION_ID = 38901
+    private const val RESOLVED_NOTIFICATION_ID = 38902
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                389 -> "Complete Suspending UI Toast Harmonization & Extension IO Modernization: Full elimination of deprecated synchronous toast calls across all clipboard, editor, theme, and extension views, with asynchronous IO deletion dispatch."
                 388 -> "Modern Lifecycle Reactive Streams & Database Migration Cleanliness: Migrated preference observers to direct Flow state collectors, upgraded to PrimaryTabRow, modern autoCorrectEnabled, and explicit Room migration cleanup."
                 387 -> "Asynchronous Language Pack Deletion & Suspending Feedback Dispatch: Offloaded language pack removal I/O to background IO dispatcher and modernized clipboard/localization toast feedback to non-blocking suspending dispatches."
                 386 -> "Language Pack Safety & Vector Standard Harmonization: Hardened extension ingestion against missing descriptors, eliminated unsafe clipboard assertions, and modernized UI action icons."

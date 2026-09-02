@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +59,10 @@ import dev.patrickgold.florisboard.lib.ext.Extension
 import dev.patrickgold.florisboard.lib.ext.ExtensionMaintainer
 import dev.patrickgold.florisboard.lib.ext.ExtensionMeta
 import dev.patrickgold.florisboard.lib.io.FlorisRef
-import org.florisboard.lib.android.showLongToastSync
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.compose.FlorisOutlinedButton
 import org.florisboard.lib.compose.defaultFlorisOutlinedBox
 import org.florisboard.lib.compose.stringRes
@@ -82,6 +86,7 @@ private fun ViewScreen(ext: Extension) = FlorisScreen {
 
     val navController = LocalNavController.current
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val extensionManager by context.extensionManager()
 
     var extToDelete by remember { mutableStateOf<Extension?>(null) }
@@ -195,22 +200,28 @@ private fun ViewScreen(ext: Extension) = FlorisScreen {
         }
 
         if (extToDelete != null) {
+            val targetExt = extToDelete!!
             FlorisConfirmDeleteDialog(
                 onConfirm = {
-                    runCatching {
-                        extensionManager.delete(extToDelete!!)
-                    }.onSuccess {
-                        navController.popBackStack()
-                    }.onFailure { error ->
-                        context.showLongToastSync(
-                            R.string.error__snackbar_message,
-                            "error_message" to error.localizedMessage,
-                        )
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            runCatching {
+                                extensionManager.delete(targetExt)
+                            }
+                        }
+                        result.onSuccess {
+                            navController.popBackStack()
+                        }.onFailure { error ->
+                            context.showLongToast(
+                                R.string.error__snackbar_message,
+                                "error_message" to error.localizedMessage,
+                            )
+                        }
                     }
                     extToDelete = null
                 },
                 onDismiss = { extToDelete = null },
-                what = extToDelete!!.meta.title,
+                what = targetExt.meta.title,
             )
         }
     }

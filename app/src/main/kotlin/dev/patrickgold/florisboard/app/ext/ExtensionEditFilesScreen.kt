@@ -38,8 +38,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -57,9 +59,7 @@ import java.util.*
 import org.florisboard.lib.android.query
 import org.florisboard.lib.android.readToFile
 import org.florisboard.lib.android.showLongToast
-import org.florisboard.lib.android.showLongToastSync
 import org.florisboard.lib.android.showShortToast
-import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.compose.FlorisIconButton
 import org.florisboard.lib.compose.stringRes
 import org.florisboard.lib.kotlin.io.parentDir
@@ -100,6 +100,7 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
 
     content {
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         var version by rememberSaveable { mutableIntStateOf(0) }
         val fontFiles = remember(version) {
             workspace.extDir.subDir(FONTS).listFiles { it.isFile }.orEmpty().asList()
@@ -188,9 +189,9 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                     allowOutsideDismissal = true,
                     onNeutral = {
                         if (file.delete()) {
-                            context.showShortToastSync("Successfully deleted")
+                            scope.launch { context.showShortToast("Successfully deleted") }
                         } else {
-                            context.showShortToastSync("Failed to delete")
+                            scope.launch { context.showShortToast("Failed to delete") }
                         }
                         dialogFile = null
                         version++
@@ -198,18 +199,18 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                     onConfirm = {
                         val newFile = file.parentFile!!.subFile(fileNameInput).canonicalFile
                         if (newFile.parentFile != file.canonicalFile.parentFile) {
-                            context.showLongToastSync("Invalid file name!")
+                            scope.launch { context.showLongToast("Invalid file name!") }
                             return@JetPrefAlertDialog
                         }
                         if (newFile.exists()) {
-                            context.showShortToastSync("Filename already exists.")
+                            scope.launch { context.showShortToast("Filename already exists.") }
                             return@JetPrefAlertDialog
                         }
                         val success = file.renameTo(newFile)
                         if (success) {
-                            context.showShortToastSync("Successfully renamed")
+                            scope.launch { context.showShortToast("Successfully renamed") }
                         } else {
-                            context.showShortToastSync("Failed to rename the file.")
+                            scope.launch { context.showShortToast("Failed to rename the file.") }
                         }
                         dialogFile = null
                         version++
@@ -259,13 +260,13 @@ fun ExtensionEditFilesScreen(workspace: CacheManager.ExtEditorWorkspace<*>) = Fl
                     dir.mkdirs()
                     val file = dir.subFile(fileName)
                     if (file.parentDir != workspace.extDir.subDir(dest)) {
-                        context.showShortToastSync("Invalid file name")
+                        scope.launch { context.showShortToast("Invalid file name") }
                     } else if (file.exists()) {
-                        context.showShortToastSync("File already exists")
+                        scope.launch { context.showShortToast("File already exists") }
                     } else {
                         val tempFile = result.first
                         if (!tempFile.renameTo(file)) {
-                            context.showShortToastSync("Failed to rename file")
+                            scope.launch { context.showShortToast("Failed to rename file") }
                             tempFile.delete()
                         }
                         currentImportDest = null

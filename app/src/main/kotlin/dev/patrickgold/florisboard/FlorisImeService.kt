@@ -69,7 +69,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import org.florisboard.lib.android.AndroidInternalR
 import org.florisboard.lib.android.AndroidVersion
-import org.florisboard.lib.android.showShortToastSync
+import org.florisboard.lib.android.showShortToast
 import org.florisboard.lib.android.systemServiceOrNull
 import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
@@ -273,7 +273,9 @@ class FlorisImeService : LifecycleInputMethodService() {
                 }
             }
         }
-        showShortToastSync("Failed to find voice IME, do you have one installed?")
+        lifecycleScope.launch {
+            showShortToast("Failed to find voice IME, do you have one installed?")
+        }
         return false
     }
 
