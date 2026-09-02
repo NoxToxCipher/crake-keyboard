@@ -130,6 +130,7 @@ private class FlorisScreenScopeImpl : FlorisScreenScope {
         val previewFieldController = LocalPreviewFieldController.current
         val colorScheme = MaterialTheme.colorScheme
 
+        @Suppress("DEPRECATION")
         SideEffect {
             val window = (context as Activity).window
             previewFieldController?.isVisible = previewFieldVisible

@@ -2646,13 +2646,11 @@ fun TextKeyboardLayout(
                     // Find key center position for targetChar
                     var matchedKey: TextKey? = null
                     for (key in keyboard.keys()) {
-                        if (key is TextKey) {
-                            val code = key.computedData.code
-                            val ch = code.toChar().lowercaseChar()
-                            if (ch == targetChar || key.computedData.asString(true).equals(targetChar.toString(), ignoreCase = true)) {
-                                matchedKey = key
-                                break
-                            }
+                        val code = key.computedData.code
+                        val ch = code.toChar().lowercaseChar()
+                        if (ch == targetChar || key.computedData.asString(true).equals(targetChar.toString(), ignoreCase = true)) {
+                            matchedKey = key
+                            break
                         }
                     }
 
@@ -3041,7 +3039,7 @@ fun TextKeyboardLayout(
                     // Locate Shift key center
                     var shiftKey: TextKey? = null
                     for (key in keyboard.keys()) {
-                        if (key is TextKey && key.computedData.code == KeyCode.SHIFT) {
+                        if (key.computedData.code == KeyCode.SHIFT) {
                             shiftKey = key
                             break
                         }
@@ -4363,13 +4361,11 @@ fun TextKeyboardLayout(
                     for (targetChar in targetChars) {
                         var matchedKey: TextKey? = null
                         for (key in keyboard.keys()) {
-                            if (key is TextKey) {
-                                val code = key.computedData.code
-                                val ch = code.toChar().lowercaseChar()
-                                if (ch == targetChar || key.computedData.asString(true).equals(targetChar.toString(), ignoreCase = true)) {
-                                    matchedKey = key
-                                    break
-                                }
+                            val code = key.computedData.code
+                            val ch = code.toChar().lowercaseChar()
+                            if (ch == targetChar || key.computedData.asString(true).equals(targetChar.toString(), ignoreCase = true)) {
+                                matchedKey = key
+                                break
                             }
                         }
                         if (matchedKey != null) {
