@@ -61,6 +61,13 @@ pub struct TrieNode {
     pub frequency: u32,
     pub word: Option<String>,
     pub children: BTreeMap<char, TrieNode>,
+    /// Upper bound on the frequency of any terminal in this node's subtree
+    /// (including itself). Maintained monotonically on insert/boost: it is
+    /// always >= every frequency ever written below this node, so a stale
+    /// value can only be too HIGH (over-conservative pruning, still correct),
+    /// never too low. Lets collect_top skip subtrees that cannot beat the
+    /// current worst top-k entry.
+    pub max_subtree_freq: u32,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -86,18 +93,29 @@ impl RadixTrie {
 
         self.bloom.insert(word);
 
+        // Pass 1: descend, set/boost the terminal, capture the resulting freq.
         let mut current = &mut self.root;
         for ch in word.chars() {
             current = current.children.entry(ch).or_default();
         }
-
-        if !current.is_terminal {
+        let new_freq = if !current.is_terminal {
             self.size += 1;
             current.is_terminal = true;
             current.frequency = delta_freq.max(150);
             current.word = Some(word.to_string());
+            current.frequency
         } else {
             current.frequency = current.frequency.saturating_add(delta_freq).min(255);
+            current.frequency
+        };
+        // Pass 2: bump max_subtree_freq along the path. boost only ever raises a
+        // frequency, so a monotonic max is exact; the two-pass walk is off the
+        // hot read path (learning events only).
+        let mut node = &mut self.root;
+        node.max_subtree_freq = node.max_subtree_freq.max(new_freq);
+        for ch in word.chars() {
+            node = node.children.get_mut(&ch).expect("path created in pass 1");
+            node.max_subtree_freq = node.max_subtree_freq.max(new_freq);
         }
     }
 
@@ -108,9 +126,15 @@ impl RadixTrie {
 
         self.bloom.insert(word);
 
+        // Frequency is known up front, so bump max_subtree_freq during the single
+        // descent (root included). Monotonic max: if a word is later re-inserted
+        // with a lower frequency the retained max is merely too high, which only
+        // makes pruning more conservative — never incorrect.
         let mut current = &mut self.root;
+        current.max_subtree_freq = current.max_subtree_freq.max(frequency);
         for ch in word.chars() {
             current = current.children.entry(ch).or_default();
+            current.max_subtree_freq = current.max_subtree_freq.max(frequency);
         }
 
         if !current.is_terminal {
@@ -231,6 +255,18 @@ impl RadixTrie {
             }
         }
         for child in node.children.values() {
+            // Prune: once top is full, a subtree whose max frequency is strictly
+            // below the current worst entry cannot beat_worst for any word (freq
+            // < worst_freq fails both `f > lf` and `f == lf`), regardless of the
+            // lexicographic tiebreak or the `keep` filter. `<` (not `<=`) is
+            // required: an equal-frequency word can still win on lex order.
+            if top.len() >= limit {
+                if let Some(&(_, worst_freq)) = top.last() {
+                    if child.max_subtree_freq < worst_freq {
+                        continue;
+                    }
+                }
+            }
             self.collect_top_filtered(child, limit, keep, top);
         }
     }
@@ -255,6 +291,15 @@ impl RadixTrie {
             }
         }
         for child in node.children.values() {
+            // See collect_top_filtered: prune subtrees that cannot beat the worst
+            // top-k entry once top is full. `<` (strict) preserves lex tiebreaks.
+            if top.len() >= limit {
+                if let Some(&(_, worst_freq)) = top.last() {
+                    if child.max_subtree_freq < worst_freq {
+                        continue;
+                    }
+                }
+            }
             self.collect_top(child, limit, top);
         }
     }
