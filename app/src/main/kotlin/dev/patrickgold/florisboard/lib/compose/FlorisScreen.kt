@@ -55,9 +55,15 @@ fun FlorisScreen(builder: @Composable FlorisScreenScope.() -> Unit) {
     scope.Render()
 }
 
+@Composable
+inline fun CrakeScreen(noinline builder: @Composable FlorisScreenScope.() -> Unit) = FlorisScreen(builder)
+
 typealias FlorisScreenActions = @Composable RowScope.() -> Unit
+typealias CrakeScreenActions = FlorisScreenActions
 typealias FlorisScreenBottomBar = @Composable () -> Unit
+typealias CrakeScreenBottomBar = FlorisScreenBottomBar
 typealias FlorisScreenContent = PreferenceUiContent<FlorisPreferenceModel>
+typealias CrakeScreenContent = FlorisScreenContent
 typealias FlorisScreenFab = @Composable () -> Unit
 typealias FlorisScreenNavigationIcon = @Composable () -> Unit
 

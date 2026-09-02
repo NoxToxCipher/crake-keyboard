@@ -77,6 +77,9 @@ import kotlinx.serialization.json.Json
 import org.florisboard.lib.android.isOrientationPortrait
 
 val FlorisPreferenceStore = jetprefDataStoreOf(FlorisPreferenceModel::class)
+val CrakePreferenceStore = FlorisPreferenceStore
+
+typealias CrakePreferenceModel = FlorisPreferenceModel
 
 @Preferences
 abstract class FlorisPreferenceModel : PreferenceModel() {
