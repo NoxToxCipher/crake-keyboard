@@ -49,14 +49,27 @@ import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
 
+// Hoisted once — these were compiled/constructed on every keystroke inside the
+// suggestion pipeline (evaluateMathOrMacro runs per candidate assembly). Patterns
+// are byte-for-byte the originals (proven by utils/perf-proof/NlpItem4Oracle.java).
+private val NUM_UNIT_REGEX = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE)
+private val SIMPLE_MATH_REGEX = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$")
+// DateTimeFormatter is immutable/thread-safe; ofPattern parses the pattern each call.
+private val FMT_NOW = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+private val FMT_TODAY = java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")
+private val FMT_DATE = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val FMT_TIME = java.time.format.DateTimeFormatter.ofPattern("h:mm a")
+
 private fun evaluateMathOrMacro(input: String): String? {
     val clean = input.trim()
-    val now = java.time.ZonedDateTime.now()
+    // ZonedDateTime.now() was computed unconditionally though only 4 of ~30 branches
+    // use it; moved into those branches so a plain "eth" or "100usd" no longer resolves
+    // the timezone/clock every keystroke.
     when (clean.lowercase()) {
-        ".now", "!now" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-        ".today", "!today" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))
-        ".date", "!date" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        ".time", "!time" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+        ".now", "!now" -> return java.time.ZonedDateTime.now().format(FMT_NOW)
+        ".today", "!today" -> return java.time.ZonedDateTime.now().format(FMT_TODAY)
+        ".date", "!date" -> return java.time.ZonedDateTime.now().format(FMT_DATE)
+        ".time", "!time" -> return java.time.ZonedDateTime.now().format(FMT_TIME)
         ".utc", "!utc" -> return java.time.Instant.now().toString()
         ".ts", "!ts" -> return (System.currentTimeMillis() / 1000).toString()
         ".eth", "!eth", ":eth", ".ethereum", "!ethereum", "eth" -> return "Ξ"
@@ -83,7 +96,7 @@ private fun evaluateMathOrMacro(input: String): String? {
     }
 
     // Number & Currency / Unit macro formatting (e.g. 100usd -> $100, 50eur -> €50, 32deg -> 32°, 100c -> 100°C)
-    val numUnitMatch = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE).matchEntire(clean)
+    val numUnitMatch = NUM_UNIT_REGEX.matchEntire(clean)
     if (numUnitMatch != null) {
         val num = numUnitMatch.groupValues[1]
         val unit = numUnitMatch.groupValues[2].lowercase()
@@ -116,7 +129,7 @@ private fun evaluateMathOrMacro(input: String): String? {
 private fun evalSimpleMath(expr: String): String? {
     return runCatching {
         val sanitized = expr.replace("x", "*").replace("X", "*").replace("×", "*").replace("÷", "/")
-        val match = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$").matchEntire(sanitized)
+        val match = SIMPLE_MATH_REGEX.matchEntire(sanitized)
         if (match != null) {
             val a = match.groupValues[1].toDouble()
             val op = match.groupValues[2]
@@ -424,8 +437,15 @@ class NlpManager(context: Context) {
         val isSelection = editorInstance.activeContent.selection.isSelectionMode
         val isExpanded = list1.isNullOrEmpty() && list2.isNullOrEmpty() || isSelection
         scope.launch {
-            prefs.smartbar.sharedActionsExpandWithAnimation.set(false)
-            prefs.smartbar.sharedActionsExpanded.set(isExpanded)
+            // Equality-guard: this runs on every candidate assembly (per keystroke). Writing
+            // an unchanged value marked the datastore dirty and scheduled a persist each time;
+            // the stored result is identical, StateFlow dedupes same-value emissions.
+            if (prefs.smartbar.sharedActionsExpandWithAnimation.get()) {
+                prefs.smartbar.sharedActionsExpandWithAnimation.set(false)
+            }
+            if (prefs.smartbar.sharedActionsExpanded.get() != isExpanded) {
+                prefs.smartbar.sharedActionsExpanded.set(isExpanded)
+            }
         }
     }
 

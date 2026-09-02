@@ -88,7 +88,26 @@ private val DoubleSpacePeriodMatcher = """([^.!?\s]\s)""".toRegex()
 // Precompiled once: this was being `Regex(...)`-compiled on almost every
 // keystroke inside reevaluateInputShiftState (the cheap endsWith checks
 // short-circuit past it only at sentence ends).
-private val SentenceEndMatcher = """.*[.?!]\s+$""".toRegex()
+// Exact equivalent of `".*[.?!]\s+$".matches(s)` (Kotlin Regex full-match) without the
+// greedy-`.*` backtracking over the whole 256-char buffer. Java-regex semantics preserved:
+// `\s` includes \n/\r, but `.` (the prefix) does not cross a line terminator, so the string
+// matches iff its last non-whitespace char is [.?!], it has >=1 trailing whitespace, and no
+// line terminator precedes that char. Proven identical over 6M cases (NlpItem4Oracle.java).
+private fun endsWithSentenceTerminator(s: String): Boolean {
+    var i = s.length - 1
+    if (i < 0 || !isSentenceWhitespace(s[i])) return false
+    while (i >= 0 && isSentenceWhitespace(s[i])) i--
+    if (i < 0) return false
+    val c = s[i]
+    if (c != '.' && c != '?' && c != '!') return false
+    for (j in 0 until i) {
+        val ch = s[j]
+        if (ch == '\n' || ch == '\r' || ch == '\u0085' || ch == '\u2028' || ch == '\u2029') return false
+    }
+    return true
+}
+private fun isSentenceWhitespace(c: Char): Boolean =
+    c == ' ' || c == '\t' || c == '\n' || c == '\u000B' || c == '\u000C' || c == '\r'
 
 class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private val prefs by FlorisPreferenceStore
@@ -225,7 +244,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 textBefore.endsWith(". ") || textBefore.endsWith("? ") || textBefore.endsWith("! ") ||
                 textBefore.endsWith(".\n") || textBefore.endsWith("?\n") || textBefore.endsWith("!\n") ||
                 textBefore.endsWith("\n") ||
-                SentenceEndMatcher.matches(textBefore)
+                endsWithSentenceTerminator(textBefore)
 
             val shift = prefs.correction.autoCapitalization.get()
                 && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
