@@ -1,11 +1,12 @@
 {
-  "milestone": 399,
-  "tagName": "v0.399.0",
-  "name": "Milestone 399 (Zero-Allocation Layout Merging & Hint Traversal Optimization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.399.0/CrakeKeyboard_Milestone_399.apk",
-  "apkSize": 56896000,
-  "changelog": "Milestone 399: Pre-allocated direct 2D key arrays during keyboard mode transitions and eliminated iterator allocations across key hint evaluators.",
+  "milestone": 400,
+  "tagName": "v0.400.0",
+  "name": "Milestone 400 (Commemorative Release & Unified Performance Engine)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.400.0/CrakeKeyboard_Milestone_400.apk",
+  "apkSize": 57360800,
+  "changelog": "Milestone 400: Commemorative milestone integrating full 10-item performance overhaul, trie subtree frequency pruning, off-thread thumbnail decoding, bulk touch offset JNI batching, and Crake button UI primitives.",
   "history": {
+    "400": "Commemorative milestone integrating full 10-item performance overhaul, trie subtree frequency pruning, off-thread thumbnail decoding, bulk touch offset JNI batching, and Crake button UI primitives.",
     "399": "Pre-allocated direct 2D key arrays during keyboard mode transitions and eliminated iterator allocations across key hint evaluators.",
     "398": "Decoupled active text content from the 66-key rendering loop via background flow collectors, eliminating full-keyboard recomposition storms per keystroke.",
     "397": "Standardized CrakeLog devtools, CrakeSimpleCard, CrakeChip, and isolated Compose text tracking.",
