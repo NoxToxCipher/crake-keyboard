@@ -466,7 +466,7 @@ fun TextKeyboardLayout(
         var isEasterEggActive by remember { mutableStateOf(false) }
 
         LaunchedEffect(activeContent) {
-            val textBefore = activeContent.textBeforeSelection.toString()
+            val textBefore = activeContent.textBeforeSelection
             val composing = activeContent.composingText
             if ((textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
                     textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) &&
@@ -524,7 +524,7 @@ fun TextKeyboardLayout(
             // last 64 are exact-equivalent for every endsWith/equality
             // matcher below while keeping per-keystroke cost O(1) instead
             // of O(text window).
-            val tb = activeContent.textBeforeSelection.takeLast(64).toString().lowercase()
+            val tb = activeContent.textBeforeSelection.takeLast(64).lowercase()
             val comp = activeContent.composingText.lowercase()
             val eclectusKeys = eclectusKeysHoisted
             if (eclectusKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
@@ -849,11 +849,11 @@ fun TextKeyboardLayout(
                     activeContent.currentWordText
                 }
                 else -> {
-                    activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                    activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
                 }
             }
         }
-        val textBefore = activeContent.textBeforeSelection.toString()
+        val textBefore = activeContent.textBeforeSelection
         val prevWord = remember(textBefore, currentWord) {
             val beforeCurrent = if (currentWord.isNotEmpty()) {
                 textBefore.dropLast(currentWord.length).trimEnd()
@@ -2024,7 +2024,7 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawCircle(0f, 0f, ballRadius, shadowPaint)
 
                     val highlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0x66FFFFFF.toInt()
+                        color = 0x66FFFFFF
                         style = android.graphics.Paint.Style.FILL
                     }
                     drawContext.canvas.nativeCanvas.drawCircle(-ballRadius * 0.38f, -ballRadius * 0.38f, ballRadius * 0.32f, highlightPaint)
@@ -2145,7 +2145,7 @@ fun TextKeyboardLayout(
                         style = android.graphics.Paint.Style.FILL
                     }
                     val dustPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0x66B0BEC5.toInt() // Sprint dust puff
+                        color = 0x66B0BEC5 // Sprint dust puff
                         style = android.graphics.Paint.Style.FILL
                     }
 
@@ -2336,7 +2336,7 @@ fun TextKeyboardLayout(
                     for ((ox, oy) in sparkRadialOffsets) {
                         val spX = headX + ox * density
                         val spY = headY + oy * density
-                        val spRadius = (0.9f + (kotlin.math.sin(t * 22f + ox).toFloat() * 0.55f).coerceAtLeast(0f)) * density
+                        val spRadius = (0.9f + (kotlin.math.sin(t * 22f + ox) * 0.55f).coerceAtLeast(0f)) * density
                         drawContext.canvas.nativeCanvas.drawCircle(spX, spY, spRadius, sparklePaint)
                     }
 
@@ -2871,7 +2871,7 @@ fun TextKeyboardLayout(
 
                     // 1. Red Airdrop Flare Smoke Puffs trailing behind canopy
                     val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0x55EF4444.toInt() // Red smoke flare
+                        color = 0x55EF4444 // Red smoke flare
                         style = android.graphics.Paint.Style.FILL
                     }
                     val smokeOffsets = listOf(
@@ -3488,7 +3488,7 @@ fun TextKeyboardLayout(
 
                         // Exhaust smoke puffs trailing behind
                         val smokePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = 0x6694A3B8.toInt()
+                            color = 0x6694A3B8
                             style = android.graphics.Paint.Style.FILL
                         }
                         val s1 = ((currentMs * 0.02f) % 6f) * density
@@ -3672,7 +3672,7 @@ fun TextKeyboardLayout(
                         drawContext.canvas.nativeCanvas.drawRect(18f * density, -5.5f * density, 21.5f * density, -4f * density, laserHeadlightPaint)
                         // Laser light cone
                         val lightConePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                            color = 0x44F59E0B.toInt()
+                            color = 0x44F59E0B
                             style = android.graphics.Paint.Style.FILL
                         }
                         val conePath = android.graphics.Path().apply {
@@ -3743,7 +3743,7 @@ fun TextKeyboardLayout(
 
                     // 1. Trail of Stardust Smoke & Golden Sparks
                     val stardustPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = 0x55CBD5E1.toInt()
+                        color = 0x55CBD5E1
                         style = android.graphics.Paint.Style.FILL
                     }
                     val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -3984,8 +3984,8 @@ fun TextKeyboardLayout(
                         val vx = (canvasW + 120f * density) * 0.015f
                         val vy = nextWaveY - waveY + (kotlin.math.sin(currentMs * 0.008f + i) * 1.5f * density)
                         val speed = kotlin.math.sqrt(vx * vx + vy * vy).coerceAtLeast(0.1f)
-                        val dirX = (vx / speed).toFloat()
-                        val dirY = (vy / speed).toFloat()
+                        val dirX = vx / speed
+                        val dirY = vy / speed
 
                         // Bird scale & wing flap oscillation
                         val depth = 0.55f + 0.45f * ((i % 7) / 7f)
@@ -4583,7 +4583,7 @@ fun TextKeyboardLayout(
 
                     // 1. Headlight Light Beam Cone
                     val headlightPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = if (isNoble) 0x55FEF08A.toInt() else 0x44FEF08A.toInt()
+                        color = if (isNoble) 0x55FEF08A else 0x44FEF08A
                         style = android.graphics.Paint.Style.FILL
                     }
                     val beamPath = android.graphics.Path().apply {
@@ -4596,7 +4596,7 @@ fun TextKeyboardLayout(
 
                     // 2. Chuffing Steam & Spark Puffs from Smokestack
                     val steamPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                        color = if (isNoble) 0x88FDE047.toInt() else 0x77CBD5E1.toInt()
+                        color = (if (isNoble) 0x88FDE047 else 0x77CBD5E1).toInt()
                         style = android.graphics.Paint.Style.FILL
                     }
                     val sparkPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -9064,12 +9064,12 @@ private class TextKeyboardLayoutController(
 
         val key = if (prefs.keyboard.adaptiveHitboxExpansion.get() && keyboard.mode == KeyboardMode.CHARACTERS) {
             val activeContent = editorInstance.activeContent
-            val textBefore = activeContent.textBeforeSelection.toString()
+            val textBefore = activeContent.textBeforeSelection
             val composing = activeContent.composingText
             val prefix = when {
                 activeContent.composing.isValid && composing.isNotBlank() -> composing
                 activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> activeContent.currentWordText
-                else -> textBefore.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                else -> textBefore.takeLastWhile { it.isLetter() || it == '\'' }
             }
             val beforePrefix = if (prefix.isNotEmpty()) {
                 textBefore.dropLast(prefix.length).trimEnd()
@@ -9159,7 +9159,7 @@ private class TextKeyboardLayoutController(
                 dwellTimeMs = dwellTime,
                 latencyMs = latency,
                 interKeyFlightTimeMs = flightTime,
-                contextBefore = editorInstance.activeContent.textBeforeSelection.toString(),
+                contextBefore = editorInstance.activeContent.textBeforeSelection,
                 keyVariation = keyboardManager.activeState.keyVariation,
                 packageName = editorInstance.activeInfo.packageName,
             )
@@ -9338,12 +9338,12 @@ private class TextKeyboardLayoutController(
                             // Direct hit on the rendered floating word on the keycap first
                             val predictedWord = currentFlickPredictions[charCode] ?: run {
                                 val activeContent = editorInstance.activeContent
-                                val textBefore = activeContent.textBeforeSelection.toString()
+                                val textBefore = activeContent.textBeforeSelection
                                 val composing = activeContent.composingText
                                 val prefix = when {
                                     activeContent.composing.isValid && composing.isNotBlank() -> composing
                                     activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> activeContent.currentWordText
-                                    else -> textBefore.takeLastWhile { it.isLetter() || it == '\'' }.toString()
+                                    else -> textBefore.takeLastWhile { it.isLetter() || it == '\'' }
                                 }
                                 val beforePrefix = if (prefix.isNotEmpty()) {
                                     textBefore.dropLast(prefix.length).trimEnd()
