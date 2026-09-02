@@ -208,6 +208,17 @@ private val ramKeysHoisted = listOf("ram", "rams", "battering ram", "batteringra
 // `(comp == k && d == " ")` / `(comp == k && (d.isEmpty() || d == " "))` reduce to
 // `comp in keySet`; (2) the ignoreCase=true variants are no-ops because tb/comp are
 // pre-lowercased and all keys are lowercase.
+// Off-UI-thread sink for FlorisNative.recordTouchHit. That call takes the native
+// NLP_ENGINE write lock and blocks until in-flight suggest/glide reads drain — measured
+// avg 376us / worst 1.65ms if done on the UI thread (perf_review_bench lock-stall test).
+// Nothing on the touch path consumes its result (only future taps read the learned bias),
+// so it is posted here instead. Single daemon thread = app-lifetime (no per-controller leak),
+// low priority, and order-preserving so the EMA/Gaussian updates apply in tap order.
+private val touchHitExecutor: java.util.concurrent.ExecutorService =
+    java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "crake-touchhit").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }
+    }
+
 private val eggPreStd = listOf(" ", "\n")
 private val eggPreQuote = listOf(" ", "\n", "\"", "'")
 private val eggSuffix2 = listOf("", " ")
@@ -9085,14 +9096,23 @@ private class TextKeyboardLayoutController(
                 )
             }
             if (label.length == 1 && label[0].isLetter()) {
-                org.florisboard.libnative.FlorisNative.recordTouchHit(
-                    char = label[0],
-                    x = touchX,
-                    y = touchY,
-                    major = touchMajor ?: 0f,
-                    minor = touchMinor ?: 0f,
-                    orientation = touchOrientation ?: 0f,
-                )
+                // Capture primitives and post off the UI thread (see touchHitExecutor).
+                val hitChar = label[0]
+                val hitX = touchX
+                val hitY = touchY
+                val hitMajor = touchMajor ?: 0f
+                val hitMinor = touchMinor ?: 0f
+                val hitOrientation = touchOrientation ?: 0f
+                touchHitExecutor.execute {
+                    org.florisboard.libnative.FlorisNative.recordTouchHit(
+                        char = hitChar,
+                        x = hitX,
+                        y = hitY,
+                        major = hitMajor,
+                        minor = hitMinor,
+                        orientation = hitOrientation,
+                    )
+                }
             }
             if (pointer.initialKey == null) {
                 pointer.initialKey = key
