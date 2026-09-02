@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 398
+    const val CURRENT_MILESTONE = 399
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 39801
-    private const val RESOLVED_NOTIFICATION_ID = 39802
+    private const val NOTIFICATION_ID = 39901
+    private const val RESOLVED_NOTIFICATION_ID = 39902
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                399 -> "Zero-Allocation Layout Merging & Hint Traversal Optimization: Pre-allocated direct 2D key arrays during keyboard mode transitions and eliminated iterator allocations across key hint evaluators."
                 398 -> "Round 2 UI Recomposition Isolation & Keystroke Optimization: Decoupled active text content from the 66-key rendering loop via background flow collectors, eliminating full-keyboard recomposition storms per keystroke."
                 397 -> "Crake Architecture Evolution & Component Modernization: Standardized CrakeLog devtools, CrakeSimpleCard, CrakeChip, and isolated Compose text tracking."
                 396 -> "Crake Foundation Aliasing & Compose Primitive Standardization: Established pure CrakeScreen, CrakeAppBar, and CrakeButton UI components alongside clean preferences."
