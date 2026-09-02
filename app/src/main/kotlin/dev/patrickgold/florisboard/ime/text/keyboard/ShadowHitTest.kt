@@ -22,7 +22,7 @@ import org.florisboard.libnative.FlorisNative
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Shadow-mode comparator for the Rust hit tester (floris-core `hit_test`).
+ * Shadow-mode comparator for the Rust hit tester (crake-core `hit_test`).
  *
  * Kotlin's `TextKeyboard.getKeyForPos` stays authoritative; on every resolved
  * touch the same point is handed to the native tester and the answers are

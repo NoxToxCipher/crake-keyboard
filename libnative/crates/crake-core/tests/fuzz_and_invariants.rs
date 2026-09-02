@@ -7,11 +7,11 @@
 //! 4. Mathematical metric invariants (identity, symmetry, triangle inequality).
 //! 5. Output deduplication and exact-word survival guarantees.
 
-use floris_core::blob::parse_dict_blob;
-use floris_core::distance::{damerau_levenshtein, spatial_levenshtein_distance};
-use floris_core::glide::{anisotropic_thumb_distance, GlideEngine, KeyInfo, Point2D};
-use floris_core::nlp::NlpEngine;
-use floris_core::persist::LearnedState;
+use crake_core::blob::parse_dict_blob;
+use crake_core::distance::{damerau_levenshtein, spatial_levenshtein_distance};
+use crake_core::glide::{anisotropic_thumb_distance, GlideEngine, KeyInfo, Point2D};
+use crake_core::nlp::NlpEngine;
+use crake_core::persist::LearnedState;
 
 fn build_mock_nlp() -> NlpEngine {
     let mut nlp = NlpEngine::new();
@@ -216,11 +216,11 @@ fn test_persist_round_trip_integrity_and_capping() {
     assert!(!serialized.is_empty());
 
     let parsed = LearnedState::parse(&serialized).expect("Valid serialized state must parse");
-    assert_eq!(parsed.words.len(), floris_core::persist::MAX_LEARNED_WORDS as usize);
-    assert_eq!(parsed.corrections.len(), floris_core::persist::MAX_CORRECTIONS as usize);
-    assert_eq!(parsed.bigrams.len(), floris_core::persist::MAX_PERSONAL_BIGRAMS as usize);
-    assert_eq!(parsed.rejected.len(), floris_core::persist::MAX_REJECTED_CORRECTIONS as usize);
-    assert_eq!(parsed.word_epochs.len(), floris_core::persist::MAX_WORD_EPOCHS as usize);
+    assert_eq!(parsed.words.len(), crake_core::persist::MAX_LEARNED_WORDS as usize);
+    assert_eq!(parsed.corrections.len(), crake_core::persist::MAX_CORRECTIONS as usize);
+    assert_eq!(parsed.bigrams.len(), crake_core::persist::MAX_PERSONAL_BIGRAMS as usize);
+    assert_eq!(parsed.rejected.len(), crake_core::persist::MAX_REJECTED_CORRECTIONS as usize);
+    assert_eq!(parsed.word_epochs.len(), crake_core::persist::MAX_WORD_EPOCHS as usize);
 }
 
 #[test]
@@ -282,7 +282,7 @@ fn test_touch_model_and_spatial_slip_invariants() {
         ('z', 100.0, 300.0), ('x', 200.0, 300.0), ('c', 300.0, 300.0), ('v', 400.0, 300.0), ('b', 500.0, 300.0),
     ];
 
-    let model = floris_core::TouchModel::from_layout(&qwerty_keys).expect("Valid layout must construct TouchModel");
+    let model = crake_core::TouchModel::from_layout(&qwerty_keys).expect("Valid layout must construct TouchModel");
     assert!(model.near_dist_sq() > 0.0);
     assert!(model.near_dist_sq().is_finite());
 
@@ -292,7 +292,7 @@ fn test_touch_model_and_spatial_slip_invariants() {
     assert!(!model.is_near('q', 'p'));
 
     // Spatial slip matching symmetry and reflexivity
-    assert!(floris_core::NlpEngine::is_spatial_slip_match("helo", "help") || !floris_core::NlpEngine::is_spatial_slip_match("helo", "helo"));
-    assert!(!floris_core::NlpEngine::is_spatial_slip_match("", ""));
-    assert!(!floris_core::NlpEngine::is_spatial_slip_match("abc", "defg"));
+    assert!(crake_core::NlpEngine::is_spatial_slip_match("helo", "help") || !crake_core::NlpEngine::is_spatial_slip_match("helo", "helo"));
+    assert!(!crake_core::NlpEngine::is_spatial_slip_match("", ""));
+    assert!(!crake_core::NlpEngine::is_spatial_slip_match("abc", "defg"));
 }

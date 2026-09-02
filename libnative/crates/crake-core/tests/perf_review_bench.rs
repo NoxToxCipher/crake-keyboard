@@ -4,9 +4,9 @@
 //! subtrees, this measures the paths the keyboard actually takes per
 //! keystroke and per glide, on the real 49k-word dictionary.
 //!
-//! Run: cargo test -p floris-core --release --test perf_review_bench -- --nocapture
+//! Run: cargo test -p crake-core --release --test perf_review_bench -- --nocapture
 
-use floris_core::{detect_double_letter_loops, GlideEngine, KeyInfo, NlpEngine, Point2D};
+use crake_core::{detect_double_letter_loops, GlideEngine, KeyInfo, NlpEngine, Point2D};
 use std::time::Instant;
 
 fn engine() -> NlpEngine {
@@ -16,7 +16,7 @@ fn engine() -> NlpEngine {
         "/../../../app/src/main/assets/ime/dict/data.crkd"
     ))
     .expect("dict blob");
-    floris_core::parse_dict_blob(&dict, |w, f| {
+    crake_core::parse_dict_blob(&dict, |w, f| {
         e.trie.insert(w, f);
         e.corpus_insert(w, f);
     })

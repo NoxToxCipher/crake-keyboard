@@ -1,5 +1,5 @@
-use floris_core::touch_model::TouchModel;
-use floris_core::distance::spatial_substitution_cost;
+use crake_core::touch_model::TouchModel;
+use crake_core::distance::spatial_substitution_cost;
 
 fn build_qwerty_layout() -> TouchModel {
     let rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];

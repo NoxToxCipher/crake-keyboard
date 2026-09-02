@@ -22,7 +22,7 @@ import org.florisboard.libnative.FlorisNative
 
 /**
  * Hangul syllable composition. The composition logic lives in the native
- * core (floris-core composing::hangul_unicode_actions); without the native
+ * core (crake-core composing::hangul_unicode_actions); without the native
  * lib jamo are appended uncombined.
  */
 @Serializable

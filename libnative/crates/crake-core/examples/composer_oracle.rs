@@ -5,7 +5,7 @@
 //! string-conversion semantics — and writes an identically formatted file.
 //! A byte-identical diff against the Kotlin output proves the port.
 
-use floris_core::{hangul_unicode_actions, kana_unicode_actions, RuleComposer};
+use crake_core::{hangul_unicode_actions, kana_unicode_actions, RuleComposer};
 use std::io::{BufRead, BufWriter, Write};
 
 fn decode(field: &str) -> Vec<u16> {

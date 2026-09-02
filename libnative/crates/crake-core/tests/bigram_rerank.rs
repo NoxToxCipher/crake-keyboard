@@ -2,7 +2,7 @@
 //! ordering only, immovable auto-commit/literal head, identical behaviour
 //! when no table is loaded.
 
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 /// Builds a CRKB blob for (prev, next, score) triples using the engine's own
 /// corpus ids, exactly as the generator does against the CRKD order.
@@ -121,7 +121,7 @@ fn no_table_means_no_change() {
     let e = engine();
     let plain = e.suggest("mornin", 3);
     let ctx = e.suggest_with_context("mornin", "good", 3);
-    let words = |r: &floris_core::SuggestionResult| {
+    let words = |r: &crake_core::SuggestionResult| {
         r.candidates.iter().map(|c| c.word.clone()).collect::<Vec<_>>()
     };
     assert_eq!(words(&plain), words(&ctx));

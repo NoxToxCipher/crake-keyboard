@@ -4,7 +4,7 @@
 //! (word' ranked word's first). Edge apostrophes are deliberate punctuation:
 //! quotes live behind long-press and are not fat-fingered.
 
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 fn engine() -> NlpEngine {
     let mut e = NlpEngine::new();

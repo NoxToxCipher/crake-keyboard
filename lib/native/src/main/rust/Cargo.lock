@@ -137,12 +137,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "crake-core"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "crake-privacy"
 version = "0.1.0"
 dependencies = [
  "boreal",
  "chacha20poly1305",
- "floris-core",
+ "crake-core",
  "qrcode",
  "rand",
  "sha2",
@@ -208,18 +216,10 @@ checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 name = "fl_native_rust"
 version = "0.1.0"
 dependencies = [
+ "crake-core",
  "crake-privacy",
- "floris-core",
  "jni",
  "once_cell",
-]
-
-[[package]]
-name = "floris-core"
-version = "0.1.0"
-dependencies = [
- "thiserror",
- "unicode-segmentation",
 ]
 
 [[package]]

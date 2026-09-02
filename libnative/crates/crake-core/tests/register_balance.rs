@@ -11,7 +11,7 @@
 //! lives in the data (data.json + CORE_DICTIONARY); this test keeps it from
 //! regressing when either table is regenerated.
 
-use floris_core::CORE_DICTIONARY;
+use crake_core::CORE_DICTIONARY;
 
 const CAP: u32 = 140;
 

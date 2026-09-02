@@ -1,4 +1,4 @@
-use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
+use crake_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
 use jni::objects::{JByteArray, JClass, JFloatArray, JIntArray, JLongArray, JObjectArray, JString};
 use jni::sys::{jboolean, jfloat, jint, jlong, jobjectArray, jstring};
 use jni::JNIEnv;
@@ -6,8 +6,8 @@ use once_cell::sync::Lazy;
 use std::sync::RwLock;
 
 static NLP_ENGINE: Lazy<RwLock<NlpEngine>> = Lazy::new(|| RwLock::new(NlpEngine::new()));
-static HIT_TESTER: Lazy<RwLock<floris_core::HitTester>> =
-    Lazy::new(|| RwLock::new(floris_core::HitTester::new()));
+static HIT_TESTER: Lazy<RwLock<crake_core::HitTester>> =
+    Lazy::new(|| RwLock::new(crake_core::HitTester::new()));
 static GLIDE_ENGINE: Lazy<RwLock<GlideEngine>> = Lazy::new(|| RwLock::new(GlideEngine::new()));
 
 #[no_mangle]
@@ -145,7 +145,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpLoad
                 engine.reserve_corpus(count);
             }
         }
-        match floris_core::parse_dict_blob(&bytes, |word, freq| {
+        match crake_core::parse_dict_blob(&bytes, |word, freq| {
             engine.trie.insert(word, freq);
             engine.corpus_insert(word, freq);
         }) {
@@ -269,7 +269,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeRecordT
     };
     if let Ok(mut tester) = HIT_TESTER.write() {
         if let Some(index) = tester.chars().iter().position(|&c| c == char_code) {
-            let patch = floris_core::ContactPatch::new(x, y, major, minor, orientation);
+            let patch = crake_core::ContactPatch::new(x, y, major, minor, orientation);
             let (ax, ay) = patch.corrected_apex();
             tester.record_hit(index, ax, ay);
         }
@@ -1114,7 +1114,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideSe
         })
         .collect();
     if let Ok(mut engine) = NLP_ENGINE.write() {
-        engine.set_touch_model(floris_core::TouchModel::from_layout(&model_keys));
+        engine.set_touch_model(crake_core::TouchModel::from_layout(&model_keys));
     }
 
     if let Ok(mut engine) = GLIDE_ENGINE.write() {
@@ -1195,7 +1195,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGlideMa
     // "oui"/"upi" because every candidate was junk).
     let commit_safe = matches
         .iter()
-        .any(|m| m.frequency >= floris_core::glide::GLIDE_COMMIT_MIN_FREQ);
+        .any(|m| m.frequency >= crake_core::glide::GLIDE_COMMIT_MIN_FREQ);
     let offset: usize = if commit_safe { 0 } else { 1 };
 
     let result_array = match env.new_object_array(
@@ -1598,7 +1598,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeToBriti
         Ok(s) => s.to_str().unwrap_or("").to_string(),
         Err(_) => return empty,
     };
-    match floris_core::british_spelling::to_british_spelling(&w.to_lowercase()) {
+    match crake_core::british_spelling::to_british_spelling(&w.to_lowercase()) {
         Some(br) => env.new_string(br).map(|s| s.into_raw()).unwrap_or(empty),
         None => empty,
     }
@@ -1608,7 +1608,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeToBriti
 // Composers (ime/text/composing): Hangul, Kana, rule-table
 // ---------------------------------------------------------------------------
 
-static RULE_COMPOSERS: Lazy<RwLock<Vec<floris_core::RuleComposer>>> =
+static RULE_COMPOSERS: Lazy<RwLock<Vec<crake_core::RuleComposer>>> =
     Lazy::new(|| RwLock::new(Vec::new()));
 
 /// Composer action for the stateless composers. Returns "N|text" where N is
@@ -1644,8 +1644,8 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCompose
         .and_then(|s| s.to_str().map(|v| v.to_string()).ok())
         .unwrap_or_else(|| "\u{FFFD}".to_string());
     let (n, text) = match kind.as_str() {
-        "hangul-unicode" => floris_core::hangul_unicode_actions(&preceding, &to_insert),
-        "kana-unicode" => floris_core::kana_unicode_actions(&preceding, &to_insert),
+        "hangul-unicode" => crake_core::hangul_unicode_actions(&preceding, &to_insert),
+        "kana-unicode" => crake_core::kana_unicode_actions(&preceding, &to_insert),
         _ => return std::ptr::null_mut(),
     };
     let payload = format!("{n}|{text}");
@@ -1680,7 +1680,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeCompose
             }
         }
     }
-    let composer = floris_core::RuleComposer::new(entries);
+    let composer = crake_core::RuleComposer::new(entries);
     match RULE_COMPOSERS.write() {
         Ok(mut reg) => {
             reg.push(composer);

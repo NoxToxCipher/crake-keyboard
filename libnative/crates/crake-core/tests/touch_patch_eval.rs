@@ -1,4 +1,4 @@
-use floris_core::{ContactPatch, HitTester};
+use crake_core::{ContactPatch, HitTester};
 
 fn setup_three_row_keyboard() -> HitTester {
     let mut tester = HitTester::new();

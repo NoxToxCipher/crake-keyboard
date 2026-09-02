@@ -1,10 +1,10 @@
 ﻿[package]
-name = "floris-core"
+name = "crake-core"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "High-performance, pure-Rust Radix Trie and NLP engine for FlorisBoard"
+description = "High-performance, pure-Rust Radix Trie and NLP engine for Crake Keyboard"
 
 [dependencies]
 unicode-segmentation.workspace = true

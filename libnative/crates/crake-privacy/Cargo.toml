@@ -7,7 +7,7 @@ license.workspace = true
 description = "Hardened privacy engine for Crake Keyboard"
 
 [dependencies]
-floris-core = { path = "../floris-core" }
+crake-core = { path = "../crake-core" }
 zeroize.workspace = true
 thiserror.workspace = true
 chacha20poly1305.workspace = true
@@ -20,7 +20,7 @@ qrcode = { version = "0.14.1", default-features = false }
 
 [features]
 default = []
-uniffi-bindings = ["dep:uniffi", "floris-core/uniffi-bindings"]
+uniffi-bindings = ["dep:uniffi", "crake-core/uniffi-bindings"]
 
 [dev-dependencies]
 proptest.workspace = true

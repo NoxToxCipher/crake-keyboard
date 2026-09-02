@@ -4,7 +4,7 @@
 //! an asset regen, a dictionary edit, or an ingestion can't silently undo
 //! a shipped fix. Field specimens are all Lochran's own typing (2026-08).
 
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 fn engine() -> NlpEngine {
     let mut e = NlpEngine::new();
@@ -13,7 +13,7 @@ fn engine() -> NlpEngine {
         "/../../../app/src/main/assets/ime/dict/data.crkd"
     ))
     .expect("dict blob");
-    floris_core::parse_dict_blob(&dict, |w, f| {
+    crake_core::parse_dict_blob(&dict, |w, f| {
         e.trie.insert(w, f);
         e.corpus_insert(w, f);
     })

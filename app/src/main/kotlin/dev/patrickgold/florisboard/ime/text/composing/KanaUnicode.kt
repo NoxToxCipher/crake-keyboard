@@ -22,7 +22,7 @@ import org.florisboard.libnative.FlorisNative
 
 /**
  * Kana dakuten/handakuten/small-kana toggling. The transform tables live in
- * the native core (floris-core composing::kana_unicode_actions); without the
+ * the native core (crake-core composing::kana_unicode_actions); without the
  * native lib marks are appended untransformed.
  */
 @Serializable

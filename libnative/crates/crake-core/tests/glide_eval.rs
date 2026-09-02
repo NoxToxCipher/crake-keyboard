@@ -8,7 +8,7 @@
 //! complaint this encodes ("it struggles to recognise what I'm gliding for",
 //! 2026-08-26) is a recall failure, not a ranking nicety.
 
-use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
+use crake_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
 
 const KEY_W: f32 = 100.0;
 const KEY_H: f32 = 140.0;
@@ -268,7 +268,7 @@ fn context_separates_near_identical_traces() {
         .map(|p| Point2D::new(p.x + 50.0, p.y))
         .collect();
 
-    let score_of = |ms: &[floris_core::GlideMatch], w: &str| {
+    let score_of = |ms: &[crake_core::GlideMatch], w: &str| {
         ms.iter().find(|m| m.word == w).map(|m| m.score).unwrap()
     };
     let no_ctx = glide.match_gesture(&trace, &nlp.trie, 3);
@@ -858,7 +858,7 @@ fn takeoff_and_landing_hook_cleanup_battery() {
             trace.push(v_tail_hook);
 
             // Verify hook trimming algorithm directly
-            let cleaned = floris_core::trim_takeoff_and_landing_hooks(&trace, 50.0);
+            let cleaned = crake_core::trim_takeoff_and_landing_hooks(&trace, 50.0);
             assert!(cleaned.len() < trace.len(), "Hook trimmer must detect and trim injected hardware hooks");
 
             let res = glide.match_gesture(&trace, &nlp.trie, 3);

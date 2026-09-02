@@ -15,7 +15,7 @@
 //! answers against the captured ones, so an engine change that shifts
 //! real-world behaviour is visible in the test output.
 
-use floris_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
+use crake_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
 
 fn parse_layout(s: &str) -> Vec<KeyInfo> {
     s.split(',')
@@ -76,7 +76,7 @@ fn replay_captured_device_traces() {
         "/../../../app/src/main/assets/ime/dict/data.crkd"
     ))
     .expect("dict blob");
-    floris_core::parse_dict_blob(&dict, |word, freq| {
+    crake_core::parse_dict_blob(&dict, |word, freq| {
         nlp.trie.insert(word, freq);
         nlp.corpus_insert(word, freq);
     })

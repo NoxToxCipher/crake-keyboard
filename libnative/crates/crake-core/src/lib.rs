@@ -1,4 +1,4 @@
-//! floris-core: Radix Trie and NLP candidate engine for FlorisBoard.
+//! crake-core: Radix Trie and NLP candidate engine for Crake Keyboard.
 
 #![forbid(unsafe_code)]
 #![deny(

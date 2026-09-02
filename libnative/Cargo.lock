@@ -341,12 +341,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "crake-core"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "thiserror",
+ "unicode-segmentation",
+ "uniffi",
+]
+
+[[package]]
 name = "crake-privacy"
 version = "0.1.0"
 dependencies = [
  "boreal",
  "chacha20poly1305",
- "floris-core",
+ "crake-core",
  "proptest",
  "qrcode",
  "rand 0.8.8",
@@ -434,16 +444,6 @@ name = "fiat-crypto"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
-
-[[package]]
-name = "floris-core"
-version = "0.1.0"
-dependencies = [
- "proptest",
- "thiserror",
- "unicode-segmentation",
- "uniffi",
-]
 
 [[package]]
 name = "fnv"

@@ -4,7 +4,7 @@
 //! u↔i, i↔o, t↔y, n↔m) — the signature of fast thumb typing, and the case
 //! the autocorrect budget must be spent on.
 
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 fn engine() -> NlpEngine {
     let mut e = NlpEngine::new();
@@ -182,7 +182,7 @@ fn three_fragment_splits_repair_with_a_witness() {
 /// yields nothing here rather than a wrong word.
 #[test]
 fn two_slip_splits_are_not_repaired_yet() {
-    use floris_core::TouchModel;
+    use crake_core::TouchModel;
     let mut e = engine();
     e.trie.insert("hope", 244);
     e.trie.insert("door", 240);
@@ -205,7 +205,7 @@ fn two_slip_splits_are_not_repaired_yet() {
 /// hope and door carried context evidence, nothing is offered.
 #[test]
 fn two_slip_splits_repair_with_a_unique_context_witness() {
-    use floris_core::TouchModel;
+    use crake_core::TouchModel;
     let mut e = engine();
     for (w, f) in [("hope", 244), ("door", 240), ("i", 250)] {
         e.corpus_insert(w, f);
@@ -356,7 +356,7 @@ fn attested_pairs_never_merge_even_when_the_joined_word_is_strong() {
 /// on Dvorak k and l live on opposite corners.
 #[test]
 fn merge_repair_follows_the_active_layout_model() {
-    use floris_core::TouchModel;
+    use crake_core::TouchModel;
     fn grid(rows: &[&str], offsets: &[f32]) -> TouchModel {
         let mut keys = Vec::new();
         for (r, row) in rows.iter().enumerate() {
