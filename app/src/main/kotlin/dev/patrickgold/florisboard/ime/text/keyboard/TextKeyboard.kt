@@ -130,6 +130,12 @@ class TextKeyboard(
             // Catchment reach expansion based on thumb contact size:
             val reachFactor = if (validMajor > 20.0f) 1.85f else 1.60f
 
+            // Top-row membership is a fixed property of the layout, not the pointer — precompute
+            // it once instead of re-scanning arrangement.firstOrNull() for every key each tap.
+            // TextKey has identity equality, so an identity HashSet matches Array.contains exactly
+            // (see utils/perf-proof/TopRowMembershipOracle.java).
+            val topRowKeys: Set<TextKey> = arrangement.firstOrNull()?.toHashSet() ?: emptySet()
+
             for (key in keys()) {
                 if (!key.isEnabled) continue
                 if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
@@ -138,7 +144,7 @@ class TextKeyboard(
                 val center = key.visibleBounds.center
 
                 // Top-row reach calibration (q,w,e,r,t,y,u,i,o,p): thumb pads strike ~13.5px lower than geometric center
-                val isTopRow = arrangement.firstOrNull()?.contains(key) == true
+                val isTopRow = key in topRowKeys
                 val topRowOffsetDy = if (isTopRow) +6.0f else 0.0f
 
                 // Edge column inward centroid alignment from fleet telemetry
