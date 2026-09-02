@@ -48,6 +48,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
+private val NUM_UNIT_REGEX = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|sol|xmr|doge|usdt|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE)
+private val MATH_EXPR_REGEX = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$")
 
 private fun evaluateMathOrMacro(input: String): String? {
     val clean = input.trim()
@@ -83,7 +85,7 @@ private fun evaluateMathOrMacro(input: String): String? {
     }
 
     // Number & Currency / Unit macro formatting (e.g. 100usd -> $100, 50eur -> €50, 32deg -> 32°, 100c -> 100°C)
-    val numUnitMatch = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE).matchEntire(clean)
+    val numUnitMatch = NUM_UNIT_REGEX.matchEntire(clean)
     if (numUnitMatch != null) {
         val num = numUnitMatch.groupValues[1]
         val unit = numUnitMatch.groupValues[2].lowercase()
@@ -116,7 +118,7 @@ private fun evaluateMathOrMacro(input: String): String? {
 private fun evalSimpleMath(expr: String): String? {
     return runCatching {
         val sanitized = expr.replace("x", "*").replace("X", "*").replace("×", "*").replace("÷", "/")
-        val match = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$").matchEntire(sanitized)
+        val match = MATH_EXPR_REGEX.matchEntire(sanitized)
         if (match != null) {
             val a = match.groupValues[1].toDouble()
             val op = match.groupValues[2]

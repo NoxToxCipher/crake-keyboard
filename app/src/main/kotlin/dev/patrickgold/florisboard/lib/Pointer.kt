@@ -34,7 +34,8 @@ class PointerMap<P : Pointer>(val capacity: Int = 4, init: (Int) -> P) : Iterabl
     /**
      * The internal list of pointers, is not intended for public access.
      */
-    private val pointers: List<P> = List(capacity.coerceAtLeast(1)) { i ->
+    @PublishedApi
+    internal val pointers: List<P> = List(capacity.coerceAtLeast(1)) { i ->
         init(i).also { pointer -> pointer.reset() }
     }
 
@@ -56,6 +57,18 @@ class PointerMap<P : Pointer>(val capacity: Int = 4, init: (Int) -> P) : Iterabl
             }
         }
         return null
+    }
+
+    /**
+     * Iterates over all active pointers with zero iterator or heap allocations.
+     */
+    inline fun forEachActive(action: (P) -> Unit) {
+        for (i in pointers.indices) {
+            val pointer = pointers[i]
+            if (pointer.isUsed) {
+                action(pointer)
+            }
+        }
     }
 
     /**
