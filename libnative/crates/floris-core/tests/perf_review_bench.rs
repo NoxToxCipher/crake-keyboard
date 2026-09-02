@@ -217,8 +217,11 @@ fn perf_review_lock_stall() {
     for _ in 0..samples {
         let t0 = Instant::now();
         {
-            let mut e = engine.write().unwrap();
-            std::hint::black_box(e.touch_model_mut());
+            // Perf item 6: the per-key-down record now takes a SHARED engine read
+            // plus the touch model's own lock, instead of the engine WRITE lock —
+            // so it no longer serializes behind the suggest reader above.
+            let e = engine.read().unwrap();
+            std::hint::black_box(e.record_touch_hit_biometrics('a', 5.0, 5.0, 0.0, 0.0, 0.0));
         }
         let dt = t0.elapsed();
         total += dt;
@@ -230,7 +233,7 @@ fn perf_review_lock_stall() {
     stop.store(true, Ordering::Relaxed);
     reader.join().unwrap();
     println!(
-        "\nkey-down write-lock stall behind per-keystroke suggest read: avg {:>7.1} us, worst {:>7.1} us over {} samples\n",
+        "\nkey-down record (shared engine read + touch-model lock) latency behind per-keystroke suggest read: avg {:>7.1} us, worst {:>7.1} us over {} samples\n",
         total.as_micros() as f64 / samples as f64,
         worst.as_micros() as f64,
         samples

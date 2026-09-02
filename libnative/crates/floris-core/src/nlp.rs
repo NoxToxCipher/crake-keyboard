@@ -1,6 +1,7 @@
 use crate::shorthand::lookup_shorthand;
 use crate::trie::RadixTrie;
 use crate::typo_corpus::lookup_common_typo;
+use std::sync::{Arc, RwLock};
 
 /// Hand assignment for touch keys in bimanual thumb typing (Idea 3 / Loops 7-9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -623,7 +624,14 @@ pub struct NlpEngine {
     /// for slip-cost decisions, so the engine is exactly as permissive as
     /// the keyboard the user is really typing on. None until the first
     /// layout upload (and in host-side tests, which exercise the fallback).
-    touch_model: Option<crate::TouchModel>,
+    /// (perf item 6) Behind its OWN lock: written per key-down by
+    /// [`Self::record_touch_hit_biometrics`], read during suggest by
+    /// [`Self::keys_near`]/[`Self::slip_oracle`]. The `Arc<RwLock<..>>` lets the
+    /// record path hold only NLP_ENGINE.read() (plus this small write lock)
+    /// instead of NLP_ENGINE.write(), so a background key-down no longer stalls
+    /// in-flight suggest reads on the whole engine lock. Lock order is always
+    /// engine-before-touch_model, so no path can deadlock.
+    touch_model: Arc<RwLock<Option<crate::TouchModel>>>,
     /// Bigram language model (CRKB blob) for context re-ranking. Empty until
     /// loaded; every consumer must behave identically when it is empty.
     bigrams: crate::bigram::BigramModel,
@@ -657,7 +665,7 @@ impl NlpEngine {
             corpus_freqs: std::collections::HashMap::new(),
             session_recency: std::collections::VecDeque::new(),
             personal_corrections: std::collections::HashMap::new(),
-            touch_model: None,
+            touch_model: Arc::new(RwLock::new(None)),
             bigrams: crate::bigram::BigramModel::default(),
             word_ids: std::collections::HashMap::new(),
             learned_words: std::collections::HashMap::new(),
@@ -1010,12 +1018,27 @@ impl NlpEngine {
     }
 
     pub fn set_touch_model(&mut self, model: Option<crate::TouchModel>) {
-        self.touch_model = model;
+        *self.touch_model.write().unwrap() = model;
     }
 
-    #[inline]
-    pub fn touch_model_mut(&mut self) -> Option<&mut crate::TouchModel> {
-        self.touch_model.as_mut()
+    /// Applies one biometric touch hit to the touch model in place. Takes only a
+    /// SHARED (`&self`) borrow of the engine — the model has its own lock — so the
+    /// per-key-down record path holds `NLP_ENGINE.read()` plus this small write
+    /// lock instead of `NLP_ENGINE.write()`, and no longer blocks in-flight
+    /// suggest reads on the engine lock (perf item 6). No-op when no layout has
+    /// been uploaded, exactly as the old `touch_model_mut()`-guarded call was.
+    pub fn record_touch_hit_biometrics(
+        &self,
+        ch: char,
+        x: f32,
+        y: f32,
+        major: f32,
+        minor: f32,
+        orientation: f32,
+    ) {
+        if let Some(model) = self.touch_model.write().unwrap().as_mut() {
+            model.record_touch_hit_with_biometrics(ch, x, y, major, minor, orientation);
+        }
     }
 
     /// Whether typing `b` while meaning `a` is a plausible physical slip:
@@ -1024,9 +1047,20 @@ impl NlpEngine {
     /// search and merge repair; the ranking-side `is_spatial_slip_match`
     /// deliberately keeps the static table (more permissive is harmless for
     /// ordering, and that function has other callers).
+    ///
+    /// This convenience form locks the touch model per call; the suggest hot
+    /// paths instead take one read guard for the whole call and feed
+    /// [`Self::slip_oracle`], so their view is frozen (no mid-suggest change) and
+    /// each char-pair comparison is a plain match rather than a lock acquisition.
     pub fn keys_near(&self, a: char, b: char) -> bool {
-        match &self.touch_model {
-            Some(model) => model.is_near(a, b),
+        Self::slip_oracle(&self.touch_model.read().unwrap(), a, b)
+    }
+
+    /// The slip oracle against an already-borrowed touch-model snapshot.
+    #[inline]
+    fn slip_oracle(model: &Option<crate::TouchModel>, a: char, b: char) -> bool {
+        match model {
+            Some(m) => m.is_near(a, b),
             None => Self::is_spatial_keyboard_neighbor(a, b),
         }
     }
@@ -1448,8 +1482,9 @@ impl NlpEngine {
         // unrelated words ("hoor" -> door vs hope) and layout fidelity leaks
         // (Dvorak-far slips slip through). Two-slip split repair needs the
         // PRECEDING-word context to disambiguate — future bit — not budget.
+        let touch = self.touch_model.read().unwrap();
         self.trie
-            .fuzzy_search_weighted(&joined, 1, 4, |a, b| self.keys_near(a, b))
+            .fuzzy_search_weighted(&joined, 1, 4, |a, b| Self::slip_oracle(&touch, a, b))
             .into_iter()
             .find(|fc| fc.word.chars().count() == joined_len && fc.frequency >= MIN_MERGED_FREQ)
             .map(|fc| display(fc.word))
@@ -1492,9 +1527,10 @@ impl NlpEngine {
             return None;
         }
         const MIN_MERGED_FREQ: u32 = 150;
+        let touch = self.touch_model.read().unwrap();
         let witnessed: Vec<String> = self
             .trie
-            .fuzzy_search_weighted(&joined, 2, 8, |a, b| self.keys_near(a, b))
+            .fuzzy_search_weighted(&joined, 2, 8, |a, b| Self::slip_oracle(&touch, a, b))
             .into_iter()
             .filter(|fc| {
                 fc.word.chars().count() == joined_len
@@ -1563,9 +1599,10 @@ impl NlpEngine {
         if ctx.is_empty() {
             return None;
         }
+        let touch = self.touch_model.read().unwrap();
         let witnessed: Vec<String> = self
             .trie
-            .fuzzy_search_weighted(&joined, 4, 8, |a, b| self.keys_near(a, b))
+            .fuzzy_search_weighted(&joined, 4, 8, |a, b| Self::slip_oracle(&touch, a, b))
             .into_iter()
             .filter(|fc| {
                 let len = fc.word.chars().count();
@@ -1930,12 +1967,18 @@ impl NlpEngine {
             } else {
                 4
             };
-            let fuzzy = self.trie.fuzzy_search_weighted(
-                &trimmed_lower,
-                max_units,
-                max_candidates + 4,
-                |a, b| self.keys_near(a, b),
-            );
+            // Frozen touch-model snapshot for just this fuzzy pass: the read guard
+            // is scoped to the block so it drops before any later snapshot in this
+            // method (no same-thread recursive read lock).
+            let fuzzy = {
+                let touch = self.touch_model.read().unwrap();
+                self.trie.fuzzy_search_weighted(
+                    &trimmed_lower,
+                    max_units,
+                    max_candidates + 4,
+                    |a, b| Self::slip_oracle(&touch, a, b),
+                )
+            };
             // Partition fuzzy matches: spatial keyboard neighbor slips get top priority
             let mut sorted_fuzzy = fuzzy;
             sorted_fuzzy.sort_by_key(|fc| {
@@ -2137,9 +2180,11 @@ impl NlpEngine {
                 && self.bigram_pair_score(&prev_lower, &trimmed_lower) == 0
             {
                 const CONTEXT_SLIP_MIN_FREQ: u32 = 150;
-                let attested: Vec<(String, u8)> = self
-                    .trie
-                    .fuzzy_search_weighted(&trimmed_lower, 1, 8, |a, b| self.keys_near(a, b))
+                let attested: Vec<(String, u8)> = {
+                    let touch = self.touch_model.read().unwrap();
+                    self.trie
+                        .fuzzy_search_weighted(&trimmed_lower, 1, 8, |a, b| Self::slip_oracle(&touch, a, b))
+                }
                     .into_iter()
                     .filter(|fc| fc.distance == 1 && fc.frequency >= CONTEXT_SLIP_MIN_FREQ)
                     .filter_map(|fc| {
@@ -2181,6 +2226,10 @@ impl NlpEngine {
                     .take_while(|c| c.is_autocorrect || c.word.eq_ignore_ascii_case(trimmed))
                     .count();
                 if head < candidates.len() {
+                    // One frozen snapshot for the whole rescoring pass so every
+                    // candidate sees the same touch model (matches the old
+                    // engine-read-frozen view) with no per-comparison locking.
+                    let touch = self.touch_model.read().unwrap();
                     let scores: Vec<i64> = candidates[head..]
                         .iter()
                         .map(|c| {
@@ -2193,7 +2242,7 @@ impl NlpEngine {
                                 &cand,
                                 freq,
                                 bigram,
-                                |a, b| self.keys_near(a, b),
+                                |a, b| Self::slip_oracle(&touch, a, b),
                             );
                             // Fixed-point so the sort key is total-ordered.
                             (crate::rescorer::score(&f) * 1_000_000.0) as i64

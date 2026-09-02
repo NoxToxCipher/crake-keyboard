@@ -274,10 +274,11 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeRecordT
             tester.record_hit(index, ax, ay);
         }
     }
-    if let Ok(mut nlp) = NLP_ENGINE.write() {
-        if let Some(tm) = nlp.touch_model_mut() {
-            tm.record_touch_hit_with_biometrics(char_code, x, y, major, minor, orientation);
-        }
+    // The touch model has its own lock inside the engine (perf item 6), so a
+    // SHARED engine read is enough here — this per-key-down record no longer takes
+    // the engine WRITE lock and therefore never stalls in-flight suggest reads.
+    if let Ok(nlp) = NLP_ENGINE.read() {
+        nlp.record_touch_hit_biometrics(char_code, x, y, major, minor, orientation);
     }
 }
 
