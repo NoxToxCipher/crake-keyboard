@@ -17,7 +17,7 @@ Usage:
     python utils/harvest_glide_traces.py [serial] [outfile]
     adb -s SERIAL logcat -d -s CrakeGlideTrace | python utils/harvest_glide_traces.py - [outfile]
 
-Default outfile: libnative/crates/floris-core/tests/data/glide_traces.txt
+Default outfile: libnative/crates/crake-core/tests/data/glide_traces.txt
 (appends; dedupes exact repeats).
 """
 import subprocess
@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 DEFAULT_OUT = Path(__file__).resolve().parent.parent / (
-    "libnative/crates/floris-core/tests/data/glide_traces.txt"
+    "libnative/crates/crake-core/tests/data/glide_traces.txt"
 )
 
 

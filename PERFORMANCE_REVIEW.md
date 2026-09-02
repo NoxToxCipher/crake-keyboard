@@ -1,10 +1,10 @@
 # Crake Keyboard — App-Wide Performance Review
 
-Date: 2026-09-02. Scope: full app (Kotlin IME + settings, Rust `floris-core`, startup, assets).
+Date: 2026-09-02. Scope: full app (Kotlin IME + settings, Rust `crake-core`, startup, assets).
 Method: four parallel code-path audits (input hot path, NLP/editor pipeline, theme/clipboard/media,
 startup/prefs/native), every headline finding re-verified against source, then **measured** where the
 environment allows: the Rust findings against the real shipped dictionary via
-`libnative/crates/floris-core/tests/perf_review_bench.rs` (added by this review, `#[ignore]`d so it
+`libnative/crates/crake-core/tests/perf_review_bench.rs` (added by this review, `#[ignore]`d so it
 only runs on demand), and the Kotlin patterns via 1:1 JVM ports. Desktop x86 numbers; a mid-range
 phone core is typically 2–4× slower.
 
@@ -15,7 +15,7 @@ Every `file:line` below was checked against the working tree at `896d9be`.
 ## Measured proof (summary)
 
 Native, real shipped 49,470-word dictionary, release build
-(`cargo test -p floris-core --release --test perf_review_bench -- --ignored --nocapture`):
+(`cargo test -p crake-core --release --test perf_review_bench -- --ignored --nocapture`):
 
 | Path | Measured | Frequency |
 |---|---|---|
@@ -169,7 +169,7 @@ the `Paint`s/`Path` out of the draw lambda.
 ## Tier 2 — Suggestion & glide latency (native)
 
 ### 2.1 Trie prefix search walks the entire subtree — no frequency pruning
-`libnative/crates/floris-core/src/trie.rs:238-260`
+`libnative/crates/crake-core/src/trie.rs:238-260`
 
 `collect_top` maintains a bounded top-k (a real prior fix) but still recurses into **every child
 unconditionally** (:257). On the shipped 49,470-word dictionary: **measured 207 µs for prefix "s"
@@ -376,6 +376,6 @@ grids pass item keys; `TypingTelemetricsManager` heavy work is settings-screen-o
 10. Updater to WorkManager + real unmetered check (4.1); startup ordering (4.2); baseline profile
     (4.3).
 
-Benchmark harness lives at `libnative/crates/floris-core/tests/perf_review_bench.rs`
-(`cargo test -p floris-core --release --test perf_review_bench -- --ignored --nocapture`), so every
+Benchmark harness lives at `libnative/crates/crake-core/tests/perf_review_bench.rs`
+(`cargo test -p crake-core --release --test perf_review_bench -- --ignored --nocapture`), so every
 native number above is reproducible before/after a fix.

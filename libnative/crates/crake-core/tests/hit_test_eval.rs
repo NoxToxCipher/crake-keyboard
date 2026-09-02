@@ -1,4 +1,4 @@
-use floris_core::{HitTester, NlpEngine};
+use crake_core::{HitTester, NlpEngine};
 
 fn setup_sample_keyboard() -> HitTester {
     let mut tester = HitTester::new();

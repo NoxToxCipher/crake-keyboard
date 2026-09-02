@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/floris-core",
+    "crates/crake-core",
     "crates/crake-privacy",
     "crates/crake-telemetry-tool",
 ]

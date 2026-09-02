@@ -1,4 +1,4 @@
-use floris_core::{spatial_levenshtein_distance, spatial_substitution_cost, TouchModel};
+use crake_core::{spatial_levenshtein_distance, spatial_substitution_cost, TouchModel};
 
 #[test]
 fn test_identity_and_symmetry() {

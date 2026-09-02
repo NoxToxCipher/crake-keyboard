@@ -62,7 +62,7 @@ object Appender : Composer {
 /**
  * Rule-table composer. The matching logic (longest key first, length ties in
  * reverse table order, case carry-over from the matched tail) lives in the
- * native core (floris-core composing::RuleComposer); the table is registered
+ * native core (crake-core composing::RuleComposer); the table is registered
  * once on first use. Without the native lib, text is appended untransformed.
  */
 @Serializable

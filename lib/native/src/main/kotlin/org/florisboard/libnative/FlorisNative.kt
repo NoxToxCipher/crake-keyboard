@@ -17,7 +17,7 @@
 package org.florisboard.libnative
 
 /**
- * JNI interface to native floris-core NLP engine, crake-privacy Secret Shield, and Boreal YARA scanner.
+ * JNI interface to native crake-core NLP engine, crake-privacy Secret Shield, and Boreal YARA scanner.
  */
 object FlorisNative {
     private var isLoaded = false

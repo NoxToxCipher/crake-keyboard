@@ -1,4 +1,4 @@
-﻿use floris_core::{damerau_levenshtein, RadixTrie};
+﻿use crake_core::{damerau_levenshtein, RadixTrie};
 use std::time::Instant;
 
 #[test]

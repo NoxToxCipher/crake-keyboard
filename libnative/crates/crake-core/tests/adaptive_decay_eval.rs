@@ -1,4 +1,4 @@
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 #[test]
 fn test_accidental_typo_decays_without_reinforcement() {

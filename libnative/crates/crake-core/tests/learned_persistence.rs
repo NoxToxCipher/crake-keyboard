@@ -2,7 +2,7 @@
 //! process must come back in the next. This is personalization rung 1 —
 //! without it, every learned word died with the process.
 
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 /// Personal bigrams: the user's own phrasing outranks web statistics in
 /// every context decision, and survives restarts with the rest of the
@@ -100,7 +100,7 @@ fn learned_words_and_habits_survive_a_restart() {
 #[test]
 fn learned_words_evict_weakest_at_capacity_not_the_alphabet_tail() {
     let mut e = NlpEngine::new();
-    for i in 0..floris_core::persist::MAX_LEARNED_WORDS {
+    for i in 0..crake_core::persist::MAX_LEARNED_WORDS {
         // learn each filler once (freq path gives them all the same base)
         e.learn_word(&format!("filler{i:04}"), 100);
     }
@@ -112,7 +112,7 @@ fn learned_words_evict_weakest_at_capacity_not_the_alphabet_tail() {
     let blob = e.export_learned();
     let mut fresh = NlpEngine::new();
     let restored = fresh.import_learned(&blob).expect("import");
-    assert!(restored <= floris_core::persist::MAX_LEARNED_WORDS as usize);
+    assert!(restored <= crake_core::persist::MAX_LEARNED_WORDS as usize);
     assert!(
         fresh.trie.get_frequency("zzzfavourite").is_some(),
         "the used word must survive persistence even at capacity"
@@ -124,14 +124,14 @@ fn learned_words_evict_weakest_at_capacity_not_the_alphabet_tail() {
 #[test]
 fn boost_path_respects_the_capacity_cap() {
     let mut e = NlpEngine::new();
-    for i in 0..floris_core::persist::MAX_LEARNED_WORDS {
+    for i in 0..crake_core::persist::MAX_LEARNED_WORDS {
         e.learn_word(&format!("filler{i:04}"), 100);
     }
     e.learn_and_boost_word("zzzboosted");
     let blob = e.export_learned();
     let mut fresh = NlpEngine::new();
     let restored = fresh.import_learned(&blob).expect("import");
-    assert!(restored <= floris_core::persist::MAX_LEARNED_WORDS as usize);
+    assert!(restored <= crake_core::persist::MAX_LEARNED_WORDS as usize);
     assert!(
         fresh.trie.get_frequency("zzzboosted").is_some(),
         "boost-learned word must survive persistence at capacity"
@@ -148,7 +148,7 @@ fn personal_bigrams_evict_weakest_at_capacity() {
     for _ in 0..5 {
         e.record_personal_bigram("keep", "strong");
     }
-    let cap = floris_core::persist::MAX_PERSONAL_BIGRAMS as usize;
+    let cap = crake_core::persist::MAX_PERSONAL_BIGRAMS as usize;
     let mut i = 0;
     while e.export_learned().len() < 1 || i < cap {
         // fill with distinct single-count pairs up to the cap

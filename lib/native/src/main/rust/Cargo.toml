@@ -8,7 +8,7 @@ name = "fl_native_rust"
 crate-type = ["staticlib"]
 
 [dependencies]
-floris-core = { path = "../../../../../libnative/crates/floris-core" }
+crake-core = { path = "../../../../../libnative/crates/crake-core" }
 crake-privacy = { path = "../../../../../libnative/crates/crake-privacy" }
 jni = "0.21.1"
 once_cell = "1.20"

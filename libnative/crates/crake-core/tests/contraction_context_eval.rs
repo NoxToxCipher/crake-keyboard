@@ -1,4 +1,4 @@
-use floris_core::resolve_contraction_with_context;
+use crake_core::resolve_contraction_with_context;
 
 #[test]
 fn test_unconditional_contractions_always_normalize() {
@@ -74,7 +74,7 @@ fn test_shed_and_hed_disambiguation_with_context() {
 /// this resolver into a revision feature (audit 2026-08-28).
 #[test]
 fn modal_well_verb_is_adverbial() {
-    use floris_core::nlp::resolve_contraction_with_context;
+    use crake_core::nlp::resolve_contraction_with_context;
     for modal in ["may", "might", "could", "should", "would", "will", "can", "must"] {
         assert_eq!(
             resolve_contraction_with_context("well", Some(modal), Some("be")),

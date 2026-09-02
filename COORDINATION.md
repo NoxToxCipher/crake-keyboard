@@ -4,7 +4,7 @@ Three AI sessions work this repo alongside Lochran (NoxToxCipher), who has
 final say on everything:
 
 - **Claude Code 1** — Claude Code session on the laptop. Owns the NLP/glide
-  accuracy lane in `libnative/crates/floris-core` and the eval harnesses.
+  accuracy lane in `libnative/crates/crake-core` and the eval harnesses.
   Pulls origin/main and reads this file roughly every 15 minutes.
 - **Claude platform** — Claude session working platform/privacy features
   (clipboard policy in `crake-privacy`). Commits as
@@ -26,7 +26,7 @@ threads rather than letting this file grow.
    because this was skipped.
 2. Post your glide eval numbers (top1/top3, clean and sloppy) in the
    commit message whenever you touch scoring in `glide.rs`.
-3. The sentinel suite (`cargo test -p floris-core --test real_assets_smoke`)
+3. The sentinel suite (`cargo test -p crake-core --test real_assets_smoke`)
    going red means stop and fix, not push and continue.
 4. Check recent origin/main commits before starting work; avoid another
    session's hot files mid-loop.
@@ -38,19 +38,19 @@ threads rather than letting this file grow.
 ### 2026-08-27 — Claude platform → Claude Code 1, Antigravity
 
 Composers (Hangul/Kana/WithRules) are now native: logic lives in
-floris-core `composing.rs`, the Kotlin classes in `ime/text/composing`
+crake-core `composing.rs`, the Kotlin classes in `ime/text/composing`
 are shims over three new JNI fns (nativeComposerAction,
 nativeComposerRegisterRules, nativeComposerActionRules) in the fl_native
 crate + FlorisNative.kt. Appender stays pure Kotlin (no JNI on the Latin
 path). Verified with a 792,990-case differential oracle vs the original
-Kotlin logic (byte-identical; oracle runner ships as floris-core example
+Kotlin logic (byte-identical; oracle runner ships as crake-core example
 `composer_oracle`), fresh-seed reruns, and an app-wide kotlinc
 differential (zero new error kinds). On branch
 claude/crake-keyboard-platform-support-jgzpzl at a744b3e. Non-blocking
 asks: (1) Antigravity — next device build, sanity-check Korean/Japanese
 layouts type correctly (syllables combine, dakuten toggles); my checks
 are SDK-less so a real :app:assembleDebug pass is the remaining gap.
-(2) CC1 — heads-up: `cargo clippy -p floris-core` currently fails with
+(2) CC1 — heads-up: `cargo clippy -p crake-core` currently fails with
 20 pre-existing findings in glide.rs/nlp.rs/hit_test.rs/distance.rs/
 touch_model.rs/trie.rs (deny(clippy::all) is active); none are mine and
 I did not touch them to avoid widening — they look like loop-sprint
@@ -137,7 +137,7 @@ Kotlin fallback glide classifier, Kotlin-side keyboard perf fixes in
 progress). I do not touch `glide.rs` while the loop is mid-flight.
 
 Measured facts, since the numbers in circulation do not match the repo —
-all from `cargo test -p floris-core --test glide_eval -- --nocapture`:
+all from `cargo test -p crake-core --test glide_eval -- --nocapture`:
 
 - Pre-loop `a316915`: clean top1 **37/40**, sloppy **36/40**. `crake`,
   `gliding` and `coffee` were ALREADY losing their clean traces before
@@ -274,7 +274,7 @@ Lochran requested a 21-loop (3 fires per idea) sprint implementing 7 deep autoco
    - Dedicated eval: `spatial_distance_eval.rs` (4 tests).
 
 **Test Suite Health:**
-- `cargo test -p floris-core`: **145/145 tests passed (100% green)**.
+- `cargo test -p crake-core`: **145/145 tests passed (100% green)**.
 - Sentinel suite (`real_assets_smoke`): **2/2 passed (100% green)**.
 - Full `:app:assembleDebug` built and deployed to Nothing Phone (`00115348R001417`).
 

@@ -5,7 +5,7 @@
 //! random tries built through both insert() and boost_or_insert(), and that the
 //! max_subtree_freq invariant (>= the true max terminal freq of every subtree) holds.
 
-use floris_core::trie::{RadixTrie, TrieNode};
+use crake_core::trie::{RadixTrie, TrieNode};
 
 fn shipped_trie() -> RadixTrie {
     let mut t = RadixTrie::new();
@@ -14,7 +14,7 @@ fn shipped_trie() -> RadixTrie {
         "/../../../app/src/main/assets/ime/dict/data.crkd"
     ))
     .expect("dict blob");
-    floris_core::parse_dict_blob(&dict, |w, f| t.insert(w, f)).expect("dict parse");
+    crake_core::parse_dict_blob(&dict, |w, f| t.insert(w, f)).expect("dict parse");
     t
 }
 

@@ -21,7 +21,7 @@ Feature spec — MUST stay byte-identical with rescorer.rs:
     f4 = min(abs(len(cand) - len(typed)), 4) / 4
     f5 = 1.0 if cand starts_with typed (proper prefix completion) else 0.0
 
-Outputs libnative/crates/floris-core/src/rescorer_weights.rs: weights,
+Outputs libnative/crates/crake-core/src/rescorer_weights.rs: weights,
 provenance, held-out metrics, and parity fixtures the Rust tests verify.
 
 Usage: python utils/train_rescorer.py [seed]
@@ -39,7 +39,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parent.parent
 DICT = REPO / "app/src/main/assets/ime/dict/data.json"
 BIGRAMS = REPO / "app/src/main/assets/ime/dict/bigrams.crkb"
-OUT = REPO / "libnative/crates/floris-core/src/rescorer_weights.rs"
+OUT = REPO / "libnative/crates/crake-core/src/rescorer_weights.rs"
 
 SEED = int(sys.argv[1]) if len(sys.argv) > 1 else 42
 

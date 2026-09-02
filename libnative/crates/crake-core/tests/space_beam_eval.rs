@@ -1,4 +1,4 @@
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 #[test]
 fn test_space_split_beam_repairs_run_together_phrases() {

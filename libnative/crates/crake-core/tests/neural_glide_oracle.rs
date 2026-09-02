@@ -1,5 +1,5 @@
-use floris_core::glide::{GlideEngine, KeyInfo, Point2D, NeuralGlideDecoder, MAX_NEURAL_FRAMES, NEURAL_IN_CHANNELS, NEURAL_OUT_CHANNELS};
-use floris_core::trie::RadixTrie;
+use crake_core::glide::{GlideEngine, KeyInfo, Point2D, NeuralGlideDecoder, MAX_NEURAL_FRAMES, NEURAL_IN_CHANNELS, NEURAL_OUT_CHANNELS};
+use crake_core::trie::RadixTrie;
 use std::collections::HashMap;
 
 fn build_test_glide_engine() -> (GlideEngine, RadixTrie) {

@@ -142,7 +142,7 @@ version = "0.1.0"
 dependencies = [
  "boreal",
  "chacha20poly1305",
- "floris-core",
+ "crake-core",
  "qrcode",
  "rand",
  "sha2",
@@ -209,13 +209,13 @@ name = "fl_native_rust"
 version = "0.1.0"
 dependencies = [
  "crake-privacy",
- "floris-core",
+ "crake-core",
  "jni",
  "once_cell",
 ]
 
 [[package]]
-name = "floris-core"
+name = "crake-core"
 version = "0.1.0"
 dependencies = [
  "thiserror",

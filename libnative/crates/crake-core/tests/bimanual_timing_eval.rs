@@ -1,4 +1,4 @@
-use floris_core::{get_key_hand, is_bimanual_transposition, Hand, NlpEngine};
+use crake_core::{get_key_hand, is_bimanual_transposition, Hand, NlpEngine};
 
 #[test]
 fn test_hand_assignment_completeness() {
@@ -58,7 +58,7 @@ fn test_slow_or_same_hand_transpositions_never_override() {
 /// "from" the moment this feature is wired (coord review 2026-08-28).
 #[test]
 fn no_timestamps_means_no_transposition_claim() {
-    use floris_core::nlp::is_bimanual_transposition;
+    use crake_core::nlp::is_bimanual_transposition;
     assert!(!is_bimanual_transposition("form", "from", &[]));
     assert!(!is_bimanual_transposition("teh", "the", &[]));
     // mismatched length is equally not evidence
@@ -70,7 +70,7 @@ fn no_timestamps_means_no_transposition_claim() {
 /// EVERY lane. The word remains a plain tappable suggestion.
 #[test]
 fn two_rejections_retire_an_autocorrect_pair() {
-    let mut nlp = floris_core::NlpEngine::new();
+    let mut nlp = crake_core::NlpEngine::new();
     // "worls" -> world auto-commits normally (fuzzy lane)
     let before = nlp.suggest_with_context("worls", "", 5);
     assert!(

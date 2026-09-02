@@ -7,7 +7,7 @@
 //! suggestion-only: no unigram/bigram signal separates them from legitimate
 //! rare words in open contexts ("a cot", "the hen").
 
-use floris_core::NlpEngine;
+use crake_core::NlpEngine;
 
 /// Builds a CRKB blob for (prev, next, score) triples using the engine's own
 /// corpus ids, exactly as the generator does against the CRKD order.

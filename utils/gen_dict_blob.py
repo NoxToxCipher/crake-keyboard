@@ -2,7 +2,7 @@
 """Generate the CRKD binary dictionary blob from the JSON dictionary.
 
 The keyboard loads app/src/main/assets/ime/dict/data.crkd at startup via a
-single JNI call (see floris-core/src/blob.rs for the format and the on-device
+single JNI call (see crake-core/src/blob.rs for the format and the on-device
 timings that motivated it). Rerun this whenever data.json changes:
 
     python utils/gen_dict_blob.py
@@ -24,7 +24,7 @@ from pathlib import Path
 
 MAGIC = b"CRKD"
 VERSION = 1
-MAX_WORD_LEN = 64  # keep in sync with floris-core/src/blob.rs
+MAX_WORD_LEN = 64  # keep in sync with crake-core/src/blob.rs
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "app/src/main/assets/ime/dict/data.json"

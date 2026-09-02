@@ -14,7 +14,7 @@
 //!     always engine-before-touch_model, so no cycle exists; this test drives the
 //!     three paths hard from many threads and must terminate.
 
-use floris_core::{NlpEngine, TouchModel};
+use crake_core::{NlpEngine, TouchModel};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 

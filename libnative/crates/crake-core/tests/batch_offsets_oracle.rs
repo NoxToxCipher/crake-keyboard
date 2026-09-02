@@ -9,7 +9,7 @@
 //! adaptive hit test feeds it: learned keys, unlearned keys, uppercase, digits,
 //! punctuation, the NUL sentinel, and long randomized code streams.
 
-use floris_core::HitTester;
+use crake_core::HitTester;
 
 /// A QWERTY-ish layout: 3 rows, 100x100 keys, so learned offsets are non-trivial.
 fn qwerty_tester() -> HitTester {

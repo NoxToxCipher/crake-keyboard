@@ -1,6 +1,6 @@
 ﻿//! Profile isolation and decoy mode manager for physical adversary defense.
 
-use floris_core::RadixTrie;
+use crake_core::RadixTrie;
 use zeroize::Zeroize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
