@@ -51,14 +51,26 @@ private const val BLANK_STR_PATTERN = "^\\s*$"
 private val NUM_UNIT_REGEX = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|sol|xmr|doge|usdt|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE)
 private val MATH_EXPR_REGEX = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$")
 
+// (Item 4 reconciliation) Milestone 394 already hoisted the number-unit and math regexes above —
+// its NUM_UNIT_REGEX is a superset (adds sol|xmr|doge|usdt) and MATH_EXPR_REGEX is byte-identical
+// to the branch's math pattern — so the branch's duplicate NUM_UNIT_REGEX/SIMPLE_MATH_REGEX vals
+// were dropped; only the branch's DateTimeFormatter hoists (which main did not do) remain below.
+// DateTimeFormatter is immutable/thread-safe; hoisting stops re-parsing the pattern per keystroke.
+private val FMT_NOW = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+private val FMT_TODAY = java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")
+private val FMT_DATE = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+private val FMT_TIME = java.time.format.DateTimeFormatter.ofPattern("h:mm a")
+
 private fun evaluateMathOrMacro(input: String): String? {
     val clean = input.trim()
-    val now = java.time.ZonedDateTime.now()
+    // ZonedDateTime.now() was computed unconditionally though only 4 of ~30 branches
+    // use it; moved into those branches so a plain "eth" or "100usd" no longer resolves
+    // the timezone/clock every keystroke.
     when (clean.lowercase()) {
-        ".now", "!now" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
-        ".today", "!today" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy"))
-        ".date", "!date" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-        ".time", "!time" -> return now.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))
+        ".now", "!now" -> return java.time.ZonedDateTime.now().format(FMT_NOW)
+        ".today", "!today" -> return java.time.ZonedDateTime.now().format(FMT_TODAY)
+        ".date", "!date" -> return java.time.ZonedDateTime.now().format(FMT_DATE)
+        ".time", "!time" -> return java.time.ZonedDateTime.now().format(FMT_TIME)
         ".utc", "!utc" -> return java.time.Instant.now().toString()
         ".ts", "!ts" -> return (System.currentTimeMillis() / 1000).toString()
         ".eth", "!eth", ":eth", ".ethereum", "!ethereum", "eth" -> return "Ξ"
@@ -426,8 +438,15 @@ class NlpManager(context: Context) {
         val isSelection = editorInstance.activeContent.selection.isSelectionMode
         val isExpanded = list1.isNullOrEmpty() && list2.isNullOrEmpty() || isSelection
         scope.launch {
-            prefs.smartbar.sharedActionsExpandWithAnimation.set(false)
-            prefs.smartbar.sharedActionsExpanded.set(isExpanded)
+            // Equality-guard: this runs on every candidate assembly (per keystroke). Writing
+            // an unchanged value marked the datastore dirty and scheduled a persist each time;
+            // the stored result is identical, StateFlow dedupes same-value emissions.
+            if (prefs.smartbar.sharedActionsExpandWithAnimation.get()) {
+                prefs.smartbar.sharedActionsExpandWithAnimation.set(false)
+            }
+            if (prefs.smartbar.sharedActionsExpanded.get() != isExpanded) {
+                prefs.smartbar.sharedActionsExpanded.set(isExpanded)
+            }
         }
     }
 

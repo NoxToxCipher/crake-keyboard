@@ -145,14 +145,34 @@ class TextKeyboard(
             // Catchment reach expansion based on thumb contact size:
             val reachFactor = if (validMajor > 20.0f) 1.85f else 1.60f
 
+            // Top-row membership is a fixed property of the layout, not the pointer — precompute
+            // it once as an identity HashSet (item 5) instead of re-scanning
+            // arrangement.firstOrNull()?.contains(key) for every key each tap. TextKey has identity
+            // equality, so HashSet membership == Array.contains (utils/perf-proof/TopRowMembershipOracle.java).
+            val topRowKeys: Set<TextKey> = arrangement.firstOrNull()?.toHashSet() ?: emptySet()
+
+            // Bulk-fetch every learned touch offset in ONE native crossing per tap (item 5a) instead
+            // of ~30 per-char nativeGetTouchOffset calls; touchOffsets[2*i]/[2*i+1] equal
+            // getTouchOffset(codes[i]) exactly (libnative batch_offsets_oracle.rs). Codes are gathered
+            // over forEachKey (main's zero-alloc iteration) so no per-tap key list is allocated.
+            var codeIndex = 0
+            val touchOffsets = org.florisboard.libnative.FlorisNative.getTouchOffsets(
+                IntArray(keyCount).also { codes ->
+                    forEachKey { key -> codes[codeIndex++] = key.computedData.code.toChar().lowercaseChar().code }
+                }
+            )
+
+            var keyIndex = 0
             forEachKey { key ->
+                val i = keyIndex++
                 if (key.isEnabled && key.computedData.code > dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
                     val charCode = key.computedData.code.toChar().lowercaseChar()
-                    val (learnedDx, learnedDy) = org.florisboard.libnative.FlorisNative.getTouchOffset(charCode)
+                    val learnedDx = touchOffsets[2 * i]
+                    val learnedDy = touchOffsets[2 * i + 1]
                     val center = key.visibleBounds.center
 
                     // Top-row reach calibration (q,w,e,r,t,y,u,i,o,p): thumb pads strike ~13.5px lower than geometric center
-                    val isTopRow = arrangement.firstOrNull()?.contains(key) == true
+                    val isTopRow = key in topRowKeys
                     val topRowOffsetDy = if (isTopRow) +6.0f else 0.0f
 
                     // Edge column inward centroid alignment from fleet telemetry

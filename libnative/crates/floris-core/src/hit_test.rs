@@ -138,6 +138,16 @@ impl HitTester {
         self.offsets.iter().map(|(&c, &(dx, dy))| (c, dx, dy)).collect()
     }
 
+    /// Batched full-precision offset lookup: one `(dx, dy)` per input char, in
+    /// input order, each identical to [`Self::offset_for`] for that char (same
+    /// lowercasing, same `(0.0, 0.0)` default for unlearned keys). Lets a single
+    /// per-tap JNI crossing replace ~30 per-char calls in the adaptive hit test,
+    /// while staying bit-for-bit equal to calling `offset_for` individually
+    /// (proven by tests/batch_offsets_oracle.rs).
+    pub fn offsets_for(&self, chars: &[char]) -> Vec<(f32, f32)> {
+        chars.iter().map(|&c| self.offset_for(c)).collect()
+    }
+
     /// Serializes learned offsets (CRKT v1: char u32, dx f32, dy f32 each).
     pub fn export_offsets(&self) -> Vec<u8> {
         let mut entries: Vec<(char, (f32, f32))> =

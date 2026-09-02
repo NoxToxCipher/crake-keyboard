@@ -65,7 +65,12 @@ sealed interface SnyggPropertySetEditor {
 }
 
 class SnyggSinglePropertySetEditor(initProperties: Map<String, SnyggValue>? = null) : SnyggPropertySetEditor {
-    val uuid = UUID.randomUUID().toString()
+    // Lazy: the only consumer is `key(propertySet.uuid)` in the settings theme editor, but a
+    // fresh editor is allocated on every SnyggTheme.query (once per styled element per restyle),
+    // where uuid is never read. Eager init drew from the shared SecureRandom + formatted a 36-char
+    // string on that hot path for nothing. Lazy keeps the per-instance-stable / cross-instance-
+    // distinct contract the editor's key() relies on (see utils/perf-proof/LazyUuidOracle.java).
+    val uuid: String by lazy { UUID.randomUUID().toString() }
     val properties = mutableMapOf<String, SnyggValue>()
 
     init {

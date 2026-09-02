@@ -99,15 +99,24 @@ import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import dev.patrickgold.florisboard.R
@@ -448,54 +457,19 @@ fun ClipboardInputLayout(
             if (item.type == ItemType.IMAGE) {
                 val id = ContentUris.parseId(item.uri!!)
                 val file = ClipboardFileStorage.getFileForId(context, id)
-                val bitmap = remember(id) {
-                    runCatching {
-                        check(file.exists()) { "Unable to resolve image at ${file.absolutePath}" }
-                        val rawBitmap = BitmapFactory.decodeFile(file.absolutePath)
-                        checkNotNull(rawBitmap) { "Unable to decode image at ${file.absolutePath}" }
-                        rawBitmap.asImageBitmap()
-                    }
-                }
-                if (bitmap.isSuccess) {
-                    Image(
-                        modifier = Modifier.fillMaxWidth(),
-                        bitmap = bitmap.getOrThrow(),
-                        contentDescription = null,
-                        contentScale = ContentScale.FillWidth,
-                    )
-                } else {
-                    SnyggText(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = bitmap.exceptionOrNull()?.message ?: "Unknown error",
-                    )
-                }
+                // Decode off the main thread, downsampled to the cell width via a
+                // bounds pre-pass + inSampleSize, with a loading placeholder (item 8).
+                AsyncClipThumbnail(
+                    thumbnailKey = id,
+                    decode = { reqWidthPx -> decodeSampledClipImage(file, reqWidthPx) },
+                )
             } else if (item.type == ItemType.VIDEO) {
                 val id = ContentUris.parseId(item.uri!!)
                 val file = ClipboardFileStorage.getFileForId(context, id)
-                val bitmap = remember(id) {
-                    runCatching {
-                        check(file.exists()) { "Unable to resolve video at ${file.absolutePath}" }
-                        val rawBitmap = if (AndroidVersion.ATLEAST_API29_Q) {
-                            val dataRetriever = MediaMetadataRetriever()
-                            dataRetriever.setDataSource(file.absolutePath)
-                            val width = dataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
-                            val height = dataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                            ThumbnailUtils.createVideoThumbnail(file, Size(width!!.toInt(), height!!.toInt()), null)
-                        } else {
-                            @Suppress("DEPRECATION")
-                            ThumbnailUtils.createVideoThumbnail(file.absolutePath, MediaStore.Video.Thumbnails.MINI_KIND)
-                        }
-                        checkNotNull(rawBitmap) { "Unable to decode video at ${file.absolutePath}" }
-                        rawBitmap.asImageBitmap()
-                    }
-                }
-                if (bitmap.isSuccess) {
-                    Image(
-                        modifier = Modifier.fillMaxWidth(),
-                        bitmap = bitmap.getOrThrow(),
-                        contentDescription = null,
-                        contentScale = ContentScale.FillWidth,
-                    )
+                AsyncClipThumbnail(
+                    thumbnailKey = id,
+                    decode = { decodeClipVideoThumbnail(file) },
+                ) {
                     Icon(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -504,11 +478,6 @@ fun ClipboardInputLayout(
                         imageVector = Icons.Default.Videocam,
                         contentDescription = null,
                         tint = Color.Black,
-                    )
-                } else {
-                    SnyggText(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = bitmap.exceptionOrNull()?.message ?: "Unknown error",
                     )
                 }
             } else {
@@ -586,7 +555,7 @@ fun ClipboardInputLayout(
                     item(key, span = StaggeredGridItemSpan.FullLine) {
                         ClipCategoryTitle(text = stringRes(title))
                     }
-                    items(items) { item ->
+                    items(items, key = { it.id }) { item ->
                         ClipItemView(
                             elementName = FlorisImeUi.ClipboardItem.elementName,
                             item = item,
@@ -1105,4 +1074,115 @@ private fun PopupAction(
             text = text,
         )
     }
+}
+
+/** Async decode state for a clipboard image/video cell (perf item 8). */
+private sealed interface ClipThumbnailState {
+    data object Loading : ClipThumbnailState
+    data class Ready(val bitmap: ImageBitmap) : ClipThumbnailState
+    data class Failed(val message: String) : ClipThumbnailState
+}
+
+/**
+ * Renders a clipboard thumbnail whose bitmap is decoded OFF the main thread.
+ *
+ * The cell is measured first (onSizeChanged) so [decode] can size the bitmap to
+ * the actual cell width, then the decode runs on [Dispatchers.IO] via
+ * [produceState] while a loading placeholder holds the slot. Previously each cell
+ * decoded a full-resolution bitmap synchronously during composition on the main
+ * thread — a per-frame jank + OOM risk for large clips. [overlay] draws on top of
+ * a successfully decoded image (e.g. the video badge).
+ */
+@Composable
+private fun AsyncClipThumbnail(
+    thumbnailKey: Any,
+    decode: (reqWidthPx: Int) -> ImageBitmap,
+    overlay: @Composable BoxScope.() -> Unit = {},
+) {
+    var targetWidthPx by remember(thumbnailKey) { mutableIntStateOf(0) }
+    val state by produceState<ClipThumbnailState>(ClipThumbnailState.Loading, thumbnailKey, targetWidthPx) {
+        value = if (targetWidthPx <= 0) {
+            ClipThumbnailState.Loading
+        } else {
+            withContext(Dispatchers.IO) {
+                runCatching { decode(targetWidthPx) }.fold(
+                    onSuccess = { ClipThumbnailState.Ready(it) },
+                    onFailure = { ClipThumbnailState.Failed(it.message ?: "Unknown error") },
+                )
+            }
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { if (it.width > 0) targetWidthPx = it.width },
+    ) {
+        when (val s = state) {
+            is ClipThumbnailState.Ready -> {
+                Image(
+                    modifier = Modifier.fillMaxWidth(),
+                    bitmap = s.bitmap,
+                    contentDescription = null,
+                    contentScale = ContentScale.FillWidth,
+                )
+                overlay()
+            }
+            is ClipThumbnailState.Failed -> SnyggText(
+                modifier = Modifier.fillMaxWidth(),
+                text = s.message,
+            )
+            ClipThumbnailState.Loading -> Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+            )
+        }
+    }
+}
+
+/** Largest power-of-two subsample keeping the decoded width >= [reqWidthPx]. */
+internal fun calculateInSampleSize(srcWidth: Int, reqWidthPx: Int): Int {
+    if (srcWidth <= 0 || reqWidthPx <= 0) return 1
+    var sample = 1
+    while (srcWidth / (sample * 2) >= reqWidthPx) {
+        sample *= 2
+    }
+    return sample
+}
+
+/**
+ * Decodes a clipboard image sized to [reqWidthPx]: a bounds-only pre-pass reads
+ * the source dimensions, then the real decode runs with the computed inSampleSize
+ * so a huge clip never inflates a full-resolution Bitmap into memory. Throws on a
+ * missing/undecodable file (surfaced as the failure state), matching the old path.
+ */
+private fun decodeSampledClipImage(file: File, reqWidthPx: Int): ImageBitmap {
+    val path = file.absolutePath
+    check(file.exists()) { "Unable to resolve image at $path" }
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    val opts = BitmapFactory.Options().apply {
+        inSampleSize = calculateInSampleSize(bounds.outWidth, reqWidthPx)
+    }
+    val rawBitmap = BitmapFactory.decodeFile(path, opts)
+    checkNotNull(rawBitmap) { "Unable to decode image at $path" }
+    return rawBitmap.asImageBitmap()
+}
+
+/** Decodes a clipboard video's thumbnail (identical logic to the old inline path, off-main). */
+private fun decodeClipVideoThumbnail(file: File): ImageBitmap {
+    val path = file.absolutePath
+    check(file.exists()) { "Unable to resolve video at $path" }
+    val rawBitmap = if (AndroidVersion.ATLEAST_API29_Q) {
+        val dataRetriever = MediaMetadataRetriever()
+        dataRetriever.setDataSource(path)
+        val width = dataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+        val height = dataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+        ThumbnailUtils.createVideoThumbnail(file, Size(width!!.toInt(), height!!.toInt()), null)
+    } else {
+        @Suppress("DEPRECATION")
+        ThumbnailUtils.createVideoThumbnail(path, MediaStore.Video.Thumbnails.MINI_KIND)
+    }
+    checkNotNull(rawBitmap) { "Unable to decode video at $path" }
+    return rawBitmap.asImageBitmap()
 }

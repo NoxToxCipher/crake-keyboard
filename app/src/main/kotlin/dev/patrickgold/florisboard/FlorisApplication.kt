@@ -49,7 +49,9 @@ import dev.patrickgold.jetpref.datastore.runtime.initAndroid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.florisboard.lib.kotlin.io.deleteContentsRecursively
 import org.florisboard.lib.kotlin.tryOrNull
 import org.florisboard.libnative.FlorisNative
@@ -127,10 +129,14 @@ class FlorisApplication : Application() {
             preferenceStoreLoaded.value = true
         }
 
-        // 2. Asynchronous background cache cleanup (never blocks UI thread)
+        // 2. Asynchronous background cache cleanup (never blocks UI thread). Skips the
+        // theme-unzip staging dir "loaded", which block 5 writes into concurrently — the old
+        // blanket wipe raced it and could delete a theme mid-load (re-unzip / unstyled flash).
         scope.launch(Dispatchers.IO) {
             try {
-                cacheDir?.deleteContentsRecursively()
+                cacheDir?.listFiles()?.forEach { f ->
+                    if (f.name != "loaded") f.deleteRecursively()
+                }
             } catch (_: Throwable) {}
         }
 
@@ -149,6 +155,12 @@ class FlorisApplication : Application() {
         // 5. Pre-warm critical keyboard engines, layout cache, active theme, and dictionary blobs immediately in parallel
         scope.launch(Dispatchers.IO) {
             try {
+                // Wait for the datastore (block 1) before reading pref-backed state below
+                // (activeSubtype, active theme). Without this, block 5 raced block 1 and could
+                // preload the DEFAULT subtype/theme, then redo the work when prefs landed.
+                // Bounded: if prefs do not load within 3s, proceed anyway (prior behavior) so a
+                // datastore stall can never hang the prewarm.
+                withTimeoutOrNull(3000) { preferenceStoreLoaded.first { it } }
                 val km = keyboardManager.value
                 val tm = themeManager.value
                 val nlp = nlpManager.value
@@ -164,7 +176,12 @@ class FlorisApplication : Application() {
                 // (suggest is the public binding; the raw external it wraps
                 // is private — the previous name here never compiled.)
                 tryOrNull { FlorisNative.suggest("", 1) }
+                // Locale path (e.g. en.txt) is used by EmojiSuggestionProvider; the emoji
+                // PANEL loads "ime/media/emoji/root.txt", and the cache is keyed by path, so
+                // warm that one too or the palette's first open is a guaranteed cache miss
+                // (a 50-150ms main-thread parse). Both run here on the IO init dispatcher.
                 EmojiData.get(this@FlorisApplication, FlorisLocale.default())
+                EmojiData.get(this@FlorisApplication, "ime/media/emoji/root.txt")
             } catch (_: Throwable) {}
         }
 

@@ -106,6 +106,20 @@ object FlorisNative {
         return if (arr.size >= 2) Pair(arr[0], arr[1]) else Pair(0f, 0f)
     }
 
+    /**
+     * Batched full-precision offsets for [codes]: one JNI crossing returns a
+     * flat `[dx0, dy0, dx1, dy1, ...]` array whose i-th pair equals
+     * [getTouchOffset] for `codes[i]`. Used per tap by the adaptive hit test to
+     * replace ~30 single-char crossings with one. Returns an all-zero array of
+     * the right length when the library is not loaded, so callers can index it
+     * unconditionally.
+     */
+    fun getTouchOffsets(codes: IntArray): FloatArray {
+        if (!isLoaded || codes.isEmpty()) return FloatArray(codes.size * 2)
+        val arr = nativeGetTouchOffsets(codes)
+        return if (arr.size == codes.size * 2) arr else FloatArray(codes.size * 2)
+    }
+
     /** Returns all learned per-key offsets for DevTools telemetry visualization. */
     fun getAllTouchOffsets(): List<Pair<Char, Pair<Float, Float>>> {
         if (!isLoaded) return emptyList()
@@ -809,6 +823,9 @@ object FlorisNative {
 
     @JvmStatic
     private external fun nativeGetTouchOffset(ch: Int): FloatArray
+
+    @JvmStatic
+    private external fun nativeGetTouchOffsets(codes: IntArray): FloatArray
 
     @JvmStatic
     private external fun nativeGetAllTouchOffsets(): Array<String>?

@@ -60,6 +60,9 @@ result
 # VSCode
 .vscode/
 
+# Kotlin Gradle plugin build cache (daemon sessions etc.)
+.kotlin/
+
 # Rust
 debug/
 target/
@@ -68,3 +71,6 @@ target/
 
 # Captured device glide traces: real typing fragments, never published
 libnative/crates/floris-core/tests/data/glide_traces.txt
+
+# Android SDK provisioned by perf loop (not committed)
+local.properties
