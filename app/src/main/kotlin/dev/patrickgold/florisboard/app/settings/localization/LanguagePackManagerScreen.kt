@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,7 +55,10 @@ import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.jetpref.datastore.ui.ExperimentalJetPrefDatastoreUi
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.material.ui.JetPrefListItem
-import org.florisboard.lib.android.showLongToastSync
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.florisboard.lib.android.showLongToast
 import org.florisboard.lib.compose.FlorisOutlinedBox
 import org.florisboard.lib.compose.FlorisTextButton
 import org.florisboard.lib.compose.defaultFlorisOutlinedBox
@@ -104,6 +108,7 @@ fun LanguagePackManagerScreen(action: LanguagePackManagerScreenAction?) = Floris
         LanguagePackManagerScreenAction.MANAGE -> selectedManagerLanguagePackId
     }
     var languagePackExtToDelete by remember { mutableStateOf<Extension?>(null) }
+    val scope = rememberCoroutineScope()
 
     content {
         val grayColor = LocalContentColor.current.copy(alpha = 0.56f)
@@ -192,21 +197,26 @@ fun LanguagePackManagerScreen(action: LanguagePackManagerScreenAction?) = Floris
             }
         }
 
-        if (languagePackExtToDelete != null) {
+        val extToDelete = languagePackExtToDelete
+        if (extToDelete != null) {
             FlorisConfirmDeleteDialog(
                 onConfirm = {
-                    runCatching {
-                        extensionManager.delete(languagePackExtToDelete!!)
-                    }.onFailure { error ->
-                        context.showLongToastSync(
-                            R.string.error__snackbar_message,
-                            "error_message" to error.localizedMessage,
-                        )
+                    scope.launch(Dispatchers.IO) {
+                        runCatching {
+                            extensionManager.delete(extToDelete)
+                        }.onFailure { error ->
+                            withContext(Dispatchers.Main) {
+                                context.showLongToast(
+                                    R.string.error__snackbar_message,
+                                    "error_message" to (error.localizedMessage ?: "Unknown error"),
+                                )
+                            }
+                        }
                     }
                     languagePackExtToDelete = null
                 },
                 onDismiss = { languagePackExtToDelete = null },
-                what = languagePackExtToDelete!!.meta.title,
+                what = extToDelete.meta.title,
             )
         }
     }
