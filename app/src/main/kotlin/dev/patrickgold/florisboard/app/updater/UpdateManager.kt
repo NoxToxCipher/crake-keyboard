@@ -298,7 +298,10 @@ object UpdateManager {
                         _status.value = UpdateStatus.UpdateAvailable(release)
                         appContext?.let { ctx ->
                             notifyUpdateAvailable(ctx, release)
-                            if (prefs.updater.autoDownloadOnWifi.get()) {
+                            // The pref is named "on Wi-Fi" but nothing checked the connection type,
+                            // so a 56 MB APK could download over metered mobile data. Gate on an actual
+                            // unmetered-network check (defensive: any failure -> do not auto-download).
+                            if (prefs.updater.autoDownloadOnWifi.get() && isUnmeteredNetwork(ctx)) {
                                 downloadAndInstall(ctx, release, autoPrompt = true)
                             }
                         }
@@ -466,6 +469,17 @@ object UpdateManager {
         }
     }
 
+    /** True only when the active network is present and NOT metered. Defensive: any error
+     *  (no ConnectivityManager, no active network, SecurityException) yields false, so
+     *  auto-download stays off rather than risking a metered 56 MB transfer. */
+    private fun isUnmeteredNetwork(context: Context): Boolean = runCatching {
+        val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
+            ?: return@runCatching false
+        val network = cm.activeNetwork ?: return@runCatching false
+        val caps = cm.getNetworkCapabilities(network) ?: return@runCatching false
+        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+    }.getOrDefault(false)
+
     fun downloadAndInstall(context: Context, release: ReleaseInfo, autoPrompt: Boolean = false) {
         scope.launch {
             _status.value = UpdateStatus.Downloading(progressPercent = 0, bytesDownloaded = 0, totalBytes = release.apkSize)
@@ -565,7 +579,12 @@ object UpdateManager {
                         downloaded += bytesRead
 
                         val percent = if (totalSize > 0) ((downloaded * 100) / totalSize).toInt() else 0
-                        if (percent != lastReportPercent) {
+                        // Throttle to ~5% steps (plus a mandatory final 100%). This emit drives
+                        // _status and a DynamicIslandManager progress update, and that island is
+                        // composed inside the Smartbar — so the old per-1% cadence forced ~100
+                        // recompositions of an animated overlay across the keyboard mid-download.
+                        // Verified subset/spacing/completion by utils/perf-proof/IslandThrottleOracle.java.
+                        if (percent >= lastReportPercent + 5 || (percent == 100 && lastReportPercent != 100)) {
                             lastReportPercent = percent
                             _status.value = UpdateStatus.Downloading(percent, downloaded, totalSize)
                             val downloadedMb = downloaded / (1024 * 1024)
