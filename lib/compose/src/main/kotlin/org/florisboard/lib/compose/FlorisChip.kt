@@ -82,3 +82,15 @@ fun FlorisChip(
         }
     )
 }
+
+@Composable
+fun CrakeChip(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = { },
+    selected: Boolean = false,
+    enabled: Boolean = true,
+    shape: Shape = MaterialTheme.shapes.small,
+    leadingIcons: List<ImageVector> = listOf(),
+    trailingIcons: List<ImageVector> = listOf(),
+) = FlorisChip(text, modifier, onClick, selected, enabled, shape, leadingIcons, trailingIcons)

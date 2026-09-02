@@ -36,6 +36,13 @@ typealias FlogLevel = UInt
 /** Type alias for a flog output Integer. */
 typealias FlogOutput = UInt
 
+typealias CrakeLog = Flog
+
+inline fun crakeLogError(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) = flogError(topic, block)
+inline fun crakeLogWarning(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) = flogWarning(topic, block)
+inline fun crakeLogInfo(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) = flogInfo(topic, block)
+inline fun crakeLogDebug(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) = flogDebug(topic, block)
+
 /**
  * Logs an error message returned by [block] together with the automatically retrieved
  * calling class and method name either to the console or to a log file. The class name

@@ -60,6 +60,8 @@ object FlorisCardDefaults {
     val ContentPadding = PaddingValues(start = 0.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
 }
 
+typealias CrakeCardDefaults = FlorisCardDefaults
+
 object BoxDefaults {
     val OutlinedBoxShape = RoundedCornerShape(8.dp)
 
@@ -118,6 +120,18 @@ fun FlorisSimpleCard(
         }
     }
 }
+
+@Composable
+fun CrakeSimpleCard(
+    modifier: Modifier = Modifier,
+    text: String,
+    secondaryText: String? = null,
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface,
+    contentPadding: PaddingValues = CrakeCardDefaults.ContentPadding,
+    icon: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+) = FlorisSimpleCard(modifier, text, secondaryText, backgroundColor, contentColor, contentPadding, icon, onClick)
 
 @Composable
 fun FlorisErrorCard(
