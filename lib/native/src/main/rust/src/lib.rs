@@ -298,6 +298,49 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGetTouc
     arr.into_raw()
 }
 
+/// Batched full-precision offsets: for the `n` input char codes, returns a
+/// flat `[dx0, dy0, dx1, dy1, ...]` float array of length `2 * n`, each pair
+/// identical to what [`nativeGetTouchOffset`] returns for that code (same
+/// `char::from_u32(..).unwrap_or('\0')` decode, full precision, `(0, 0)`
+/// default for unlearned keys). One JNI crossing per tap instead of ~30.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGetTouchOffsets(
+    env: JNIEnv,
+    _class: JClass,
+    codes: JIntArray,
+) -> jni::sys::jfloatArray {
+    let empty = || {
+        env.new_float_array(0)
+            .map(|a| a.into_raw())
+            .unwrap_or(std::ptr::null_mut())
+    };
+    let len = match env.get_array_length(&codes) {
+        Ok(l) if l >= 0 => l as usize,
+        _ => return empty(),
+    };
+    let mut raw = vec![0i32; len];
+    if len > 0 && env.get_int_array_region(&codes, 0, &mut raw).is_err() {
+        return empty();
+    }
+    let chars: Vec<char> = raw
+        .iter()
+        .map(|&c| char::from_u32(c as u32).unwrap_or('\0'))
+        .collect();
+    let flat: Vec<f32> = match HIT_TESTER.read() {
+        Ok(tester) => tester
+            .offsets_for(&chars)
+            .into_iter()
+            .flat_map(|(dx, dy)| [dx, dy])
+            .collect(),
+        Err(_) => vec![0.0; len * 2],
+    };
+    let Ok(arr) = env.new_float_array(flat.len() as i32) else {
+        return empty();
+    };
+    let _ = env.set_float_array_region(&arr, 0, &flat);
+    arr.into_raw()
+}
+
 /// Returns all learned per-key offsets formatted as an array of "char:dx,dy" strings.
 #[no_mangle]
 pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeGetAllTouchOffsets(

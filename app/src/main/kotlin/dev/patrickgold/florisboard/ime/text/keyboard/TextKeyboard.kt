@@ -136,11 +136,23 @@ class TextKeyboard(
             // (see utils/perf-proof/TopRowMembershipOracle.java).
             val topRowKeys: Set<TextKey> = arrangement.firstOrNull()?.toHashSet() ?: emptySet()
 
-            for (key in keys()) {
+            // Bulk-fetch every learned touch offset in ONE native crossing per tap
+            // instead of ~30 per-char nativeGetTouchOffset calls. The i-th (dx, dy)
+            // pair equals getTouchOffset(codes[i]) exactly (full precision, (0,0)
+            // default), so indexing offsets by key position is behaviour-identical
+            // to the old per-key call (see libnative batch_offsets_oracle.rs).
+            val keyList = keys().asSequence().toList()
+            val touchOffsets = org.florisboard.libnative.FlorisNative.getTouchOffsets(
+                IntArray(keyList.size) { keyList[it].computedData.code.toChar().lowercaseChar().code }
+            )
+
+            for (i in keyList.indices) {
+                val key = keyList[i]
                 if (!key.isEnabled) continue
                 if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
                 val charCode = key.computedData.code.toChar().lowercaseChar()
-                val (learnedDx, learnedDy) = org.florisboard.libnative.FlorisNative.getTouchOffset(charCode)
+                val learnedDx = touchOffsets[2 * i]
+                val learnedDy = touchOffsets[2 * i + 1]
                 val center = key.visibleBounds.center
 
                 // Top-row reach calibration (q,w,e,r,t,y,u,i,o,p): thumb pads strike ~13.5px lower than geometric center
