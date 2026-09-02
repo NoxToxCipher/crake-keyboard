@@ -37,7 +37,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import org.florisboard.lib.android.AndroidClipboardManager
 import org.florisboard.lib.android.AndroidClipboardManager_OnPrimaryClipChangedListener
 import org.florisboard.lib.android.clearPrimaryClipAnyApi
@@ -113,10 +112,13 @@ class ClipboardManager(
         ioScope.launch {
             if (clipHistoryDb == null) {
                 clipHistoryDb = ClipboardHistoryDatabase.new(context.applicationContext)
-                withContext(Dispatchers.Main) {
-                    clipHistoryDao?.getAllAsFlow()?.collect { items ->
-                        updateHistory(items)
-                    }
+                // Collect on ioScope's IO dispatcher (the enclosing launch). updateHistory
+                // does a sort + a JNI classify + several list passes per DB change (every copy
+                // anywhere on the device); it only writes a MutableStateFlow (thread-safe from
+                // any thread, and Compose collectAsState observes on any thread), so the former
+                // withContext(Dispatchers.Main) hop just forced that work onto the UI thread.
+                clipHistoryDao?.getAllAsFlow()?.collect { items ->
+                    updateHistory(items)
                 }
             }
         }

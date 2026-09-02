@@ -56,8 +56,14 @@ data class EmojiData(
         }
 
         suspend fun get(context: Context, path: String): EmojiData {
+            // loadEmojiDataMap reads and parses the asset synchronously; without this the
+            // parse ran on whatever dispatcher get() was called from — for the emoji panel
+            // that is the Main dispatcher (MediaInputLayout's LaunchedEffect), a 50-150ms
+            // stall on first open. The cache stores the result so the hop is paid once per path.
             return cache.get(path) {
-                loadEmojiDataMap(context, path)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    loadEmojiDataMap(context, path)
+                }
             }
         }
 

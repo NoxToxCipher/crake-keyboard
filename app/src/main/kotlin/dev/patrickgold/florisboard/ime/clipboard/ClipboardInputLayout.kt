@@ -586,7 +586,7 @@ fun ClipboardInputLayout(
                     item(key, span = StaggeredGridItemSpan.FullLine) {
                         ClipCategoryTitle(text = stringRes(title))
                     }
-                    items(items) { item ->
+                    items(items, key = { it.id }) { item ->
                         ClipItemView(
                             elementName = FlorisImeUi.ClipboardItem.elementName,
                             item = item,

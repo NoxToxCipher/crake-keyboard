@@ -164,7 +164,12 @@ class FlorisApplication : Application() {
                 // (suggest is the public binding; the raw external it wraps
                 // is private — the previous name here never compiled.)
                 tryOrNull { FlorisNative.suggest("", 1) }
+                // Locale path (e.g. en.txt) is used by EmojiSuggestionProvider; the emoji
+                // PANEL loads "ime/media/emoji/root.txt", and the cache is keyed by path, so
+                // warm that one too or the palette's first open is a guaranteed cache miss
+                // (a 50-150ms main-thread parse). Both run here on the IO init dispatcher.
                 EmojiData.get(this@FlorisApplication, FlorisLocale.default())
+                EmojiData.get(this@FlorisApplication, "ime/media/emoji/root.txt")
             } catch (_: Throwable) {}
         }
 
