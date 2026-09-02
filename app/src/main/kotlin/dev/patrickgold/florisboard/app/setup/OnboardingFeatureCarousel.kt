@@ -383,7 +383,7 @@ private fun FeaturePillItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 3.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF162033)),
         border = BorderStroke(1.dp, CardBorder),
@@ -391,7 +391,7 @@ private fun FeaturePillItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = emoji, fontSize = 20.sp)
@@ -453,26 +453,20 @@ private fun EndToEndEncryptionCard() {
 
     FeaturePillItem(
         emoji = "🔐",
-        title = "1. In-Place Keyboard Encrypt / Decrypt",
-        detail = "Type any secret message, then tap the Lock icon on the Smartbar (or open Encryption in settings) to seal text into a cipher block.",
+        title = "1. In-Place Keyboard Encrypt",
+        detail = "Type any secret message, then tap the Lock icon on the Smartbar to seal text into a cipher block.",
         accentColor = CyberEmerald,
     )
     FeaturePillItem(
         emoji = "🔑",
-        title = "2. Public Key Exchange (X25519)",
-        detail = "Share your crake-pk1 public key with friends. Messages sealed to their key can only be opened by their device.",
+        title = "2. Public Key & Passphrase Modes",
+        detail = "Seal messages with X25519 contact keys or Argon2id/ChaCha20-Poly1305 shared passphrases.",
         accentColor = ElectricCyan,
     )
     FeaturePillItem(
-        emoji = "🛡️",
-        title = "3. Passphrase Mode (ChaCha20-Poly1305)",
-        detail = "Protect quick messages with a shared secret passphrase. Unseal on any recipient Crake device instantly.",
-        accentColor = CyberAmber,
-    )
-    FeaturePillItem(
         emoji = "🔓",
-        title = "4. One-Tap Decrypt & Reveal",
-        detail = "Copy or select an incoming crake-msg1 ciphertext block and tap Decrypt to unseal the original plaintext offline.",
+        title = "3. One-Tap Decrypt & Reveal",
+        detail = "Copy or select an incoming crake-msg1 ciphertext block to unseal original plaintext offline.",
         accentColor = CyberEmerald,
     )
 }
