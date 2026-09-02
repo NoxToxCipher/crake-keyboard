@@ -56,7 +56,7 @@ fun FlorisScreen(builder: @Composable FlorisScreenScope.() -> Unit) {
 }
 
 @Composable
-inline fun CrakeScreen(noinline builder: @Composable FlorisScreenScope.() -> Unit) = FlorisScreen(builder)
+fun CrakeScreen(builder: @Composable FlorisScreenScope.() -> Unit) = FlorisScreen(builder)
 
 typealias FlorisScreenActions = @Composable RowScope.() -> Unit
 typealias CrakeScreenActions = FlorisScreenActions

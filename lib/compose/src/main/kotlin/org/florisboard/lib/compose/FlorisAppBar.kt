@@ -44,6 +44,15 @@ fun FlorisAppBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(),
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
     )
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CrakeAppBar(
+    title: String,
+    navigationIcon: (@Composable () -> Unit)?,
+    actions: @Composable RowScope.() -> Unit = { },
+    scrollBehavior: TopAppBarScrollBehavior
+) = FlorisAppBar(title, navigationIcon, actions, scrollBehavior)
