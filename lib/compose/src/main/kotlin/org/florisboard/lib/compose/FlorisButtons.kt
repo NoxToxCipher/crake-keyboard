@@ -200,8 +200,6 @@ fun FlorisIconButton(
     size: DpSize = DpSize(52.dp, 30.dp),
     content: @Composable () -> Unit,
 ) {
-    // This is a modified version of https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/IconButton.kt;l=235-266;drc=e6d33dd5d0a60001a5784d84123b05308d35f410
-    // adding longClick functionality
     val interactionSource = interactionSource ?: remember { MutableInteractionSource() }
     Box(
         modifier =
@@ -224,8 +222,6 @@ fun FlorisIconButton(
                     interactionSource = interactionSource,
                     indication = ripple(),
                 ),
-                //TODO: I don't know how we could emulate something like this
-                //.childSemantics(),
         contentAlignment = Alignment.Center,
     ) {
         val contentColor = if (enabled) {
@@ -236,3 +232,52 @@ fun FlorisIconButton(
         CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
     }
 }
+
+@Composable
+fun CrakeOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    text: String,
+    enabled: Boolean = true,
+    shape: Shape = MaterialTheme.shapes.small,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
+) = FlorisOutlinedButton(onClick, modifier, icon, text, enabled, shape, contentPadding, colors)
+
+@Composable
+fun CrakeTextButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    text: String,
+    enabled: Boolean = true,
+    shape: Shape = ButtonDefaults.shape,
+    contentPadding: PaddingValues = ButtonDefaults.TextButtonContentPadding,
+    colors: ButtonColors = ButtonDefaults.textButtonColors(),
+) = FlorisTextButton(onClick, modifier, icon, text, enabled, shape, contentPadding, colors)
+
+@Composable
+fun CrakeIconButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    enabled: Boolean = true,
+    iconModifier: Modifier = Modifier,
+    iconColor: Color = Color.Unspecified,
+) = FlorisIconButton(onClick, modifier, icon, enabled, iconModifier, iconColor)
+
+@Composable
+fun CrakeIconButton(
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    colors: IconButtonColors = IconButtonDefaults.iconButtonColors(),
+    interactionSource: MutableInteractionSource? = null,
+    shape: Shape = IconButtonDefaults.standardShape,
+    size: DpSize = DpSize(52.dp, 30.dp),
+    content: @Composable () -> Unit,
+) = FlorisIconButton(onClick, onLongClick, modifier, enabled, colors, interactionSource, shape, size, content)
+
+
