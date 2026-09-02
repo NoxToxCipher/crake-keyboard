@@ -185,7 +185,7 @@ data class ClipboardItem @OptIn(ExperimentalSerializationApi::class) constructor
     }
 
     @Composable
-    inline fun displayText(): String {
+    fun displayText(): String {
         val context = LocalContext.current
         return displayText(context)
     }
@@ -343,7 +343,7 @@ abstract class ClipboardHistoryDatabase : RoomDatabase() {
                 .databaseBuilder(
                     context, ClipboardHistoryDatabase::class.java, CLIPBOARD_HISTORY_TABLE,
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }
     }
@@ -391,7 +391,7 @@ abstract class ClipboardFilesDatabase : RoomDatabase() {
                 .databaseBuilder(
                     context, ClipboardFilesDatabase::class.java, CLIPBOARD_FILES_TABLE,
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
         }
     }

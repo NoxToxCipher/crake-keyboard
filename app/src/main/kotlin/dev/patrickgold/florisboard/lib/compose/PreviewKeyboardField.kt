@@ -58,6 +58,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,7 +88,6 @@ import androidx.compose.ui.window.Dialog
 import dev.patrickgold.florisboard.R
 import dev.patrickgold.florisboard.app.FlorisPreferenceStore
 import dev.patrickgold.florisboard.lib.util.InputMethodUtils
-import dev.patrickgold.jetpref.datastore.model.observeAsState
 import kotlinx.coroutines.launch
 import org.florisboard.lib.android.showShortToastSync
 import org.florisboard.lib.compose.stringRes
@@ -253,8 +253,8 @@ fun PreviewKeyboardField(
         if (showQuickHubDialog) {
             val prefs by FlorisPreferenceStore
             val scope = rememberCoroutineScope()
-            val glideEnabled by prefs.glide.enabled.observeAsState()
-            val hapticEnabled by prefs.inputFeedback.hapticEnabled.observeAsState()
+            val glideEnabled by prefs.glide.enabled.asFlow().collectAsState(prefs.glide.enabled.get())
+            val hapticEnabled by prefs.inputFeedback.hapticEnabled.asFlow().collectAsState(prefs.inputFeedback.hapticEnabled.get())
 
             Dialog(onDismissRequest = { showQuickHubDialog = false }) {
                 Card(

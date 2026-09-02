@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2025-2026 The Crake Contributors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,8 +45,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -86,7 +86,7 @@ fun OpticalQrSyncScreen() = FlorisScreen {
         var selectedTabIndex by remember { mutableIntStateOf(0) }
         val tabTitles = listOf("Broadcast (Transmit)", "Ingest (Receive)")
 
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = selectedTabIndex,
             containerColor = CardSurface,
             contentColor = CyberEmerald,

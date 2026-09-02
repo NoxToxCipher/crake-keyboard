@@ -37,6 +37,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,7 +50,6 @@ import dev.patrickgold.florisboard.app.Routes
 import dev.patrickgold.florisboard.lib.compose.CrakeRadioPreference
 import dev.patrickgold.florisboard.lib.compose.CrakeSectionHeader
 import dev.patrickgold.florisboard.lib.compose.FlorisScreen
-import dev.patrickgold.jetpref.datastore.model.observeAsState
 
 private val CardSurface = Color(0xFF131A29)
 private val CardBorder = Color(0xFF222D42)
@@ -74,7 +74,7 @@ fun DictionaryScreen() = FlorisScreen {
             icon = Icons.Default.Lock,
             accentColor = CyberEmerald,
         )
-        val florisDictEnabled by prefs.dictionary.enableFlorisUserDictionary.observeAsState()
+        val florisDictEnabled by prefs.dictionary.enableFlorisUserDictionary.asFlow().collectAsState(prefs.dictionary.enableFlorisUserDictionary.get())
         if (florisDictEnabled) {
             Card(
                 modifier = Modifier
@@ -128,7 +128,7 @@ fun DictionaryScreen() = FlorisScreen {
             icon = Icons.Default.Android,
             accentColor = ElectricCyan,
         )
-        val systemDictEnabled by prefs.dictionary.enableSystemUserDictionary.observeAsState()
+        val systemDictEnabled by prefs.dictionary.enableSystemUserDictionary.asFlow().collectAsState(prefs.dictionary.enableSystemUserDictionary.get())
         if (systemDictEnabled) {
             Card(
                 modifier = Modifier

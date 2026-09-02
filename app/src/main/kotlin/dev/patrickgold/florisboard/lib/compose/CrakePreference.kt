@@ -48,6 +48,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +66,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import dev.patrickgold.jetpref.datastore.model.PreferenceData
-import dev.patrickgold.jetpref.datastore.model.observeAsState
 import dev.patrickgold.jetpref.datastore.ui.ListPreferenceEntry
 import kotlinx.coroutines.launch
 
@@ -88,7 +88,7 @@ fun CrakeRadioPreference(
 ) {
     if (!visibleIf()) return
 
-    val isChecked by pref.observeAsState()
+    val isChecked by pref.asFlow().collectAsState(pref.get())
     val scope = rememberCoroutineScope()
 
     Card(
@@ -176,7 +176,7 @@ fun <V : Any> CrakeListPreference(
     if (!visibleIf()) return
     val targetPref = pref ?: listPref ?: return
 
-    val currentValue by targetPref.observeAsState()
+    val currentValue by targetPref.asFlow().collectAsState(targetPref.get())
     val scope = rememberCoroutineScope()
     var showDialog by remember { mutableStateOf(false) }
 

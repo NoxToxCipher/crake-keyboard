@@ -576,7 +576,7 @@ private fun LinedPaperNote(
                 },
                 keyboardOptions = if (isSecret) {
                     KeyboardOptions(
-                        autoCorrect = false,
+                        autoCorrectEnabled = false,
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Default,
                     )
