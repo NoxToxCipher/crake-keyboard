@@ -9141,28 +9141,34 @@ private class TextKeyboardLayoutController(
             }
             inputFeedbackController?.keyPress(key.computedData)
             key.isPressed = true
-            val cx = key.visibleBounds.left + key.visibleBounds.width / 2f
-            val cy = key.visibleBounds.top + key.visibleBounds.height / 2f
-            val density = context.resources.displayMetrics.density
-            val offX = (touchX - cx) / density
-            val offY = (touchY - cy) / density
             val label = key.computedData.asString(isForDisplay = true).ifEmpty { key.computedData.code.toString() }
-            val latency = (android.os.SystemClock.uptimeMillis() - event.eventTime).coerceIn(0L, 5000L)
-            dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
-                keyLabel = label,
-                spatialOffsetX = offX,
-                spatialOffsetY = offY,
-                touchMajor = touchMajor,
-                touchMinor = touchMinor,
-                touchOrientation = touchOrientation,
-                pressure = pressure,
-                dwellTimeMs = dwellTime,
-                latencyMs = latency,
-                interKeyFlightTimeMs = flightTime,
-                contextBefore = editorInstance.activeContent.textBeforeSelection,
-                keyVariation = keyboardManager.activeState.keyVariation,
-                packageName = editorInstance.activeInfo.packageName,
-            )
+            // logKeyTap no-ops when the recorder is off (default), but its args —
+            // a density lookup, offsets, and a 256-char activeContent substring —
+            // are built regardless. Guard the whole block up front. `label` stays
+            // outside because recordTouchHit below needs it.
+            if (prefs.devtools.flightRecorderEnabled.get()) {
+                val cx = key.visibleBounds.left + key.visibleBounds.width / 2f
+                val cy = key.visibleBounds.top + key.visibleBounds.height / 2f
+                val density = context.resources.displayMetrics.density
+                val offX = (touchX - cx) / density
+                val offY = (touchY - cy) / density
+                val latency = (android.os.SystemClock.uptimeMillis() - event.eventTime).coerceIn(0L, 5000L)
+                dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logKeyTap(
+                    keyLabel = label,
+                    spatialOffsetX = offX,
+                    spatialOffsetY = offY,
+                    touchMajor = touchMajor,
+                    touchMinor = touchMinor,
+                    touchOrientation = touchOrientation,
+                    pressure = pressure,
+                    dwellTimeMs = dwellTime,
+                    latencyMs = latency,
+                    interKeyFlightTimeMs = flightTime,
+                    contextBefore = editorInstance.activeContent.textBeforeSelection,
+                    keyVariation = keyboardManager.activeState.keyVariation,
+                    packageName = editorInstance.activeInfo.packageName,
+                )
+            }
             if (label.length == 1 && label[0].isLetter()) {
                 org.florisboard.libnative.FlorisNative.recordTouchHit(
                     char = label[0],

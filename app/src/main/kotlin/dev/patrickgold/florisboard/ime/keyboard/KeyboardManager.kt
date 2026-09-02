@@ -307,40 +307,46 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
             }
         }
-        val rawBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
-        val committedText = candidate.text.toString()
-        val isAutocorrect = rawBefore.isNotBlank() && rawBefore != committedText
-        val allCands = nlpManager.activeCandidates.map { it.text.toString() }
-        val now = System.currentTimeMillis()
-        val presentedTime = nlpManager.candidatesPresentedTime
-        val dwellMs = if (presentedTime > 0L) (now - presentedTime).coerceIn(0L, 30000L) else null
-        val effSlot = slotIndex ?: nlpManager.activeCandidates.indexOfFirst { it.text == candidate.text }.takeIf { it >= 0 }
+        // Flight-recorder bookkeeping only. logSuggestionPicked/logWordCommitted
+        // no-op when the recorder is disabled (default), but Kotlin evaluates
+        // every argument first — including two 256-char activeContent substrings.
+        // Guard the whole block up front, the same way handleSpace does.
+        if (prefs.devtools.flightRecorderEnabled.get()) {
+            val rawBefore = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+            val committedText = candidate.text.toString()
+            val isAutocorrect = rawBefore.isNotBlank() && rawBefore != committedText
+            val allCands = nlpManager.activeCandidates.map { it.text.toString() }
+            val now = System.currentTimeMillis()
+            val presentedTime = nlpManager.candidatesPresentedTime
+            val dwellMs = if (presentedTime > 0L) (now - presentedTime).coerceIn(0L, 30000L) else null
+            val effSlot = slotIndex ?: nlpManager.activeCandidates.indexOfFirst { it.text == candidate.text }.takeIf { it >= 0 }
 
-        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logSuggestionPicked(
-            rawPrefix = rawBefore,
-            selectedWord = committedText,
-            allCandidates = allCands,
-            mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
-            slotIndex = effSlot,
-            stripDwellMs = dwellMs,
-            totalCandidates = allCands.size,
-            isFlickPrediction = false,
-            contextBefore = editorInstance.activeContent.textBeforeSelection,
-            keyVariation = activeState.keyVariation,
-            packageName = editorInstance.activeInfo.packageName,
-        )
+            dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logSuggestionPicked(
+                rawPrefix = rawBefore,
+                selectedWord = committedText,
+                allCandidates = allCands,
+                mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
+                slotIndex = effSlot,
+                stripDwellMs = dwellMs,
+                totalCandidates = allCands.size,
+                isFlickPrediction = false,
+                contextBefore = editorInstance.activeContent.textBeforeSelection,
+                keyVariation = activeState.keyVariation,
+                packageName = editorInstance.activeInfo.packageName,
+            )
 
-        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logWordCommitted(
-            rawInput = rawBefore,
-            committedWord = committedText,
-            mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
-            topCandidates = allCands,
-            isAutocorrected = isAutocorrect,
-            isKnownWord = true,
-            contextBefore = editorInstance.activeContent.textBeforeSelection,
-            keyVariation = activeState.keyVariation,
-            packageName = editorInstance.activeInfo.packageName,
-        )
+            dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logWordCommitted(
+                rawInput = rawBefore,
+                committedWord = committedText,
+                mode = dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.InputMode.TYPING,
+                topCandidates = allCands,
+                isAutocorrected = isAutocorrect,
+                isKnownWord = true,
+                contextBefore = editorInstance.activeContent.textBeforeSelection,
+                keyVariation = activeState.keyVariation,
+                packageName = editorInstance.activeInfo.packageName,
+            )
+        }
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
             else -> {
@@ -536,13 +542,17 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 return
             }
         }
-        dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logBackspaceDelete(
-            deletedChar = if (unit == OperationUnit.WORDS) "[WORD]" else "[CHAR]",
-            remainingPrefix = editorInstance.activeContent.textBeforeSelection.takeLast(16),
-            contextBefore = editorInstance.activeContent.textBeforeSelection,
-            keyVariation = activeState.keyVariation,
-            packageName = editorInstance.activeInfo.packageName,
-        )
+        // Recorder-only; auto-repeats at key-repeat rate. Guard before building
+        // the two 256-char activeContent substrings (see commitCandidate).
+        if (prefs.devtools.flightRecorderEnabled.get()) {
+            dev.patrickgold.florisboard.ime.nlp.FlightRecorderManager.logBackspaceDelete(
+                deletedChar = if (unit == OperationUnit.WORDS) "[WORD]" else "[CHAR]",
+                remainingPrefix = editorInstance.activeContent.textBeforeSelection.takeLast(16),
+                contextBefore = editorInstance.activeContent.textBeforeSelection,
+                keyVariation = activeState.keyVariation,
+                packageName = editorInstance.activeInfo.packageName,
+            )
+        }
         editorInstance.deleteBackwards(unit)
     }
 
