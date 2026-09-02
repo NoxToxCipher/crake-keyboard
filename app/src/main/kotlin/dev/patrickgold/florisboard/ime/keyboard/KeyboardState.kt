@@ -217,6 +217,7 @@ open class KeyboardState protected constructor(open var rawValue: ULong) {
         set(v) { setFlag(F_DEBUG_SHOW_DRAG_AND_DROP_HELPERS, v) }
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ObservableKeyboardState private constructor(
     initValue: ULong,
     private val dispatchFlow: MutableStateFlow<KeyboardState> = MutableStateFlow(KeyboardState.new(initValue)),

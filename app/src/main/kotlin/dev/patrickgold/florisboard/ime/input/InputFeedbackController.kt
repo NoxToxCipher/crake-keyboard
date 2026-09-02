@@ -56,6 +56,7 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
     private var systemAudioEnabled: Boolean = false
     private var systemHapticEnabled: Boolean = false
 
+    @Suppress("DEPRECATION")
     fun updateSystemPrefsState() {
         systemAudioEnabled = systemPref(Settings.System.SOUND_EFFECTS_ENABLED)
         systemHapticEnabled = systemPref(Settings.System.HAPTIC_FEEDBACK_ENABLED)
@@ -136,6 +137,7 @@ class InputFeedbackController private constructor(private val ims: InputMethodSe
                 } else {
                     HapticFeedbackConstants.KEYBOARD_TAP
                 }
+                @Suppress("DEPRECATION")
                 val didPerform = view.performHapticFeedback(hfc,
                     HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or
                         HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING

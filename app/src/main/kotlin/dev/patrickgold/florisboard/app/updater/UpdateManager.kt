@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 392
+    const val CURRENT_MILESTONE = 393
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 39201
-    private const val RESOLVED_NOTIFICATION_ID = 39202
+    private const val NOTIFICATION_ID = 39301
+    private const val RESOLVED_NOTIFICATION_ID = 39302
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                393 -> "Clean Popup Set Hint Resolution & Coroutine State Hygiene: Resolved number hint mode condition in popup evaluation, stabilized StateFlow inheritance annotations, and eliminated legacy deprecation compiler warnings."
                 392 -> "Comprehensive Keyboard Layout Zero-Allocation & Drawing Paint Optimization: Cleaned redundant string allocations and optimized canvas paint primitive color definitions across full keyboard layout."
                 391 -> "Sequence Key Traversal Optimization & System Bar Hygiene: Optimized keyboard Easter egg layout key traversal and streamlined Android system bar side effects."
                 390 -> "Standard Type Serializer Alignment & Zero-Overhead Text String Pipelines: Aligned serializer visibilities, eliminated redundant string conversions across editor and keyboard pipelines, and modernized Locale builder architecture."

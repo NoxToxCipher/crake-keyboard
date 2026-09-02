@@ -332,6 +332,7 @@ class LayoutManager(context: Context) {
      * @param keyboardMode The keyboard mode for which the layout should be computed.
      * @param subtype The subtype which localizes the computed layout.
      */
+    @Suppress("DEPRECATION")
     fun computeKeyboardAsync(
         keyboardMode: KeyboardMode,
         subtype: Subtype,

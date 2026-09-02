@@ -189,6 +189,7 @@ fun BoxScope.ImeWindow() {
         allowClip = false,
     ) {
         OneHandedPanel()
+        @Suppress("DEPRECATION")
         ProvideKeyboardRowBaseHeight {
             ImeInnerWindow()
         }
