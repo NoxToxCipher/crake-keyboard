@@ -130,18 +130,21 @@ class GlideTypingGesture {
                                 dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE
                             if (dist > triggerSlop && isCharacterStart && (initialKey?.computedData?.code !in SWIPE_GESTURE_KEYS) && !isUpwardFlick) {
                                 pointerData.isActuallyGesture = true
-                                // Let listener know all those points need to be added.
-                                pointerData.positions.take(pointerData.positions.size - 1).forEach { point ->
-                                    listeners.forEach {
-                                        it.onGlideAddPoint(point)
+                                // Let listener know all those points need to be added without slice allocations.
+                                for (pIdx in 0 until pointerData.positions.size - 1) {
+                                    val point = pointerData.positions[pIdx]
+                                    for (lIdx in 0 until listeners.size) {
+                                        listeners[lIdx].onGlideAddPoint(point)
                                     }
                                 }
                             }
                         }
 
                         if (pointerData.isActuallyGesture == true) {
-                            pointerData.positions.last()
-                                .let { point -> listeners.forEach { it.onGlideAddPoint(point) } }
+                            val lastPoint = pointerData.positions.last()
+                            for (lIdx in 0 until listeners.size) {
+                                listeners[lIdx].onGlideAddPoint(lastPoint)
+                            }
                         }
                     }
                     return pointerData.isActuallyGesture ?: false
@@ -156,7 +159,9 @@ class GlideTypingGesture {
                     }
                     if (upPointerIndex >= 0 && event.getPointerId(upPointerIndex) == pointerId) {
                         if (wasGesture) {
-                            listeners.forEach { listener -> listener.onGlideComplete(pointerData) }
+                            for (lIdx in 0 until listeners.size) {
+                                listeners[lIdx].onGlideComplete(pointerData)
+                            }
                         }
                         resetState()
                         return wasGesture

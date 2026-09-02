@@ -240,17 +240,31 @@ class LayoutManager(context: Context) {
                     computedArrangement.add(rowArray)
                 } else {
                     // merge main and mod here
-                    val rowArray = arrayListOf<TextKey>()
                     val firstModRow = modifierLayout.arrangement.firstOrNull()
-                    for (modKey in (firstModRow ?: listOf())) {
-                        if (modKey is TextKeyData && modKey.code == 0) {
-                            rowArray.addAll(mainRow.map { TextKey(it) })
-                        } else {
-                            rowArray.add(TextKey(modKey))
+                    if (firstModRow != null) {
+                        var totalKeys = 0
+                        for (modKey in firstModRow) {
+                            if (modKey is TextKeyData && modKey.code == 0) {
+                                totalKeys += mainRow.size
+                            } else {
+                                totalKeys += 1
+                            }
                         }
+                        var keyIdx = 0
+                        val rowArray = Array(totalKeys) {
+                            TextKey(TextKeyData.UNSPECIFIED)
+                        }
+                        for (modKey in firstModRow) {
+                            if (modKey is TextKeyData && modKey.code == 0) {
+                                for (mainKey in mainRow) {
+                                    rowArray[keyIdx++] = TextKey(mainKey)
+                                }
+                            } else {
+                                rowArray[keyIdx++] = TextKey(modKey)
+                            }
+                        }
+                        computedArrangement.add(rowArray)
                     }
-                    val temp = Array(rowArray.size) { rowArray[it] }
-                    computedArrangement.add(temp)
                 }
             }
             for (modRowI in 1 until modifierLayout.arrangement.size) {
@@ -280,11 +294,9 @@ class LayoutManager(context: Context) {
                 addRowHints(row, symbolRow, KeyType.NUMERIC)
             }
             // all other symbols are added bottom-aligned
-            val rOffset = computedArrangement.size - symbolsComputedArrangement.size
-            for ((r, row) in computedArrangement.withIndex()) {
-                if (r < rOffset) {
-                    continue
-                }
+            val rOffset = (computedArrangement.size - symbolsComputedArrangement.size).coerceAtLeast(0)
+            for (r in rOffset until computedArrangement.size) {
+                val row = computedArrangement[r]
                 val symbolRow = symbolsComputedArrangement.getOrNull(r - rOffset)
                 if (symbolRow != null) {
                     addRowHints(row, symbolRow, KeyType.CHARACTER)
@@ -306,7 +318,8 @@ class LayoutManager(context: Context) {
     }
 
     private fun addRowHints(main: Array<TextKey>, hint: Array<TextKey>, hintType: KeyType) {
-        for ((k,key) in main.withIndex()) {
+        for (k in main.indices) {
+            val key = main[k]
             val hintKey = hint.getOrNull(k)?.data?.compute(DefaultComputingEvaluator)
             if (hintKey?.type != hintType) {
                 continue

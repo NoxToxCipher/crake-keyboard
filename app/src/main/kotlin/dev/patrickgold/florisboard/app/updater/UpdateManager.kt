@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 393
+    const val CURRENT_MILESTONE = 399
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 39301
-    private const val RESOLVED_NOTIFICATION_ID = 39302
+    private const val NOTIFICATION_ID = 39901
+    private const val RESOLVED_NOTIFICATION_ID = 39902
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,12 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                399 -> "Zero-Allocation Layout Merging & Hint Traversal Optimization: Pre-allocated direct 2D key arrays during keyboard mode transitions and eliminated iterator allocations across key hint evaluators."
+                398 -> "Round 2 UI Recomposition Isolation & Keystroke Optimization: Decoupled active text content from the 66-key rendering loop via background flow collectors, eliminating full-keyboard recomposition storms per keystroke."
+                397 -> "Crake Architecture Evolution & Component Modernization: Standardized CrakeLog devtools, CrakeSimpleCard, CrakeChip, and isolated Compose text tracking."
+                396 -> "Crake Foundation Aliasing & Compose Primitive Standardization: Established pure CrakeScreen, CrakeAppBar, and CrakeButton UI components alongside clean preferences."
+                395 -> "Zero-Allocation Layout Merging & Pointer Dispatch Optimization: Eliminated intermediate list copies during keyboard layout row merging and streamlined multi-finger touch gesture tracking."
+                394 -> "Zero-Allocation Input Pipeline & Regex Evaluation Modernization: Optimized touch pointer map iterations, eliminated TextKeyboard and gesture list allocations, and hoisted per-keystroke regex evaluators."
                 393 -> "Clean Popup Set Hint Resolution & Coroutine State Hygiene: Resolved number hint mode condition in popup evaluation, stabilized StateFlow inheritance annotations, and eliminated legacy deprecation compiler warnings."
                 392 -> "Comprehensive Keyboard Layout Zero-Allocation & Drawing Paint Optimization: Cleaned redundant string allocations and optimized canvas paint primitive color definitions across full keyboard layout."
                 391 -> "Sequence Key Traversal Optimization & System Bar Hygiene: Optimized keyboard Easter egg layout key traversal and streamlined Android system bar side effects."

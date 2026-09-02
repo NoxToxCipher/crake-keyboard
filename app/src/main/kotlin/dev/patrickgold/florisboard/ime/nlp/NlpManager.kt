@@ -48,13 +48,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.properties.Delegates
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
+private val NUM_UNIT_REGEX = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|sol|xmr|doge|usdt|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE)
+private val MATH_EXPR_REGEX = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$")
 
-// Hoisted once — these were compiled/constructed on every keystroke inside the
-// suggestion pipeline (evaluateMathOrMacro runs per candidate assembly). Patterns
-// are byte-for-byte the originals (proven by utils/perf-proof/NlpItem4Oracle.java).
-private val NUM_UNIT_REGEX = Regex("^(\\d+(?:\\.\\d+)?)\\s*(usd|aud|cad|eur|gbp|jpy|btc|eth|deg|c|f|km|mph|kph|mb|gb|tb)$", RegexOption.IGNORE_CASE)
-private val SIMPLE_MATH_REGEX = Regex("^(-?\\d+(?:\\.\\d+)?)\\s*([\\+\\-\\*/\\^%])\\s*(-?\\d+(?:\\.\\d+)?)$")
-// DateTimeFormatter is immutable/thread-safe; ofPattern parses the pattern each call.
+// (Item 4 reconciliation) Milestone 394 already hoisted the number-unit and math regexes above —
+// its NUM_UNIT_REGEX is a superset (adds sol|xmr|doge|usdt) and MATH_EXPR_REGEX is byte-identical
+// to the branch's math pattern — so the branch's duplicate NUM_UNIT_REGEX/SIMPLE_MATH_REGEX vals
+// were dropped; only the branch's DateTimeFormatter hoists (which main did not do) remain below.
+// DateTimeFormatter is immutable/thread-safe; hoisting stops re-parsing the pattern per keystroke.
 private val FMT_NOW = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 private val FMT_TODAY = java.time.format.DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy")
 private val FMT_DATE = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -129,7 +130,7 @@ private fun evaluateMathOrMacro(input: String): String? {
 private fun evalSimpleMath(expr: String): String? {
     return runCatching {
         val sanitized = expr.replace("x", "*").replace("X", "*").replace("×", "*").replace("÷", "/")
-        val match = SIMPLE_MATH_REGEX.matchEntire(sanitized)
+        val match = MATH_EXPR_REGEX.matchEntire(sanitized)
         if (match != null) {
             val a = match.groupValues[1].toDouble()
             val op = match.groupValues[2]

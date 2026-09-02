@@ -48,15 +48,29 @@ class TextKeyboard(
      */
     private var shadowGeneration = -1
 
+    inline fun forEachKey(action: (TextKey) -> Unit) {
+        for (r in 0 until arrangement.size) {
+            val row = arrangement[r]
+            for (k in 0 until row.size) {
+                action(row[k])
+            }
+        }
+    }
+
     override fun getKeyForPos(pointerX: Float, pointerY: Float): TextKey? {
         var index = 0
         var result: TextKey? = null
-        for (key in keys()) {
-            if (key.touchBounds.contains(pointerX, pointerY)) {
-                result = key
-                break
+        for (r in 0 until arrangement.size) {
+            val row = arrangement[r]
+            for (k in 0 until row.size) {
+                val key = row[k]
+                if (key.touchBounds.contains(pointerX, pointerY)) {
+                    result = key
+                    break
+                }
+                index++
             }
-            index++
+            if (result != null) break
         }
         // Shadow only: Kotlin's answer above is returned regardless.
         ShadowHitTest.compare(shadowGeneration, pointerX, pointerY, if (result != null) index else -1)
@@ -93,15 +107,16 @@ class TextKeyboard(
             if (exactKey == null) {
                 var nearest: TextKey? = null
                 var nearestDist = Float.MAX_VALUE
-                for (key in keys()) {
-                    if (!key.isEnabled) continue
-                    val center = key.visibleBounds.center
-                    val dx = pointerX - center.x
-                    val dy = pointerY - center.y
-                    val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-                    if (dist < nearestDist) {
-                        nearestDist = dist
-                        nearest = key
+                forEachKey { key ->
+                    if (key.isEnabled) {
+                        val center = key.visibleBounds.center
+                        val dx = pointerX - center.x
+                        val dy = pointerY - center.y
+                        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+                        if (dist < nearestDist) {
+                            nearestDist = dist
+                            nearest = key
+                        }
                     }
                 }
                 val nearestCode = nearest?.computedData?.code ?: 0
@@ -131,64 +146,66 @@ class TextKeyboard(
             val reachFactor = if (validMajor > 20.0f) 1.85f else 1.60f
 
             // Top-row membership is a fixed property of the layout, not the pointer — precompute
-            // it once instead of re-scanning arrangement.firstOrNull() for every key each tap.
-            // TextKey has identity equality, so an identity HashSet matches Array.contains exactly
-            // (see utils/perf-proof/TopRowMembershipOracle.java).
+            // it once as an identity HashSet (item 5) instead of re-scanning
+            // arrangement.firstOrNull()?.contains(key) for every key each tap. TextKey has identity
+            // equality, so HashSet membership == Array.contains (utils/perf-proof/TopRowMembershipOracle.java).
             val topRowKeys: Set<TextKey> = arrangement.firstOrNull()?.toHashSet() ?: emptySet()
 
-            // Bulk-fetch every learned touch offset in ONE native crossing per tap
-            // instead of ~30 per-char nativeGetTouchOffset calls. The i-th (dx, dy)
-            // pair equals getTouchOffset(codes[i]) exactly (full precision, (0,0)
-            // default), so indexing offsets by key position is behaviour-identical
-            // to the old per-key call (see libnative batch_offsets_oracle.rs).
-            val keyList = keys().asSequence().toList()
+            // Bulk-fetch every learned touch offset in ONE native crossing per tap (item 5a) instead
+            // of ~30 per-char nativeGetTouchOffset calls; touchOffsets[2*i]/[2*i+1] equal
+            // getTouchOffset(codes[i]) exactly (libnative batch_offsets_oracle.rs). Codes are gathered
+            // over forEachKey (main's zero-alloc iteration) so no per-tap key list is allocated.
+            var codeIndex = 0
             val touchOffsets = org.florisboard.libnative.FlorisNative.getTouchOffsets(
-                IntArray(keyList.size) { keyList[it].computedData.code.toChar().lowercaseChar().code }
+                IntArray(keyCount).also { codes ->
+                    forEachKey { key -> codes[codeIndex++] = key.computedData.code.toChar().lowercaseChar().code }
+                }
             )
 
-            for (i in keyList.indices) {
-                val key = keyList[i]
-                if (!key.isEnabled) continue
-                if (key.computedData.code <= dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) continue
-                val charCode = key.computedData.code.toChar().lowercaseChar()
-                val learnedDx = touchOffsets[2 * i]
-                val learnedDy = touchOffsets[2 * i + 1]
-                val center = key.visibleBounds.center
+            var keyIndex = 0
+            forEachKey { key ->
+                val i = keyIndex++
+                if (key.isEnabled && key.computedData.code > dev.patrickgold.florisboard.ime.text.key.KeyCode.SPACE) {
+                    val charCode = key.computedData.code.toChar().lowercaseChar()
+                    val learnedDx = touchOffsets[2 * i]
+                    val learnedDy = touchOffsets[2 * i + 1]
+                    val center = key.visibleBounds.center
 
-                // Top-row reach calibration (q,w,e,r,t,y,u,i,o,p): thumb pads strike ~13.5px lower than geometric center
-                val isTopRow = key in topRowKeys
-                val topRowOffsetDy = if (isTopRow) +6.0f else 0.0f
+                    // Top-row reach calibration (q,w,e,r,t,y,u,i,o,p): thumb pads strike ~13.5px lower than geometric center
+                    val isTopRow = key in topRowKeys
+                    val topRowOffsetDy = if (isTopRow) +6.0f else 0.0f
 
-                // Edge column inward centroid alignment from fleet telemetry
-                val isLeftEdge = charCode == 'q' || charCode == 'a' || charCode == 'z'
-                val isRightEdge = charCode == 'p' || charCode == 'l' || charCode == 'm'
-                val edgeOffsetDx = when {
-                    isRightEdge -> -4.5f
-                    isLeftEdge -> +3.0f
-                    else -> 0.0f
-                }
+                    // Edge column inward centroid alignment from fleet telemetry
+                    val isLeftEdge = charCode == 'q' || charCode == 'a' || charCode == 'z'
+                    val isRightEdge = charCode == 'p' || charCode == 'l' || charCode == 'm'
+                    val edgeOffsetDx = when {
+                        isRightEdge -> -4.5f
+                        isLeftEdge -> +3.0f
+                        else -> 0.0f
+                    }
 
-                val effectiveCenterX = center.x + learnedDx + edgeOffsetDx
-                val effectiveCenterY = center.y + learnedDy + topRowOffsetDy
-                val dx = pointerX - effectiveCenterX
-                // Anisotropic Bivariate Weighting: thumb variance is wider horizontally (dx * 0.85) than vertically
-                val dy = (compensatedY - effectiveCenterY) * 1.15f
-                val dist = kotlin.math.sqrt((dx * 0.85f) * (dx * 0.85f) + dy * dy)
+                    val effectiveCenterX = center.x + learnedDx + edgeOffsetDx
+                    val effectiveCenterY = center.y + learnedDy + topRowOffsetDy
+                    val dx = pointerX - effectiveCenterX
+                    // Anisotropic Bivariate Weighting: thumb variance is wider horizontally (dx * 0.85) than vertically
+                    val dy = (compensatedY - effectiveCenterY) * 1.15f
+                    val dist = kotlin.math.sqrt((dx * 0.85f) * (dx * 0.85f) + dy * dy)
 
-                val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * reachFactor
-                if (dist > maxReach) continue
+                    val maxReach = (key.touchBounds.width.coerceAtLeast(key.touchBounds.height)) * reachFactor
+                    if (dist <= maxReach) {
+                        val isHighProbability = predictedNextLetters.contains(charCode)
 
-                val isHighProbability = predictedNextLetters.contains(charCode)
+                        // Bayesian probability distance weighting:
+                        // High-probability next letters get a 40% distance reduction bonus combined with language letter-frequency priors
+                        val priorFactor = LETTER_FREQUENCY_PRIORS[charCode] ?: 1.0f
+                        val probFactor = if (isHighProbability) 0.60f else 1.0f
+                        val weightedDist = dist * probFactor * priorFactor
 
-                // Bayesian probability distance weighting:
-                // High-probability next letters get a 40% distance reduction bonus combined with language letter-frequency priors
-                val priorFactor = LETTER_FREQUENCY_PRIORS[charCode] ?: 1.0f
-                val probFactor = if (isHighProbability) 0.60f else 1.0f
-                val weightedDist = dist * probFactor * priorFactor
-
-                if (weightedDist < minWeightedDist) {
-                    minWeightedDist = weightedDist
-                    bestKey = key
+                        if (weightedDist < minWeightedDist) {
+                            minWeightedDist = weightedDist
+                            bestKey = key
+                        }
+                    }
                 }
             }
 

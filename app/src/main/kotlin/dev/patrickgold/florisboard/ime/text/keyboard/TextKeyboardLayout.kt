@@ -17,6 +17,7 @@
 package dev.patrickgold.florisboard.ime.text.keyboard
 
 import dev.patrickgold.florisboard.R
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
@@ -560,21 +561,8 @@ fun TextKeyboardLayout(
         controller.popupUiController = popupUiController
         val debugShowTouchBoundaries by prefs.devtools.showKeyTouchBoundaries.collectAsState()
         val flickPredictionsEnabled by prefs.glide.flickPredictionsEnabled.collectAsState()
-        val activeContent by editorInstance.activeContentFlow.collectAsState()
+        val adaptiveHitboxEnabled by prefs.keyboard.adaptiveHitboxExpansion.collectAsState()
         var isEasterEggActive by remember { mutableStateOf(false) }
-
-        LaunchedEffect(activeContent) {
-            val textBefore = activeContent.textBeforeSelection
-            val composing = activeContent.composingText
-            if ((textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
-                    textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) &&
-                prefs.easterEggs.fire(EasterEgg.EGG_WORD)
-            ) {
-                isEasterEggActive = true
-                kotlinx.coroutines.delay(10_000L)
-                isEasterEggActive = false
-            }
-        }
 
         var eclectusFlightTriggerTime by remember { mutableStateOf(0L) }
         var sunConureFlightTriggerTime by remember { mutableStateOf(0L) }
@@ -617,18 +605,37 @@ fun TextKeyboardLayout(
         var sunConureKeyTriggerTime by remember { mutableStateOf(0L) }
         var bbKeyTriggerTime by remember { mutableStateOf(0L) }
         var lastKeyLayerSignature by remember { mutableStateOf("") }
-        LaunchedEffect(activeContent) {
-            // Bounded scan: no trigger phrase exceeds 24 characters, so the
-            // last 64 are exact-equivalent for every endsWith/equality
-            // matcher below while keeping per-keystroke cost O(1) instead
-            // of O(text window).
-            val tb = activeContent.textBeforeSelection.takeLast(64).lowercase()
-            val comp = activeContent.composingText.lowercase()
-            // Precomputed rule matchers (see file-level EggSuffixRule / EggBoundaryRule).
-            // Behaviour is decision-identical to the old per-key×per-delimiter interpolation
-            // loops (proven by utils/perf-proof/EasterEggScanOracle.java, 114M decisions),
-            // but allocates nothing per keystroke.
-            if (eclectusRule.matches(tb, comp)) {
+        // Recomposition isolation from main's Milestone 398: key the effect on the stable
+        // editorInstance + the two pref flags and COLLECT the content flow, instead of relaunching
+        // the whole effect on every activeContent change. The full-screen "egg" word effect (once a
+        // separate LaunchedEffect) is folded in here too.
+        var flickPredictions by remember { mutableStateOf(emptyMap<Char, String>()) }
+        LaunchedEffect(editorInstance, flickPredictionsEnabled, adaptiveHitboxEnabled) {
+            val scope = this
+            editorInstance.activeContentFlow.collect { activeContent ->
+                val textBefore = activeContent.textBeforeSelection
+                val composing = activeContent.composingText
+                if ((textBefore.endsWith("egg", ignoreCase = true) || composing.equals("egg", ignoreCase = true) ||
+                        textBefore.endsWith(" egg", ignoreCase = true) || textBefore.endsWith("egg ", ignoreCase = true)) &&
+                    prefs.easterEggs.fire(EasterEgg.EGG_WORD)
+                ) {
+                    isEasterEggActive = true
+                    scope.launch {
+                        kotlinx.coroutines.delay(10_000L)
+                        isEasterEggActive = false
+                    }
+                }
+
+                // Bounded scan: no trigger phrase exceeds 24 characters, so the last 64 are
+                // exact-equivalent for every endsWith/equality matcher below while keeping
+                // per-keystroke cost O(1) instead of O(text window).
+                val tb = textBefore.takeLast(64).lowercase()
+                val comp = composing.lowercase()
+                // Egg scan via the branch's file-level rule engine (item 2: EggSuffixRule /
+                // EggBoundaryRule) — decision-identical to the old interpolation loops
+                // (utils/perf-proof/EasterEggScanOracle.java, 114M decisions) with zero per-keystroke
+                // allocation. Kept over main's equivalent per-trigger `.any {}` key hoists (de-dup).
+                if (eclectusRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.ECLECTUS_FLIGHT)) eclectusFlightTriggerTime = System.currentTimeMillis()
             }
             if (sunConureRule.matches(tb, comp)) {
@@ -764,60 +771,31 @@ fun TextKeyboardLayout(
                     if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureKeyTriggerTime = System.currentTimeMillis()
                 }
             }
-        }
+            // Flick predictions and native memo pre-warm
+            if (flickPredictionsEnabled || adaptiveHitboxEnabled) {
+                val curWord = when {
+                    activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> activeContent.composingText
+                    activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> activeContent.currentWordText
+                    else -> textBefore.takeLastWhile { it.isLetter() || it == '\'' }
+                }
+                val beforeCurrent = if (curWord.isNotEmpty()) textBefore.dropLast(curWord.length).trimEnd() else textBefore.trimEnd()
+                val prvWord = beforeCurrent.takeLastWhile { it.isLetter() || it == '\'' }
 
-        val currentWord = remember(activeContent) {
-            when {
-                activeContent.composing.isValid && activeContent.composingText.isNotBlank() -> {
-                    activeContent.composingText
-                }
-                activeContent.localCurrentWord.isValid && activeContent.currentWordText.isNotBlank() -> {
-                    activeContent.currentWordText
-                }
-                else -> {
-                    activeContent.textBeforeSelection.takeLastWhile { it.isLetter() || it == '\'' }
-                }
-            }
-        }
-        val textBefore = activeContent.textBeforeSelection
-        val prevWord = remember(textBefore, currentWord) {
-            val beforeCurrent = if (currentWord.isNotEmpty()) {
-                textBefore.dropLast(currentWord.length).trimEnd()
-            } else {
-                textBefore.trimEnd()
-            }
-            beforeCurrent.takeLastWhile { it.isLetter() || it == '\'' }
-        }
-        // Computed off the UI thread: predictNextLetterWords is a synchronous
-        // native call and must not run inside composition. produceState makes
-        // the result arrive one frame later, which is imperceptible for the
-        // flick overlay.
-        val flickPredictions by androidx.compose.runtime.produceState(
-            initialValue = emptyMap<Char, String>(),
-            currentWord, prevWord, flickPredictionsEnabled,
-        ) {
-            value = if (flickPredictionsEnabled && org.florisboard.libnative.FlorisNative.isAvailable()) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord, prevWord)
+                if (org.florisboard.libnative.FlorisNative.isAvailable()) {
+                    val preds = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                        org.florisboard.libnative.FlorisNative.predictNextLetterWords(curWord, prvWord)
+                    }
+                    if (flickPredictionsEnabled) {
+                        controller.currentFlickPredictions = preds
+                        flickPredictions = preds
+                    }
                 }
             } else {
-                emptyMap()
+                controller.currentFlickPredictions = emptyMap()
+                flickPredictions = emptyMap()
             }
         }
-        controller.currentFlickPredictions = flickPredictions
-        // Keeps the letter-prediction memo warm for the touch-down handler's
-        // adaptive hitboxes when flick previews are off (the produceState
-        // above warms it otherwise). Runs off the UI thread; result unused.
-        val adaptiveHitboxEnabled by prefs.keyboard.adaptiveHitboxExpansion.collectAsState()
-        LaunchedEffect(currentWord, prevWord, adaptiveHitboxEnabled, flickPredictionsEnabled) {
-            if (adaptiveHitboxEnabled && !flickPredictionsEnabled &&
-                org.florisboard.libnative.FlorisNative.isAvailable()
-            ) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                    org.florisboard.libnative.FlorisNative.predictNextLetterWords(currentWord, prevWord)
-                }
-            }
-        }
+    }
         val infiniteTransition = rememberInfiniteTransition(label = "FretPulseTransition")
         val fretCyanPulseAlpha by infiniteTransition.animateFloat(
             initialValue = 0.35f,

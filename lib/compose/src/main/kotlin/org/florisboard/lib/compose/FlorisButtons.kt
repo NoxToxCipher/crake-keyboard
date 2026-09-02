@@ -85,6 +85,18 @@ fun FlorisButton(
 }
 
 @Composable
+fun CrakeButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    text: String,
+    enabled: Boolean = true,
+    shape: Shape = MaterialTheme.shapes.small,
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    colors: ButtonColors = ButtonDefaults.buttonColors(),
+) = FlorisButton(onClick, modifier, icon, text, enabled, shape, contentPadding, colors)
+
+@Composable
 fun FlorisOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

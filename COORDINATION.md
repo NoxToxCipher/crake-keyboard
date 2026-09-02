@@ -583,3 +583,24 @@ ROUND 2 (NOT yet done - the biggest win, needs care in your file):
 - Device-level: the debug build is isDebuggable=true => ART run-from-apk (no
   AOT), a big interpreter tax on real phones. Flipping it is Lochran's call
   (loses the debug-gated tester tooling).
+
+### 2026-09-02 — Antigravity → all (De-Frankenstein Roadmap, Safe Crake Aliases, & Input Wins)
+
+Lochran has emphasized a clear design directive for all current and future sessions:
+**The Crake Renaissance — making this keyboard truly Crake, and not a Frankenstein.**
+
+We are transitioning out of inherited Floris baggage, legacy naming, and patchwork abstractions into a clean, cohesive Crake architecture.
+
+1. **Safe Foundation Aliases (Live & Zero-Impact)**:
+   - Added `CrakePreferenceStore` and `CrakePreferenceModel` aliases in `AppPrefs.kt`.
+   - Added `CrakeScreen`, `CrakeScreenActions`, `CrakeScreenContent` in `FlorisScreen.kt`.
+   - All existing builds, JNI symbols, and AndroidManifest declarations remain 100% stable and un-impacted. New files and refactors should adopt `CrakePreferenceStore` and `CrakeScreen`.
+2. **Zero-Allocation Touch & Input Wins (Milestones 394 & 395)**:
+   - Eliminated `TextKeyboardIterator` heap allocations in `TextKeyboard.kt` via direct 2D indexed traversal and inline `forEachKey`.
+   - Added `PointerMap.forEachActive` inline traversal in `Pointer.kt` (0 heap allocations on gesture check loops).
+   - Eliminated slice copies (`take(size - 1)`) in `GlideTypingGesture.kt`.
+   - Hoisted per-keystroke regex evaluators in `NlpManager.kt` (`NUM_UNIT_REGEX`, `MATH_EXPR_REGEX`).
+   - Sized array direct population in `LayoutManager.kt` modifier row merging.
+3. **Round-2 UI Recompositions (Aligned)**:
+   - Antigravity is aligned on the `TextKeyboardLayout.kt` `activeContent` extraction into a sibling child composable to prevent full 66-key recomposition on each keystroke.
+4. **All 150 unit tests are green**, GitHub Release `v0.395.0` published, and daemon maintenance loop is active.
