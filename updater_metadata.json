@@ -1,11 +1,12 @@
 {
-  "milestone": 397,
-  "tagName": "v0.397.0",
-  "name": "Milestone 397 (Crake Architecture Evolution & Component Modernization)",
-  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.397.0/CrakeKeyboard_Milestone_397.apk",
+  "milestone": 398,
+  "tagName": "v0.398.0",
+  "name": "Milestone 398 (Round 2 UI Recomposition Isolation & Keystroke Optimization)",
+  "apkDownloadUrl": "https://github.com/NoxToxCipher/crake-keyboard/releases/download/v0.398.0/CrakeKeyboard_Milestone_398.apk",
   "apkSize": 56896000,
-  "changelog": "Milestone 397: Standardized CrakeLog devtools, CrakeSimpleCard, CrakeChip, and isolated Compose text tracking.",
+  "changelog": "Milestone 398: Decoupled active text content from the 66-key rendering loop via background flow collectors, eliminating full-keyboard recomposition storms per keystroke.",
   "history": {
+    "398": "Decoupled active text content from the 66-key rendering loop via background flow collectors, eliminating full-keyboard recomposition storms per keystroke.",
     "397": "Standardized CrakeLog devtools, CrakeSimpleCard, CrakeChip, and isolated Compose text tracking.",
     "396": "Established pure CrakeScreen, CrakeAppBar, and CrakeButton UI components alongside clean preferences.",
     "395": "Eliminated intermediate list copies during keyboard layout row merging and streamlined multi-finger touch gesture tracking.",
