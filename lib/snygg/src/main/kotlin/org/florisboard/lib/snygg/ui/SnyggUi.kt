@@ -164,20 +164,31 @@ fun ProvideSnyggTheme(
     content: @Composable () -> Unit,
 ) {
     val (colorPalette, contrastLevel, specVersion) = materialYouFlags
-    val lightScheme = dynamicColorScheme(
-        primary = systemAccentOrDefault(dynamicAccentColor),
-        isDark = false,
-        style = colorPalette,
-        contrastLevel = contrastLevel.value,
-        specVersion = specVersion
-    )
-    val darkScheme = dynamicColorScheme(
-        primary = systemAccentOrDefault(dynamicAccentColor),
-        isDark = true,
-        style = colorPalette,
-        contrastLevel = contrastLevel.value,
-        specVersion = specVersion
-    )
+    // Each dynamicColorScheme is a full HCT/CAM16 tonal-palette solve (~50 roles). They
+    // were recomputed on every recomposition, and because ColorScheme has no value equals,
+    // the resulting composition locals invalidated every SnyggTheme.query in the tree on
+    // each shift/auto-caps transition. Memoize on the *resolved* primary (systemAccentOrDefault
+    // is cheap but reads the live system accent when the accent is Unspecified, so keying on
+    // the raw arg would miss a system-accent change) plus the MaterialYouFlags data class.
+    val resolvedPrimary = systemAccentOrDefault(dynamicAccentColor)
+    val lightScheme = remember(resolvedPrimary, materialYouFlags) {
+        dynamicColorScheme(
+            primary = resolvedPrimary,
+            isDark = false,
+            style = colorPalette,
+            contrastLevel = contrastLevel.value,
+            specVersion = specVersion
+        )
+    }
+    val darkScheme = remember(resolvedPrimary, materialYouFlags) {
+        dynamicColorScheme(
+            primary = resolvedPrimary,
+            isDark = true,
+            style = colorPalette,
+            contrastLevel = contrastLevel.value,
+            specVersion = specVersion
+        )
+    }
 
     val resolver = LocalFontFamilyResolver.current
     val customFontFamilies = remember(snyggTheme) {
