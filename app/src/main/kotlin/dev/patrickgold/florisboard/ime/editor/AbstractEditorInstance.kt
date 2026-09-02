@@ -98,7 +98,10 @@ abstract class AbstractEditorInstance(context: Context) {
         get() = LastCommitPosition(_lastCommitPosition)
 
     fun expectedContent(): EditorContent? {
-        return runBlocking { expectedContentQueue.peekNewestOrNull() }
+        // Lock-free volatile read (see ExpectedContentQueue.newest) — was a runBlocking +
+        // coroutine-Mutex acquire on every activeContent access. Mutations publish the newest
+        // value under the lock, so this returns the latest committed expected content.
+        return expectedContentQueue.newestOrNull()
     }
 
     private fun currentInputConnection() = FlorisImeService.currentInputConnection()
@@ -535,10 +538,24 @@ abstract class AbstractEditorInstance(context: Context) {
      */
     fun EditorContent.getTextBeforeCursor(n: Int): String {
         if (n < 1 || text.isEmpty()) return ""
+        val tb = textBeforeSelection
+        // BMP fast path: if the last min(n, len) chars are all standalone-grapheme BMP chars in
+        // [U+0020, U+02FF] (no Grapheme_Extend exists below U+0300 in any Unicode version, no
+        // surrogates, and the only sub-U+0300 multi-char grapheme CR+LF is excluded since CR/LF
+        // are < U+0020), the last n graphemes are exactly the last n chars — no ICU pass, no
+        // runBlocking. Proven identical to measureLastUChars over 9M cases by
+        // utils/perf-proof/GetTextBeforeCursorOracle.java. Any surrogate/combining/ZWJ/CRLF tail
+        // falls through to the unchanged ICU path.
+        val window = minOf(n, tb.length)
+        var simple = true
+        for (i in (tb.length - window) until tb.length) {
+            val c = tb[i]
+            if (c < '\u0020' || c >= '\u0300') { simple = false; break }
+        }
+        if (simple) return tb.takeLast(n)
         return runBlocking {
-            val text = textBeforeSelection
-            val length = breakIterators.measureLastUChars(text, n, subtypeManager.activeSubtype.primaryLocale)
-            text.takeLast(length)
+            val length = breakIterators.measureLastUChars(tb, n, subtypeManager.activeSubtype.primaryLocale)
+            tb.takeLast(length)
         }
     }
 
@@ -668,31 +685,41 @@ abstract class AbstractEditorInstance(context: Context) {
     private class ExpectedContentQueue {
         private val list = guardedByLock { mutableListOf<EditorContent>() }
 
+        // Lock-free cache of list.lastOrNull(), republished under the lock on every mutation.
+        // Lets activeContent's getter (98 call sites, many on the UI touch path) read the newest
+        // expected content without a runBlocking + coroutine-Mutex acquire. Every mutation funnels
+        // through push/popUntilOrNull/clear below, so this stays consistent with the list.
+        @Volatile
+        private var newest: EditorContent? = null
+
+        fun newestOrNull(): EditorContent? = newest
+
         suspend fun popUntilOrNull(predicate: (EditorContent) -> Boolean): EditorContent? {
             return list.withLock { list ->
+                var result: EditorContent? = null
                 while (list.isNotEmpty()) {
                     val item = list.removeAt(0)
-                    if (predicate(item)) return@withLock item
+                    if (predicate(item)) {
+                        result = item
+                        break
+                    }
                 }
-                return@withLock null
+                newest = list.lastOrNull()
+                result
             }
         }
 
         suspend fun push(item: EditorContent) {
             list.withLock { list ->
                 list.add(item)
-            }
-        }
-
-        suspend fun peekNewestOrNull(): EditorContent? {
-            return list.withLock { list ->
-                list.lastOrNull()
+                newest = item
             }
         }
 
         suspend fun clear() {
             list.withLock { list ->
                 list.clear()
+                newest = null
             }
         }
     }

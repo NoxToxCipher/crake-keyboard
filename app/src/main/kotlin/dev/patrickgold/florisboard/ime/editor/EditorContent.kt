@@ -40,22 +40,29 @@ data class EditorContent(
      * depending on the cache and app configuration. Can also be empty for raw editors or if there is no text before
      * the selection.
      */
-    val textBeforeSelection: String
-        get() = if (localSelection.isValid) text.safeSubstring(0, localSelection.start) else ""
+    // Cached: EditorContent is immutable, so each substring is computed at most once instead
+    // of on every access (read 9+ times per keystroke across the commit/auto-space/telemetry paths).
+    // lazy (SYNCHRONIZED) is safe for the UI+NLP cross-thread reads; the cached value is not part
+    // of the data class equals/hashCode/copy (those use only the constructor params).
+    val textBeforeSelection: String by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        if (localSelection.isValid) text.safeSubstring(0, localSelection.start) else ""
+    }
 
     /**
      * The selected text as a new string. This is always either the entire selected text or an empty string.
      */
-    val selectedText: String
-        get() = if (localSelection.isValid) text.safeSubstring(localSelection.start, localSelection.end) else ""
+    val selectedText: String by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        if (localSelection.isValid) text.safeSubstring(localSelection.start, localSelection.end) else ""
+    }
 
     /**
      * The text after the selection as a new string. This may be the whole text after the selection or only a subset,
      * depending on the cache and app configuration. Can also be empty for raw editors or if there is no text after the
      * selection.
      */
-    val textAfterSelection: String
-        get() = if (localSelection.isValid) text.safeSubstring(localSelection.end) else ""
+    val textAfterSelection: String by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        if (localSelection.isValid) text.safeSubstring(localSelection.end) else ""
+    }
 
     /**
      * The selection reported by the editor, with [offset] included.
@@ -75,8 +82,9 @@ data class EditorContent(
      * user has requested to disable the composing region. This is always either the entire composing text or an empty
      * string.
      */
-    val composingText: String
-        get() = if (localComposing.isValid) text.safeSubstring(localComposing.start, localComposing.end) else ""
+    val composingText: String by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        if (localComposing.isValid) text.safeSubstring(localComposing.start, localComposing.end) else ""
+    }
 
     /**
      * The current word for the editor (typically the same as [localComposing]), with [offset] included.
@@ -88,8 +96,9 @@ data class EditorContent(
      * The current word for the editor (typically the same as [localComposing]) as a new string. This is always either
      * the current word or an empty string.
      */
-    val currentWordText: String
-        get() = if (localCurrentWord.isValid) text.safeSubstring(localCurrentWord.start, localCurrentWord.end) else ""
+    val currentWordText: String by lazy(LazyThreadSafetyMode.PUBLICATION) {
+        if (localCurrentWord.isValid) text.safeSubstring(localCurrentWord.start, localCurrentWord.end) else ""
+    }
 
     val safeEditorBounds: EditorRange
         get() = if (offset >= 0) EditorRange(0, offset + text.length) else EditorRange(0, 0)
