@@ -198,6 +198,93 @@ private val mushuKeysHoisted = listOf("mushu", "mulan", "mulsn", "cri-kee", "dis
 private val goKartKeysHoisted = listOf("go-kart", "gokart", "kart", "karting", "go kart", "gokarts", "karts", "go-karts", "go karts", "kartings")
 private val ramKeysHoisted = listOf("ram", "rams", "battering ram", "batteringram")
 
+// Easter-egg matcher engine. Every trigger phrase and delimiter is a compile-time
+// constant, so the concrete strings each matcher tests (`"$k$d"`, `"$it "`, `" $k$d"`,
+// …) are precomputed ONCE here instead of being re-interpolated on every keystroke
+// (~1,750 String allocations per character in the old per-key×per-delimiter loops).
+// A differential oracle (utils/perf-proof/EasterEggScanOracle.java, 114M decisions
+// across all 38 groups) proves these are decision-identical to the old expressions.
+// Two collapses used, both verified: (1) every delimiter list contains " ", so
+// `(comp == k && d == " ")` / `(comp == k && (d.isEmpty() || d == " "))` reduce to
+// `comp in keySet`; (2) the ignoreCase=true variants are no-ops because tb/comp are
+// pre-lowercased and all keys are lowercase.
+private val eggPreStd = listOf(" ", "\n")
+private val eggPreQuote = listOf(" ", "\n", "\"", "'")
+private val eggSuffix2 = listOf("", " ")
+private val eggSuffix4 = listOf("", " ", ".", "!")
+private val eggSuffix6 = listOf("", " ", ".", "!", ",", "?")
+private val eggSuffixLove = listOf("", " ", ".", "!", ",", "?", "❤️", "🌹")
+
+/** endsWith(key+suffix) for any (key, suffix), or comp == key. Covers the bare-suffix groups. */
+private class EggSuffixRule(keys: List<String>, suffixes: List<String>) {
+    private val endsWith: List<String> = ArrayList<String>(keys.size * suffixes.size).apply {
+        for (k in keys) for (s in suffixes) add(k + s)
+    }
+    private val compSet: Set<String> = HashSet(keys)
+    fun matches(tb: String, comp: String): Boolean {
+        for (e in endsWith) if (tb.endsWith(e)) return true
+        return compSet.contains(comp)
+    }
+}
+
+/** Word-boundary groups: tb == key+delim, or endsWith(prefix+key+delim), or comp == key. */
+private class EggBoundaryRule(keys: List<String>, delims: List<String>, compMatches: Boolean, prefixes: List<String>) {
+    private val equalsSet: HashSet<String> = HashSet()
+    private val endsWith: ArrayList<String> = ArrayList()
+    private val compSet: Set<String> = if (compMatches) HashSet(keys) else emptySet()
+    init {
+        for (k in keys) for (d in delims) {
+            equalsSet.add(k + d)
+            for (p in prefixes) endsWith.add(p + k + d)
+        }
+    }
+    fun matches(tb: String, comp: String): Boolean {
+        if (equalsSet.contains(tb)) return true
+        for (e in endsWith) if (tb.endsWith(e)) return true
+        return compSet.contains(comp)
+    }
+}
+
+private val eclectusRule = EggSuffixRule(eclectusKeysHoisted, eggSuffix2)
+private val sunConureRule = EggSuffixRule(sunConureKeysHoisted, eggSuffix2)
+private val soccerRule = EggSuffixRule(soccerKeysHoisted, eggSuffix2)
+private val mangoRule = EggSuffixRule(mangoKeysHoisted, eggSuffix2)
+private val skateRule = EggSuffixRule(skateKeysHoisted, eggSuffix2)
+private val berryRule = EggSuffixRule(berryKeysHoisted, eggSuffix2)
+private val bawenRule = EggSuffixRule(bawenKeysHoisted, eggSuffix4)
+private val pubgRule = EggSuffixRule(pubgKeysHoisted, eggSuffix4)
+private val luciaRule = EggSuffixRule(luciaKeysHoisted, eggSuffix4)
+private val dukuRule = EggSuffixRule(dukuKeysHoisted, eggSuffix4)
+private val murmurRule = EggSuffixRule(murmurKeysHoisted, eggSuffix4)
+private val fullTwRule = EggSuffixRule(fullTwKeysHoisted, eggSuffix6)
+private val sundaeRule = EggSuffixRule(sundaeKeysHoisted, eggSuffix6)
+private val louieRule = EggSuffixRule(louieKeysHoisted, eggSuffix6)
+private val fullAiRule = EggSuffixRule(fullAiKeysHoisted, eggSuffix6)
+private val androidRule = EggSuffixRule(androidKeysHoisted, eggSuffix6)
+private val loveRule = EggSuffixRule(loveKeysHoisted, eggSuffixLove)
+private val eggWordRule = EggSuffixRule(listOf("egg"), eggSuffix2)
+
+private val rainRule = EggBoundaryRule(rainKeysHoisted, triggerDelimitersWithEmpty, true, eggPreStd)
+private val chiefRule = EggBoundaryRule(chiefKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val shortTwRule = EggBoundaryRule(shortTwKeysHoisted, triggerDelimiters, false, eggPreStd)
+private val carRule = EggBoundaryRule(carKeysHoisted, triggerDelimiters, false, eggPreQuote)
+private val cryptoRule = EggBoundaryRule(cryptoKeysHoisted, triggerDelimitersWithEmpty, true, eggPreStd)
+private val lunaRule = EggBoundaryRule(lunaKeysHoisted, triggerDelimitersWithEmpty, true, eggPreStd)
+private val nobleTrainRule = EggBoundaryRule(nobleTrainKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val regularTrainRule = EggBoundaryRule(regularTrainKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val shortAiRule = EggBoundaryRule(shortAiKeysHoisted, triggerDelimiters, false, eggPreStd)
+private val xboxRule = EggBoundaryRule(xboxKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val hiddenRule = EggBoundaryRule(hiddenKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val serenityRule = EggBoundaryRule(serenityKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val sniperRule = EggBoundaryRule(sniperKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val thorRule = EggBoundaryRule(thorKeysHoisted, triggerDelimiters, true, eggPreStd)
+private val mushuRule = EggBoundaryRule(mushuKeysHoisted, triggerDelimitersWithEmpty, true, eggPreStd)
+private val goKartRule = EggBoundaryRule(goKartKeysHoisted, triggerDelimitersWithEmpty, true, eggPreStd)
+private val licoriceRule = EggBoundaryRule(listOf("licorice"), triggerDelimitersWithEmpty, true, eggPreStd)
+private val pokeBankRule = EggBoundaryRule(listOf("pokemon bank", "pokebank"), triggerDelimitersWithEmpty, true, eggPreStd)
+private val ramRule = EggBoundaryRule(ramKeysHoisted, triggerDelimiters, false, eggPreQuote)
+private val bbRule = EggBoundaryRule(bbTriggerKeys, triggerDelimitersWithEmpty, true, eggPreStd)
+
 @Composable
 fun TextKeyboardLayout(
     modifier: Modifier = Modifier,
@@ -526,308 +613,136 @@ fun TextKeyboardLayout(
             // of O(text window).
             val tb = activeContent.textBeforeSelection.takeLast(64).lowercase()
             val comp = activeContent.composingText.lowercase()
-            val eclectusKeys = eclectusKeysHoisted
-            if (eclectusKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            // Precomputed rule matchers (see file-level EggSuffixRule / EggBoundaryRule).
+            // Behaviour is decision-identical to the old per-key×per-delimiter interpolation
+            // loops (proven by utils/perf-proof/EasterEggScanOracle.java, 114M decisions),
+            // but allocates nothing per keystroke.
+            if (eclectusRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.ECLECTUS_FLIGHT)) eclectusFlightTriggerTime = System.currentTimeMillis()
             }
-            val sunConureKeys = sunConureKeysHoisted
-            if (sunConureKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            if (sunConureRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SUN_CONURE_FLIGHT)) sunConureFlightTriggerTime = System.currentTimeMillis()
             }
-            val soccerKeys = soccerKeysHoisted
-            if (soccerKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            if (soccerRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SOCCER_ROLL)) soccerRollTriggerTime = System.currentTimeMillis()
             }
-            val rainKeys = rainKeysHoisted
-            val isRainMatch = rainKeys.any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isRainMatch) {
+            if (rainRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SPACE_RAIN)) spaceRainTriggerTime = System.currentTimeMillis()
             }
-            val mangoKeys = mangoKeysHoisted
-            if (mangoKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            if (mangoRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.MANGO_PULSE)) mangoPulseTriggerTime = System.currentTimeMillis()
             }
-            val chiefKeys = chiefKeysHoisted
-            val isChiefMatch = chiefKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            if (isChiefMatch) {
+            if (chiefRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.MASTER_CHIEF_RUN)) masterChiefRunTriggerTime = System.currentTimeMillis()
             }
-            val skateKeys = skateKeysHoisted
-            if (skateKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            if (skateRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.ICE_SKATE_SWIRL)) iceSkateSwirlTriggerTime = System.currentTimeMillis()
             }
-            val berryKeys = berryKeysHoisted
-            if (berryKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it }) {
+            if (berryRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.BERRIES_FLOW)) berriesFlowTriggerTime = System.currentTimeMillis()
             }
-            val fullTwKeys = fullTwKeysHoisted
-            val shortTwKeys = shortTwKeysHoisted
-            val isTwFullMatch = fullTwKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }
-            val isTwShortMatch = shortTwKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb == "$k$d"
-                }
-            }
-            if (isTwFullMatch || isTwShortMatch) {
+            if (fullTwRule.matches(tb, comp) || shortTwRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.TRIBAL_WARS)) tribalwarsTriggerTime = System.currentTimeMillis()
             }
-            val bawenKeys = bawenKeysHoisted
-            if (bawenKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            if (bawenRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.BAWEN_CAT)) bawenCatTriggerTime = System.currentTimeMillis()
             }
-            val pubgKeys = pubgKeysHoisted
-            if (pubgKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            if (pubgRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.PUBG_PARACHUTE)) pubgParachuteTriggerTime = System.currentTimeMillis()
             }
-            val luciaKeys = luciaKeysHoisted
-            if (luciaKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            if (luciaRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.LUCIA_BOBA)) luciaBobaTriggerTime = System.currentTimeMillis()
             }
-            val dukuKeys = dukuKeysHoisted
-            if (dukuKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            if (dukuRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.DUKU_FRUIT)) dukuFruitTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for car so words like 'card', 'care', 'cart', 'cardboard' never trigger it!
-            // Strictly requires the full word 'car' or 'cars' (or other car triggers) to be completed and followed by a space or punctuation.
-            val carKeys = carKeysHoisted
-            val isCarMatch = comp.isEmpty() && carKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb.endsWith("\"$k$d") || tb.endsWith("'$k$d")
-                }
-            }
-            if (isCarMatch) {
+            // Strict word boundary isolation for car so words like 'card', 'care', 'cart' never trigger it!
+            if (comp.isEmpty() && carRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.CAR_DRIVE)) carDriveTriggerTime = System.currentTimeMillis()
             }
-            val cryptoKeys = cryptoKeysHoisted
-            val isCryptoMatch = cryptoKeys.any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isCryptoMatch) {
+            if (cryptoRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.CRYPTO_ROCKET)) cryptoRocketTriggerTime = System.currentTimeMillis()
             }
-            val murmurKeys = murmurKeysHoisted
-            if (murmurKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") }) {
+            if (murmurRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.MURMUR_FLOCK)) murmurFlockTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for LUNA/UST so words like 'just', 'must', 'dust', 'trust' never trigger it!
-            val lunaKeys = lunaKeysHoisted
-            val isLunaMatch = lunaKeys.any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isLunaMatch) {
+            // Strict word boundary isolation for LUNA/UST so words like 'just', 'must', 'dust' never trigger it!
+            if (lunaRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.LUNA_CRASH)) lunaCrashTriggerTime = System.currentTimeMillis()
             }
-            val sundaeKeys = sundaeKeysHoisted
-            if (sundaeKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+            if (sundaeRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SUNDAE)) sundaeTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for train so words like 'training', 'trainer', 'strain', 'restrain' never trigger it!
-            val nobleTrainKeys = nobleTrainKeysHoisted
-            val regularTrainKeys = regularTrainKeysHoisted
-            val isNobleTrainMatch = nobleTrainKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            val isRegularTrainMatch = regularTrainKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            if (isNobleTrainMatch) {
+            // Strict word boundary isolation for train so 'training', 'strain' never trigger it!
+            if (nobleTrainRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.NOBLE_TRAIN)) {
                     isNobleTrainMode = true
                     trainTriggerTime = System.currentTimeMillis()
                 }
-            } else if (isRegularTrainMatch) {
+            } else if (regularTrainRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.STEAM_TRAIN)) {
                     isNobleTrainMode = false
                     trainTriggerTime = System.currentTimeMillis()
                 }
             }
-            val louieKeys = louieKeysHoisted
-            if (louieKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+            if (louieRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.LOUIE_PAWS)) louiePawsTriggerTime = System.currentTimeMillis()
             }
-            val fullAiKeys = fullAiKeysHoisted
-            val shortAiKeys = shortAiKeysHoisted
-            val isAiFullMatch = fullAiKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }
-            val isAiShortMatch = shortAiKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb == "$k$d"
-                }
-            }
-            if (isAiFullMatch || isAiShortMatch) {
+            if (fullAiRule.matches(tb, comp) || shortAiRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.IROBOT)) irobotTriggerTime = System.currentTimeMillis()
             }
-            val androidKeys = androidKeysHoisted
-            if (androidKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") }) {
+            if (androidRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.ANDROID_BUGDROID)) androidBugdroidTriggerTime = System.currentTimeMillis()
             }
-            val loveKeys = loveKeysHoisted
-            if (loveKeys.any { tb.endsWith(it) || tb.endsWith("$it ") || comp == it || tb.endsWith("$it.") || tb.endsWith("$it!") || tb.endsWith("$it,") || tb.endsWith("$it?") || tb.endsWith("$it❤️") || tb.endsWith("$it🌹") }) {
+            if (loveRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.ROSE_PETALS)) rosePetalsTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Xbox
-            val xboxKeys = xboxKeysHoisted
-            val isXboxMatch = xboxKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            if (isXboxMatch) {
+            if (xboxRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.XBOX_ACHIEVEMENT)) xboxAchievementTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for 'hidden' (fires 8s later)
-            val hiddenKeys = hiddenKeysHoisted
-            val isHiddenMatch = hiddenKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            if (isHiddenMatch) {
+            if (hiddenRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.HIDDEN_HOODED)) hiddenHoodedTriggerTime = System.currentTimeMillis()
             }
-            // Serenity / anti-stress garden. Owner ruling 2026-08-27: the
-            // emotional-word matching stays by design — mental wellbeing
-            // outranks the privacy objection here. It is gated by the same
-            // per-egg opt-out as every other egg (visible in Settings after
-            // first trigger). Matching is on-device, in-process, unstored
-            // and untransmitted.
-            val serenityKeys = serenityKeysHoisted
-            val isSerenityMatch = serenityKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            if (isSerenityMatch) {
+            // Serenity / anti-stress garden. Owner ruling 2026-08-27: the emotional-word
+            // matching stays by design; on-device, in-process, unstored and untransmitted.
+            if (serenityRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SERENITY_GARDEN)) serenityGardenTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Sniper triggers
-            val sniperKeys = sniperKeysHoisted
-            val isSniperMatch = sniperKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && d == " ")
-                }
-            }
-            if (isSniperMatch) {
+            if (sniperRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SNIPER_DUDE)) sniperDudeTriggerTime = System.currentTimeMillis()
             }
-            // Strict word boundary isolation for Thor (Case-insensitive, never triggers on Thorchain)
-            val thorKeys = thorKeysHoisted
-            val isThorMatch = thorKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb.equals("$k$d", ignoreCase = true) ||
-                    tb.endsWith(" $k$d", ignoreCase = true) ||
-                    tb.endsWith("\n$k$d", ignoreCase = true) ||
-                    (comp.equals(k, ignoreCase = true) && d == " ")
-                }
-            }
-            if (isThorMatch) {
+            // Strict word boundary isolation for Thor (never triggers on Thorchain)
+            if (thorRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.THOR)) thorTriggerTime = System.currentTimeMillis()
             }
             // Strict word boundary isolation for Mushu the Dragon (Disney's Mulan)
-            val mushuKeys = mushuKeysHoisted
-            val isMushuMatch = mushuKeys.any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb.equals("$k$d", ignoreCase = true) ||
-                    tb.endsWith(" $k$d", ignoreCase = true) ||
-                    tb.endsWith("\n$k$d", ignoreCase = true) ||
-                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isMushuMatch) {
+            if (mushuRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.MUSHU)) mushuTriggerTime = System.currentTimeMillis()
             }
-            val goKartKeys = goKartKeysHoisted
-            val isGoKartMatch = goKartKeys.any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb.equals("$k$d", ignoreCase = true) ||
-                    tb.endsWith(" $k$d", ignoreCase = true) ||
-                    tb.endsWith("\n$k$d", ignoreCase = true) ||
-                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isGoKartMatch) {
+            if (goKartRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.GO_KART)) goKartTriggerTime = System.currentTimeMillis()
             }
-            val isLicoriceMatch = listOf("licorice").any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb.equals("$k$d", ignoreCase = true) ||
-                    tb.endsWith(" $k$d", ignoreCase = true) ||
-                    tb.endsWith("\n$k$d", ignoreCase = true) ||
-                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isLicoriceMatch) {
+            if (licoriceRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.LICORICE)) licoriceTriggerTime = System.currentTimeMillis()
             }
-            val isPokeBankMatch = listOf("pokemon bank", "pokebank").any { k ->
-                val delimiters = triggerDelimitersWithEmpty
-                delimiters.any { d ->
-                    tb.equals("$k$d", ignoreCase = true) ||
-                    tb.endsWith(" $k$d", ignoreCase = true) ||
-                    tb.endsWith("\n$k$d", ignoreCase = true) ||
-                    (comp.equals(k, ignoreCase = true) && (d.isEmpty() || d == " "))
-                }
-            }
-            if (isPokeBankMatch) {
+            if (pokeBankRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.POKEMON_BANK)) pokeBankTriggerTime = System.currentTimeMillis()
             }
-            val ramKeys = ramKeysHoisted
-            val isRamMatch = comp.isEmpty() && ramKeys.any { k ->
-                val delimiters = triggerDelimiters
-                delimiters.any { d ->
-                    tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || tb.endsWith("\"$k$d") || tb.endsWith("'$k$d")
-                }
-            }
-            if (isRamMatch) {
+            if (comp.isEmpty() && ramRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.RAM_DUO)) ramDuoTriggerTime = System.currentTimeMillis()
             }
             // Per-key egg layers, hoisted out of TextKeyButton (previously
             // every key button re-ran these scans on each content change).
             val keyLayerSignature = "$tb::$comp"
             if (keyLayerSignature != lastKeyLayerSignature) {
-                val isBbMatch = bbTriggerKeys.any { k ->
-                    triggerDelimitersWithEmpty.any { d ->
-                        tb == "$k$d" || tb.endsWith(" $k$d") || tb.endsWith("\n$k$d") || (comp == k && (d.isEmpty() || d == " "))
-                    }
-                }
-                if (isBbMatch) {
+                if (bbRule.matches(tb, comp)) {
                     lastKeyLayerSignature = keyLayerSignature
                     if (prefs.easterEggs.fire(EasterEgg.BLACKBERRY)) bbKeyTriggerTime = System.currentTimeMillis()
                 }
-                val isEggWord = tb.endsWith("egg") || tb.endsWith("egg ") || comp == "egg"
-                if (isEggWord) {
+                if (eggWordRule.matches(tb, comp)) {
                     lastKeyLayerSignature = keyLayerSignature
                     if (prefs.easterEggs.fire(EasterEgg.EGG_WORD)) eggKeyTriggerTime = System.currentTimeMillis()
                 }
