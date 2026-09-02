@@ -60,6 +60,9 @@ result
 # VSCode
 .vscode/
 
+# Kotlin Gradle plugin build cache (daemon sessions etc.)
+.kotlin/
+
 # Rust
 debug/
 target/
