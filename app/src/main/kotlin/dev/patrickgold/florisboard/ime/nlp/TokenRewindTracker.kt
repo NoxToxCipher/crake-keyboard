@@ -72,8 +72,22 @@ class TokenRewindTracker(
         }
     }
 
+    /**
+     * @param learnAsCorrection false when the committed token was chosen by
+     *   the ENGINE (an auto-commit on space/punctuation), not by the user. A
+     *   rewind followed by an auto-commit is still consumed, but it teaches
+     *   nothing: recording the engine's own guess as the user's correction
+     *   boosted a wrong word (+15 per record) until it outranked the right
+     *   one — "lile" -> "lille" over "like" (field loop, 2026-09-13).
+     */
     @Synchronized
-    fun onTokenCommitted(token: String, isRawTyping: Boolean = false, keyVariation: KeyVariation = KeyVariation.NORMAL, packageName: String? = null) {
+    fun onTokenCommitted(
+        token: String,
+        isRawTyping: Boolean = false,
+        keyVariation: KeyVariation = KeyVariation.NORMAL,
+        packageName: String? = null,
+        learnAsCorrection: Boolean = true,
+    ) {
         val cleanToken = token.trim()
         if (cleanToken.isEmpty()) return
 
@@ -83,7 +97,7 @@ class TokenRewindTracker(
         // Check if this newly committed token replaces an erased token from an active rewind
         if (rewind != null && (now - rewind.startTime <= rewindTimeoutMs)) {
             val erased = rewind.erasedToken.trim()
-            if (erased.isNotEmpty() && !erased.equals(cleanToken, ignoreCase = true) && erased.length >= 2 && cleanToken.length >= 2) {
+            if (learnAsCorrection && erased.isNotEmpty() && !erased.equals(cleanToken, ignoreCase = true) && erased.length >= 2 && cleanToken.length >= 2) {
                 // High-value retroactive correction captured!
                 onCorrectionCaptured?.invoke(erased, cleanToken, rewind.rewindDepth, rewind.partialNextWordChars)
 

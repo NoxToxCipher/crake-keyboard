@@ -315,7 +315,17 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         }
     }
 
-    fun commitCandidate(candidate: SuggestionCandidate, withSpace: Boolean = false, slotIndex: Int? = null) {
+    /**
+     * @param isAutoCommit true when the engine picked [candidate] on
+     *   space/punctuation. The commit still counts as accepted, but it is
+     *   never learned as a correction the user made (see TokenRewindTracker).
+     */
+    fun commitCandidate(
+        candidate: SuggestionCandidate,
+        withSpace: Boolean = false,
+        slotIndex: Int? = null,
+        isAutoCommit: Boolean = false,
+    ) {
         // In incognito mode nothing may be learned from what the user types:
         // word acceptance feeds the native trie and emoji acceptance persists
         // usage history, so both are skipped. Clipboard candidates still
@@ -369,7 +379,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         when (candidate) {
             is ClipboardSuggestionCandidate -> editorInstance.commitClipboardItem(candidate.clipboardItem)
             else -> {
-                editorInstance.commitCompletion(candidate)
+                editorInstance.commitCompletion(candidate, isAutoCommit = isAutoCommit)
                 if (withSpace) {
                     editorInstance.commitText(" ")
                 }
@@ -684,7 +694,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      */
     fun handleHardwareKeyboardSpace() {
         val candidate = nlpManager.getAutoCommitCandidate()
-        candidate?.let { commitCandidate(it) }
+        candidate?.let { commitCandidate(it, isAutoCommit = true) }
         // Skip handling changing to characters keyboard and double space periods
         // TODO: this is whether we commit space after selecting candidate. Should be determined by SuggestionProvider
         if (!subtypeManager.activeSubtype.primaryLocale.supportsAutoSpace &&
@@ -700,7 +710,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     private fun handleSpace(data: KeyData) {
         val candidate = nlpManager.getAutoCommitCandidate()
         if (candidate != null) {
-            commitCandidate(candidate)
+            commitCandidate(candidate, isAutoCommit = true)
         } else if (prefs.devtools.flightRecorderEnabled.get()) {
             // All of this exists only to feed the flight recorder, including a
             // synchronous JNI round-trip (predictNextLetterWords) on every
@@ -1141,7 +1151,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             else -> {
                 if (activeState.imeUiMode == ImeUiMode.MEDIA) {
-                    nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
+                    nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it, isAutoCommit = true) }
                     editorInstance.commitText(data.asString(isForDisplay = false))
                     return@batchEdit
                 }
@@ -1168,7 +1178,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                             val text = data.asString(isForDisplay = false)
                             val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
                             if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0)) && !isApostrophe) {
-                                nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it) }
+                                nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it, isAutoCommit = true) }
                             }
                             editorInstance.commitChar(text)
                         }

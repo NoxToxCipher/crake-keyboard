@@ -319,10 +319,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * Phantom space will be activated if the text is committed.
      *
      * @param candidate The candidate to complete in this editor.
+     * @param isAutoCommit True when the engine chose this candidate on
+     *   space/punctuation rather than the user tapping it; such a commit
+     *   must not be learned as the user's own correction.
      *
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
-    fun commitCompletion(candidate: SuggestionCandidate): Boolean {
+    fun commitCompletion(candidate: SuggestionCandidate, isAutoCommit: Boolean = false): Boolean {
         val text = candidate.text.toString()
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val content = activeContent
@@ -357,6 +360,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             isRawTyping = false,
             keyVariation = activeState.keyVariation,
             packageName = activeInfo.packageName,
+            learnAsCorrection = !isAutoCommit,
         )
         return super.commitText(committed).also {
             updateLastCommitPosition()

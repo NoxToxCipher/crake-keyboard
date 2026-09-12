@@ -107,6 +107,34 @@ class TokenRewindTrackerTest : FunSpec({
         capturedCount shouldBe 0
     }
 
+    test("An auto-committed replacement is not learned as the user's correction") {
+        // Field loop (2026-09-13): the user erases a word, retypes it with a
+        // slip, and the ENGINE's auto-commit lands ("lile" -> "lille"). That
+        // word was never chosen by the user, yet it was recorded as their
+        // correction and boosted +15 each time, until the wrong word outranked
+        // the right one. Only a raw-typed or tapped replacement may teach.
+        val tracker = TokenRewindTracker()
+        var capturedCount = 0
+        tracker.onCorrectionCaptured = { _, _, _, _ -> capturedCount++ }
+
+        tracker.onTokenCommitted("like")
+        tracker.onCharacterTyped(" ")
+        tracker.onCharacterTyped("i")
+        tracker.onCharacterDeleted("like ")
+        tracker.onCharacterDeleted("like")
+        tracker.onCharacterDeleted("lik")
+        tracker.getPendingRewind()?.erasedToken shouldBe "like"
+
+        // The engine replaces the retyped slip on space: not the user's word.
+        tracker.onTokenCommitted("lille", learnAsCorrection = false)
+
+        capturedCount shouldBe 0
+        // The rewind is consumed either way: the next typed word is not a
+        // replacement for the erased one.
+        tracker.getPendingRewind() shouldBe null
+        tracker.getHistoryTokens() shouldBe listOf("lille")
+    }
+
     test("Explicit cursor repositioning cancels pending rewind") {
         val tracker = TokenRewindTracker()
         var capturedCount = 0
