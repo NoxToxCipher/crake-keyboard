@@ -52,7 +52,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
@@ -353,43 +357,6 @@ private fun CandidateItem(
             },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (candidate.isEligibleForAutoCommit) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-                    .background(
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0x2400E5FF),
-                                Color(0x1000E5FF),
-                            )
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                    )
-                    .border(
-                        width = 1.dp,
-                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0x8000E5FF),
-                                Color(0x2500E5FF),
-                            )
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                    )
-            )
-        }
-        if (isPressed) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp, vertical = 4.dp)
-                    .background(
-                        color = Color(0x4000E5FF),
-                        shape = RoundedCornerShape(8.dp),
-                    )
-            )
-        }
         if (candidate.icon != null) {
             SnyggBox(
                 elementName = "$elementName-icon",
@@ -404,20 +371,62 @@ private fun CandidateItem(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SnyggText(
-                elementName = "$elementName-text",
-                attributes = attributes,
-                selector = selector,
-                text = candidate.text.toString(),
-            )
-            if (candidate.secondaryText != null) {
+            // The auto-commit / pressed highlight is drawn BEHIND the word and
+            // hugs it. It must never be a sibling child of the row: a
+            // fillMaxSize() child eats the whole slot and pushes the word out
+            // of view, which rendered as one empty full-width box.
+            Column(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .candidateHighlight(
+                        autoCommit = candidate.isEligibleForAutoCommit,
+                        pressed = isPressed,
+                    )
+                    .padding(horizontal = 10.dp, vertical = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
                 SnyggText(
-                    elementName = "$elementName-secondary-text",
+                    elementName = "$elementName-text",
                     attributes = attributes,
                     selector = selector,
-                    text = candidate.secondaryText!!.toString(),
+                    text = candidate.text.toString(),
                 )
+                if (candidate.secondaryText != null) {
+                    SnyggText(
+                        elementName = "$elementName-secondary-text",
+                        attributes = attributes,
+                        selector = selector,
+                        text = candidate.secondaryText!!.toString(),
+                    )
+                }
             }
+        }
+    }
+}
+
+private val CandidateHighlightFill = Brush.verticalGradient(
+    colors = listOf(Color(0x2400E5FF), Color(0x1000E5FF)),
+)
+private val CandidateHighlightStroke = Brush.verticalGradient(
+    colors = listOf(Color(0x8000E5FF), Color(0x2500E5FF)),
+)
+private val CandidatePressedFill = Color(0x4000E5FF)
+
+/**
+ * Compact chip behind a candidate word: a soft cyan fill with a hairline
+ * border for the word that will auto-commit on space, and a stronger flat
+ * fill while the word is pressed. Sized by the word, never by the slot.
+ */
+private fun Modifier.candidateHighlight(autoCommit: Boolean, pressed: Boolean): Modifier {
+    if (!autoCommit && !pressed) return this
+    return drawBehind {
+        val radius = CornerRadius(8.dp.toPx())
+        if (autoCommit) {
+            drawRoundRect(brush = CandidateHighlightFill, cornerRadius = radius)
+            drawRoundRect(brush = CandidateHighlightStroke, cornerRadius = radius, style = Stroke(1.dp.toPx()))
+        }
+        if (pressed) {
+            drawRoundRect(color = CandidatePressedFill, cornerRadius = radius)
         }
     }
 }
