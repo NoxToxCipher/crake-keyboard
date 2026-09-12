@@ -640,13 +640,16 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 it.append(jsonObj.toString()).append("\n")
                             }
 
-                            // Transmit wirelessly over HTTPS to development relay
-                            RemoteTelemetryClient.transmitFeedback(
+                            // Transmit wirelessly over HTTPS to development relay.
+                            // The report is already on disk above; say what
+                            // actually happened on the wire (audit 2026-09-13:
+                            // this used to claim "transmitted" while offline).
+                            val sent = RemoteTelemetryClient.transmitFeedback(
                                 testerName = testerName,
                                 category = selectedCategory.name,
                                 title = titleText.trim(),
                                 jsonPayload = jsonObj.toString(),
-                            )
+                            ).isSuccess
 
                             withContext(Dispatchers.Main) {
                                 submissionSuccess = true
@@ -654,7 +657,12 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 descriptionText = ""
                                 attachedBitmap = null
                                 attachedImageUri = null
-                                Toast.makeText(context, "Feedback transmitted to Crake development team!", Toast.LENGTH_LONG).show()
+                                val message = if (sent) {
+                                    "Feedback sent to Crake development. Saved as $assignedTicketId."
+                                } else {
+                                    "Saved as $assignedTicketId on this phone, but it could not be sent (no connection?). Try again later from the list below."
+                                }
+                                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                 refreshRecentFeedbacks()
                             }
                         }
