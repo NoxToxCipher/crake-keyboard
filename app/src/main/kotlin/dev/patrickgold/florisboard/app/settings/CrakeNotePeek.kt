@@ -428,6 +428,14 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                                 var velocityTracker = VelocityTracker()
                                 velocityTracker.addPosition(down.uptimeMillis, down.position)
                                 var totalDragX = 0f
+                                // Movement before the drag is recognised. It
+                                // used to be compared one event at a time, so
+                                // a slow pull (every step under 8px) never
+                                // became a drag and was read as a tap on
+                                // release, which closed the pad (audit
+                                // 2026-09-13).
+                                var pendingDragX = 0f
+                                val slop = viewConfiguration.touchSlop
                                 var isDragging = false
 
                                 while (true) {
@@ -452,8 +460,11 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                                     } else {
                                         val dragX = change.positionChange().x
                                         velocityTracker.addPosition(change.uptimeMillis, change.position)
-                                        if (!isDragging && abs(totalDragX + dragX) > 8f) {
-                                            isDragging = true
+                                        if (!isDragging) {
+                                            pendingDragX += dragX
+                                            if (abs(pendingDragX) > slop) {
+                                                isDragging = true
+                                            }
                                         }
                                         if (isDragging) {
                                             change.consume()
@@ -466,14 +477,21 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                             }
                         }
                 )
-            } else {
-                // When completely closed, provide a 56dp edge grab strip on the left to pull open
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .fillMaxHeight()
-                        .width(edgeWidth)
-                        .pointerInput(openPx) {
+            }
+            // The left-edge grab strip is ALWAYS composed. It used to live in
+            // the else-branch of `isInteracting`, which removed its pointer
+            // node the moment the first pixel of pull moved the pad past
+            // 1px — cancelling the very gesture that opened it, so the pad
+            // nudged and stuck (M366 regression, audit 2026-09-13). Zero
+            // width while open keeps it out of the overlay's way; the
+            // in-flight drag keeps its events because Compose routes them to
+            // the node hit at the down.
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .fillMaxHeight()
+                    .width(if (isInteracting) 0.dp else edgeWidth)
+                    .pointerInput(openPx) {
                             var velocityTracker = VelocityTracker()
                             detectHorizontalDragGestures(
                                 onDragStart = { offset ->
@@ -502,8 +520,7 @@ fun CrakeNotePeek(content: @Composable () -> Unit) {
                                 }
                             )
                         }
-                )
-            }
+            )
         }
 
         if (showPin) {
