@@ -484,6 +484,39 @@ pub fn contraction_display_for_glide(bare: &str) -> Option<&'static str> {
 }
 
 
+/// Previous-word triggers under which a typed "ill" is the adjective ("feel
+/// ill", "very ill", "the ill") and not a dropped-apostrophe "I'll". The
+/// bigram table cannot arbitrate this pair: its corpus was tokenised without
+/// apostrophes, so "and I'll" is counted under "and ill" (probe 2026-09-13:
+/// and=154, so=137, i'll=0 for every prev). Only words that never precede
+/// "I'll" in conversation belong here — a miss keeps what was typed, a false
+/// trigger silently eats an "I'll". Trailing punctuation on the prev token
+/// ("feel,") is ignored.
+pub fn ill_reads_as_adjective(prev: Option<&str>) -> bool {
+    let Some(prev) = prev else { return false };
+    let p: String = prev
+        .trim()
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic() || *c == '\'' || *c == '’')
+        .map(|c| if c == '’' { '\'' } else { c.to_ascii_lowercase() })
+        .collect();
+    matches!(
+        p.as_str(),
+        "feel" | "feels" | "feeling" | "felt" | "fell" | "fall" | "falls" | "falling" | "fallen"
+            | "look" | "looks" | "looked" | "looking" | "seem" | "seems" | "seemed"
+            | "am" | "is" | "was" | "are" | "were" | "be" | "been" | "being"
+            | "get" | "gets" | "got" | "getting" | "gotten"
+            | "become" | "becomes" | "became" | "becoming"
+            | "very" | "really" | "too" | "quite" | "pretty" | "extremely"
+            | "seriously" | "terminally" | "mentally" | "physically" | "critically"
+            | "chronically" | "gravely" | "violently"
+            | "the" | "an" | "of"
+            | "im" | "i'm" | "hes" | "he's" | "shes" | "she's" | "youre" | "you're"
+            | "theyre" | "they're" | "we're"
+            | "isnt" | "isn't" | "wasnt" | "wasn't" | "arent" | "aren't"
+    )
+}
+
 /// Context-gated contraction resolver that disambiguates dual-meaning words
 /// (e.g. `well` vs `we'll`, `were` vs `we're`, `ill` vs `I'll`, `shed` vs `she'd`)
 /// using grammatical triggers from surrounding tokens (Idea 5 / Loops 13-15).
@@ -539,10 +572,8 @@ pub fn resolve_contraction_with_context(
             None
         }
         "ill" => {
-            if let Some(ref p) = prev {
-                if matches!(p.as_str(), "feel" | "feeling" | "fell" | "seriously" | "terminally" | "mentally" | "physically" | "critically" | "look" | "looked" | "is" | "was") {
-                    return None;
-                }
+            if ill_reads_as_adjective(prev.as_deref()) {
+                return None;
             }
             if let Some(ref n) = next {
                 if matches!(n.as_str(), "be" | "go" | "see" | "find" | "get" | "have" | "make" | "do" | "call" | "tell" | "check" | "let" | "try" | "take" | "ask") {
@@ -596,6 +627,25 @@ pub fn contraction_display(bare: &str) -> Option<&'static str> {
         return None;
     }
     CONTRACTIONS.iter().find(|(k, _)| *k == clean.as_str()).map(|&(_, c)| c)
+}
+
+/// True when `word` is `typed_lower` with apostrophes added ("I'll" for
+/// "ill", "it's" for "its"), case-insensitively.
+pub fn is_apostrophe_variant(word: &str, typed_lower: &str) -> bool {
+    if !word.contains('\'') && !word.contains('’') {
+        return false;
+    }
+    let mut typed = typed_lower.chars();
+    for ch in word.chars() {
+        if ch == '\'' || ch == '’' {
+            continue;
+        }
+        match typed.next() {
+            Some(t) if t == ch.to_ascii_lowercase() => {}
+            _ => return false,
+        }
+    }
+    typed.next().is_none()
 }
 
 
@@ -1689,7 +1739,23 @@ impl NlpEngine {
             // Ambiguous words (well, were, shed, wed, hell, its) do NOT auto-correct over exact word.
             let is_ambiguous = matches!(trimmed_lower.as_str(), "well" | "were" | "shed" | "wed" | "hell" | "its" | "ill" | "id");
             let formatted = Self::apply_casing(trimmed, contraction);
-            if is_ambiguous && is_exact {
+            // "ill" is ambiguous on paper, not in a chat: the dropped
+            // apostrophe "I'll" is what gets typed, and the adjective is
+            // announced by the word before it ("feel ill", "very ill").
+            // Field report 2026-09-13: "Ill" committed at every sentence
+            // start. The gate is the resolver's own table; two reverts
+            // still retire the flip like any other correction.
+            let ill_flips = trimmed_lower == "ill" && !ill_reads_as_adjective(Some(prev_word));
+            if ill_flips {
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: true,
+                });
+                candidates.push(RankedCandidate {
+                    word: trimmed.to_string(),
+                    is_autocorrect: false,
+                });
+            } else if is_ambiguous && is_exact {
                 candidates.push(RankedCandidate {
                     word: trimmed.to_string(),
                     is_autocorrect: false,
@@ -2223,7 +2289,16 @@ impl NlpEngine {
             if !prev_clean.is_empty() {
                 let head = candidates
                     .iter()
-                    .take_while(|c| c.is_autocorrect || c.word.eq_ignore_ascii_case(trimmed))
+                    .take_while(|c| {
+                        c.is_autocorrect
+                            || c.word.eq_ignore_ascii_case(trimmed)
+                            // The apostrophised twin of the typed word
+                            // ("I'll" behind a kept "ill") is a choice, not
+                            // filler: it stays in slot 2 instead of being
+                            // re-ranked below "dll" and "ilk" (probe
+                            // 2026-09-13).
+                            || is_apostrophe_variant(&c.word, &trimmed_lower)
+                    })
                     .count();
                 if head < candidates.len() {
                     // One frozen snapshot for the whole rescoring pass so every

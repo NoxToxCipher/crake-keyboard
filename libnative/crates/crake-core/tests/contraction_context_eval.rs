@@ -53,6 +53,25 @@ fn test_ill_disambiguation_with_context() {
     assert_eq!(resolve_contraction_with_context("ill", Some("feel"), None), None);
     assert_eq!(resolve_contraction_with_context("ill", Some("critically"), None), None);
     assert_eq!(resolve_contraction_with_context("ill", Some("terminally"), None), None);
+    // the adjective gate also blocks the verb-trigger flip
+    assert_eq!(resolve_contraction_with_context("ill", Some("very"), Some("be")), None);
+    assert_eq!(resolve_contraction_with_context("ill", Some("am"), Some("be")), None);
+}
+
+/// The adjective gate is what the suggest engine consults before flipping a
+/// typed "ill" to "I'll" (2026-09-13): prev-token punctuation and curly
+/// apostrophes must not defeat it, and no prev / an empty prev never reads
+/// as the adjective.
+#[test]
+fn ill_adjective_gate() {
+    use crake_core::nlp::ill_reads_as_adjective;
+    for p in ["feel", "Feel", "feel,", "very", "am", "I'm", "I’m", "the", "is", "got", "seriously"] {
+        assert!(ill_reads_as_adjective(Some(p)), "{p:?} should read as adjective context");
+    }
+    for p in ["", "  ", "and", "so", "tomorrow", "ok", "yeah", "i", "then", "but", "not", "still"] {
+        assert!(!ill_reads_as_adjective(Some(p)), "{p:?} must not block the I'll flip");
+    }
+    assert!(!ill_reads_as_adjective(None));
 }
 
 #[test]

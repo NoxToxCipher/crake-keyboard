@@ -43,6 +43,19 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "tomorow", "tomorrow"),
         ("", "helllo", "hello"),
         ("", "inmy", "in my"),
+        // "ill" is a dropped-apostrophe "I'll" unless the word before it
+        // says adjective (field report 2026-09-13).
+        ("", "ill", "I'll"),
+        ("", "Ill", "I'll"),
+        ("tomorrow", "ill", "I'll"),
+        ("and", "Ill", "I'll"),
+        ("ok,", "ill", "I'll"),
+        ("feel", "ill", ""),
+        ("feeling", "ill", ""),
+        ("very", "ill", ""),
+        ("is", "ill", ""),
+        ("the", "ill", ""),
+        ("I'm", "ill", ""),
         // must never flip: AU vocab, his project names, abbreviations
         ("", "arvo", ""),
         ("", "doona", ""),
