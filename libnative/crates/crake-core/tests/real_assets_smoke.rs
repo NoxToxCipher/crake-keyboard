@@ -44,12 +44,15 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "helllo", "hello"),
         ("", "inmy", "in my"),
         // "ill" is a dropped-apostrophe "I'll" unless the word before it
-        // says adjective (field report 2026-09-13).
+        // says adjective; "lile" is "like" (l for k), not the city
+        // (field report 2026-09-13).
         ("", "ill", "I'll"),
         ("", "Ill", "I'll"),
         ("tomorrow", "ill", "I'll"),
         ("and", "Ill", "I'll"),
         ("ok,", "ill", "I'll"),
+        ("", "lile", "like"),
+        ("i", "lile", "like"),
         ("feel", "ill", ""),
         ("feeling", "ill", ""),
         ("very", "ill", ""),
@@ -111,6 +114,27 @@ fn shipped_fixes_hold_on_shipped_assets() {
         failures.push("more then -> than".into());
     }
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
+/// The engine's own wrong auto-commit can be learned back as a personal
+/// "correction" (+15 per record). On a real phone six of those lifted
+/// "lille" to 255, above "like", and the doubled-letter guess won again.
+/// The guess must yield on shipped-corpus evidence, not on learned boosts
+/// (field report 2026-09-13).
+#[test]
+fn learned_boost_cannot_resurrect_doubled_guess() {
+    let mut e = engine();
+    for _ in 0..8 {
+        e.record_personal_correction("lile", "lille");
+    }
+    assert_eq!(e.trie.get_frequency("lille"), Some(255), "boost path saturates the learned freq");
+    let r = e.suggest_with_context("lile", "", 4);
+    let first = r.candidates.first().expect("candidates");
+    assert!(
+        first.word == "like" && first.is_autocorrect,
+        "lile must still auto-commit like, got {:?}",
+        r.candidates.iter().map(|c| format!("{}{}", c.word, if c.is_autocorrect { "*" } else { "" })).collect::<Vec<_>>()
+    );
 }
 
 /// Latency floor-guard on the real assets: the suggest pipeline has grown

@@ -1985,6 +1985,37 @@ impl NlpEngine {
                 doubled.insert(i, chars[i]);
                 let doubled_str: String = doubled.into_iter().collect();
                 if let Some(f) = self.trie.get_frequency(&doubled_str) {
+                    // A doubled letter is one GUESS at the slip, and a weak
+                    // one next to a same-length adjacent-key substitution:
+                    // "lile" is "like" with l for k far more often than the
+                    // city "lille" (254 vs 170), yet this stage ran first
+                    // and claimed the auto-commit. When a 1-unit neighbour
+                    // is the more common word, leave the slot to stage 7,
+                    // which ranks that neighbour first and still surfaces
+                    // the doubled word behind it (field report 2026-09-13).
+                    // Shipped-corpus frequencies on both sides: personal
+                    // boosts must not decide this. The engine's own wrong
+                    // commits get learned back as "corrections" (+15 each),
+                    // and six of them lifted "lille" to 255 on a real phone
+                    // — above "like" — which is the loop that made this
+                    // keyboard worse than others at the word (2026-09-13).
+                    // Words the corpus never shipped keep their learned
+                    // frequency, so a taught name still competes.
+                    let base_of = |w: &str, learned: u32| {
+                        let c = self.corpus_freq(w);
+                        if c > 0 { c } else { learned }
+                    };
+                    let doubled_base = base_of(&doubled_str, f);
+                    let outranked_by_slip = {
+                        let touch = self.touch_model.read().unwrap();
+                        self.trie
+                            .fuzzy_search_weighted(&trimmed_lower, 1, 4, |a, b| Self::slip_oracle(&touch, a, b))
+                            .iter()
+                            .any(|fc| fc.distance == 1 && base_of(&fc.word, fc.frequency) > doubled_base)
+                    };
+                    if outranked_by_slip {
+                        continue;
+                    }
                     let formatted = Self::apply_casing(trimmed, &doubled_str);
                     if !contains_word(&candidates, &formatted) {
                         let rc = RankedCandidate {
