@@ -34,10 +34,20 @@ class TokenRewindTracker(
     private val maxHistory: Int = 5,
     private val rewindTimeoutMs: Long = 15_000L,
 ) {
+    /**
+     * @param userChosen false when the ENGINE put this token in the field
+     *   (an auto-commit). Such an entry can only teach through
+     *   [typedOriginal] — what the user actually typed before the engine
+     *   replaced it — never through its own text, or erasing the engine's
+     *   wrong word and typing the right one would record the engine's word
+     *   as the user's typo (review 2026-09-13: "this" -> "the").
+     */
     data class TokenEntry(
         val text: String,
         val length: Int,
         val timestamp: Long = System.currentTimeMillis(),
+        val userChosen: Boolean = true,
+        val typedOriginal: String? = null,
     )
 
     data class ActiveRewind(
@@ -45,6 +55,7 @@ class TokenRewindTracker(
         val partialNextWordChars: Int,
         var rewindDepth: Int,
         val startTime: Long = System.currentTimeMillis(),
+        val learnable: Boolean = true,
     )
 
     private val tokenHistory = ArrayDeque<TokenEntry>()
@@ -87,6 +98,7 @@ class TokenRewindTracker(
         keyVariation: KeyVariation = KeyVariation.NORMAL,
         packageName: String? = null,
         learnAsCorrection: Boolean = true,
+        typedOriginal: String? = null,
     ) {
         val cleanToken = token.trim()
         if (cleanToken.isEmpty()) return
@@ -97,7 +109,7 @@ class TokenRewindTracker(
         // Check if this newly committed token replaces an erased token from an active rewind
         if (rewind != null && (now - rewind.startTime <= rewindTimeoutMs)) {
             val erased = rewind.erasedToken.trim()
-            if (learnAsCorrection && erased.isNotEmpty() && !erased.equals(cleanToken, ignoreCase = true) && erased.length >= 2 && cleanToken.length >= 2) {
+            if (learnAsCorrection && rewind.learnable && erased.isNotEmpty() && !erased.equals(cleanToken, ignoreCase = true) && erased.length >= 2 && cleanToken.length >= 2) {
                 // High-value retroactive correction captured!
                 onCorrectionCaptured?.invoke(erased, cleanToken, rewind.rewindDepth, rewind.partialNextWordChars)
 
@@ -127,7 +139,15 @@ class TokenRewindTracker(
         if (tokenHistory.size >= maxHistory) {
             tokenHistory.removeFirst()
         }
-        tokenHistory.addLast(TokenEntry(cleanToken, cleanToken.length, now))
+        tokenHistory.addLast(
+            TokenEntry(
+                text = cleanToken,
+                length = cleanToken.length,
+                timestamp = now,
+                userChosen = learnAsCorrection,
+                typedOriginal = if (learnAsCorrection) null else typedOriginal?.trim()?.takeIf { it.isNotEmpty() },
+            )
+        )
         currentPartialWordLength = 0
         initialPartialWordChars = 0
         consecutiveBackspaces = 0
@@ -160,12 +180,16 @@ class TokenRewindTracker(
             // If the current partial word was completely erased and we are now deleting the previous token
             if (currentPartialWordLength <= 0 || consecutiveBackspaces > initialPartialWordChars) {
                 val targetToken = tokenHistory.removeLast()
-                
+
+                // An engine-chosen token teaches through what the user
+                // typed before it was replaced; with no record of that,
+                // the rewind still consumes the token but learns nothing.
                 pendingRewind = ActiveRewind(
-                    erasedToken = targetToken.text,
+                    erasedToken = targetToken.typedOriginal ?: targetToken.text,
                     partialNextWordChars = initialPartialWordChars,
                     rewindDepth = consecutiveBackspaces,
                     startTime = now,
+                    learnable = targetToken.userChosen || targetToken.typedOriginal != null,
                 )
             }
         }

@@ -59,6 +59,67 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("is", "ill", ""),
         ("the", "ill", ""),
         ("I'm", "ill", ""),
+        // key-bounce triples take the real word, not the junk single form;
+        // a dropped last letter completes to the top-tier word; an exact
+        // word never completes (2026-09-13).
+        ("", "willl", "will"),
+        ("", "goood", "good"),
+        ("", "beeen", "been"),
+        ("", "peopl", "people"),
+        ("", "becaus", "because"),
+        ("", "kno", "know"),
+        ("", "the", ""),
+        ("", "thin", ""),
+        // a token that is also one adjacent key from another common word
+        // is not completed over it ("whe" is who/she as much as when);
+        // where the neighbour is the clear reading it still wins
+        ("", "whe", ""),
+        ("", "healt", "heart"),
+        // house/hours is a coin flip: shown, never committed
+        ("", "hous", ""),
+        // a capitalised token is a name ("Gav" stays); an equally close,
+        // commoner insertion rival wins the token ("thre" is there)
+        ("", "Gav", ""),
+        ("hi", "Gav", ""),
+        // "thre"/"thir" are three-way ambiguous (the/there/three,
+        // this/their/third): no commit, or the commonest reading
+        ("", "thre", ""),
+        ("", "thir", "their"),
+        // the pronoun/article-drop class the sweep cannot see
+        ("", "iwas", "i was"),
+        ("", "ihave", "i have"),
+        ("", "ithink", "i think"),
+        ("", "isee", "i see"),
+        ("", "afew", "a few"),
+        ("", "cani", "can i"),
+        ("", "heis", "he is"),
+        // one adjacent slip of a top-tier word punches through the typo's
+        // own completions ("front", "james")
+        ("", "fron", "from"),
+        ("", "jame", "name"),
+        ("", "hig", ""),
+        // a typing slip of one common word is never a phrase, however
+        // strong the pair; a stray letter after a common word is that word
+        ("", "amking", "making"),
+        ("", "toher", "other"),
+        ("", "maybbe", "maybe"),
+        ("", "innto", "into"),
+        // splitter: the halves never testify against their own phrase, a
+        // strongly attested pair is never blocked, a doubled lead letter is
+        // a bounce, and a plain typo still is not a phrase (review
+        // 2026-09-13)
+        ("", "abit", "a bit"),
+        ("", "tobe", "to be"),
+        ("", "imean", "i mean"),
+        ("", "onmy", "on my"),
+        ("", "aand", "and"),
+        ("", "abut", "about"),
+        ("", "agout", "about"),
+        // fuzzy ranking: one adjacent slip beats a two-slip top-tier word;
+        // an ineligible far word cannot starve the dropped-letter fix
+        ("", "sdll", "sell"),
+        ("", "frday", "friday"),
+        ("", "htel", "hotel"),
         // must never flip: AU vocab, his project names, abbreviations
         ("", "arvo", ""),
         ("", "doona", ""),
@@ -124,10 +185,15 @@ fn shipped_fixes_hold_on_shipped_assets() {
 #[test]
 fn learned_boost_cannot_resurrect_doubled_guess() {
     let mut e = engine();
+    // The boost alone (what the old loop produced), not a recorded personal
+    // mapping: eight EXPLICIT user corrections "lile" -> "lille" would now
+    // rightly win through the personal-correction stage.
     for _ in 0..8 {
-        e.record_personal_correction("lile", "lille");
+        e.learn_and_boost_word("lille");
     }
-    assert_eq!(e.trie.get_frequency("lille"), Some(255), "boost path saturates the learned freq");
+    // The boost is now capped at corpus + 30 (170 -> 200); before the cap
+    // eight boosts reached 255. Either way the guess must not win.
+    assert!(e.trie.get_frequency("lille").unwrap_or(0) > e.corpus_freq("lille"), "boost path lifts the learned freq");
     let r = e.suggest_with_context("lile", "", 4);
     let first = r.candidates.first().expect("candidates");
     assert!(

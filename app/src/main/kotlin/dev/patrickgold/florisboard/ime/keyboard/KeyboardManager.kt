@@ -331,7 +331,11 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
         // usage history, so both are skipped. Clipboard candidates still
         // notify — their callback only dismisses the chip (transient state,
         // no record survives the session).
-        if (!activeState.isIncognitoMode || candidate is ClipboardSuggestionCandidate) {
+        // Only a word the USER chose teaches (vocabulary, personal bigram,
+        // revert-then-accept correction). The engine's own auto-commit is
+        // not the user's phrasing, and learning it fed every wrong guess
+        // back as evidence (review 2026-09-13).
+        if (!isAutoCommit && (!activeState.isIncognitoMode || candidate is ClipboardSuggestionCandidate)) {
             scope.launch {
                 candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
             }

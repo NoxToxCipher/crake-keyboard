@@ -409,6 +409,7 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpSugg
     query: JString,
     prev_word: JString,
     limit: jint,
+    include_personal: jboolean,
 ) -> jobjectArray {
     let empty_array = env
         .new_object_array(0, "java/lang/String", JString::default())
@@ -430,7 +431,12 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpSugg
     let candidates = {
         if let Ok(engine) = NLP_ENGINE.read() {
             engine
-                .suggest_with_context(&query_str, &prev_str, limit.max(1) as usize)
+                .suggest_with_context_opts(
+                    &query_str,
+                    &prev_str,
+                    limit.max(1) as usize,
+                    include_personal != 0,
+                )
                 .candidates
         } else {
             Vec::new()

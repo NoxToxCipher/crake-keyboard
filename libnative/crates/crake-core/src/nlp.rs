@@ -1334,6 +1334,12 @@ impl NlpEngine {
         if typo.is_empty() || intended.is_empty() || typo == intended {
             return;
         }
+        // The CRKL reader rejects tokens over MAX_TOKEN_LEN bytes: one
+        // oversized pair made the whole learned-state blob unreadable at the
+        // next launch, and everything learned was lost (review 2026-09-13).
+        if typo.len() > crate::persist::MAX_TOKEN_LEN || intended.len() > crate::persist::MAX_TOKEN_LEN {
+            return;
+        }
         // Same capacity discipline as learned words and personal bigrams:
         // a new typo key evicts the typo whose best mapping is weakest.
         if !self.personal_corrections.contains_key(&typo)
@@ -1354,6 +1360,19 @@ impl NlpEngine {
 
         // Boost intended word so it rises to the top
         self.learn_and_boost_word(&intended);
+    }
+
+    /// The user's own strongest mapping for a typed token, with how many
+    /// times it was observed. Observations come from the Kotlin rewind
+    /// tracker (erase a word, retype it as another) and from revert-then-
+    /// accept; the engine's own auto-commits never count (2026-09-13).
+    pub fn personal_correction_with_count(&self, typo: &str) -> Option<(&str, u32)> {
+        let typo = typo.trim().to_ascii_lowercase();
+        let targets = self.personal_corrections.get(&typo)?;
+        targets
+            .iter()
+            .max_by(|a, b| a.1.cmp(b.1).then_with(|| b.0.cmp(a.0)))
+            .map(|(t, &n)| (t.as_str(), n))
     }
 
     pub fn get_personal_correction(&self, typo: &str) -> Option<String> {
@@ -1378,11 +1397,21 @@ impl NlpEngine {
 
     pub fn learn_and_boost_word(&mut self, word: &str) {
         let trimmed = word.trim().to_ascii_lowercase();
-        if trimmed.len() >= 2 {
+        if trimmed.len() >= 2 && trimmed.len() <= crate::persist::MAX_TOKEN_LEN {
             self.trie.boost_or_insert(&trimmed, 15);
-            // Boosts are part of what the user taught us — persist them.
+            // Same ceiling as learn_word: a personal boost lifts a shipped
+            // word at most 30 above its corpus frequency. Uncapped, six
+            // boosts took "lille" to 255 (review 2026-09-13); the personal
+            // map now applies corrections directly, so the boost only has
+            // to keep a taught word visible, not win frequency contests.
+            let base = self.corpus_freq(&trimmed).max(150);
+            let ceiling = base.saturating_add(30).min(255);
             if let Some(freq) = self.trie.get_frequency(&trimmed) {
-                self.insert_learned_capped(trimmed.clone(), freq);
+                let capped = freq.min(ceiling.max(self.corpus_freq(&trimmed)));
+                if capped != freq {
+                    self.trie.insert(&trimmed, capped);
+                }
+                self.insert_learned_capped(trimmed.clone(), capped);
             }
             self.record_session_word(&trimmed);
         }
@@ -1836,6 +1865,20 @@ impl NlpEngine {
     }
 
     pub fn suggest_with_context(&self, query: &str, prev_word: &str, max_candidates: usize) -> SuggestionResult {
+        self.suggest_with_context_opts(query, prev_word, max_candidates, true)
+    }
+
+    /// `include_personal = false` is the private-session contract: nothing
+    /// this keyboard has learned about its user — the personal-correction
+    /// map — reaches the screen the user marked private (review
+    /// 2026-09-13; next-word prediction already honoured it).
+    pub fn suggest_with_context_opts(
+        &self,
+        query: &str,
+        prev_word: &str,
+        max_candidates: usize,
+        include_personal: bool,
+    ) -> SuggestionResult {
         let trimmed = query.trim();
         let trimmed_lower = trimmed.to_lowercase();
         if trimmed_lower.is_empty() {
@@ -1864,6 +1907,43 @@ impl NlpEngine {
 
         // Helper to check if a word is already in candidate list
         let contains_word = |list: &[RankedCandidate], w: &str| list.iter().any(|c| c.word.eq_ignore_ascii_case(w));
+
+        // 0. The user's own corrections come first. A token they have erased
+        // and retyped as the same other word at least twice is theirs to
+        // define ("beither" -> "brother"), valid word or not; a single
+        // observation only earns a visible suggestion. Observations are per
+        // user and never come from the engine's own auto-commits; two
+        // reverts still retire the flip (rejected_corrections, below).
+        // Until 2026-09-13 this map was recorded and persisted but never
+        // read — its only effect was a frequency boost.
+        const PERSONAL_AUTOCOMMIT_MIN_OBSERVATIONS: u32 = 2;
+        let personal: Option<(String, u32)> = if include_personal {
+            self.personal_correction_with_count(&trimmed_lower)
+                .filter(|(intended, _)| !intended.eq_ignore_ascii_case(&trimmed_lower))
+                // The apostrophised twin of the typed token ("ill" ->
+                // "i'll", recorded from every hand-retyped I'll before the
+                // engine learned to do it) is the contraction stage's
+                // business, with its casing and context gate; the map does
+                // not override that (review 2026-09-13).
+                .filter(|(intended, _)| !is_apostrophe_variant(intended, &trimmed_lower))
+                .map(|(intended, n)| {
+                    // Targets are stored lowercased; a known contraction
+                    // gets its display form back ("i'm" -> "I'm").
+                    let display = contraction_display(intended).unwrap_or(intended);
+                    (Self::apply_casing(trimmed, display), n)
+                })
+        } else {
+            None
+        };
+        let personal_pin: Option<String> = personal.as_ref().map(|(w, _)| w.clone());
+        if let Some((formatted, n)) = &personal {
+            if *n >= PERSONAL_AUTOCOMMIT_MIN_OBSERVATIONS {
+                candidates.push(RankedCandidate {
+                    word: formatted.clone(),
+                    is_autocorrect: true,
+                });
+            }
+        }
 
         // 1. Single-letter "i" rule -> Capitalize to "I" with autocorrect = true
         if trimmed_lower == "i" {
@@ -2551,6 +2631,28 @@ impl NlpEngine {
             }
         }
 
+        // A once-observed personal correction is a visible suggestion in
+        // slot 2 (never an auto-commit): the user sees what the keyboard
+        // has learned before it is allowed to act on it.
+        if let Some((formatted, n)) = &personal {
+            if *n < PERSONAL_AUTOCOMMIT_MIN_OBSERVATIONS {
+                // Usually the word is already somewhere in the pool (a
+                // correction is mostly one edit away): move it up rather
+                // than skipping, or it never gets seen before it starts
+                // auto-committing (review 2026-09-13).
+                let existing = candidates
+                    .iter()
+                    .position(|c| c.word.eq_ignore_ascii_case(formatted))
+                    .map(|p| candidates.remove(p))
+                    .unwrap_or_else(|| RankedCandidate {
+                        word: formatted.clone(),
+                        is_autocorrect: false,
+                    });
+                let at = 1.min(candidates.len());
+                candidates.insert(at, existing);
+            }
+        }
+
         // Apply contextual homophone resolution if prev_word is provided.
         // The static rule table is only a HINT — the real language model
         // arbitrates. Audit 2026-08-27: ungated, the table auto-committed
@@ -2677,6 +2779,9 @@ impl NlpEngine {
                             // re-ranked below "dll" and "ilk" (probe
                             // 2026-09-13).
                             || is_apostrophe_variant(&c.word, &trimmed_lower)
+                            // The user's own once-seen correction stays
+                            // where it was pinned.
+                            || personal_pin.as_deref().is_some_and(|p| p.eq_ignore_ascii_case(&c.word))
                     })
                     .count();
                 if head < candidates.len() {

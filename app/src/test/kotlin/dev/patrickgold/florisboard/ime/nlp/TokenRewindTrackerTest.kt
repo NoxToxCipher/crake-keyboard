@@ -135,6 +135,43 @@ class TokenRewindTrackerTest : FunSpec({
         tracker.getHistoryTokens() shouldBe listOf("lille")
     }
 
+    test("Erasing an engine word and typing another teaches the TYPED slip, never the engine's word") {
+        // Review 2026-09-13: "thde" auto-committed "this"; the user erased
+        // it and typed "the". The lesson is thde -> the. Recording this ->
+        // the would have made every real "this" auto-correct away.
+        val tracker = TokenRewindTracker()
+        var captured: Pair<String, String>? = null
+        tracker.onCorrectionCaptured = { erased, replacement, _, _ -> captured = erased to replacement }
+
+        tracker.onTokenCommitted("this", learnAsCorrection = false, typedOriginal = "thde")
+        tracker.onCharacterTyped(" ")
+        tracker.onCharacterTyped("m")
+        tracker.onCharacterDeleted("this ")
+        tracker.onCharacterDeleted("this")
+        tracker.onCharacterDeleted("thi")
+        tracker.getPendingRewind()?.erasedToken shouldBe "thde"
+
+        tracker.onTokenCommitted("the")
+        captured shouldBe ("thde" to "the")
+    }
+
+    test("An engine word with no typed original is consumed by a rewind but teaches nothing") {
+        val tracker = TokenRewindTracker()
+        var capturedCount = 0
+        tracker.onCorrectionCaptured = { _, _, _, _ -> capturedCount++ }
+
+        tracker.onTokenCommitted("this", learnAsCorrection = false)
+        tracker.onCharacterTyped(" ")
+        tracker.onCharacterTyped("m")
+        tracker.onCharacterDeleted("this ")
+        tracker.onCharacterDeleted("this")
+        tracker.onCharacterDeleted("thi")
+        tracker.onTokenCommitted("the")
+
+        capturedCount shouldBe 0
+        tracker.getPendingRewind() shouldBe null
+    }
+
     test("Explicit cursor repositioning cancels pending rewind") {
         val tracker = TokenRewindTracker()
         var capturedCount = 0

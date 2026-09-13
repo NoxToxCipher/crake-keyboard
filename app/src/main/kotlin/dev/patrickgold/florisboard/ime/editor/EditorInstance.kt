@@ -276,6 +276,8 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                     isRawTyping = true,
                     keyVariation = activeState.keyVariation,
                     packageName = activeInfo.packageName,
+                    // Incognito learns nothing, corrections included.
+                    learnAsCorrection = !activeState.isIncognitoMode,
                 )
             }
         }
@@ -360,7 +362,10 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             isRawTyping = false,
             keyVariation = activeState.keyVariation,
             packageName = activeInfo.packageName,
-            learnAsCorrection = !isAutoCommit,
+            learnAsCorrection = !isAutoCommit && !activeState.isIncognitoMode,
+            // What the user actually typed: if they erase the engine's word
+            // and type another, THAT pair is the correction worth learning.
+            typedOriginal = if (isAutoCommit && !activeState.isIncognitoMode) tokenBeforeCursor else null,
         )
         return super.commitText(committed).also {
             updateLastCommitPosition()
@@ -439,6 +444,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             isRawTyping = false,
             keyVariation = activeState.keyVariation,
             packageName = activeInfo.packageName,
+            learnAsCorrection = !activeState.isIncognitoMode,
         )
         return super.commitText("$text$SPACE").also {
             updateLastCommitPosition()
@@ -454,6 +460,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             isRawTyping = false,
             keyVariation = activeState.keyVariation,
             packageName = activeInfo.packageName,
+            learnAsCorrection = !activeState.isIncognitoMode,
         )
         return if (isPhantomSpaceActive) {
             super.commitText("$SPACE$text")

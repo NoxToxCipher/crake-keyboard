@@ -320,9 +320,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
                 // 3. Native Safe Rust Trie Word Predictions with High-Speed LRU Cache
                 if (FlorisNative.isAvailable()) {
-                    val cacheKey = SuggestionCacheKey(cleanWordQuery, maxCandidateCount, prevToken)
+                    // Private sessions get the shipped model only: the
+                    // user's own learned corrections stay off that screen.
+                    val includePersonal = !isPrivateSession
+                    val cacheKey = SuggestionCacheKey(cleanWordQuery, maxCandidateCount, prevToken, includePersonal)
                     val candidates = nativeSuggestCache.get(cacheKey) ?: run {
-                        val fetched = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken)
+                        val fetched = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken, includePersonal)
                         nativeSuggestCache.put(cacheKey, fetched)
                         fetched
                     }
@@ -359,6 +362,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val query: String,
         val maxCount: Int,
         val prevToken: String,
+        val includePersonal: Boolean = true,
     )
 
     private val nativeSuggestCache = object : android.util.LruCache<SuggestionCacheKey, List<org.florisboard.libnative.FlorisNative.NativeCandidate>>(128) {}
@@ -433,6 +437,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         // original exact (autocorrect never touches exact words), and the
         // personal pair turns off the context rescues for valid-word
         // originals — the documented off-switches, driven by one backspace.
+        // If they now pick another suggestion, THAT pair (typed -> chosen)
+        // is the correction worth remembering.
+        lastRevertedWord = originalText
+        lastRevertedTimestamp = SystemClock.elapsedRealtime()
         FlorisNative.insertWord(originalText, 100)
         if (lastPrevToken.isNotEmpty()) {
             FlorisNative.recordPersonalBigram(lastPrevToken, originalText)
@@ -446,8 +454,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
         flogDebug { "suggestion reverted (${candidate.javaClass.simpleName})" }
-        lastRevertedWord = candidate.text.toString()
-        lastRevertedTimestamp = SystemClock.elapsedRealtime()
+        // The typo key for a later acceptance is the user's ORIGINAL text,
+        // recorded by notifyCommitReverted below — not the engine's word.
+        // Keying on candidate.text taught the map "sorry" -> "story" after
+        // the engine had wrongly committed "sorry" for "srory" and the user
+        // picked "story": two such episodes and every real "sorry" flipped
+        // (review 2026-09-13).
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {

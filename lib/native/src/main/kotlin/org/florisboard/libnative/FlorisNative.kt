@@ -205,9 +205,14 @@ object FlorisNative {
         return nativeNlpLoadBigramBlob(data)
     }
 
-    fun suggest(query: String, limit: Int = 3, prevWord: String = ""): List<NativeCandidate> {
+    /**
+     * @param includePersonal false in a private/incognito session: the
+     *   user's own learned corrections stay off that screen, as next-word
+     *   prediction already promises.
+     */
+    fun suggest(query: String, limit: Int = 3, prevWord: String = "", includePersonal: Boolean = true): List<NativeCandidate> {
         if (!isLoaded || query.isBlank()) return emptyList()
-        val rawMatches = nativeNlpSuggestCtx(query, prevWord, limit)
+        val rawMatches = nativeNlpSuggestCtx(query, prevWord, limit, includePersonal)
         return rawMatches.map { raw ->
             val lastColon = raw.lastIndexOf(':')
             if (lastColon > 0) {
@@ -597,6 +602,10 @@ object FlorisNative {
 
     fun recordPersonalCorrection(typo: String, intended: String) {
         if (!isLoaded || typo.isBlank() || intended.isBlank() || typo.equals(intended, ignoreCase = true)) return
+        // Same door as insertWord: a retyped key, seed word or anything the
+        // secret inspector flags is never learned, boosted or persisted
+        // (review 2026-09-13).
+        if (inspectSecret(typo).isSecretDetected || inspectSecret(intended).isSecretDetected) return
         nativeNlpRecordPersonalCorrection(typo.trim(), intended.trim())
     }
 
@@ -626,7 +635,7 @@ object FlorisNative {
 
     private external fun nativeNlpLoadBigramBlob(data: ByteArray): Int
 
-    private external fun nativeNlpSuggestCtx(query: String, prevWord: String, limit: Int): Array<String>
+    private external fun nativeNlpSuggestCtx(query: String, prevWord: String, limit: Int, includePersonal: Boolean): Array<String>
 
     @JvmStatic
     private external fun nativeNlpSuggest(query: String, limit: Int): Array<String>
