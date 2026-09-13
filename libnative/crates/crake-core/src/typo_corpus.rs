@@ -832,7 +832,6 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("isnt", "isn't"),
     ("isreal", "israel"),
     ("itll", "it'll"),
-    ("its", "it's"),
     ("itslef", "itself"),
     ("ive", "I've"),
     ("jeapardy", "jeopardy"),

@@ -274,7 +274,6 @@ pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("theyll", "they'll"),
     ("theyre", "they're"),
     ("theyve", "they've"),
-    ("tis", "'tis"),
     ("twas", "'twas"),
     ("twixt", "'twixt"),
     ("wasnt", "wasn't"),
@@ -401,7 +400,6 @@ pub const SAFE_CONTRACTION_BARE: &[&str] = &[
     "theyll",
     "theyre",
     "theyve",
-    "tis",
     "twas",
     "twixt",
     "wasnt",
@@ -627,6 +625,68 @@ pub fn contraction_display(bare: &str) -> Option<&'static str> {
         return None;
     }
     CONTRACTIONS.iter().find(|(k, _)| *k == clean.as_str()).map(|&(_, c)| c)
+}
+
+/// `query` is `word` with exactly one letter inserted. True when that
+/// letter looks like a finger slip — a bounce of the letter beside it
+/// ("innto", "maybbe") or a key adjacent to one of its neighbours
+/// ("inbto": b sits next to n). A letter from elsewhere on the keyboard
+/// ("heis": e is nowhere near h or i) is not a slip of "his"; it is the
+/// phrase "he is" missing its space.
+pub fn inserted_letter_is_a_slip(query: &str, word: &str) -> bool {
+    let q: Vec<char> = query.chars().collect();
+    let w: Vec<char> = word.chars().collect();
+    if q.len() != w.len() + 1 {
+        return false;
+    }
+    let i = (0..w.len()).find(|&i| q[i] != w[i]).unwrap_or(w.len());
+    let ch = q[i];
+    let before = if i > 0 { Some(q[i - 1]) } else { None };
+    let after = q.get(i + 1).copied();
+    [before, after].into_iter().flatten().any(|n| n == ch || NlpEngine::is_spatial_keyboard_neighbor(ch, n))
+}
+
+/// True when `a` and `b` differ only by one pair of adjacent letters
+/// swapped ("amking" / "making").
+pub fn is_adjacent_transposition(a: &str, b: &str) -> bool {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.len() != b.len() || a.len() < 2 {
+        return false;
+    }
+    let Some(i) = (0..a.len()).find(|&i| a[i] != b[i]) else {
+        return false;
+    };
+    i + 1 < a.len()
+        && a[i] == b[i + 1]
+        && a[i + 1] == b[i]
+        && a[i + 2..] == b[i + 2..]
+}
+
+/// Plain Levenshtein edit count between two short tokens (insert, delete,
+/// substitute all cost one). The fuzzy stage ranks on this before its
+/// weighted units, because units cannot separate one dropped letter from
+/// two adjacent slips. Tokens here are at most a few dozen chars.
+pub fn edit_count(a: &str, b: &str) -> usize {
+    let a: Vec<char> = a.chars().collect();
+    let b: Vec<char> = b.chars().collect();
+    if a.is_empty() {
+        return b.len();
+    }
+    if b.is_empty() {
+        return a.len();
+    }
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    let mut cur = vec![0usize; b.len() + 1];
+    for (i, &ca) in a.iter().enumerate() {
+        cur[0] = i + 1;
+        for (j, &cb) in b.iter().enumerate() {
+            let sub = prev[j] + usize::from(ca != cb);
+            cur[j + 1] = sub.min(prev[j + 1] + 1).min(cur[j] + 1);
+        }
+        std::mem::swap(&mut prev, &mut cur);
+    }
+    prev[b.len()]
 }
 
 /// True when `word` is `typed_lower` with apostrophes added ("I'll" for
@@ -1113,6 +1173,112 @@ impl NlpEngine {
             Some(m) => m.is_near(a, b),
             None => Self::is_spatial_keyboard_neighbor(a, b),
         }
+    }
+
+    /// Shipped-corpus frequency, falling back to the learned frequency for a
+    /// word the corpus never shipped (a taught name still competes). Used
+    /// wherever two dictionary words are weighed against each other for an
+    /// auto-commit: personal boosts must not decide that, because the
+    /// engine's own wrong commits get learned back as "corrections" (+15
+    /// each) — six of them lifted "lille" to 255 on a real phone, above
+    /// "like" (2026-09-13).
+    fn corpus_or_learned(&self, word: &str, learned: u32) -> u32 {
+        let c = self.corpus_freq(word);
+        if c > 0 { c } else { learned }
+    }
+
+    /// True when a same-length adjacent-key substitution of `query_lower`
+    /// is a CLEARLY commoner word than `word` (corpus frequencies). The
+    /// guess stages (swap, doubled letter) run before the fuzzy stage and
+    /// used to claim the auto-commit unconditionally; this is how they
+    /// yield to the correction the fuzzy stage will make. The margin
+    /// matters: a swap of one common word is often also a slip of another
+    /// ("srory" is sorry or story, "wno" is won or who, "ahd" is had or
+    /// and), and there the swap — the user's own letters, reordered — is
+    /// the safer reading. Only a rare swap target loses ("heh" 188 vs
+    /// "the" 255, "nod" 191 vs "and" 254, "lille" 170 vs "like" 254).
+    fn outranked_by_adjacent_slip(&self, query_lower: &str, word: &str, learned_freq: u32) -> bool {
+        const SLIP_YIELD_MARGIN: u32 = 20;
+        let base = self.corpus_or_learned(word, learned_freq).saturating_add(SLIP_YIELD_MARGIN);
+        let touch = self.touch_model.read().unwrap();
+        self.trie
+            .fuzzy_search_weighted(query_lower, 1, 4, |a, b| Self::slip_oracle(&touch, a, b))
+            .iter()
+            .any(|fc| fc.distance == 1 && self.corpus_or_learned(&fc.word, fc.frequency) >= base)
+    }
+
+    /// Whether a proposed missing-space split `left right` of `query_lower`
+    /// should yield to a single-word reading. A blocker is a top-tier word
+    /// (corpus >= `min_freq`) that is NOT one of the halves (dropping the
+    /// space of "a bit" is by construction one edit from "bit", so the
+    /// halves can never testify against their own split — review
+    /// 2026-09-13, which found "abit" -> "bait", "imean" -> "imran") and is
+    /// either one adjacent-key substitution away ("agout" -> about) or one
+    /// insertion/deletion away ("abut" -> about, "ared" -> are). A same-
+    /// length two-unit reading ("onmy" -> only, "tobe" -> time) is too weak
+    /// to block a phrase. A strongly attested pair (>= `override_pair`)
+    /// is never blocked at all: "to be" at 231 is what "tobe" means.
+    fn split_blocked_by_single_word(
+        &self,
+        query_lower: &str,
+        left: &str,
+        right: &str,
+        pair_score: u8,
+        min_freq: u32,
+        override_pair: u8,
+    ) -> bool {
+        const SPLIT_PAIR_BEATS_ADJACENT_SLIP: u8 = 220;
+        // Structural slips are judged against top-tier words ("almost",
+        // "maybe", "often" sit at 244).
+        const STRUCTURAL_BLOCKER_MIN_FREQ: u32 = 236;
+        // "a"/"i" + word is the commonest missed space there is: only a
+        // top-50 word one slip away ("what" for "ahat", "another" for
+        // "amother") outweighs it, and only when the pair is not itself
+        // strong ("a bit" 200, "a few" 211 stand against "shit"/"area").
+        const ARTICLE_SPLIT_BLOCKER_MIN_FREQ: u32 = 250;
+        const ARTICLE_SPLIT_UNBLOCKABLE_PAIR: u8 = 210;
+        let query_len = query_lower.chars().count();
+        let touch = self.touch_model.read().unwrap();
+        self.trie
+            .fuzzy_search_weighted(query_lower, 2, 8, |a, b| Self::slip_oracle(&touch, a, b))
+            .iter()
+            .any(|fc| {
+                if fc.word == left || fc.word == right {
+                    return false;
+                }
+                let cf = self.corpus_freq(&fc.word);
+                if cf < min_freq {
+                    return false;
+                }
+                let word_len = fc.word.chars().count();
+                // A typing slip of the single word that is never a phrase:
+                // two letters swapped ("amking" is making, "toher" is
+                // other, "menas" is means) or one letter bounced in
+                // ("maybbe" is maybe, "innto" is into). These block even a
+                // strongly attested pair.
+                let structural_slip = (word_len + 1 == query_len
+                    && edit_count(query_lower, &fc.word) == 1
+                    && inserted_letter_is_a_slip(query_lower, &fc.word))
+                    || is_adjacent_transposition(query_lower, &fc.word);
+                if structural_slip {
+                    return cf >= STRUCTURAL_BLOCKER_MIN_FREQ;
+                }
+                if left.chars().count() == 1 {
+                    let one_slip = fc.distance == 1 || (fc.distance == 2 && word_len != query_len);
+                    return one_slip
+                        && cf >= ARTICLE_SPLIT_BLOCKER_MIN_FREQ
+                        && pair_score < ARTICLE_SPLIT_UNBLOCKABLE_PAIR;
+                }
+                if fc.distance == 1 {
+                    // An adjacent-key slip of a common word ("tosay" is
+                    // today, "toan" is town) outweighs all but the very
+                    // strongest pairs ("to be" 231).
+                    return pair_score < SPLIT_PAIR_BEATS_ADJACENT_SLIP;
+                }
+                // One letter dropped or added ("abut" is about, "ared" is
+                // are) yields to a well attested pair ("he is" 199).
+                fc.distance == 2 && word_len != query_len && pair_score < override_pair
+            })
     }
 
     pub fn load_dictionary(&mut self, words: &[(&str, u32)]) {
@@ -1713,26 +1879,32 @@ impl NlpEngine {
         } else if let Some(shorthand) = lookup_shorthand(&trimmed_lower) {
             // 2. SMS & internet slang shorthand quick expansion (e.g. idk -> I don't know, u -> you, r -> are)
             let formatted = Self::apply_casing(trimmed, shorthand.expansion);
-            candidates.push(RankedCandidate {
-                word: formatted,
-                is_autocorrect: shorthand.is_autocorrect,
-            });
+            if !contains_word(&candidates, &formatted) {
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: shorthand.is_autocorrect,
+                });
+            }
         } else if let Some(&(_, hyphenated)) = Self::COMPOUND_HYPHEN_PHRASES.iter().find(|&&(k, _)| k == trimmed_lower) {
             // 2b. Compound hyphenated technical & conversational phrase recovery
             let formatted = Self::apply_casing(trimmed, hyphenated);
-            candidates.push(RankedCandidate {
-                word: formatted,
-                is_autocorrect: true,
-            });
+            if !contains_word(&candidates, &formatted) {
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: true,
+                });
+            }
         } else if let Some(typo_fix) = lookup_common_typo(&trimmed_lower) {
             // 3. Wikipedia 1,770+ Misspelling Corpus instant O(L log N) lookup.
             // Internal uppercase means a deliberate abbreviation, not a slip:
             // "CNA"/"HSE"/"YoY" stay typed; sentence-start "Teh" still fixes.
             let formatted = Self::apply_casing(trimmed, typo_fix);
-            candidates.push(RankedCandidate {
-                word: formatted,
-                is_autocorrect: !has_internal_uppercase,
-            });
+            if !contains_word(&candidates, &formatted) {
+                candidates.push(RankedCandidate {
+                    word: formatted,
+                    is_autocorrect: !has_internal_uppercase,
+                });
+            }
         } else if let Some(&(_, contraction)) = CONTRACTIONS.iter().find(|&&(k, _)| k == trimmed_lower) {
             // 4. Known contraction handling:
             // High-confidence unambiguous contractions (dont, cant, aint, wont, yall, etc.) auto-correct.
@@ -1747,10 +1919,12 @@ impl NlpEngine {
             // still retire the flip like any other correction.
             let ill_flips = trimmed_lower == "ill" && !ill_reads_as_adjective(Some(prev_word));
             if ill_flips {
-                candidates.push(RankedCandidate {
-                    word: formatted,
-                    is_autocorrect: true,
-                });
+                if !contains_word(&candidates, &formatted) {
+                    candidates.push(RankedCandidate {
+                        word: formatted,
+                        is_autocorrect: true,
+                    });
+                }
                 candidates.push(RankedCandidate {
                     word: trimmed.to_string(),
                     is_autocorrect: false,
@@ -1760,11 +1934,13 @@ impl NlpEngine {
                     word: trimmed.to_string(),
                     is_autocorrect: false,
                 });
-                candidates.push(RankedCandidate {
-                    word: formatted,
-                    is_autocorrect: false,
-                });
-            } else {
+                if !contains_word(&candidates, &formatted) {
+                    candidates.push(RankedCandidate {
+                        word: formatted,
+                        is_autocorrect: false,
+                    });
+                }
+            } else if !contains_word(&candidates, &formatted) {
                 candidates.push(RankedCandidate {
                     word: formatted,
                     is_autocorrect: true,
@@ -1783,6 +1959,23 @@ impl NlpEngine {
             // ("adblock" -> "adb lock", "doona" -> "do ona", "tradies" ->
             // "tra dies", sweep 2026-08-27).
             const SPLIT_MIN_HALF_FREQ: u32 = 150;
+            // A split is a GUESS too, and it used to claim the auto-commit
+            // ahead of the fuzzy stage on nothing but "both halves are
+            // words": sweep 2026-09-13 found 4,704 of 60,907 slip probes
+            // turned into two-word phrases ("abut" -> "a but", "agout" ->
+            // "a gout", "habe" -> "ha be", "weer" -> "we er"). Two gates:
+            // the pair must be attested in the language model, and no
+            // top-tier single word may sit within one edit of the typed
+            // token — that word is the correction, and the fuzzy stage
+            // commits it. Shipped fixtures stay well inside ("a bunch" 180,
+            // "in my" 204, "and the" 234, "got to" 187).
+            const SPLIT_MIN_PAIR_SCORE: u8 = 150;
+            const SPLIT_YIELD_TO_WORD_FREQ: u32 = 236;
+            // A pair attested this well is the phrase over a one-letter
+            // add/drop reading ("he is" 199 over "his"; "be in" 201).
+            // Adjacent-key slips need a stronger pair still (see
+            // split_blocked_by_single_word).
+            const SPLIT_UNBLOCKABLE_PAIR_SCORE: u8 = 185;
             // Capitalized tokens are names until proven otherwise: the
             // splitter was committing "Loch ran", "Field mark" and
             // "Anti gravity" (sweep 2026-08-27).
@@ -1815,8 +2008,25 @@ impl NlpEngine {
                     {
                         continue;
                     }
-                    if self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                    // A single letter doubled onto the word it starts
+                    // ("aand", "iill") is a key bounce, not a missing
+                    // space; the collapse stage owns it.
+                    let doubled_lead = left.chars().count() == 1 && right.starts_with(left);
+                    let pair = self.bigram_pair_score(left, right);
+                    if !doubled_lead
+                        && self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
                         && self.trie.get_frequency(right).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                        // Without a language model there is nothing to
+                        // attest against; the halves-only rule stands.
+                        && (self.bigrams.is_empty() || pair >= SPLIT_MIN_PAIR_SCORE)
+                        && !self.split_blocked_by_single_word(
+                            &trimmed_lower,
+                            left,
+                            right,
+                            pair,
+                            SPLIT_YIELD_TO_WORD_FREQ,
+                            SPLIT_UNBLOCKABLE_PAIR_SCORE,
+                        )
                     {
                         let formatted_left = Self::apply_casing(&trimmed[..split_idx], left);
                         let formatted_right = right.to_string();
@@ -1848,8 +2058,26 @@ impl NlpEngine {
                 if let Some(beam) = self.evaluate_split_beam(&trimmed_lower) {
                     let mut parts = beam.text.splitn(2, ' ');
                     if let (Some(l), Some(r)) = (parts.next(), parts.next()) {
+                        // Same two gates as the direct splitter ("cdan" was
+                        // committing "cd an" over "can" on solid halves
+                        // alone, sweep 2026-09-13).
                         let solid = |w: &str| self.trie.get_frequency(w).unwrap_or(0) >= 150;
-                        if (solid(l) && solid(r)) || self.bigram_pair_score(l, r) > 0 {
+                        let pair = self.bigram_pair_score(l, r);
+                        let attested = if self.bigrams.is_empty() {
+                            solid(l) && solid(r)
+                        } else {
+                            pair >= SPLIT_MIN_PAIR_SCORE
+                        };
+                        if attested
+                            && !self.split_blocked_by_single_word(
+                                &trimmed_lower,
+                                l,
+                                r,
+                                pair,
+                                SPLIT_YIELD_TO_WORD_FREQ,
+                                SPLIT_UNBLOCKABLE_PAIR_SCORE,
+                            )
+                        {
                             candidates.push(RankedCandidate {
                                 word: beam.text,
                                 is_autocorrect: true,
@@ -1870,38 +2098,57 @@ impl NlpEngine {
                     }
                 }
                 if single_collapsed.len() < trimmed_lower.len() {
-                    if let Some(f) = self.trie.get_frequency(&single_collapsed) {
-                        let formatted = Self::apply_casing(trimmed, &single_collapsed);
+                    // A collapse is a guess like the swap and the doubled
+                    // letter: "ttis" is "this" (t for h) far more often than
+                    // "tis", "hhat" is "that", not "hat" (sweep 2026-09-13).
+                    // A clearly commoner adjacent-key neighbour wins; a close
+                    // call ("hhey": hey 238 vs they 254) keeps the collapse.
+                    // Both collapses are weighed, not tried in order: a key
+                    // bounce on a real double letter ("willl", "goood",
+                    // "beeen") used to take the single form ("wil", "god",
+                    // "ben") because it was checked first and happened to be
+                    // a word. The commoner of the two is the word meant.
+                    let mut double_collapsed = String::with_capacity(trimmed_lower.len());
+                    let mut last_char = None;
+                    let mut repeat_count = 0;
+                    for ch in trimmed_lower.chars() {
+                        if Some(ch) == last_char {
+                            repeat_count += 1;
+                            if repeat_count <= 2 {
+                                double_collapsed.push(ch);
+                            }
+                        } else {
+                            last_char = Some(ch);
+                            repeat_count = 1;
+                            double_collapsed.push(ch);
+                        }
+                    }
+                    let hit = |w: &str| {
+                        self.trie
+                            .get_frequency(w)
+                            .filter(|&f| !self.outranked_by_adjacent_slip(&trimmed_lower, w, f))
+                            .map(|f| (w.to_string(), f, self.corpus_or_learned(w, f)))
+                    };
+                    let single_hit = hit(&single_collapsed);
+                    let double_hit = if double_collapsed.len() < trimmed_lower.len()
+                        && double_collapsed != single_collapsed
+                    {
+                        hit(&double_collapsed)
+                    } else {
+                        None
+                    };
+                    let chosen = match (single_hit, double_hit) {
+                        (Some(s), Some(d)) => Some(if d.2 > s.2 { d } else { s }),
+                        (s, d) => s.or(d),
+                    };
+                    if let Some((word, f, _)) = chosen {
+                        let formatted = Self::apply_casing(trimmed, &word);
                         candidates.push(RankedCandidate {
                             word: formatted,
                             // "doona" collapsing to 60-band "dona" must not
                             // auto-commit: junk stays a suggestion.
                             is_autocorrect: f >= AUTOCOMMIT_MIN_FREQ,
                         });
-                    } else {
-                        // Try 2-char max collapsed (e.g. heelllooo -> hello)
-                        let mut double_collapsed = String::with_capacity(trimmed_lower.len());
-                        let mut last_char = None;
-                        let mut repeat_count = 0;
-                        for ch in trimmed_lower.chars() {
-                            if Some(ch) == last_char {
-                                repeat_count += 1;
-                                if repeat_count <= 2 {
-                                    double_collapsed.push(ch);
-                                }
-                            } else {
-                                last_char = Some(ch);
-                                repeat_count = 1;
-                                double_collapsed.push(ch);
-                            }
-                        }
-                        if let Some(f) = self.trie.get_frequency(&double_collapsed) {
-                            let formatted = Self::apply_casing(trimmed, &double_collapsed);
-                            candidates.push(RankedCandidate {
-                                word: formatted,
-                                is_autocorrect: f >= AUTOCOMMIT_MIN_FREQ,
-                            });
-                        }
                     }
                 }
             }
@@ -1955,6 +2202,12 @@ impl NlpEngine {
                     }
                 }
             }
+            // A swap is one GUESS at the slip, and a same-length adjacent-key
+            // substitution to a commoner word beats it: "hhe" is "the", not
+            // "heh"; "ond" is "and", not "nod"; "fot" is "for", not "oft"
+            // (sweep 2026-09-13: 299 such flips across the top 1,000 words,
+            // because this stage ran first and claimed the auto-commit).
+            let best_swap = best_swap.filter(|(w, f)| !self.outranked_by_adjacent_slip(&trimmed_lower, w, *f));
             if let Some((swapped_str, f)) = best_swap {
                 let formatted = Self::apply_casing(trimmed, &swapped_str);
                 if !contains_word(&candidates, &formatted) {
@@ -1993,27 +2246,7 @@ impl NlpEngine {
                     // is the more common word, leave the slot to stage 7,
                     // which ranks that neighbour first and still surfaces
                     // the doubled word behind it (field report 2026-09-13).
-                    // Shipped-corpus frequencies on both sides: personal
-                    // boosts must not decide this. The engine's own wrong
-                    // commits get learned back as "corrections" (+15 each),
-                    // and six of them lifted "lille" to 255 on a real phone
-                    // — above "like" — which is the loop that made this
-                    // keyboard worse than others at the word (2026-09-13).
-                    // Words the corpus never shipped keep their learned
-                    // frequency, so a taught name still competes.
-                    let base_of = |w: &str, learned: u32| {
-                        let c = self.corpus_freq(w);
-                        if c > 0 { c } else { learned }
-                    };
-                    let doubled_base = base_of(&doubled_str, f);
-                    let outranked_by_slip = {
-                        let touch = self.touch_model.read().unwrap();
-                        self.trie
-                            .fuzzy_search_weighted(&trimmed_lower, 1, 4, |a, b| Self::slip_oracle(&touch, a, b))
-                            .iter()
-                            .any(|fc| fc.distance == 1 && base_of(&fc.word, fc.frequency) > doubled_base)
-                    };
-                    if outranked_by_slip {
+                    if self.outranked_by_adjacent_slip(&trimmed_lower, &doubled_str, f) {
                         continue;
                     }
                     let formatted = Self::apply_casing(trimmed, &doubled_str);

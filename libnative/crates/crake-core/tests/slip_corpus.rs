@@ -507,8 +507,12 @@ fn junk_band_words_never_autocommit() {
     let e = engine();
     for typed in ["doona", "oan"] {
         let r = e.suggest_with_context(typed, "", 5);
+        // A real word above the floor may still win ("oan" -> "own", a for
+        // w, once the junk swap "ona" stopped squatting on the slot —
+        // sweep 2026-09-13); what must never happen is a junk-band commit.
         assert!(
-            !r.candidates.iter().any(|c| c.is_autocorrect),
+            !r.candidates.iter().any(|c| c.is_autocorrect
+                && e.trie.get_frequency(&c.word.to_lowercase()).unwrap_or(0) < 150),
             "'{typed}' must not auto-commit junk: {:?}",
             r.candidates
         );
