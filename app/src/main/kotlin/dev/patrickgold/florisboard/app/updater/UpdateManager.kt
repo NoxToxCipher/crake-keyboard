@@ -54,11 +54,11 @@ import kotlin.time.Duration.Companion.hours
 
 object UpdateManager {
     private const val TAG = "CrakeUpdater"
-    const val CURRENT_MILESTONE = 400
+    const val CURRENT_MILESTONE = 401
     private const val GITHUB_REPO_API = "https://api.github.com/repos/NoxToxCipher/crake-keyboard/releases?per_page=5"
     private const val CHANNEL_ID = "crake_updates_channel"
-    private const val NOTIFICATION_ID = 40001
-    private const val RESOLVED_NOTIFICATION_ID = 40002
+    private const val NOTIFICATION_ID = 40101
+    private const val RESOLVED_NOTIFICATION_ID = 40102
 
     data class ReleaseInfo(
         val tagName: String,
@@ -99,6 +99,7 @@ object UpdateManager {
             remote
         } else {
             when (milestone) {
+                401 -> "Crake Core Architecture Rename & Suggestion Engine Accuracy Sweep: Renamed native engine to crake-core (#2), fixed Smartbar candidate highlight clipping, overhauled NLP slip cost ranking (wrong auto-commits dropped by 78%), wired personal correction learning with private session guards, and restored edge drag responsiveness on CrakeNotePeek."
                 400 -> "Milestone 400 Commemorative Release & Unified Performance Engine: Merged full 10-item performance overhaul including trie subtree frequency pruning, off-thread clipboard thumbnail decoding, bulk touch offset JNI batching, and Crake button UI primitives."
                 399 -> "Zero-Allocation Layout Merging & Hint Traversal Optimization: Pre-allocated direct 2D key arrays during keyboard mode transitions and eliminated iterator allocations across key hint evaluators."
                 398 -> "Round 2 UI Recomposition Isolation & Keystroke Optimization: Decoupled active text content from the 66-key rendering loop via background flow collectors, eliminating full-keyboard recomposition storms per keystroke."
