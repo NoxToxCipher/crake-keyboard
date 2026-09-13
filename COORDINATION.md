@@ -604,3 +604,99 @@ We are transitioning out of inherited Floris baggage, legacy naming, and patchwo
 3. **Round-2 UI Recompositions (Aligned)**:
    - Antigravity is aligned on the `TextKeyboardLayout.kt` `activeContent` extraction into a sibling child composable to prevent full 66-key recomposition on each keystroke.
 4. **All 150 unit tests are green**, GitHub Release `v0.395.0` published, and daemon maintenance loop is active.
+
+### 2026-09-13 — Claude (platform lane) → all: smartbar chip, I'll/like corrections, learning loop, feedback toast, notes gesture
+
+Field report from Lochran: the suggestion strip showed one empty full-width
+cyan box; "ill" always committed as "Ill"; "lile" committed "lille". Shipped:
+
+- `f0f2eba3d` smartbar: the auto-commit highlight was a `fillMaxSize()` SIBLING
+  of the candidate row (481e641f9) — it ate the slot and pushed the word out of
+  view. Now a `drawBehind` chip around the word (`CandidatesRow.kt`).
+- `23607de96` nlp: "ill" auto-commits to "I'll" unless the previous word reads
+  as the adjective (`ill_reads_as_adjective`, one table shared with the context
+  resolver, which was test-only dead code). The bigram table cannot arbitrate
+  this pair: its corpus was tokenised without apostrophes ("and I'll" is counted
+  under "and ill"). The apostrophised twin now stays in slot 2 (it was being
+  re-ranked below "dll"/"ilk").
+- `9da7a807f` nlp: the doubled-letter guess (stage 6b) yields to a clearly
+  commoner adjacent-key substitution, compared on SHIPPED corpus frequencies.
+- `e2eee6103` nlp: `TokenRewindTracker` no longer records an auto-committed
+  word as the user's correction (`commitCandidate(isAutoCommit = true)` from
+  the four auto-commit sites → `commitCompletion(isAutoCommit)` →
+  `onTokenCommitted(learnAsCorrection = false)`). This was a feedback loop:
+  each recorded "correction" boosts the target +15 (`record_personal_correction`
+  → `learn_and_boost_word`); six of them lifted "lille" to 255 on the Xiaomi,
+  above "like". Lochran's phone still carries that poisoned learned state
+  (`crake_learned.crkl.enc`); the corpus-frequency gates make it harmless for
+  auto-commit decisions, but "lille" will keep appearing as a suggestion.
+- `f4f7bd4b0` feedback: toast says sent vs saved-only (was always "transmitted").
+- `cb401b13c` notes (Antigravity's `CrakeNotePeek.kt`, untouched since M388):
+  the left-edge grab strip lived in the else-branch of `isInteracting`, so its
+  pointer node was removed at the first pixel of pull and the gesture died.
+  Now always composed (0dp wide while open); overlay drag slop accumulates
+  pre-drag movement. Verified on the crake_phone emulator with a held drag.
+
+Findings for whoever owns the lane:
+- The personal-correction map (`personal_corrections`, exported/imported in the
+  CRKL blob) is RECORDED but NEVER CONSULTED by `suggest_with_context`;
+  `get_personal_correction` has no callers. Its only effect today is the +15
+  boost. Wiring it as a typed-token → intended stage (with the rejected-
+  corrections veto and a ≥2 observation floor) is the individualised learning
+  Lochran is asking for; Claude is taking this next in the Rust core.
+- A 60,907-probe slip sweep of the top 1,022 words (scratch harness, not in
+  repo) found 10,316 wrong auto-commits before the fixes; the big classes were
+  the missing-space splitter/space-beam committing phrases for plain typos
+  ("abut" → "a but", 4,704 cases), the swap/doubled guesses claiming ahead of
+  the fuzzy stage ("hhe" → "heh"), "its" → "it's" from the typo corpus (the only
+  exact-word hijack), and "'tis". Fixes in flight on nlp.rs; re-sweep results
+  will be appended here.
+- Device hazard (Claude's own mistake, memory note filed): an adb BACK meant
+  to hide the keyboard closed the Crake activity and a following edge swipe
+  landed on Messenger's chat list. Gesture verification now happens on the
+  emulator only.
+
+#### Later the same day — suggestion-engine sweep, reviewed and shipped (Claude)
+
+Method: a scratch harness typed every plausible one-finger slip of the
+1,022 most common words (60,907 probes, no context) through the shipped
+engine; 12 rounds, each change measured against the previous round; then a
+29-agent adversarial review (22 confirmed findings, all fixed) before push.
+Last measured round: wrong auto-commits 10,264 -> 2,227, correct 43,738 ->
+54,127, silent misses 2,831 -> 469; one baseline regression ("woried" ->
+worried). The final cost-key tweak after that round was verified by the
+Rust suite (real-assets sentinel now carries ~45 field cases) but not
+re-swept — Lochran's credit ran out; re-run the harness when convenient.
+
+Shipped (see git log for hashes): guess stages (swap / doubled letter /
+burst collapse / splitter / space-beam) yield to a clearly commoner word on
+SHIPPED corpus frequencies; the splitter needs an attested pair (>=150) and
+never fires on a structural slip of a top-tier word ("amking", "maybbe");
+"its"->"it's" and "'tis" removed from the hard maps; fuzzy ranking is slip
+cost (adjacent 2 / far 4 / add-drop 3 half-units) then commonness; a one-
+edit top-tier fix punches through completion filler ("fron"->from); a
+dropped last letter completes when the completion clearly leads its rivals
+("peopl", "becaus", "kno"; never for a capitalised token); 16 shorthand
+codes that are words or common slips (rip, til, wth, ofc, ik...) are
+suggestion-only; the personal-correction map is now APPLIED (2 observations
+auto-commit, 1 shows in slot 2, 2 reverts retire it), fed only by what the
+user chose (auto-commits never teach; the tracker keys on the user's typed
+original), capped (+30 over corpus), length-guarded (a >64-byte token used
+to make the whole learned blob unreadable), secret-inspected, and skipped
+in private sessions (new `includePersonal` flag through
+FlorisNative.suggest -> nativeNlpSuggestCtx).
+
+Still open / for whoever picks it up:
+- Lochran's next ask, parked: email addresses / URLs / brackets (auto-space
+  after ".", auto-cap after ".", backspace jank) — start at
+  EditorInstance.commitChar / shouldInsertAutoSpaceAfter and the phantom
+  space; a Samsung A20 was mentioned as a test device (not seen by adb yet).
+- Dictionary junk: fused forms shipped as words ("thankyou", "nevermind",
+  "everytime") never split; 3-letter junk ("wil", "tis") and Wikipedia
+  names shape ambiguous 3-4 letter cases.
+- The "backspace revert after a space-triggered auto-commit" claim from the
+  review is UNVERIFIED on Crake (the emulator check ran against AOSP
+  LatinIME by mistake — Crake was not the default IME there; it is now).
+- Lochran's Xiaomi carries a poisoned learned state ("lille" boosted to
+  255); harmless for auto-commit decisions now, still visible as a suggestion.
+- 58 Antigravity commits (M371-M400) remain unaudited.
