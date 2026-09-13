@@ -956,6 +956,11 @@ impl NlpEngine {
             self.insert_learned_capped(word, restored);
         }
         for (typo, intended, n) in state.corrections {
+            // Purge pairs keyed on an everyday word: poison from the old
+            // recording path ("in" -> "that"), never a real habit.
+            if self.corpus_freq(&typo) >= 236 {
+                continue;
+            }
             let counter = self.personal_corrections.entry(typo).or_default();
             let slot = counter.entry(intended).or_insert(0);
             *slot = (*slot).max(n);
@@ -1338,6 +1343,11 @@ impl NlpEngine {
         // oversized pair made the whole learned-state blob unreadable at the
         // next launch, and everything learned was lost (review 2026-09-13).
         if typo.len() > crate::persist::MAX_TOKEN_LEN || intended.len() > crate::persist::MAX_TOKEN_LEN {
+            return;
+        }
+        // An everyday word is never a "typo" to remember a correction for
+        // (see suggest stage 0): refuse the pair at the door.
+        if self.corpus_freq(&typo) >= 236 {
             return;
         }
         // Same capacity discipline as learned words and personal bigrams:
@@ -1917,7 +1927,14 @@ impl NlpEngine {
         // Until 2026-09-13 this map was recorded and persisted but never
         // read — its only effect was a frequency boost.
         const PERSONAL_AUTOCOMMIT_MIN_OBSERVATIONS: u32 = 2;
-        let personal: Option<(String, u32)> = if include_personal {
+        const PERSONAL_KEY_MAX_CORPUS_FREQ: u32 = 236;
+        // A word everyone types constantly ("in", "that", "the") is never
+        // the user's to redefine through this map: the pre-2026-09-13
+        // recording path keyed corrections on the ENGINE's substituted word,
+        // so phones carry pairs like "in" -> "that" that fired on every
+        // "in" the moment the map went live (field report, same day).
+        let key_is_everyday_word = self.corpus_freq(&trimmed_lower) >= PERSONAL_KEY_MAX_CORPUS_FREQ;
+        let personal: Option<(String, u32)> = if include_personal && !key_is_everyday_word {
             self.personal_correction_with_count(&trimmed_lower)
                 .filter(|(intended, _)| !intended.eq_ignore_ascii_case(&trimmed_lower))
                 // The apostrophised twin of the typed token ("ill" ->
