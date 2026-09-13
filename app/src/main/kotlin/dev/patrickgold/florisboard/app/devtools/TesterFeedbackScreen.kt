@@ -660,7 +660,7 @@ fun TesterFeedbackScreen() = FlorisScreen {
                                 val message = if (sent) {
                                     "Feedback sent to Crake development. Saved as $assignedTicketId."
                                 } else {
-                                    "Saved as $assignedTicketId on this phone, but it could not be sent (no connection?). Try again later from the list below."
+                                    "Saved as $assignedTicketId on this phone, but it could not be sent (no connection?)."
                                 }
                                 Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                 refreshRecentFeedbacks()
