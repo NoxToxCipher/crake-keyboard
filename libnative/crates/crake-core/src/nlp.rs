@@ -2172,12 +2172,68 @@ impl NlpEngine {
         // beyond it is reserved for CORRECTION candidates, which are the ones
         // context can meaningfully rescue from below the cut.
         let prefix_matches = self.trie.prefix_search(&trimmed_lower, max_candidates + 4);
+        // 6a. Dropped last letter — the one completion that DOES commit.
+        // "peopl", "becaus", "kno": the typed token is not a word, nothing
+        // upstream claimed it, and the strongest completion is exactly one
+        // letter longer and top-tier. That is the word meant, and it used
+        // to sit in the strip uncommitted (397 of the 2,199 misses in the
+        // 2026-09-13 sweep). Deliberate prefixes are protected by the
+        // exact-word rule (typing "the" never completes to "then"), by the
+        // one-letter rule ("peo" stays), by the three-letter floor ("co",
+        // "ex" stay), and — like stages 6b and 7 — by capitalisation: a
+        // capitalised token is a name until proven otherwise ("Gav" must
+        // not become "Gave"; review 2026-09-13).
+        const COMPLETION_AUTOCOMMIT_MIN_FREQ: u32 = 236;
+        // Rival readings of the token: a same-length adjacent-key
+        // neighbour ("healt" is "heart" as much as "health", "fron" is
+        // "from") and any other single insertion ("thre" is "there" as
+        // much as "three"). The completion only claims when it is clearly
+        // the commoner word; otherwise the fuzzy stage keeps the decision.
+        const COMPLETION_LEAD_OVER_RIVAL: u32 = 20;
+        let typed_len = trimmed_lower.chars().count();
+        let typed_capitalized = trimmed.chars().next().is_some_and(|c| c.is_uppercase());
+        let completion_claim: Option<String> = if !is_exact
+            && candidates.is_empty()
+            && typed_len >= 3
+            && !typed_capitalized
+            && !has_internal_uppercase
+            && trimmed_lower.chars().all(|c| c.is_alphabetic())
+        {
+            // The commonest shipped one-letter-longer completion, not the
+            // trie's first entry: a learned boost must not switch the fix
+            // off ("known" taught to 255 would otherwise hide "know").
+            prefix_matches
+                .iter()
+                .filter(|(w, _)| w.chars().count() == typed_len + 1)
+                .map(|(w, _)| (w, self.corpus_freq(w)))
+                .filter(|&(_, cf)| cf >= COMPLETION_AUTOCOMMIT_MIN_FREQ)
+                .max_by_key(|&(_, cf)| cf)
+                .and_then(|(w, cf)| {
+                    let best_rival = {
+                        let touch = self.touch_model.read().unwrap();
+                        self.trie
+                            .fuzzy_search_weighted(&trimmed_lower, 2, 8, |a, b| Self::slip_oracle(&touch, a, b))
+                            .iter()
+                            .filter(|fc| {
+                                fc.word != *w
+                                    && (fc.distance == 1
+                                        || (fc.distance == 2 && fc.word.chars().count() == typed_len + 1))
+                            })
+                            .map(|fc| self.corpus_or_learned(&fc.word, fc.frequency))
+                            .max()
+                            .unwrap_or(0)
+                    };
+                    (cf >= best_rival.saturating_add(COMPLETION_LEAD_OVER_RIVAL)).then(|| w.clone())
+                })
+        } else {
+            None
+        };
         for (w, _) in prefix_matches {
             let formatted = Self::apply_casing(trimmed, &w);
             if !contains_word(&candidates, &formatted) {
                 candidates.push(RankedCandidate {
                     word: formatted,
-                    is_autocorrect: false,
+                    is_autocorrect: completion_claim.as_deref() == Some(w.as_str()),
                 });
             }
             if candidates.len() >= max_candidates {
