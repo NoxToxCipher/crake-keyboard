@@ -2309,12 +2309,50 @@ impl NlpEngine {
                     |a, b| Self::slip_oracle(&touch, a, b),
                 )
             };
-            // Partition fuzzy matches: spatial keyboard neighbor slips get top priority
+            // Frequency-aware distance: a top-tier word earns back a unit
+            // (two above 250). Raw units with neighbour-first ordering let
+            // a same-length adjacent-key match to a rare word beat the
+            // obvious dropped-letter fix — "abut" -> "shut" over "about",
+            // "hve" -> "dvd" over "have", "tfhe" -> "true" over "the"
+            // (sweep 2026-09-13, ~4,000 such flips across the top 1,000
+            // words). Neighbour matches keep their edge among equals only.
+            // Shipped-corpus frequency, so a learned boost cannot buy units.
+            // Rank by how many things went wrong, then by how common the
+            // word is, then by how cheap the slips were. The weighted units
+            // alone cannot tell one dropped letter (2 units) from two
+            // adjacent slips (2 units), which is how "tfhe" became "true"
+            // instead of "the" and "abut" became "shut" instead of "about";
+            // and a unit bonus for common words let "will" (two slips) steal
+            // "sdll" from "sell" (one slip) — review 2026-09-13. Edit count
+            // first settles both: one slip beats two; among one-slip
+            // readings a top-tier word beats a rare one ("cdan" is "can",
+            // not "chan"; "lke" is "like", not "lie"); ties fall through to
+            // units, so an adjacent-key slip still beats a far one
+            // ("healt" is "heart", not "health"), then to the neighbour
+            // shape, then to raw frequency. Shipped-corpus frequency for
+            // the tier, so a learned boost cannot buy a place.
+            // Cost in half-units: an adjacent-key substitution 2, a far
+            // substitution 4, an added or dropped letter 3 — cheaper than
+            // a far substitution, dearer than an adjacent one. That keeps
+            // "sdll" -> sell (2) over will (4), "tfhe" -> the (3) over true
+            // (4), "nt" -> my (4) level with at (4) so the neighbour shape
+            // decides, and "healt" -> heart (2) over health (3).
+            let typed_chars = trimmed_lower.chars().count();
+            let cost = |fc: &crate::trie::FuzzyCandidate| {
+                let len_diff = typed_chars.abs_diff(fc.word.chars().count());
+                fc.distance * 2 - len_diff.min(fc.distance)
+            };
             let mut sorted_fuzzy = fuzzy;
             sorted_fuzzy.sort_by_key(|fc| {
                 let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
-                let score = if is_neighbor { 0 } else { 1 };
-                (score, fc.distance, std::cmp::Reverse(fc.frequency))
+                let tier = if self.corpus_or_learned(&fc.word, fc.frequency) >= 236 { 0 } else { 1 };
+                (
+                    cost(fc),
+                    tier,
+                    fc.distance,
+                    if is_neighbor { 0 } else { 1 },
+                    std::cmp::Reverse(fc.frequency),
+                )
             });
 
             for fc in &sorted_fuzzy {
@@ -2326,7 +2364,11 @@ impl NlpEngine {
                 // to "dont", which displays as "don't").
                 let base: &str = contraction_display(&fc.word).unwrap_or(fc.word.as_str());
                 let formatted = Self::apply_casing(trimmed, base);
-                if !contains_word(&candidates, &formatted) {
+                // The word may already sit in the pool as a plain prefix
+                // completion ("house" for "hous"): the correction verdict
+                // below must be able to promote it, not skip it.
+                let existing_at = candidates.iter().position(|c| c.word.eq_ignore_ascii_case(&formatted));
+                if existing_at.is_none_or(|p| !candidates[p].is_autocorrect) {
                     let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
                     // Edge apostrophes are deliberate punctuation (quotes sit
                     // behind long-press — they are not fat-fingered): a token
@@ -2348,11 +2390,18 @@ impl NlpEngine {
                     // 2026-08-27). Short tokens keep the strict empty-list
                     // rule: "co"/"ex"-style deliberate prefixes are 2-4
                     // chars and must never be punched through.
+                    // A second way through the filler (review 2026-09-13):
+                    // a single-edit fix to a top-tier word on a 4+ letter
+                    // token — "thre" is "there", "hous" is "house", "fron"
+                    // is "from" — must not be starved by the completions of
+                    // the typo ("three", "hours", "front") sitting in the
+                    // pool as plain suggestions.
                     let punches_filler = !claimed_before_completions
                         && candidates.iter().all(|c| !c.is_autocorrect)
-                        && is_neighbor
-                        && fc.distance == 1
-                        && trimmed_lower.chars().count() >= 5;
+                        && ((is_neighbor && fc.distance == 1 && trimmed_lower.chars().count() >= 5)
+                            || (trimmed_lower.chars().count() >= 4
+                                && edit_count(&trimmed_lower, &fc.word) == 1
+                                && self.corpus_or_learned(&fc.word, fc.frequency) >= 236));
                     // Sentence-start capitalized autocorrect was TRIED and
                     // REJECTED by evidence (sweep 2026-08-27): a 53-name
                     // sweep flipped 9, including Crake -> Drake and
@@ -2371,7 +2420,13 @@ impl NlpEngine {
                         word: formatted,
                         is_autocorrect: should_autocorrect,
                     };
-                    if rc.is_autocorrect && !candidates.is_empty() {
+                    if let Some(p) = existing_at {
+                        // Already listed as filler: only a promotion changes it.
+                        if should_autocorrect {
+                            candidates.remove(p);
+                            candidates.insert(0, rc);
+                        }
+                    } else if rc.is_autocorrect && !candidates.is_empty() {
                         candidates.insert(0, rc);
                     } else {
                         candidates.push(rc);
@@ -2386,9 +2441,13 @@ impl NlpEngine {
             // the last visible slot; if the pool was already full without
             // it, replace the last visible non-autocorrect filler.
             if candidates.len() >= max_candidates {
+                // The closest slip match by RAW distance, not the first in
+                // effective order — that could be the two-slip thief the
+                // guarantee exists to protect against (review 2026-09-13).
                 if let Some(fc) = sorted_fuzzy
                     .iter()
-                    .find(|fc| Self::is_spatial_slip_match(&trimmed_lower, &fc.word))
+                    .filter(|fc| Self::is_spatial_slip_match(&trimmed_lower, &fc.word))
+                    .min_by_key(|fc| fc.distance)
                 {
                     let base: &str = contraction_display(&fc.word).unwrap_or(fc.word.as_str());
                     let formatted = Self::apply_casing(trimmed, base);
