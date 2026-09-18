@@ -9252,7 +9252,23 @@ private class TextKeyboardLayoutController(
                         val isUpwardFlick = event.direction == SwipeGesture.Direction.UP ||
                                             event.direction == SwipeGesture.Direction.UP_LEFT ||
                                             event.direction == SwipeGesture.Direction.UP_RIGHT
-                        if (isUpwardFlick && prefs.glide.flickPredictionsEnabled.get()) {
+                        // This gesture DELETES the half-typed word and puts
+                        // a whole predicted word in its place, so it has to
+                        // be unmistakably a flick off the key and not a tap
+                        // that drifted (field report 2026-09-19: "typing
+                        // 'finishing' and I end up with 'finishing shing'").
+                        // A deliberate flick leaves the keycap: it rises at
+                        // least 60% of a key, is far more vertical than
+                        // sideways, and is quick. Event units are 8dp each
+                        // (a quarter of the 32dp swipe threshold).
+                        val riseDp = kotlin.math.abs(event.absUnitCountY) * 8f
+                        val sideDp = kotlin.math.abs(event.absUnitCountX) * 8f
+                        val keyHeightDp = dev.patrickgold.florisboard.lib.util.ViewUtils.px2dp(initialKey.visibleBounds.height)
+                        val flickRiseNeeded = (keyHeightDp * 0.6f).coerceAtLeast(24f)
+                        val isDeliberateFlick = riseDp >= flickRiseNeeded &&
+                            riseDp >= 1.5f * sideDp &&
+                            (event.ageMs <= 0L || riseDp * 1000f / event.ageMs >= 400f)
+                        if (isUpwardFlick && isDeliberateFlick && prefs.glide.flickPredictionsEnabled.get()) {
                             val charCode = initialKey.computedData.code.toChar().lowercaseChar()
                             // Direct hit on the rendered floating word on the keycap first
                             val predictedWord = currentFlickPredictions[charCode] ?: run {

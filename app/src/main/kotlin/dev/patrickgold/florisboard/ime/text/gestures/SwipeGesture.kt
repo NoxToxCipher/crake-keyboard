@@ -64,6 +64,14 @@ abstract class SwipeGesture {
              * make classification impossible (floor) or fire on taps
              * (ceiling). Pinned by SwipeClassifierTest.
              */
+            /**
+             * Travel below this is a tap, not a gesture. The device
+             * captures in GlideTypingGesture put real stray tap-slides at
+             * 0.35-0.63 key widths (11.6-20.8dp), and both live flick
+             * captures travelled 143-154dp, so this sits in the gap.
+             */
+            internal const val ACCIDENTAL_DRIFT_MAX_DP = 24.0
+
             internal fun clampThresholdSpeed(raw: Double): Double =
                 if (raw > 1000.0) 450.0 else raw.coerceIn(200.0, 800.0)
 
@@ -106,15 +114,28 @@ abstract class SwipeGesture {
                 val maxVelocity = maxOf(velocityX, velocityY)
 
                 // For high-velocity snappy flicks (e.g. upward letter word flick or backspace flick),
-                // an absolute displacement of 14dp is distinct from accidental tap wobble (<=8dp)
-                // and prevents dropping fast short thumb flicks on high-density displays.
+                // a short stroke may pass on a reduced distance, so a fast
+                // thumb flick is not dropped on a high-density display.
+                // The reduced distance for a fast stroke used to floor at
+                // 10dp, so this branch committed a word from 12.8dp on its
+                // own -- the same accidental band the snappy branch below
+                // covers. Both floors are now the same deliberate distance.
                 val effectiveThresholdWidth = if (maxVelocity >= thresholdSpeed) {
-                    (thresholdWidthDp * 0.4).coerceAtLeast(10.0)
+                    (thresholdWidthDp * 0.4).coerceAtLeast(ACCIDENTAL_DRIFT_MAX_DP)
                 } else {
                     thresholdWidthDp
                 }
 
-                val isSnappyFlick = (maxTravel >= 10.0f) && (maxVelocity >= 250.0)
+                // The snappy branch used to open at 10dp and 250dp/s, which
+                // is ORDINARY TYPING: a thumb that drifts 12dp during a 45ms
+                // tap averages 267dp/s and classified as a flick, so a whole
+                // predicted word was thrown into the field mid-word (field
+                // report 2026-09-19, and 10 such commits in the phone's own
+                // flight recorder: "...going into a lear" -> "learning ").
+                // Both live captures of a REAL flick travelled 144-154dp at
+                // ~1490dp/s, so this floor keeps every deliberate flick with
+                // room to spare while a drifting tap stays a tap.
+                val isSnappyFlick = (maxTravel >= ACCIDENTAL_DRIFT_MAX_DP) && (maxVelocity >= 350.0)
 
                 return isSnappyFlick || ((maxTravel > effectiveThresholdWidth) && (maxVelocity > thresholdSpeed))
             }

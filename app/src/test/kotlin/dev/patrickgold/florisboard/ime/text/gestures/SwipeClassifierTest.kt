@@ -113,9 +113,24 @@ class SwipeClassifierTest : FunSpec({
     }
 
     test("quick snappy upward key flick classifies accurately") {
-        // High-speed short thumb flick over letter keycap (e.g. 20dp in 40ms = 500 dp/s)
-        val upwardFlick = Triple(0.0f, -20.0f, 40L)
+        // A flick leaves the keycap: a key is ~55dp tall, so 40dp in 50ms
+        // (800 dp/s) is a modest one. The live captures travelled 144-154dp.
+        val upwardFlick = Triple(0.0f, -40.0f, 50L)
         classify(upwardFlick) shouldBe true
-        SwipeGesture.Detector.detectDirection(0.0, -20.0) shouldBe SwipeGesture.Direction.UP
+        SwipeGesture.Detector.detectDirection(0.0, -40.0) shouldBe SwipeGesture.Direction.UP
+    }
+
+    test("a fast tap that drifts is not a flick") {
+        // Field report 2026-09-19: typing "finishing" produced
+        // "finishing shing" because a drifting tap threw a predicted word
+        // into the field. The phone's own flight recorder holds 10 such
+        // commits, e.g. "...going into a lear" -> "learning ". A thumb
+        // easily drifts a fifth of a key during a quick tap; none of these
+        // may classify.
+        classify(Triple(0.0f, -10.0f, 40L)) shouldBe false
+        classify(Triple(0.0f, -12.0f, 45L)) shouldBe false
+        classify(Triple(-4.0f, -15.0f, 60L)) shouldBe false
+        classify(Triple(0.0f, -20.0f, 60L)) shouldBe false
+        classify(Triple(6.0f, -23.0f, 70L)) shouldBe false
     }
 })

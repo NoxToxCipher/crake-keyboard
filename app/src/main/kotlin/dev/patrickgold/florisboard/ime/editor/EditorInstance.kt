@@ -456,6 +456,10 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             keyVariation = activeState.keyVariation,
             packageName = activeInfo.packageName,
             learnAsCorrection = !activeState.isIncognitoMode,
+            // What the person had actually typed, so a flick they did not
+            // mean is remembered as the engine's guess and not as their
+            // word (2026-09-19).
+            typedOriginal = wordPrefix.takeIf { it.isNotEmpty() }?.toString(),
         )
         return super.commitText("$text$SPACE").also {
             updateLastCommitPosition()
