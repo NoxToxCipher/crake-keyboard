@@ -867,3 +867,59 @@ gate ("addr2" still expands). Known, deliberate: the sentence-start recase
 will correct an unknown name as the first word of a message once
 ("Gav" -> Gave) until it is reverted or added to the dictionary; the
 personal-dictionary sync and revert learning are the safety net.
+
+### 2026-09-19 — "typing 'finishing' and I end up with 'finishing shing'"
+
+Field report: while typing a long word, a whole word appears and the rest of
+the letters land after it. TWO independent causes, both confirmed by an
+adversarial hunt (29 agents) and by the phone's own flight recorder.
+
+1. ACCIDENTAL WORD FLICK. `SwipeGesture.Detector.classifiesAsSwipe` treated
+   10dp of travel at 250dp/s as a flick, and `averageVelocity` divides by the
+   stroke age, so a SHORT tap inflates its own velocity: the gate reduced to
+   "travel >= max(10dp, ageMs/4)". A thumb that rolls 12dp up during a 45ms
+   tap classified as an upward flick, and the letter-key flick handler then
+   DELETED the half-typed word and committed a predicted word plus a space
+   (`EditorInstance.commitFlickPrediction`). The phone's own
+   flight_recorder.jsonl holds 10 such commits, several mid-word: "...going
+   into a lear" -> "learning ", "Can the footy t" -> "than", "e different
+   discip" -> "discipline". Both live captures of a REAL flick travelled
+   143-154dp at ~1490dp/s, and the repo's own device measurement puts stray
+   tap-slides at 11.6-20.8dp, so 24dp is the gap: both branches of the
+   classifier now floor there (`ACCIDENTAL_DRIFT_MAX_DP`; the second branch
+   used to collapse to 12.8dp and commit on its own). The word flick itself
+   now also demands a deliberate stroke off the keycap: a rise of 60% of a
+   key height, more vertical than sideways, at 400dp/s. A flick that is not
+   meant is also recorded with what was typed (`typedOriginal`).
+
+2. A BUMPED SPACE REWROTE THE HALF-TYPED WORD. The space bar's touch band
+   runs directly under c/v/b/n, and `getKeyForPosAdaptive` explicitly REFUSES
+   to rescue a tap that lands on it ("never hijack functional keys"), so a
+   low thumb on the n of "finishing" types a space. A space then auto-commits
+   whatever the engine makes of the prefix -- and the engine had no notion of
+   "this word may be unfinished": of 5,654 interior prefixes of the 1,500
+   commonest words, 730 were rewritten into a DIFFERENT word ("fini" -> find,
+   "worl" -> work, "somet" -> some, "hou" -> you, "thr" -> the), and the rest
+   of the word was then typed after it.
+   The engine now refuses to replace a token that is still a live prefix of
+   an everyday word (>= 200) with anything that does not keep every letter
+   typed. Splits and apostrophe forms are exempt by construction ("notin" ->
+   "not in", "whos" -> "who's"), as is anything the user taught the keyboard
+   themselves. 730 -> 27, and the 27 are contraction restorations.
+   COST, measured and accepted: 300 sweep corrections that used to commit
+   now only suggest, because they are also live prefixes ("fron" -> from,
+   "thre" -> there, "caree" -> care, "actuall" -> actual). Every one of them
+   still sits in slot 1, one tap away (verified for all ten pinned
+   specimens). The trade is deliberate: a suggestion not taken costs a tap,
+   a word destroyed mid-typing costs a repair. 71 sweep wrong-flips go away
+   with it. Nine pinned field specimens (ti stays, aer/tou/thre/thir/fron/
+   jame/leat/ment) moved to must-not-commit in real_assets_smoke.rs with the
+   reasoning inline, and slip_corpus's "worke" -> works is now offered, not
+   committed.
+
+Not done, on purpose: the adaptive hitbox still cannot rescue a tap that
+lands on the space bar (TextKeyboard.kt:97). Fixing that is the real cure
+for the bumped space -- it would let a low thumb on n still type n -- but it
+re-hit-tests at TOUCH_DOWN, before a space-bar swipe can be distinguished
+from a tap, and the 2026-08-27 delete-key report is exactly what that
+coupling caused last time. It needs a device test session, not a desk fix.
