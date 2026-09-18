@@ -344,18 +344,43 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                     // Private sessions get the shipped model only: the
                     // user's own learned corrections stay off that screen.
                     val includePersonal = !isPrivateSession
-                    val cacheKey = SuggestionCacheKey(cleanWordQuery, maxCandidateCount, prevToken, includePersonal)
-                    val candidates = nativeSuggestCache.get(cacheKey) ?: run {
-                        val fetched = FlorisNative.suggest(cleanWordQuery, maxCandidateCount, prevToken, includePersonal)
-                        nativeSuggestCache.put(cacheKey, fetched)
-                        fetched
+                    val fetch = { q: String ->
+                        val cacheKey = SuggestionCacheKey(q, maxCandidateCount, prevToken, includePersonal)
+                        nativeSuggestCache.get(cacheKey) ?: run {
+                            val fetched = FlorisNative.suggest(q, maxCandidateCount, prevToken, includePersonal)
+                            nativeSuggestCache.put(cacheKey, fetched)
+                            fetched
+                        }
+                    }
+                    var candidates = fetch(cleanWordQuery)
+                    // Sentence-start auto-shift (phone check 2026-09-18):
+                    // "Lile" as the first word of a message carries the
+                    // keyboard's capital, not the person's, and a
+                    // capitalised token is otherwise a name the engine never
+                    // corrects — so the first word of every message went
+                    // uncorrected. When the capital is the sentence start's
+                    // and the engine offers no fix for the token as typed,
+                    // ask again with the lowercase token and give the answer
+                    // its capital back. Mid-sentence capitals stay names.
+                    var recased = false
+                    val autoCapped = cleanWordQuery.length >= 2 &&
+                        cleanWordQuery[0].isUpperCase() &&
+                        cleanWordQuery.drop(1).none { it.isUpperCase() } &&
+                        isSentenceStart(fullText, query)
+                    if (autoCapped && candidates.none { it.isAutocorrect }) {
+                        val again = fetch(cleanWordQuery.replaceFirstChar { it.lowercase() })
+                        if (again.any { it.isAutocorrect }) {
+                            candidates = again
+                            recased = true
+                        }
                     }
                     for ((index, candidate) in candidates.withIndex()) {
+                        val shown = if (recased) candidate.text.replaceFirstChar { it.uppercase() } else candidate.text
                         // Avoid duplicates if snippet or fleet correction already added
-                        if (none { it.text.toString().equals(candidate.text, ignoreCase = true) }) {
+                        if (none { it.text.toString().equals(shown, ignoreCase = true) }) {
                             add(
                                 WordSuggestionCandidate(
-                                    text = candidate.text,
+                                    text = shown,
                                     secondaryText = null,
                                     confidence = 0.9 - (index * 0.1),
                                     isEligibleForAutoCommit = candidate.isAutocorrect,
@@ -368,6 +393,19 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 }
             }
         }
+    }
+
+    /**
+     * Whether [token] (the trailing run of [textBefore]) starts a sentence:
+     * nothing before it, or sentence punctuation / a line break before the
+     * whitespace. That is exactly where the keyboard's auto-shift supplies a
+     * capital the person did not type.
+     */
+    private fun isSentenceStart(textBefore: CharSequence, token: String): Boolean {
+        val before = textBefore.subSequence(0, (textBefore.length - token.length).coerceAtLeast(0)).trimEnd()
+        if (before.isEmpty()) return true
+        val last = before.last()
+        return last == '.' || last == '!' || last == '?' || last == '\n'
     }
 
     private fun String.fastLowercase(): String {
