@@ -49,6 +49,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.florisboard.lib.android.showShortToast
 
+/**
+ * Whether [char] continues the punctuation already written, so the
+ * space the keyboard put after it must come back out: "Hello!" + "?"
+ * is "Hello!?" and ".." grows into "...".
+ *
+ * Only `!`, `?` and `.` chain. A colon or semicolon after a sentence is
+ * the start of something new -- almost always a smiley -- and gluing it
+ * on made ":)" impossible to type at the end of a sentence: "Hello. "
+ * + ":" came out as "Hello.:" and the ")" then closed up behind it
+ * (field report 2026-09-19). English has no ".:" or ".;" to protect.
+ */
+internal fun punctuationChainsOnto(previous: Char, char: String): Boolean {
+    if (char.length != 1) return false
+    val chains = { c: Char -> c == '!' || c == '?' || c == '.' }
+    return chains(char[0]) && chains(previous)
+}
+
 class EditorInstance(context: Context) : AbstractEditorInstance(context) {
     companion object {
         private const val SPACE = " "
@@ -231,12 +248,11 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
                 insertSpaceAfterChar = false,
             )
         }
-        val isPunctuationChar = char.length == 1 && (char[0] == '!' || char[0] == '?' || char[0] == '.' || char[0] == ';' || char[0] == ':')
         val textBefore = activeContent.textBeforeSelection
         val hasTrailingSpace = textBefore.endsWith(' ')
         val textBeforeTrimmed = if (hasTrailingSpace) textBefore.trimEnd() else textBefore
-        val isRepeatingPunctuation = isPunctuationChar && textBeforeTrimmed.isNotEmpty() &&
-            (textBeforeTrimmed.last() == '!' || textBeforeTrimmed.last() == '?' || textBeforeTrimmed.last() == '.' || textBeforeTrimmed.last() == ';' || textBeforeTrimmed.last() == ':')
+        val isRepeatingPunctuation = textBeforeTrimmed.isNotEmpty() &&
+            punctuationChainsOnto(textBeforeTrimmed.last(), char)
 
         if (isRepeatingPunctuation) {
             val isDeletePreviousSpace = hasTrailingSpace
