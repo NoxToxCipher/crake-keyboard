@@ -183,15 +183,19 @@ fn ambiguous_evidence_never_flips() {
     );
 }
 
-/// Attestation below the overwhelming threshold (160) is not evidence
-/// enough to override what the user typed.
+/// The bigram table no longer decides anything here (2026-09-18: the
+/// statistical rescue hijacked 438 correctly typed common words on the
+/// shipped table). "i an" -> am is a CURATED impossible-English slip and
+/// fires regardless of attestation; an attested-but-uncurated pair never
+/// flips, however strong the neighbour.
 #[test]
-fn weak_attestation_never_flips() {
+fn only_curated_slips_flip_and_attestation_is_irrelevant() {
     let mut e = engine();
-    let b = blob(&e, &[("i", "am", 150)]);
+    let b = blob(&e, &[("i", "am", 150), ("want", "am", 250)]);
     e.load_bigrams(&b).unwrap();
-    let got = top(&e, "i", "an");
-    assert!(!got.iter().any(|(_, ac)| *ac), "150 < 160 must not flip: {got:?}");
+    assert_eq!(top(&e, "i", "an").first(), Some(&("am".to_string(), true)), "curated slip flips");
+    let got = top(&e, "want", "an");
+    assert!(!got.iter().any(|(_, ac)| *ac), "uncurated pair never flips: {got:?}");
 }
 
 /// A rare word never replaces a typed word ("for" -> "fir" is impossible
@@ -222,10 +226,10 @@ fn rare_neighbour_and_capitalized_input_are_safe() {
 /// the literal valid word leads and nothing auto-commits.
 #[test]
 fn no_table_or_no_context_is_unchanged() {
+    // curated: fires without any table
     let e = engine();
     let got = top(&e, "i", "an");
-    assert_eq!(got.first(), Some(&("an".to_string(), false)));
-    assert!(!got.iter().any(|(_, ac)| *ac));
+    assert_eq!(got.first(), Some(&("am".to_string(), true)));
 
     let mut e2 = engine();
     let b = blob(&e2, &[("i", "am", 184)]);
