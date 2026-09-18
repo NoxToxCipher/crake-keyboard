@@ -65,10 +65,11 @@ fn test_ill_disambiguation_with_context() {
 #[test]
 fn ill_adjective_gate() {
     use crake_core::nlp::ill_reads_as_adjective;
-    for p in ["feel", "Feel", "feel,", "very", "am", "I'm", "I’m", "the", "is", "got", "seriously"] {
+    // "still ill" / "a bit ill" read as the adjective (hunt 2026-09-18)
+    for p in ["feel", "Feel", "feel,", "very", "am", "I'm", "I’m", "the", "is", "got", "seriously", "still", "bit"] {
         assert!(ill_reads_as_adjective(Some(p)), "{p:?} should read as adjective context");
     }
-    for p in ["", "  ", "and", "so", "tomorrow", "ok", "yeah", "i", "then", "but", "not", "still"] {
+    for p in ["", "  ", "and", "so", "tomorrow", "ok", "yeah", "i", "then", "but", "not"] {
         assert!(!ill_reads_as_adjective(Some(p)), "{p:?} must not block the I'll flip");
     }
     assert!(!ill_reads_as_adjective(None));

@@ -1,5 +1,6 @@
 use crate::shorthand::lookup_shorthand;
 use crate::trie::RadixTrie;
+use crate::touch_model::SLIP_NEAR_FACTOR;
 use crate::typo_corpus::lookup_common_typo;
 use std::sync::{Arc, RwLock};
 
@@ -204,6 +205,7 @@ pub const CONTRACTIONS: &[(&str, &str)] = &[
     ("everybodys", "everybody's"),
     ("everyones", "everyone's"),
     ("everythings", "everything's"),
+    ("gday", "g'day"),
     ("hadnt", "hadn't"),
     ("hadntve", "hadn't've"),
     ("hasnt", "hasn't"),
@@ -339,6 +341,7 @@ pub const SAFE_CONTRACTION_BARE: &[&str] = &[
     "everybodys",
     "everyones",
     "everythings",
+    "gday",
     "hadnt",
     "hadntve",
     "hasnt",
@@ -378,7 +381,6 @@ pub const SAFE_CONTRACTION_BARE: &[&str] = &[
     "oughtnt",
     "shant",
     "shedve",
-    "shell",
     "shouldnt",
     "shouldntve",
     "shouldve",
@@ -443,6 +445,41 @@ pub const SAFE_CONTRACTION_BARE: &[&str] = &[
     "youve",
 ];
 
+/// A typo-corpus key at or above this corpus frequency is a real word the
+/// person meant, not a misspelling ("favourite" 222, "alright" 219).
+const TYPO_CORPUS_REAL_WORD_FLOOR: u32 = 160;
+
+/// Typo-corpus keys that sit above the floor only as n-gram noise, never
+/// as words a person means ("ment" 163): they always fix. The floor is a
+/// frequency proxy; real words under it must be removed from the table
+/// by hand (see typo_corpus.rs).
+const TYPO_CORPUS_KNOWN_JUNK: &[&str] = &["ment", "gunna"];
+
+/// Chat prefixes that get run into the next word on a phone. The splitter
+/// accepts `prefix + top-tier word` (or `prefix + contraction`) on any
+/// attestation at all, because the pair table is news-flavoured and rates
+/// "i forgot" below "a council".
+pub const CHAT_PREFIXES: &[&str] = &[
+    "i", "u", "ur", "ya", "im", "id", "ill", "ive", "its", "dont", "cant", "wont", "thats", "whats",
+];
+
+/// `token` = chat prefix + rest, longest prefix first, rest at least two
+/// letters.
+pub fn chat_prefix_of(token: &str) -> Option<(&'static str, &str)> {
+    let mut best: Option<(&'static str, &str)> = None;
+    for &p in CHAT_PREFIXES {
+        if let Some(rest) = token.strip_prefix(p) {
+            if rest.chars().count() >= 2
+                && rest.chars().all(|c| c.is_ascii_alphabetic())
+                && best.is_none_or(|(b, _)| p.len() > b.len())
+            {
+                best = Some((p, rest));
+            }
+        }
+    }
+    best
+}
+
 /// The only valid-word slips corrected by context: pairs that are not
 /// English at all, each a single adjacent key from the word meant. Added by
 /// hand from field specimens; never generated from the bigram table.
@@ -453,7 +490,6 @@ pub const CURATED_CONTEXT_SLIPS: &[(&str, &str, &str)] = &[
 
 pub const GLIDE_CONTRACTION_BARE: &[&str] = &[
     "cant",
-    "lets",
     "wont",
 ];
 
@@ -520,6 +556,8 @@ pub fn ill_reads_as_adjective(prev: Option<&str>) -> bool {
             | "im" | "i'm" | "hes" | "he's" | "shes" | "she's" | "youre" | "you're"
             | "theyre" | "they're" | "we're"
             | "isnt" | "isn't" | "wasnt" | "wasn't" | "arent" | "aren't"
+            | "bit" | "little" | "still" | "super" | "currently"
+            | "sick" | "mum" | "mom" | "dad" | "baby" | "kids" | "kid" | "dog" | "cat"
     )
 }
 
@@ -629,7 +667,7 @@ pub fn resolve_contraction_with_context(
 pub fn contraction_display(bare: &str) -> Option<&'static str> {
     let lower = bare.to_ascii_lowercase();
     let clean: String = lower.chars().filter(|c| *c != '\'' && *c != '’' && *c != '‘').collect();
-    if !SAFE_CONTRACTION_BARE.contains(&clean.as_str()) {
+    if !SAFE_CONTRACTION_BARE.contains(&clean.as_str()) && !GLIDE_CONTRACTION_BARE.contains(&clean.as_str()) {
         return None;
     }
     CONTRACTIONS.iter().find(|(k, _)| *k == clean.as_str()).map(|&(_, c)| c)
@@ -1220,10 +1258,197 @@ impl NlpEngine {
         const SLIP_YIELD_MARGIN: u32 = 20;
         let base = self.corpus_or_learned(word, learned_freq).saturating_add(SLIP_YIELD_MARGIN);
         let touch = self.touch_model.read().unwrap();
-        self.trie
+        if self
+            .trie
             .fuzzy_search_weighted(query_lower, 1, 4, |a, b| Self::slip_oracle(&touch, a, b))
             .iter()
             .any(|fc| fc.distance == 1 && self.corpus_or_learned(&fc.word, fc.frequency) >= base)
+        {
+            return true;
+        }
+        drop(touch);
+        // A top-tier word one FAR substitution away also outranks a guess:
+        // "ttis" is this, "hhat" is that, whatever the key geometry says
+        // about t and h (review 2026-09-18; the fuzzy stage ranks the same
+        // reading first).
+        if !query_lower.is_ascii() {
+            return false;
+        }
+        let b = query_lower.as_bytes();
+        let mut buf = String::with_capacity(b.len());
+        for i in 0..b.len() {
+            for c in b'a'..=b'z' {
+                if c == b[i] {
+                    continue;
+                }
+                buf.clear();
+                buf.push_str(&query_lower[..i]);
+                buf.push(c as char);
+                buf.push_str(&query_lower[i + 1..]);
+                let cf = self.corpus_freq(&buf);
+                if cf >= 236 && cf >= base {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Whether some top-tier word (corpus >= 236), other than the two
+    /// halves, is one edit (insert, delete, substitute, adjacent swap) from
+    /// `token`. Enumerated directly: the fuzzy search's short result list
+    /// can miss a deletion rival behind a crowd of substitutions.
+    fn top_tier_one_edit_rival(&self, token: &str, left: &str, right: &str) -> bool {
+        if !token.is_ascii() {
+            return false;
+        }
+        let top = |w: &str| w != left && w != right && w != token && self.corpus_freq(w) >= 236;
+        let b = token.as_bytes();
+        let mut buf = String::with_capacity(token.len() + 1);
+        for i in 0..=b.len() {
+            // insertion
+            for c in b'a'..=b'z' {
+                buf.clear();
+                buf.push_str(&token[..i]);
+                buf.push(c as char);
+                buf.push_str(&token[i..]);
+                if top(&buf) {
+                    return true;
+                }
+            }
+            if i < b.len() {
+                // deletion
+                buf.clear();
+                buf.push_str(&token[..i]);
+                buf.push_str(&token[i + 1..]);
+                if top(&buf) {
+                    return true;
+                }
+                // substitution
+                for c in b'a'..=b'z' {
+                    if c == b[i] {
+                        continue;
+                    }
+                    buf.clear();
+                    buf.push_str(&token[..i]);
+                    buf.push(c as char);
+                    buf.push_str(&token[i + 1..]);
+                    if top(&buf) {
+                        return true;
+                    }
+                }
+                // adjacent swap
+                if i + 1 < b.len() && b[i] != b[i + 1] {
+                    buf.clear();
+                    buf.push_str(&token[..i]);
+                    buf.push(b[i + 1] as char);
+                    buf.push(b[i] as char);
+                    buf.push_str(&token[i + 2..]);
+                    if top(&buf) {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Whether a top-tier word (corpus >= 236 and >= `at_least`) is `token`
+    /// with one letter removed.
+    fn one_deletion_rival(&self, token: &str, at_least: u32) -> bool {
+        if !token.is_ascii() {
+            return false;
+        }
+        (0..token.len()).any(|i| {
+            let w = format!("{}{}", &token[..i], &token[i + 1..]);
+            let cf = self.corpus_freq(&w);
+            cf >= 236 && cf >= at_least
+        })
+    }
+
+    /// Whether a top-tier word (corpus >= 236 and >= `at_least`) is `token`
+    /// with one letter added anywhere.
+    fn one_insertion_rival(&self, token: &str, at_least: u32) -> bool {
+        if !token.is_ascii() {
+            return false;
+        }
+        let mut buf = String::with_capacity(token.len() + 1);
+        for i in 0..=token.len() {
+            for c in b'a'..=b'z' {
+                buf.clear();
+                buf.push_str(&token[..i]);
+                buf.push(c as char);
+                buf.push_str(&token[i..]);
+                let cf = self.corpus_freq(&buf);
+                if cf >= 236 && cf >= at_least {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// The corpus frequency of the best adjacent transposition of `token`
+    /// that is a top-tier word (>= 236) and not itself outranked by an
+    /// adjacent-key slip.
+    fn top_tier_adjacent_swap(&self, token: &str) -> Option<u32> {
+        if !token.is_ascii() {
+            return None;
+        }
+        let b = token.as_bytes();
+        let mut best: Option<u32> = None;
+        for i in 0..b.len().saturating_sub(1) {
+            if b[i] == b[i + 1] {
+                continue;
+            }
+            let w = format!("{}{}{}{}", &token[..i], b[i + 1] as char, b[i] as char, &token[i + 2..]);
+            let cf = self.corpus_freq(&w);
+            if cf >= 236
+                && best.is_none_or(|bf| cf > bf)
+                && !self.outranked_by_adjacent_slip(token, &w, self.trie.get_frequency(&w).unwrap_or(cf))
+            {
+                best = Some(cf);
+            }
+        }
+        best
+    }
+
+    /// Whether `token` opens with a strongly attested two-word pair
+    /// ("alotof" opens with "a lot", "inabit" with "in a"): the sign of a
+    /// three-word run-together the two-way splitter cannot produce.
+    fn has_strong_prefix_pair(&self, token: &str) -> bool {
+        const STRONG_PAIR: u8 = 200;
+        // the same "solidly real" floor the commit stages use
+        const AUTOCOMMIT_MIN_FREQ: u32 = 150;
+        if !token.is_ascii() || token.len() < 5 || self.bigrams.is_empty() {
+            return false;
+        }
+        // The remainder must be a word too: "orane" opens with "or a" but
+        // "ne" is nothing, so it is a slip of orange, not a phrase (review
+        // 2026-09-18).
+        let solid = |w: &str| self.trie.get_frequency(w).unwrap_or(0) >= AUTOCOMMIT_MIN_FREQ;
+        for i in 1..token.len() - 1 {
+            let left = &token[..i];
+            if !solid(left) {
+                continue;
+            }
+            for j in i + 1..token.len() {
+                let mid = &token[i..j];
+                let rest = &token[j..];
+                // single letters ("y", "t") are dictionary entries but not
+                // words a phrase ends in: "toally" is totally
+                let word_like = |w: &str| w.len() >= 2 || w == "a" || w == "i";
+                if word_like(mid)
+                    && rest.len() >= 2
+                    && solid(mid)
+                    && solid(rest)
+                    && self.bigram_pair_score(left, mid) >= STRONG_PAIR
+                {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Whether a proposed missing-space split `left right` of `query_lower`
@@ -1245,6 +1470,7 @@ impl NlpEngine {
         pair_score: u8,
         min_freq: u32,
         override_pair: u8,
+        direct: bool,
     ) -> bool {
         const SPLIT_PAIR_BEATS_ADJACENT_SLIP: u8 = 220;
         // Structural slips are judged against top-tier words ("almost",
@@ -1295,8 +1521,15 @@ impl NlpEngine {
                     return pair_score < SPLIT_PAIR_BEATS_ADJACENT_SLIP;
                 }
                 // One letter dropped or added ("abut" is about, "ared" is
-                // are) yields to a well attested pair ("he is" 199).
-                fc.distance == 2 && word_len != query_len && pair_score < override_pair
+                // are) yields to a well attested pair ("he is" 199). An
+                // added letter only counts when it looks like a slip; a
+                // letter from across the keyboard is the missing space
+                // ("notme" is "not me", not "note").
+                // The space beam is the exception: b/n/m/v ARE the keys a
+                // thumb hits instead of space ("somebone", "tobday"), so
+                // there the far letter is evidence for the single word.
+                let plausible = !direct || word_len >= query_len || inserted_letter_is_a_slip(query_lower, &fc.word);
+                fc.distance == 2 && word_len != query_len && plausible && pair_score < override_pair
             })
     }
 
@@ -1903,7 +2136,18 @@ impl NlpEngine {
         max_candidates: usize,
         include_personal: bool,
     ) -> SuggestionResult {
-        let trimmed = query.trim();
+        // Typographic apostrophes are the same key on a phone: normalise so
+        // "can’t" is the word it is and not a far slip of "cant" (hunt
+        // 2026-09-18).
+        let normalized: String = query
+            .trim()
+            .chars()
+            .map(|c| match c {
+                '’' | '‘' | '´' | '`' => '\'',
+                o => o,
+            })
+            .collect();
+        let trimmed = normalized.as_str();
         let trimmed_lower = trimmed.to_lowercase();
         if trimmed_lower.is_empty() {
             return SuggestionResult {
@@ -1976,6 +2220,19 @@ impl NlpEngine {
             }
         }
 
+        // A junk-band dictionary entry that is really a chat prefix run into
+        // a common word ("iam" 60, "imnot") must not shield itself behind
+        // the exact-word rule: the splitter gets it (hunt 2026-09-18).
+        // The pair must be attested: the 130-149 band holds real words
+        // ("irate", "imparts", "wonton") that a bare prefix test would
+        // split into "I rate", "I'm parts", "won't on" (review 2026-09-18).
+        let junk_exact_chat_split = is_exact
+            && self.corpus_freq(&trimmed_lower) < AUTOCOMMIT_MIN_FREQ
+            && chat_prefix_of(&trimmed_lower).is_some_and(|(p, rest)| {
+                (self.corpus_freq(rest) >= 236 || CONTRACTIONS.binary_search_by_key(&rest, |&(k, _)| k).is_ok())
+                    && (self.bigrams.is_empty() || self.bigram_pair_score(p, rest) > 0)
+            });
+
         // 1. Single-letter "i" rule -> Capitalize to "I" with autocorrect = true
         if trimmed_lower == "i" {
             candidates.push(RankedCandidate {
@@ -1990,10 +2247,26 @@ impl NlpEngine {
         } else if let Some(shorthand) = lookup_shorthand(&trimmed_lower) {
             // 2. SMS & internet slang shorthand quick expansion (e.g. idk -> I don't know, u -> you, r -> are)
             let formatted = Self::apply_casing(trimmed, shorthand.expansion);
+            // A code typed in capitals ("BC", "NW", "RN", "FAQ") is an
+            // initialism the person meant; expanding it shouted "500
+            // BECAUSE" and "london NO WORRIES" (hunt 2026-09-18). Codes that
+            // map to themselves (lol -> lol) are only casing fixes.
+            let typed_caps = trimmed.chars().count() > 1
+                && trimmed.chars().all(|c| !c.is_alphabetic() || c.is_uppercase());
+            let self_map = shorthand.expansion.eq_ignore_ascii_case(&trimmed_lower);
+            // After a number the code is a unit or an era ("500 gm", "300
+            // bc"), never the phrase (hunt 2026-09-18).
+            const UNIT_OR_ERA_CODES: &[&str] = &["bc", "dm", "gm", "nm"];
+            let prev_t = prev_word.trim();
+            let after_number = UNIT_OR_ERA_CODES.contains(&trimmed_lower.as_str())
+                && prev_t.chars().any(|c| c.is_ascii_digit())
+                && prev_t.chars().all(|c| c.is_ascii_digit() || matches!(c, ',' | '.'));
             if !contains_word(&candidates, &formatted) {
                 candidates.push(RankedCandidate {
                     word: formatted,
-                    is_autocorrect: shorthand.is_autocorrect,
+                    is_autocorrect: shorthand.is_autocorrect
+                        && !after_number
+                        && (self_map || (!typed_caps && !has_internal_uppercase)),
                 });
             }
         } else if let Some(&(_, hyphenated)) = Self::COMPOUND_HYPHEN_PHRASES.iter().find(|&&(k, _)| k == trimmed_lower) {
@@ -2005,7 +2278,16 @@ impl NlpEngine {
                     is_autocorrect: true,
                 });
             }
-        } else if let Some(typo_fix) = lookup_common_typo(&trimmed_lower) {
+        } else if let Some(typo_fix) = lookup_common_typo(&trimmed_lower).filter(|fix| {
+            // A dictionary word the person typed is not a "common typo":
+            // the Wikipedia table carried British spellings and plain
+            // words as keys ("favourite" -> favorite, "owed" -> word,
+            // "alright" -> all right, "mt" -> my; hunt 2026-09-18). Genuine
+            // misspellings that ship in the dictionary sit under the floor
+            // ("teh" 60, "thier" 152) and still fix.
+            TYPO_CORPUS_KNOWN_JUNK.contains(&trimmed_lower.as_str())
+                || !(is_exact && self.corpus_freq(&trimmed_lower) >= TYPO_CORPUS_REAL_WORD_FLOOR && !fix.contains('\''))
+        }) {
             // 3. Wikipedia 1,770+ Misspelling Corpus instant O(L log N) lookup.
             // Internal uppercase means a deliberate abbreviation, not a slip:
             // "CNA"/"HSE"/"YoY" stay typed; sentence-start "Teh" still fixes.
@@ -2020,7 +2302,12 @@ impl NlpEngine {
             // 4. Known contraction handling:
             // High-confidence unambiguous contractions (dont, cant, aint, wont, yall, etc.) auto-correct.
             // Ambiguous words (well, were, shed, wed, hell, its) do NOT auto-correct over exact word.
-            let is_ambiguous = matches!(trimmed_lower.as_str(), "well" | "were" | "shed" | "wed" | "hell" | "its" | "ill" | "id");
+            // "shell" and "lets" are everyday words ("the shell", "she lets
+            // me"): kept as typed, contraction offered (hunt 2026-09-18).
+            let is_ambiguous = matches!(trimmed_lower.as_str(), "well" | "were" | "shed" | "wed" | "hell" | "its" | "ill" | "id" | "shell" | "lets");
+            // A 2-3 letter token typed in capitals is an initialism (IM, ID,
+            // ILL), not a shouted contraction.
+            let caps_initialism = trimmed.chars().count() <= 3 && trimmed.chars().all(|c| c.is_uppercase());
             let formatted = Self::apply_casing(trimmed, contraction);
             // "ill" is ambiguous on paper, not in a chat: the dropped
             // apostrophe "I'll" is what gets typed, and the adjective is
@@ -2033,7 +2320,7 @@ impl NlpEngine {
                 if !contains_word(&candidates, &formatted) {
                     candidates.push(RankedCandidate {
                         word: formatted,
-                        is_autocorrect: true,
+                        is_autocorrect: !caps_initialism,
                     });
                 }
                 candidates.push(RankedCandidate {
@@ -2054,16 +2341,16 @@ impl NlpEngine {
             } else if !contains_word(&candidates, &formatted) {
                 candidates.push(RankedCandidate {
                     word: formatted,
-                    is_autocorrect: true,
+                    is_autocorrect: !caps_initialism,
                 });
             }
-        } else if is_exact {
+        } else if is_exact && !junk_exact_chat_split {
             // 5. Exact valid word -> NEVER auto-hijack
             candidates.push(RankedCandidate {
                 word: trimmed.to_string(),
                 is_autocorrect: false,
             });
-        } else if trimmed_lower.len() >= 4 && candidates.is_empty() {
+        } else if (trimmed_lower.len() >= 4 || junk_exact_chat_split) && candidates.is_empty() {
             // 5b. Missing Space Splitter (e.g. andthe -> and the, inmy -> in my, tothe -> to the)
             // Both halves must be solidly real words: dictionary junk in
             // the demoted 60-band produced auto-committing garbage splits
@@ -2091,6 +2378,31 @@ impl NlpEngine {
             // splitter was committing "Loch ran", "Field mark" and
             // "Anti gravity" (sweep 2026-08-27).
             let split_cap_blocked = trimmed.chars().next().is_some_and(|c| c.is_uppercase());
+            // "bein", "sleepin", "wantin": a dropped g is a register, not a
+            // missing space ("be in", "sleep in"). The typed form leads and
+            // nothing auto-commits (hunt 2026-09-18).
+            let g_dropped = trimmed_lower.len() >= 4 && trimmed_lower.ends_with("in") && {
+                let ing = self.trie.get_frequency(&format!("{trimmed_lower}g")).unwrap_or(0);
+                let stem = &trimmed_lower[..trimmed_lower.len() - 2];
+                let stem_is_verb = self.trie.get_frequency(stem).unwrap_or(0) >= AUTOCOMMIT_MIN_FREQ
+                    || self.trie.get_frequency(&format!("{stem}e")).unwrap_or(0) >= AUTOCOMMIT_MIN_FREQ;
+                // top-tier -ing words ("nothin", "mornin") or a real verb
+                // stem ("sleepin", "happenin", "textin"); an accidental
+                // drop inside "-tion" ("statin") has neither
+                // ... unless the two words are a strong pair of their own
+                // ("not in" 194, "back in" 190, "sign in" 206), which is the
+                // phrase over a one-letter-drop reading (review 2026-09-18)
+                ing >= 236
+                    || (ing >= AUTOCOMMIT_MIN_FREQ
+                        && stem_is_verb
+                        && self.bigram_pair_score(stem, "in") < SPLIT_UNBLOCKABLE_PAIR_SCORE)
+            };
+            if g_dropped {
+                candidates.push(RankedCandidate {
+                    word: trimmed.to_string(),
+                    is_autocorrect: false,
+                });
+            }
             // A triple letter run is burst territory ("helllo"), never a
             // missing space: splitting won ("hell lo") because the splitter
             // runs first and both halves are real words. Let stage 5c
@@ -2108,6 +2420,11 @@ impl NlpEngine {
                 c2 = Some(c3);
             }
             if !has_triple_run && !split_cap_blocked && trimmed_lower.is_ascii() {
+                // Every split point is weighed and the best attested pair
+                // wins: "ishe" is "is he" (168), not the chat-prefix
+                // reading "i she" (0) that happens to come first (sweep
+                // 2026-09-18).
+                let mut best_split: Option<(String, u8)> = None;
                 for (split_idx, _) in trimmed_lower.char_indices().skip(1) {
                     if split_idx >= trimmed_lower.len() || !trimmed.is_char_boundary(split_idx) {
                         continue;
@@ -2124,12 +2441,39 @@ impl NlpEngine {
                     // space; the collapse stage owns it.
                     let doubled_lead = left.chars().count() == 1 && right.starts_with(left);
                     let pair = self.bigram_pair_score(left, right);
+                    // A chat prefix ("i", "im", "dont", "u", "ur"...) run
+                    // into a top-tier word or a contraction is the phrase
+                    // even when the news-flavoured pair table barely knows
+                    // it: "iforgot", "imsure", "illdo", "iwasnt" (hunt
+                    // 2026-09-18: 928 of 1,029 "i"+verb tokens lost the
+                    // pronoun; "illdo" became "dildo").
+                    let chat_prefix = CHAT_PREFIXES.contains(&left);
+                    // Only a pronoun prefix splits on NO attestation at all
+                    // ("illdo", "imsure": the pair table has no apostrophe
+                    // tokens); "dont"/"cant"/"wont" need a witnessed pair,
+                    // or "wonton" is "won't on" (review 2026-09-18).
+                    let pronoun_prefix = matches!(left, "i" | "im" | "id" | "ill" | "ive" | "its" | "u" | "ur" | "ya");
+                    let right_is_contraction = CONTRACTIONS.binary_search_by_key(&right, |&(k, _)| k).is_ok();
+                    // The relaxed gate is only for tokens that have no
+                    // other top-tier reading: "ime" is time, "ino" is into,
+                    // "istory" is history (sweep 2026-09-18), and those
+                    // rivals can sit outside the blocker's short fuzzy list.
+                    let pair_ok = if self.bigrams.is_empty() {
+                        true
+                    } else if pair >= SPLIT_MIN_PAIR_SCORE {
+                        true
+                    } else if chat_prefix {
+                        (pair > 0 || (pronoun_prefix && (self.corpus_freq(right) >= 236 || right_is_contraction)))
+                            && !self.top_tier_one_edit_rival(&trimmed_lower, left, right)
+                    } else {
+                        false
+                    };
                     if !doubled_lead
                         && self.trie.get_frequency(left).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
-                        && self.trie.get_frequency(right).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ
+                        && (self.trie.get_frequency(right).unwrap_or(0) >= SPLIT_MIN_HALF_FREQ || right_is_contraction)
                         // Without a language model there is nothing to
                         // attest against; the halves-only rule stands.
-                        && (self.bigrams.is_empty() || pair >= SPLIT_MIN_PAIR_SCORE)
+                        && pair_ok
                         && !self.split_blocked_by_single_word(
                             &trimmed_lower,
                             left,
@@ -2137,17 +2481,48 @@ impl NlpEngine {
                             pair,
                             SPLIT_YIELD_TO_WORD_FREQ,
                             SPLIT_UNBLOCKABLE_PAIR_SCORE,
+                            true,
                         )
                     {
-                        let formatted_left = Self::apply_casing(&trimmed[..split_idx], left);
-                        let formatted_right = right.to_string();
+                        // Halves are shown the way a typed word would be:
+                        // a lone "i" is "I", a bare contraction gets its
+                        // apostrophe ("idont" -> "I don't").
+                        let show_right = |h: &str| -> String {
+                            if h == "i" {
+                                "I".to_string()
+                            } else if let Some(c) = contraction_display(h) {
+                                c.to_string()
+                            } else {
+                                h.to_string()
+                            }
+                        };
+                        // Only the LEFT half is a run-in chat prefix
+                        // ("illdo", "idlike", "itsok"); the right half is
+                        // the word it is ("on its way" stays possessive;
+                        // review 2026-09-18).
+                        let show_left = |h: &str| -> String {
+                            if CHAT_PREFIXES.contains(&h) {
+                                if let Ok(i) = CONTRACTIONS.binary_search_by_key(&h, |&(k, _)| k) {
+                                    return CONTRACTIONS[i].1.to_string();
+                                }
+                            }
+                            show_right(h)
+                        };
+                        let formatted_left = Self::apply_casing(&trimmed[..split_idx], &show_left(left));
+                        let formatted_right = show_right(right);
                         let split_phrase = format!("{} {}", formatted_left, formatted_right);
-                        candidates.push(RankedCandidate {
-                            word: split_phrase,
-                            is_autocorrect: true,
-                        });
-                        break;
+                        if best_split.as_ref().is_none_or(|(_, bp)| pair > *bp) {
+                            best_split = Some((split_phrase, pair));
+                        }
                     }
+                }
+                if let Some((split_phrase, _)) = best_split {
+                    candidates.push(RankedCandidate {
+                        word: split_phrase,
+                        // a g-dropped form ("bein") keeps the typed
+                        // word; the split stays one tap away
+                        is_autocorrect: !g_dropped,
+                    });
                 }
             }
             
@@ -2187,6 +2562,7 @@ impl NlpEngine {
                                 pair,
                                 SPLIT_YIELD_TO_WORD_FREQ,
                                 SPLIT_UNBLOCKABLE_PAIR_SCORE,
+                                false,
                             )
                         {
                             candidates.push(RankedCandidate {
@@ -2240,6 +2616,37 @@ impl NlpEngine {
                             .filter(|&f| !self.outranked_by_adjacent_slip(&trimmed_lower, w, f))
                             .map(|f| (w.to_string(), f, self.corpus_or_learned(w, f)))
                     };
+                    // One bounce on a word that already has a double letter
+                    // ("wwill", "goodd", "tooo", "needd") is one run one
+                    // letter too long, not every run flattened: "wil",
+                    // "god", "to", "needs" were committed (hunt 2026-09-18).
+                    // The commonest one-run-shortened reading that is a
+                    // real word wins; only when none is do the full
+                    // collapses get weighed.
+                    let mut one_run: Option<(String, u32, u32)> = None;
+                    {
+                        let cs: Vec<char> = trimmed_lower.chars().collect();
+                        let mut i = 0;
+                        while i < cs.len() {
+                            let mut j = i;
+                            while j + 1 < cs.len() && cs[j + 1] == cs[i] {
+                                j += 1;
+                            }
+                            if j > i {
+                                let mut v = cs.clone();
+                                v.remove(i);
+                                let v: String = v.into_iter().collect();
+                                if let Some(h) = hit(&v) {
+                                    if h.1 >= AUTOCOMMIT_MIN_FREQ
+                                        && one_run.as_ref().is_none_or(|b| h.2 > b.2)
+                                    {
+                                        one_run = Some(h);
+                                    }
+                                }
+                            }
+                            i = j + 1;
+                        }
+                    }
                     let single_hit = hit(&single_collapsed);
                     let double_hit = if double_collapsed.len() < trimmed_lower.len()
                         && double_collapsed != single_collapsed
@@ -2248,12 +2655,37 @@ impl NlpEngine {
                     } else {
                         None
                     };
-                    let chosen = match (single_hit, double_hit) {
+                    let chosen = one_run.or(match (single_hit, double_hit) {
                         (Some(s), Some(d)) => Some(if d.2 > s.2 { d } else { s }),
                         (s, d) => s.or(d),
-                    };
+                    });
+                    // A swap that lands on a double ("theer", "perss",
+                    // "sveen") looks like a burst; when two swapped letters
+                    // read as a top-tier word clearly ahead of the collapse
+                    // ("there" 253 over "ther" 160), the swap stage owns it.
+                    let chosen = chosen.filter(|(_, _, cf)| {
+                        !self
+                            .top_tier_adjacent_swap(&trimmed_lower)
+                            .is_some_and(|sf| sf >= cf.saturating_add(20))
+                    });
+                    // A collapse below the top tier yields to the everyday
+                    // word one letter LONGER than the token: "acces" is
+                    // access, not aces; "meber" is member, not ember (sweep
+                    // 2026-09-18).
+                    let chosen = chosen.filter(|(_, _, cf)| {
+                        *cf >= 236 || !self.one_insertion_rival(&trimmed_lower, cf.saturating_add(60))
+                    });
+                    // A junk-band collapse ("stl", "ain", "fina") is not
+                    // shown at all: as display filler it counted as a claim
+                    // and switched off every later fix ("stll" never became
+                    // still). Stretched slang ("yasss", "ewww") keeps the
+                    // filler, which is what protects it from a fuzzy
+                    // neighbour ("gases", "www") (hunt 2026-09-18).
+                    let chosen = chosen.filter(|(_, f, _)| *f >= AUTOCOMMIT_MIN_FREQ || has_triple_run);
                     if let Some((word, f, _)) = chosen {
-                        let formatted = Self::apply_casing(trimmed, &word);
+                        // "dontt" collapses to "dont": show it as "don't".
+                        let base: &str = contraction_display(&word).unwrap_or(&word);
+                        let formatted = Self::apply_casing(trimmed, base);
                         candidates.push(RankedCandidate {
                             word: formatted,
                             // "doona" collapsing to 60-band "dona" must not
@@ -2375,8 +2807,33 @@ impl NlpEngine {
             // (sweep 2026-09-13: 299 such flips across the top 1,000 words,
             // because this stage ran first and claimed the auto-commit).
             let best_swap = best_swap.filter(|(w, f)| !self.outranked_by_adjacent_slip(&trimmed_lower, w, *f));
+            // A rare swap must not take a token whose commoner reading is
+            // one dropped letter: "wasit" is "wait"/"was it", never "waist"
+            // (199); "sohe" is not "shoe" (hunt 2026-09-18).
+            // ... and not one whose commoner reading is one dropped letter
+            // of a longer word: "moent" is moment, not monet; "taes" is
+            // takes, not teas; "ters" is terms, not tres (sweep 2026-09-18).
+            let best_swap = best_swap.filter(|(w, f)| {
+                // a bare contraction key is as common as its apostrophe
+                // form ("catn" is can't, not can), same as the fuzzy stage
+                let shown: &str = contraction_display(w).unwrap_or(w.as_str());
+                let cf = self.corpus_or_learned(w, *f).max(self.corpus_freq(shown));
+                cf >= 236
+                    || (!self.one_deletion_rival(&trimmed_lower, cf.saturating_add(30))
+                        && !self.one_insertion_rival(&trimmed_lower, cf.saturating_add(60)))
+            });
+            // A junk-band guess ("lev" for lve, "peg" for pge) is not shown:
+            // as filler it vetoed the real fix (hunt 2026-09-18, finding
+            // 32). Stretched slang keeps it (see the collapse stage).
+            let stretched = {
+                let cs: Vec<char> = trimmed_lower.chars().collect();
+                cs.windows(3).any(|w| w[0] == w[1] && w[1] == w[2])
+            };
+            let best_swap = best_swap.filter(|(_, f)| *f >= AUTOCOMMIT_MIN_FREQ || stretched);
             if let Some((swapped_str, f)) = best_swap {
-                let formatted = Self::apply_casing(trimmed, &swapped_str);
+                // "catn" is shown as "can't", the way the fuzzy stage shows it
+                let base: &str = contraction_display(&swapped_str).unwrap_or(&swapped_str);
+                let formatted = Self::apply_casing(trimmed, base);
                 if !contains_word(&candidates, &formatted) {
                     let rc = RankedCandidate {
                         word: formatted,
@@ -2387,6 +2844,9 @@ impl NlpEngine {
                         is_autocorrect: !claimed_before_completions
                             && !has_internal_uppercase
                             && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
+                            // a typed apostrophe is deliberate: "kids'" must not
+                            // become "kid's" (hunt 2026-09-18)
+                            && !trimmed_lower.contains('\'')
                             && candidates.iter().all(|c| !c.is_autocorrect)
                             && f >= AUTOCOMMIT_MIN_FREQ,
                     };
@@ -2416,13 +2876,29 @@ impl NlpEngine {
                     if self.outranked_by_adjacent_slip(&trimmed_lower, &doubled_str, f) {
                         continue;
                     }
-                    let formatted = Self::apply_casing(trimmed, &doubled_str);
+                    // Both readings are one dropped letter; the everyday
+                    // word wins by a clear margin: "abot" is about, not
+                    // abbot (180); "oter" is other, not otter (hunt
+                    // 2026-09-18). Only an INSERTION rival counts: a
+                    // deletion rival would let "part" steal "parot".
+                    let dcf = self.corpus_or_learned(&doubled_str, f);
+                    if dcf < 236 && self.one_insertion_rival(&trimmed_lower, dcf.saturating_add(60)) {
+                        continue;
+                    }
+                    if f < AUTOCOMMIT_MIN_FREQ && !stretched {
+                        continue;
+                    }
+                    let base: &str = contraction_display(&doubled_str).unwrap_or(&doubled_str);
+                    let formatted = Self::apply_casing(trimmed, base);
                     if !contains_word(&candidates, &formatted) {
                         let rc = RankedCandidate {
                             word: formatted,
                             is_autocorrect: !claimed_before_completions
                                 && !has_internal_uppercase
                                 && !trimmed.chars().next().is_some_and(|c| c.is_uppercase())
+                                // a typed apostrophe is deliberate: "kids'" must not
+                                // become "kid's" (hunt 2026-09-18)
+                                && !trimmed_lower.contains('\'')
                                 && candidates.iter().all(|c| !c.is_autocorrect)
                                 && f >= AUTOCOMMIT_MIN_FREQ,
                         };
@@ -2495,7 +2971,7 @@ impl NlpEngine {
             // readings a top-tier word beats a rare one ("cdan" is "can",
             // not "chan"; "lke" is "like", not "lie"); ties fall through to
             // units, so an adjacent-key slip still beats a far one
-            // ("healt" is "heart", not "health"), then to the neighbour
+            // ("hous" is house before hours), then to the neighbour
             // shape, then to raw frequency. Shipped-corpus frequency for
             // the tier, so a learned boost cannot buy a place.
             // Cost in half-units: an adjacent-key substitution 2, a far
@@ -2503,7 +2979,8 @@ impl NlpEngine {
             // a far substitution, dearer than an adjacent one. That keeps
             // "sdll" -> sell (2) over will (4), "tfhe" -> the (3) over true
             // (4), "nt" -> my (4) level with at (4) so the neighbour shape
-            // decides, and "healt" -> heart (2) over health (3).
+            // decides, and "healt" -> health (3) over heart (4: l~r is not
+            // a QWERTY neighbour).
             let typed_chars = trimmed_lower.chars().count();
             let cost = |fc: &crate::trie::FuzzyCandidate| {
                 let len_diff = typed_chars.abs_diff(fc.word.chars().count());
@@ -2515,20 +2992,56 @@ impl NlpEngine {
             // substitution (4) or anything heavier sits behind. Raw cost
             // still breaks ties inside a bucket ("healt": heart before
             // health).
-            let bucket = |c: usize| match c {
-                0..=3 => 0,
-                4 => 1,
-                other => other,
+            // A single far substitution to a top-tier word is also one
+            // plausible slip: with the real QWERTY geometry (2026-09-18)
+            // "rfally" is really and "golng" is going, not the rarer
+            // dropped-letter readings "rally" and "gong". Two adjacent
+            // slips (also 4) stay behind: "sdll" is sell, not will.
+            // Rank, most plausible first: an adjacent-key slip of a
+            // top-tier word; a letter added or dropped from one ("frm" is
+            // from); an adjacent slip of a rarer word ("fem" behind from,
+            // but "luck" ahead of a far slip); one far substitution to a
+            // top-tier word ("rfally" really, "golng" going: ahead of the
+            // rarer dropped-letter readings rally/gong, behind any
+            // adjacent slip so "kuck" stays luck, not fuck — review
+            // 2026-09-18); an added/dropped letter of a rarer word; then
+            // everything heavier by cost.
+            let rank = |c: usize, tier: u8, one_far_sub_to_top_tier: bool| match (c, tier) {
+                (0..=2, 0) => 0,
+                (3, 0) => 1,
+                (0..=2, 1) => 2,
+                (4, 0) if one_far_sub_to_top_tier => 3,
+                // "ttis" is this, not the rare adjacent reading "tris"
+                (0..=2, _) => 4,
+                (3, 1) => 5,
+                (3, _) => 6,
+                (4, _) => 7,
+                (c, t) => 8 + c * 2 + t as usize,
             };
             let mut sorted_fuzzy = fuzzy;
             sorted_fuzzy.sort_by_key(|fc| {
                 let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
-                let tier = if self.corpus_or_learned(&fc.word, fc.frequency) >= 236 { 0 } else { 1 };
+                // A bare contraction key is as common as its apostrophe
+                // form: "canr" is "can't", not "can" (hunt 2026-09-18).
+                let shown: &str = contraction_display(&fc.word).unwrap_or(fc.word.as_str());
+                let commonness = self
+                    .corpus_or_learned(&fc.word, fc.frequency)
+                    .max(self.corpus_freq(shown));
+                // top tier, everyday (200-235: luck, keen), rare (< 200: tris)
+                let tier: u8 = if commonness >= 236 { 0 } else if commonness >= 200 { 1 } else { 2 };
                 let c = cost(fc);
+                let one_far_sub_to_top_tier = tier == 0
+                    && fc.distance == 2
+                    && fc.word.chars().count() == typed_chars
+                    && edit_count(&trimmed_lower, &fc.word) == 1;
+                // Among equals the longer word wins: dropping a letter is
+                // a far commoner slip than typing a stray one, so "tme" is
+                // time, not me; "rund" is round, not run (sweep 2026-09-18).
+                let shorter = if fc.word.chars().count() < typed_chars { 1 } else { 0 };
                 (
-                    bucket(c),
-                    tier,
+                    rank(c, tier, one_far_sub_to_top_tier),
                     c,
+                    shorter,
                     if is_neighbor { 0 } else { 1 },
                     std::cmp::Reverse(fc.frequency),
                 )
@@ -2589,9 +3102,21 @@ impl NlpEngine {
                     // separate names from typos at a sentence boundary;
                     // capitalized fixes stay curated corpus entries only
                     // ("Teh" -> The still works through branch 3).
+                    // A two-letter token is never turned into one letter
+                    // ("vs" -> "s", "wk" -> "w"; hunt 2026-09-18).
+                    let one_letter_for_two = trimmed_lower.chars().count() == 2 && fc.word.chars().count() == 1;
+                    // "alotof" is not aloof (152), "inabit" is not inhabit
+                    // (172): a token that opens with a strongly attested
+                    // pair is a run-together the splitter cannot reach
+                    // (three words); a rare word stays a suggestion (hunt
+                    // 2026-09-18).
+                    let shadowed_by_phrase = self.corpus_or_learned(&fc.word, fc.frequency) < 236
+                        && self.has_strong_prefix_pair(&trimmed_lower);
                     let should_autocorrect = !is_exact
                         && !is_capitalized
                         && !has_edge_apostrophe
+                        && !one_letter_for_two
+                        && !shadowed_by_phrase
                         && (fc.distance <= 2 || is_neighbor)
                         && fc.frequency >= AUTOCOMMIT_MIN_FREQ
                         && (candidates.is_empty() || punches_filler);
@@ -2705,7 +3230,11 @@ impl NlpEngine {
         // needs the correct form clearly attested (>=150) and clearly
         // ahead (+30, ~13x the count) — "more then"->than (+52) and
         // "and than"->then (+67) keep firing; the coin flips stay typed.
-        if !prev_word.is_empty() && !candidates.is_empty() {
+        // A token typed WITH its apostrophe ("you're", "they're") is the
+        // word meant; the pair table has no apostrophe tokens, so the gate
+        // below would read "is you're" as unattested and flip it to "your"
+        // (hunt 2026-09-18).
+        if !prev_word.is_empty() && !candidates.is_empty() && !trimmed_lower.contains('\'') {
             if let Some(correct_homophone) = Self::disambiguate_homophone(prev_word, &candidates[0].word) {
                 let prev_l = prev_word.trim().to_lowercase();
                 let wrong_l = candidates[0].word.to_lowercase();
@@ -2896,42 +3425,53 @@ pub fn is_spatial_keyboard_neighbor(a: char, b: char) -> bool {
     Self::adjacency_table(a, b) || Self::adjacency_table(b, a)
 }
 
+/// Key centre of a letter on the staggered QWERTY phone layout, in key
+/// units: row offsets 0, 0.5 and 1.5, row pitch 1.
+fn qwerty_key_pos(c: char) -> Option<(f32, f32)> {
+    const ROWS: [&str; 3] = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+    const OFFSETS: [f32; 3] = [0.0, 0.5, 1.5];
+    ROWS.iter().enumerate().find_map(|(r, row)| {
+        row.find(c).map(|i| (i as f32 + OFFSETS[r], r as f32))
+    })
+}
+
 fn adjacency_table(a: char, b: char) -> bool {
     let a = a.to_ascii_lowercase();
     let b = b.to_ascii_lowercase();
     if a == b {
         return true;
     }
-    // QWERTY & Dvorak physical adjacency graph
-    match a {
-        'q' => matches!(b, 'w' | 'a' | 's' | 'j' | 'k'),
-        'w' => matches!(b, 'q' | 'e' | 'a' | 's' | 'd' | 'v' | 'z'),
-        'e' => matches!(b, 'w' | 'r' | 's' | 'd' | 'f' | 'o' | 'u' | '.'),
-        'r' => matches!(b, 'e' | 't' | 'd' | 'f' | 'g' | 'c' | 'l'),
-        't' => matches!(b, 'r' | 'y' | 'f' | 'g' | 'h' | 'n'),
-        'y' => matches!(b, 't' | 'u' | 'g' | 'h' | 'j' | 'p' | 'f'),
-        'u' => matches!(b, 'y' | 'i' | 'h' | 'j' | 'k' | 'e'),
-        'i' => matches!(b, 'u' | 'o' | 'j' | 'k' | 'l' | 'd'),
-        'o' => matches!(b, 'i' | 'p' | 'k' | 'l' | 'a' | 'e'),
-        'p' => matches!(b, 'o' | 'l' | 'y' | 'f'),
-        'a' => matches!(b, 'q' | 'w' | 's' | 'z' | 'o' | '\''),
-        's' => matches!(b, 'w' | 'e' | 'a' | 'd' | 'z' | 'x' | 'n' | '-'),
-        'd' => matches!(b, 'e' | 'r' | 's' | 'f' | 'x' | 'c' | 'i' | 'h'),
-        'f' => matches!(b, 'r' | 't' | 'd' | 'g' | 'c' | 'v' | 'y'),
-        'g' => matches!(b, 't' | 'y' | 'f' | 'h' | 'v' | 'b' | 'c' | 'r'),
-        'h' => matches!(b, 'y' | 'u' | 'g' | 'j' | 'b' | 'n' | 'd' | 't'),
-        'j' => matches!(b, 'u' | 'i' | 'h' | 'k' | 'n' | 'm' | 'q'),
-        'k' => matches!(b, 'i' | 'o' | 'j' | 'l' | 'm' | 'x'),
-        'l' => matches!(b, 'o' | 'p' | 'k' | 'r' | '/'),
-        'z' => matches!(b, 'a' | 's' | 'x' | 'v'),
-        'x' => matches!(b, 'z' | 's' | 'd' | 'c' | 'k' | 'b'),
-        'c' => matches!(b, 'x' | 'd' | 'f' | 'v' | 'g' | 'r'),
-        'v' => matches!(b, 'c' | 'f' | 'g' | 'b' | 'w' | 'z'),
-        'b' => matches!(b, 'v' | 'g' | 'h' | 'n' | 'x' | 'm'),
-        'n' => matches!(b, 'b' | 'h' | 'j' | 'm' | 't' | 's'),
-        'm' => matches!(b, 'n' | 'j' | 'k' | 'b' | 'w'),
-        _ => false,
+    // The staggered QWERTY phone layout, judged by the same elliptical
+    // rule the on-device touch model uses (see `SLIP_NEAR_FACTOR`): the
+    // next key across, the two keys under a top-row key, the key under a
+    // home-row key; not the bottom-row corners. This used to be a
+    // hand-written UNION of QWERTY and Dvorak, so "vould" read as "would"
+    // (v~w), "theb" as "then" (b~n) and "canh" as "can't" (h~t) on a
+    // QWERTY phone: 251 of 1,207 wrong commits in a slip census came from
+    // pairs adjacent only on a Dvorak keyboard (hunt 2026-09-18). On
+    // device the geometric touch model decides; this is the glide-off
+    // fallback and the sweep's reference.
+    if !a.is_ascii_lowercase() || !b.is_ascii_lowercase() {
+        return false;
     }
+    static NEAR: std::sync::OnceLock<[[bool; 26]; 26]> = std::sync::OnceLock::new();
+    let table = NEAR.get_or_init(|| {
+        let mut t = [[false; 26]; 26];
+        for (i, row) in t.iter_mut().enumerate() {
+            for (j, cell) in row.iter_mut().enumerate() {
+                let (a, b) = ((b'a' + i as u8) as char, (b'a' + j as u8) as char);
+                *cell = match (Self::qwerty_key_pos(a), Self::qwerty_key_pos(b)) {
+                    (Some((ax, ay)), Some((bx, by))) => {
+                        let (dx, dy) = (ax - bx, ay - by);
+                        dx * dx + dy * dy <= SLIP_NEAR_FACTOR * SLIP_NEAR_FACTOR
+                    }
+                    _ => false,
+                };
+            }
+        }
+        t
+    });
+    table[(a as u8 - b'a') as usize][(b as u8 - b'a') as usize]
 }
 
 /// Computes whether a candidate word's substitutions are all physical keyboard neighbor slips.

@@ -99,6 +99,14 @@ fn context_reorders_the_tail_by_pair_score() {
 #[test]
 fn context_rescues_a_candidate_from_below_the_display_cut() {
     let mut e = engine();
+    // Two completions and a commoner adjacent slip ("ab", b~n) outrank
+    // "am" on frequency, so it sits just below a width-4 cut. (Since the
+    // QWERTY-only adjacency of 2026-09-18 "as"/"at" are no longer slips of
+    // "an", and the visibility guarantee always shows the best slip.)
+    for (w, f) in [("and", 250), ("any", 245), ("ab", 245)] {
+        e.corpus_insert(w, f);
+        e.trie.insert(w, f);
+    }
     let blob = blob(&e, &[("i", "am", 230)]);
     e.load_bigrams(&blob).unwrap();
 

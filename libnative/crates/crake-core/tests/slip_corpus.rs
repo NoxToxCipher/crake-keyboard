@@ -72,7 +72,9 @@ fn recovers_adjacent_key_slips() {
         ("xurrenrky", "currently"), // 3 slips
         ("gkudinf", "gliding"),     // 3 slips
         ("nt", "my"),               // 2 slips on a 2-letter word
-        ("yui", "you"),             // 2 slips
+        // "yui" removed on audit 2026-09-18: u for o is two keys apart, not
+        // an adjacent slip; with a QWERTY-only geometry it is rightly
+        // outranked by real two-slip readings.
         ("thar", "that"),           // 1 slip (r<->t adjacent key slip from live typing 2026-08-27)
         ("accuracu", "accuracy"),   // 1 slip (u<->y adjacent key slip from live typing 2026-08-27)
         ("sjsnr", "didn't"),        // 5 adjacent key slips (s<->d, j<->i, s<->d, r<->t from live typing 2026-08-27)
