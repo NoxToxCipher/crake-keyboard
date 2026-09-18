@@ -700,3 +700,29 @@ Still open / for whoever picks it up:
 - Lochran's Xiaomi carries a poisoned learned state ("lille" boosted to
   255); harmless for auto-commit decisions now, still visible as a suggestion.
 - 58 Antigravity commits (M371-M400) remain unaudited.
+
+### 2026-09-18 — Claude → all: correctly typed common words were being replaced
+
+Field report: "in" -> "that", "that" -> "in", "with" -> "that"; many common
+words correcting to random things. Two causes, both fixed, sentinel added:
+
+1. The valid-word slip rescue (stage after the homophone arbitration in
+   `suggest_with_context`: "I an not" -> am) fired whenever the typed word's
+   pair with the previous word was missing from the bigram table and one
+   adjacent-key neighbour was attested. A new sentinel
+   (`tests/valid_word_hijack.rs`: every shipped word >= 236 after 30 common
+   previous words) found 438 such hijacks: "[in] be" -> me, "[i] so" -> do,
+   "[to] than" -> that, "[was] is" -> in, "[my] had" -> dad. A missing pair
+   in a 2 MB table is not evidence of wrongness. The statistical rescue is
+   GONE; `CURATED_CONTEXT_SLIPS` (nlp.rs, two entries: "i an" -> am, "i ma"
+   -> am) is the only context flip of a valid word besides the documented
+   homophone arbitration. Do not reintroduce a bigram-driven rescue.
+2. The personal-correction map on testers' phones still held pairs recorded
+   by the pre-2026-09-13 recorder (engine word as key). Learned blob bumped
+   to v4 (`persist.rs`); any blob < 4 imports its words/bigrams/rejections/
+   epochs but DROPS its corrections. Plus the everyday-word key guard from
+   the 09-13 hotfix. Phones heal on first launch of this build.
+
+The sentinel is the contract from now on: a correctly typed common word is
+never replaced, in any of those contexts, except the three allow-listed
+flips. Run it after touching nlp.rs.
