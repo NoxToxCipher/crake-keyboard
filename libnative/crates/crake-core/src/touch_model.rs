@@ -27,6 +27,18 @@ use std::collections::HashMap;
 /// a full edit. See the module docs for the Gaussian derivation.
 pub const NEAR_FACTOR: f32 = 1.25;
 
+/// Slip radius in key units along each axis (see `TouchModel::is_near`).
+/// A phone key is taller than it is wide (39 x 55 dp is typical), so one
+/// Euclidean pitch cannot cover both the next key across (1.0 width) and
+/// the key below (1.0 height, staggered: 1.12 in key units); with a single
+/// pitch of one key width, every vertical and diagonal slip was "far" and
+/// "fhe" committed "he", "havd" "had" on the default phone (hunt
+/// 2026-09-18). Per-axis normalisation puts the key below at 1.12; the
+/// bottom-row corner neighbours (a~z, l~m) sit at 1.41 and are NOT slips:
+/// counted as slips, "only" blocked the "on my" split. A far substitution
+/// to a top-tier word is still one plausible slip for ranking (nlp.rs).
+pub const SLIP_NEAR_FACTOR: f32 = 1.25;
+
 /// A physical capacitive contact patch reported by hardware touch digitizer (Idea 2 / Loops 4-6).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ContactPatch {
@@ -153,6 +165,9 @@ impl BivariateGaussianKey {
 pub struct TouchModel {
     centers: HashMap<char, (f32, f32)>,
     near_dist_sq: f32,
+    /// Key pitch across a row and between rows, for `is_near`.
+    pitch_x: f32,
+    pitch_y: f32,
     pub gaussian_keys: HashMap<char, BivariateGaussianKey>,
 }
 
@@ -195,6 +210,41 @@ impl TouchModel {
         }
         let pitch = median_sq.sqrt();
         let near = pitch * NEAR_FACTOR;
+        // Per-axis pitch: for each key, the nearest neighbour that is more
+        // across than down gives the row pitch, the nearest that is more
+        // down than across gives the row spacing; the medians are robust
+        // to a wide spacebar or an odd key.
+        let axis_median = |horizontal: bool| -> f32 {
+            let mut v: Vec<f32> = pts
+                .iter()
+                .enumerate()
+                .filter_map(|(i, a)| {
+                    let m = pts
+                        .iter()
+                        .enumerate()
+                        .filter(|&(j, _)| j != i)
+                        .filter_map(|(_, b)| {
+                            let (dx, dy) = ((a.0 - b.0).abs(), (a.1 - b.1).abs());
+                            let is_h = dy <= dx;
+                            if is_h == horizontal {
+                                Some(if horizontal { dx } else { dy })
+                            } else {
+                                None
+                            }
+                        })
+                        .fold(f32::INFINITY, f32::min);
+                    (m.is_finite() && m > 0.0).then_some(m)
+                })
+                .collect();
+            if v.is_empty() {
+                return pitch;
+            }
+            let mid = v.len() / 2;
+            v.select_nth_unstable_by(mid, |a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            v[mid]
+        };
+        let pitch_x = axis_median(true);
+        let pitch_y = axis_median(false);
         let mut gaussian_keys = HashMap::new();
         for (&ch, &(x, y)) in &centers {
             gaussian_keys.insert(ch, BivariateGaussianKey::new(x, y, pitch));
@@ -202,6 +252,8 @@ impl TouchModel {
         Some(Self {
             centers,
             near_dist_sq: near * near,
+            pitch_x,
+            pitch_y,
             gaussian_keys,
         })
     }
@@ -287,8 +339,10 @@ impl TouchModel {
         }
         match (self.centers.get(&a), self.centers.get(&b)) {
             (Some(&(ax, ay)), Some(&(bx, by))) => {
-                let (dx, dy) = (ax - bx, ay - by);
-                dx * dx + dy * dy <= self.near_dist_sq
+                // Elliptical: each axis in units of its own pitch, so the
+                // key below counts as a slip on a tall phone key.
+                let (dx, dy) = ((ax - bx) / self.pitch_x, (ay - by) / self.pitch_y);
+                dx * dx + dy * dy <= SLIP_NEAR_FACTOR * SLIP_NEAR_FACTOR
             }
             _ => false,
         }
