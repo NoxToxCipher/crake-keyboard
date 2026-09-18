@@ -923,3 +923,16 @@ for the bumped space -- it would let a low thumb on n still type n -- but it
 re-hit-tests at TOUCH_DOWN, before a space-bar swipe can be distinguished
 from a tap, and the 2026-08-27 delete-key report is exactly what that
 coupling caused last time. It needs a device test session, not a desk fix.
+
+#### Same day — ":)" could not be typed at the end of a sentence (Claude)
+
+`EditorInstance.commitChar` removes the auto-inserted space when punctuation
+follows punctuation, so "Hello!" + "?" closes up into "Hello!?" and ".."
+grows into "...". The set on both sides included `:` and `;`, so "Hello. " +
+":" deleted the space and gave "Hello.:", and the ")" then closed up behind
+it through the ordinary auto-space path: "Hello.:)". Chaining is now the
+marks that actually chain -- `!`, `?`, `.` -- on both sides, as a pure
+top-level `punctuationChainsOnto` pinned by PunctuationChainTest. Traced
+against the shipped punctuation rule (`symbolsPrecedingAutoSpace` holds
+neither `:` nor `;`, `symbolsFollowingAutoSpace` is empty), the sequence now
+lands as "Hello. :) ". "Note: " + "." no longer becomes "Note:." either.
