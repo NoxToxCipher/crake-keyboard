@@ -2509,14 +2509,26 @@ impl NlpEngine {
                 let len_diff = typed_chars.abs_diff(fc.word.chars().count());
                 fc.distance * 2 - len_diff.min(fc.distance)
             };
+            // One plausible slip — an adjacent key (2) or a letter added or
+            // dropped (3) — is one bucket, and commonness decides inside it
+            // ("frm" is from, not fem; "cdan" is can, not chan). A far
+            // substitution (4) or anything heavier sits behind. Raw cost
+            // still breaks ties inside a bucket ("healt": heart before
+            // health).
+            let bucket = |c: usize| match c {
+                0..=3 => 0,
+                4 => 1,
+                other => other,
+            };
             let mut sorted_fuzzy = fuzzy;
             sorted_fuzzy.sort_by_key(|fc| {
                 let is_neighbor = Self::is_spatial_slip_match(&trimmed_lower, &fc.word);
                 let tier = if self.corpus_or_learned(&fc.word, fc.frequency) >= 236 { 0 } else { 1 };
+                let c = cost(fc);
                 (
-                    cost(fc),
+                    bucket(c),
                     tier,
-                    fc.distance,
+                    c,
                     if is_neighbor { 0 } else { 1 },
                     std::cmp::Reverse(fc.frequency),
                 )
@@ -2877,6 +2889,14 @@ impl NlpEngine {
 /// Check if two characters are physical spatial neighbors on standard layouts (QWERTY & Dvorak).
 /// Improves autocorrect accuracy by ~40% for misplaced tap slips.
 pub fn is_spatial_keyboard_neighbor(a: char, b: char) -> bool {
+    // The hand-written table below is not symmetric (e lists f, f does not
+    // list e): "vfry" was read as a FAR slip of "very" and lost to "fry"
+    // (2026-09-18). Adjacency is a property of the keyboard, not of the
+    // direction of the lookup.
+    Self::adjacency_table(a, b) || Self::adjacency_table(b, a)
+}
+
+fn adjacency_table(a: char, b: char) -> bool {
     let a = a.to_ascii_lowercase();
     let b = b.to_ascii_lowercase();
     if a == b {

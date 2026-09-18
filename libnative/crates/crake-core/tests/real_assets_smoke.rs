@@ -75,15 +75,15 @@ fn shipped_fixes_hold_on_shipped_assets() {
         // where the neighbour is the clear reading it still wins
         ("", "whe", ""),
         ("", "healt", "heart"),
-        // house/hours is a coin flip: shown, never committed
-        ("", "hous", ""),
+        // house (249) over hours (244): the commoner one-letter fix wins
+        ("", "hous", "house"),
         // a capitalised token is a name ("Gav" stays); an equally close,
         // commoner insertion rival wins the token ("thre" is there)
         ("", "Gav", ""),
         ("hi", "Gav", ""),
         // "thre"/"thir" are three-way ambiguous (the/there/three,
         // this/their/third): no commit, or the commonest reading
-        ("", "thre", ""),
+        ("", "thre", "the"),
         ("", "thir", "their"),
         // the pronoun/article-drop class the sweep cannot see
         ("", "iwas", "i was"),
@@ -118,6 +118,15 @@ fn shipped_fixes_hold_on_shipped_assets() {
         // fuzzy ranking: one adjacent slip beats a two-slip top-tier word;
         // an ineligible far word cannot starve the dropped-letter fix
         ("", "sdll", "sell"),
+        // adjacency is symmetric and one plausible slip is one bucket
+        // (2026-09-18): a common word beats a rare one inside it
+        ("", "vfry", "very"),
+        ("", "frm", "from"),
+        ("", "belng", "being"),
+        ("", "cdan", "can"),
+        ("", "rfally", "really"),
+        ("", "golng", "going"),
+        ("", "thbe", "the"),
         ("", "frday", "friday"),
         ("", "htel", "hotel"),
         // must never flip: AU vocab, his project names, abbreviations
