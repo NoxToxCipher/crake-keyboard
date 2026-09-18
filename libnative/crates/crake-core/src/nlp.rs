@@ -1294,6 +1294,31 @@ impl NlpEngine {
         false
     }
 
+    /// Whether `token` is still the beginning of a longer everyday word,
+    /// i.e. the person may not have finished typing it. Used to refuse a
+    /// mid-word replacement (2026-09-19).
+    fn is_live_prefix(&self, token: &str) -> bool {
+        // 200, not the usual 236: "fini" continues into finished 233 and
+        // finish 232, and those are exactly the words being typed when the
+        // space bar is bumped.
+        const LIVE_PREFIX_MIN_FREQ: u32 = 200;
+        self.trie
+            .prefix_search(token, 8)
+            .iter()
+            .any(|(w, _)| w.chars().count() > token.chars().count() && self.corpus_freq(w) >= LIVE_PREFIX_MIN_FREQ)
+    }
+
+    /// How many everyday words (corpus >= 236) `token` could still become.
+    /// Two or more and the word in progress is anyone's guess: "unde" is
+    /// under AND understand, so neither may be committed over the other.
+    fn top_tier_continuations(&self, token: &str) -> usize {
+        self.trie
+            .prefix_search(token, 8)
+            .iter()
+            .filter(|(w, _)| w.chars().count() > token.chars().count() && self.corpus_freq(w) >= 236)
+            .count()
+    }
+
     /// Whether some top-tier word (corpus >= 236), other than the two
     /// halves, is one edit (insert, delete, substitute, adjacent swap) from
     /// `token`. Enumerated directly: the fuzzy search's short result list
@@ -3404,6 +3429,46 @@ impl NlpEngine {
                 }
             }
             candidates.truncate(max_candidates);
+        }
+
+        // A half-typed long word must never be replaced by a DIFFERENT
+        // word. A stray space mid-word (the space bar sits directly under
+        // c/v/b/n) used to commit "worl" as "work", "thr" as "the", "hou"
+        // as "you", "somet" as "some" -- 730 such rewrites across the
+        // interior prefixes of the 1,500 commonest words -- and the rest of
+        // the word was then typed after it: "finishing" became
+        // "find shing" (field report 2026-09-19). When what was typed is
+        // still a live prefix of a common word, only a candidate that
+        // CONTINUES it may auto-commit ("peopl" -> people stays, all 611
+        // continuations stay); anything else is a suggestion. A typo is not
+        // a prefix of anything, so ordinary autocorrect is untouched.
+        // Three letters and up: a two-letter token is where the curated
+        // context slips live ("i an" -> "i am") and there is no room for a
+        // word to be "in progress" in two keystrokes.
+        if trimmed_lower.chars().count() >= 3 && self.is_live_prefix(&trimmed_lower) {
+            // What the user taught this keyboard themselves always stands.
+            let taught = if include_personal {
+                self.personal_correction_with_count(&trimmed_lower).map(|(w, _)| w.to_ascii_lowercase())
+            } else {
+                None
+            };
+            for c in candidates.iter_mut() {
+                if !c.is_autocorrect {
+                    continue;
+                }
+                if taught.as_deref() == Some(c.word.to_ascii_lowercase().as_str()) {
+                    continue;
+                }
+                let bare = c.word.to_ascii_lowercase();
+                // A candidate that keeps every letter typed, and only adds
+                // a space or an apostrophe, cannot destroy the word:
+                // "notin" -> "not in", "whos" -> "who's" are always fine.
+                let letters: String = bare.chars().filter(|c| c.is_alphanumeric()).collect();
+                let keeps_letters = letters.starts_with(trimmed_lower.as_str());
+                if !keeps_letters {
+                    c.is_autocorrect = false;
+                }
+            }
         }
 
         SuggestionResult {

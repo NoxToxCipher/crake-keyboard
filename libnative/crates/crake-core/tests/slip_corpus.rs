@@ -658,7 +658,10 @@ fn single_slip_punches_prefix_filler_on_long_words() {
     let r = e.suggest_with_context("worke", "", 5);
     let head = r.candidates.first().expect("candidates");
     assert_eq!(head.word, "works", "got {:?}", r.candidates);
-    assert!(head.is_autocorrect, "'worke' -> works must auto-commit");
+    // ... but it does not COMMIT it: "worke" is still the start of worked
+    // and worker, and a word that may be unfinished is never overwritten
+    // (field report 2026-09-19). The punch-through is about ranking.
+    assert!(!head.is_autocorrect, "'worke' may be offered, never committed");
     let r = e.suggest_with_context("pleade", "", 5);
     let head = r.candidates.first().expect("candidates");
     assert_eq!(head.word, "please", "corpus lane: got {:?}", r.candidates);

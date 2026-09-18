@@ -37,9 +37,9 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "abunch", "a bunch"),
         ("", "thoriufhky", "thoroughly"),
         ("", "xurrenrky", "currently"),
-        ("", "aer", "are"),
+        ("", "aer", ""),
         ("always", "hse", "use"),
-        ("", "tou", "you"),
+        ("", "tou", ""),
         ("", "tomorow", "tomorrow"),
         ("", "helllo", "hello"),
         ("", "inmy", "in my"),
@@ -86,8 +86,8 @@ fn shipped_fixes_hold_on_shipped_assets() {
         // this/their/third): no commit, or the commonest reading; since
         // 2026-09-18 a cost tie prefers the longer word (a dropped letter
         // is the commoner slip), so "thre" is there
-        ("", "thre", "there"),
-        ("", "thir", "their"),
+        ("", "thre", ""),
+        ("", "thir", ""),
         // the pronoun/article-drop class the sweep cannot see (a lone "i"
         // half is shown as "I", 2026-09-18)
         ("", "iwas", "I was"),
@@ -99,8 +99,8 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "heis", "he is"),
         // one adjacent slip of a top-tier word punches through the typo's
         // own completions ("front", "james")
-        ("", "fron", "from"),
-        ("", "jame", "name"),
+        ("", "fron", ""),
+        ("", "jame", ""),
         ("", "hig", ""),
         // a typing slip of one common word is never a phrase, however
         // strong the pair; a stray letter after a common word is that word
@@ -122,6 +122,27 @@ fn shipped_fixes_hold_on_shipped_assets() {
         // fuzzy ranking: one adjacent slip beats a two-slip top-tier word;
         // an ineligible far word cannot starve the dropped-letter fix
         ("", "sdll", "sell"),
+        // A token that is still the start of an everyday word is NEVER
+        // replaced by a different word: the space bar sits under c/v/b/n,
+        // so a bumped space mid-word used to commit "fini" as "find" and
+        // the rest of the word landed after it ("find shing"; field report
+        // 2026-09-19, 730 such rewrites across the interior prefixes of the
+        // 1,500 commonest words, now 27). These nine were field fixes that
+        // are also live prefixes ("fron" of front, "thre" of three, "ment"
+        // of mental): each is still offered in the strip, one tap away,
+        // but none may overwrite letters that may not be finished.
+        ("", "worl", ""),
+        ("", "fini", ""),
+        ("", "somet", ""),
+        ("", "hou", ""),
+        ("", "thr", ""),
+        ("", "alw", ""),
+        ("", "wome", ""),
+        // ... while anything that keeps every letter typed still commits
+        ("", "peopl", "people"),
+        ("", "becaus", "because"),
+        ("", "kno", "know"),
+        ("", "notin", "not in"),
         // hunt 2026-09-18
         ("the", "shell", ""),
         ("she", "lets", ""),
@@ -210,7 +231,7 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "tme", "time"),
         ("", "mke", "make"),
         ("", "rund", "round"),
-        ("", "leat", "least"),
+        ("", "leat", ""),
         ("", "maye", "maybe"),
         ("", "acces", "access"),
         ("", "meber", "member"),
@@ -255,7 +276,7 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "nite", ""),
         ("", "aight", ""),
         ("", "planing", ""),
-        ("", "ment", "meant"),
+        ("", "ment", ""),
         ("or", "ill", "I'll"),
         ("again", "ill", "I'll"),
         // shorthand (hunt 2026-09-18): a typed initialism never expands, a
