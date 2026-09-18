@@ -738,3 +738,132 @@ plausible slip" so shipped-corpus commonness decides inside it. Pushed as
 28681fc1c. A six-lens hunt workflow (context, phrases, contractions, Kotlin
 pipeline, shorthand, ranking) with independent verifiers is running; its
 confirmed findings will be applied and noted here.
+
+#### Same day, evening — the hunt's confirmed findings applied (Claude)
+
+The six-lens hunt finished: 57 agents, 34 findings confirmed by independent
+verifiers, 17 refuted. Everything below follows the VERIFIER's narrowed
+shape, not the hunter's first suggestion (several of those were measured
+harmful). Suite 235/235; sweep against the shipped assets, on the probes the
+old and new slip generators share: wrong auto-commits 1,494 -> 974, misses
+347 -> 258 (sweep14 -> sweep17). Checked on the Xiaomi by tapping keys in
+the settings preview field (a foreground check before every injected tap).
+
+Engine (`nlp.rs`, `touch_model.rs`, `typo_corpus.rs`, `core_dict.rs`,
+`shorthand.rs`):
+- Typo corpus: 17 keys that are real words purged (favourite, neighbour,
+  judgement, criticise, alright, owed, fins, lite, mt, whiskey, ...) and the
+  branch now refuses any key that is a dictionary word at corpus >= 160
+  ("teh" 60, "thier" 152 still fix). AMERICAN_TO_BRITISH is still unused.
+- Geometry: the static adjacency table is now DERIVED from the staggered
+  QWERTY layout with the same elliptical rule the touch model uses (rows
+  0/0.5/1.5, radius 1.25 key units per axis). It used to be a hand-written
+  union of QWERTY and Dvorak, so "vould" read as would (v~w), "canh" as
+  can't (h~t): 251 of 1,207 wrong commits in a census were Dvorak-only
+  pairs. `TouchModel::from_layout` now keeps a separate row pitch and row
+  spacing and `is_near` is elliptical, so on a real 39x55 dp key the key
+  below IS a slip (it was "far", which is why "fhe" -> he, "havd" -> had on
+  the default glide-on phone). A sweep with the phone model is now identical
+  to the static one. Bottom-row corner pairs (a~z, l~m) are NOT slips.
+- Stage-7 ranking: a single far substitution to a top-tier word is one
+  plausible slip (rfally -> really, golng -> going); a cost tie prefers the
+  LONGER word because dropping a letter is the commoner slip (tme -> time,
+  rund -> round, thre -> there now).
+- 5c bursts: one-run-shortened variants first (wwill -> will, goodd -> good,
+  tooo -> too); a top-tier adjacent swap owns the token (theer -> there,
+  perss -> press); a sub-tier collapse yields to the everyday word one
+  letter longer (acces -> access). 6b: the doubled guess yields to a
+  top-tier INSERTION rival (abot -> about, oter -> other; deletion rivals
+  deliberately not, or "part" steals "parot"); the swap yields to a commoner
+  deletion or insertion reading (wasit no longer -> waist; moent -> moment).
+- Junk-band (< 150) swap/collapse guesses are no longer shown at all: as
+  display filler they counted as a claim and vetoed every later fix (lve,
+  stll, flm, pge, aain). Tokens with a run of three keep the filler, which
+  is what protects "yasss"/"ewww" from a fuzzy neighbour. "finna", "tmr"
+  shipped so they stay typed.
+- Splitter: chat prefixes (i, im, its, dont, u, ur ...) run into a top-tier
+  word or contraction split on any attestation ("iforgot" -> I forgot,
+  "illdo" -> I'll do, was "dildo") but never when another top-tier word is
+  one edit away ("ime" is time); every split point is weighed and the best
+  pair wins ("ishe" -> is he, not "I she"); halves show like typed words
+  (lone i -> I, "idont" -> I don't); a junk exact entry that is a chat
+  prefix + word ("iam") no longer shields itself behind the exact-word
+  rule; g-dropped verb forms keep the typed word (bein, sleepin: the split
+  and the -ing form are one tap away). The far-letter insertion rule only
+  guards the direct splitter, not the space beam (b/n/m/v ARE the keys hit
+  instead of space: somebone -> someone). A rare word never takes a token
+  that opens with a strong pair (alotof is not aloof).
+- Contractions: "shell"/"lets" ambiguous; ALL-CAPS 2-3 letter tokens are
+  initialisms; typographic apostrophes normalised; a typed apostrophe blocks
+  the 6b transposition (kids' stays; y'all is not ya'll); homophone
+  arbitration never flips a token typed WITH its apostrophe (is you're
+  stays); a bare contraction key ranks by its display form (canr -> can't);
+  "still"/"bit"/"sick"... read "ill" as the adjective ("not" deliberately
+  not: "if not ill come" is I'll). ma'am, g'day, y'all shipped.
+- Shorthand: codes one slip from a common word (np, gl, bf, rn, nw, ty, yt,
+  op, irl, cu, tg, rt) and codes that are words (asap, faq, nsfw, ...) are
+  suggestion-only; profanity codes never spell out; a typed initialism ("500
+  BC", "london NW") and any code after a number ("500 gm") never expand.
+- Two-letter tokens never become one letter (vs, wk stay); chat/AU vocab
+  shipped (ghosted, vibing, soz, defs, righto, nup, ta, yeh, ...).
+
+Kotlin (commit path) — findings 17/18/19/24/25 plus one found on the phone:
+- `KeyboardManager`: auto-commit fires only on space and . , ? ! and never
+  for a token holding a digit or `. : / @ - _ & + #`, nor in a URI/email
+  field. Every other non-letter key used to commit the fragment so far
+  ("youtu" + "." -> "youth.").
+- Word candidates carry `replacesText` (the trailing letter run the engine
+  judged); `commitCompletion` deletes only that span ("https://youtu" no
+  longer -> "youth"), and `getAutoCommitCandidate` returns null when the run
+  under the cursor is not the one the candidate was computed for.
+- Fleet map: yields to any token the native trie knows (new
+  `nativeNlpIsKnownWord`), and "ifs", "ans", "toi", "jat", "beither",
+  "widt", "cant", "wont" are gone from it.
+- Personal-dictionary words (Floris + system) are pushed into the native
+  trie on warm (`syncUserVocabulary`), so adding a word stops it being
+  corrected.
+- Sentence start: the first word of every message went uncorrected because
+  auto-shift capitalised it and a capitalised token is a name to the engine.
+  `LatinLanguageProvider` now re-queries the lowercase token when the
+  capital is the sentence start's and the engine offered no fix, and gives
+  the answer its capital back ("Lile" -> Like, "Abit" -> A bit on the
+  phone). Mid-sentence capitals are still names.
+
+Declined / refuted, do not redo: the junk-claim veto rewrite (RK3: both
+variants hijack slang; replaced by the narrow "never push a sub-floor
+guess"); a deletion-rival yield in 6b (steals parot/trimed); a three-way
+splitter (the strong-prefix shadow rule covers the 58 wrong commits);
+"not" as an ill-adjective trigger; the eviction and 3-letter punch-through
+findings (refuted); a QWERTY-geometry touch model with the old Euclidean
+pitch (measured 3x worse).
+
+Known costs, deliberate: accidental g-drops of top-tier -ing words stay
+typed (durin, meetin, followin: 22 sweep rows); "wriing" -> wiring (the
+swap margin); "yourd" -> you're (tie). Harness note: the phone's symbols
+layer has ten keys on its middle row and "/" at the row end; the tap
+typer is calibrated for it (`type_taps_phone.py`).
+
+Review round (same evening): a four-lens adversarial review of the batch
+confirmed 28 findings, all applied before commit — the junk-exact split
+gate and the zero-attestation chat split now need a witnessed pair or a
+pronoun prefix ("irate", "imparts", "wonton" stay); a swap/doubled guess
+weighs a bare contraction by its display form and shows it with the
+apostrophe ("catn" -> can't, not can); only the LEFT half of a split is a
+chat prefix ("on its way" stays possessive); the shared slip guard also
+yields to a top-tier far substitution ("ttis" -> this, "hhat" -> that);
+the stage-7 order is now adjacent-top, add/drop-top, adjacent-everyday
+(>= 200), one far substitution to top tier, adjacent-rare, ... so "kuck"
+is luck and "rfally" is really; the three-word shadow needs three real
+words ("orane" -> orange, "toally" -> totally); g-drop yields to a strong
+pair ("notin" -> not in, "backin" -> back in); the after-number shorthand
+gate covers only bc/dm/gm/nm after a pure number ("3 ppl" -> people); the
+ill-adjective triggers lost or/again/already and the pronouns; six more
+real-word typo-corpus keys purged (nite, aight, planing, ...) with a
+known-junk allowlist (ment, gunna) that still fixes; the adjacency table
+is a cached 26x26 (the per-pair geometry had doubled suggest latency).
+Kotlin: auto-commit also refuses PASSWORD fields; `; ) ] } "` end a word
+like . , ? ! do; shortcut/snippet candidates bypass the non-word token
+gate ("addr2" still expands). Known, deliberate: the sentence-start recase
+will correct an unknown name as the first word of a message once
+("Gav" -> Gave) until it is reverted or added to the dictionary; the
+personal-dictionary sync and revert learning are the safety net.
