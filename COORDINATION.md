@@ -726,3 +726,15 @@ words correcting to random things. Two causes, both fixed, sentinel added:
 The sentinel is the contract from now on: a correctly typed common word is
 never replaced, in any of those contexts, except the three allow-listed
 flips. Run it after touching nlp.rs.
+
+#### Same day, later — adjacency table was asymmetric (Claude)
+
+`is_spatial_keyboard_neighbor` now wraps the hand-written table symmetrically
+(e listed f, f did not list e). Before this, "vfry" was costed as a FAR slip
+of "very" and lost to "fry"; "frm" lost to "fem", "belng" to "belong". The
+fuzzy sort key is now (bucket, tier, cost, neighbour, freq) where cost is in
+half-units (adjacent 2, add/drop 3, far 4) and bucket groups {2,3} as "one
+plausible slip" so shipped-corpus commonness decides inside it. Pushed as
+28681fc1c. A six-lens hunt workflow (context, phrases, contractions, Kotlin
+pipeline, shorthand, ranking) with independent verifiers is running; its
+confirmed findings will be applied and noted here.
