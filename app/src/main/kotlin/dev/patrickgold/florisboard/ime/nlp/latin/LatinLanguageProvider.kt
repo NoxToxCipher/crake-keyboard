@@ -301,7 +301,16 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             val cleanWordQuery = sanitizeWordToken(query, trimTrailingWhitespace = false)
             if (cleanWordQuery.isNotBlank()) {
                 val fleetCorrection = FLEET_TYPO_CORRECTIONS[cleanWordQuery.fastLowercase()]
-                if (fleetCorrection != null) {
+                // Hunt 2026-09-18 (finding 19): the map fired ahead of the
+                // engine with no off-switch, so a real word on its left side
+                // was rewritten ("no ifs" -> "no it's") and the backspace
+                // revert that teaches the engine never reached it. A token
+                // the trie knows - shipped, learned from a revert, or in the
+                // personal dictionary - is exact to the engine, and
+                // autocorrect never touches an exact word; the map yields
+                // the same way, in private sessions too (the engine's
+                // exact-word test does not depend on includePersonal).
+                if (fleetCorrection != null && !isKnownToEngine(cleanWordQuery)) {
                     val formatted = when {
                         cleanWordQuery.all { it.isUpperCase() } -> fleetCorrection.uppercase()
                         cleanWordQuery.first().isUpperCase() -> fleetCorrection.replaceFirstChar { it.uppercase() }
@@ -356,6 +365,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             }
         }
         return this
+    }
+
+    /** Would the engine leave this token alone? False when native is absent,
+     *  so the fleet map keeps working as the only corrector in that state. */
+    private fun isKnownToEngine(word: String): Boolean {
+        return FlorisNative.isAvailable() && FlorisNative.isKnownWord(word)
     }
 
     private data class SuggestionCacheKey(

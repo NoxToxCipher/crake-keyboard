@@ -30,13 +30,11 @@ import io.kotest.matchers.shouldBe
 class FleetTypoCorrectionsTest : FunSpec({
     test("audited M348 and M350 ingestions resolve") {
         FleetTypoCorrections.MAP["rhjs"] shouldBe "this"
-        FleetTypoCorrections.MAP["jat"] shouldBe "that"
         FleetTypoCorrections.MAP["dobe"] shouldBe "done"
         FleetTypoCorrections.MAP["thid"] shouldBe "this"
         FleetTypoCorrections.MAP["whag"] shouldBe "what"
         FleetTypoCorrections.MAP["mitificsitons"] shouldBe "notifications"
         FleetTypoCorrections.MAP["downaloded"] shouldBe "downloaded"
-        FleetTypoCorrections.MAP["beither"] shouldBe "brother"
         FleetTypoCorrections.MAP["ttoing"] shouldBe "typing"
         FleetTypoCorrections.MAP["hsing"] shouldBe "using"
         FleetTypoCorrections.MAP["oerson"] shouldBe "person"
@@ -101,8 +99,13 @@ class FleetTypoCorrectionsTest : FunSpec({
     test("real words and standing abbreviations are never hard-remapped") {
         // Each of these was removed (or blocked) by a corpus audit: hard
         // remapping a token people legitimately type is corpus poison.
-        for (real in listOf("thks", "hwy", "iff", "tori", "its", "were", "cant")) {
-            if (real == "cant") continue // apostrophe restoration is deliberate
+        // "ifs"/"ans" (real words), "toi"/"cant"/"wont" (engine-owned) and
+        // "jat"/"beither"/"widt" (one slip from a different common word)
+        // went in the 2026-09-18 hunt.
+        for (real in listOf(
+            "thks", "hwy", "iff", "tori", "its", "were",
+            "ifs", "ans", "toi", "cant", "wont", "jat", "beither", "widt",
+        )) {
             FleetTypoCorrections.MAP.containsKey(real) shouldBe false
         }
     }

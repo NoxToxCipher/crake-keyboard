@@ -196,6 +196,18 @@ object FlorisNative {
     }
 
     /**
+     * True when the native trie knows [word] (shipped corpus, or learned
+     * from a revert, an accepted suggestion or the personal dictionary),
+     * matched as the engine's own exact-word test matches it. A known word
+     * is one the engine would never autocorrect, so callers holding their
+     * own correction tables (the fleet map) must yield too.
+     */
+    fun isKnownWord(word: String): Boolean {
+        if (!isLoaded || word.isBlank()) return false
+        return nativeNlpIsKnownWord(word)
+    }
+
+    /**
      * Loads the CRKB bigram language model used for context re-ranking.
      * Returns the pair count, or -1 on rejection (suggestions then simply
      * run without context re-ranking — no fallback needed).
@@ -612,6 +624,8 @@ object FlorisNative {
     private external fun nativeNlpRecordPersonalCorrection(typo: String, intended: String)
 
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
+
+    private external fun nativeNlpIsKnownWord(word: String): Boolean
 
     private external fun nativeNlpLoadDictBlob(data: ByteArray): Int
 

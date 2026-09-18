@@ -27,6 +27,31 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpInse
     }
 }
 
+/// True when `word` is in the native trie: a shipped corpus word or one
+/// learned from a backspace revert, an accepted suggestion or the personal
+/// dictionary. Matched the way the suggest path's `is_exact` test matches
+/// (trimmed, lowercased), so the answer is exactly "would the engine leave
+/// this token alone". Hunt 2026-09-18 (finding 19): the Kotlin fleet map
+/// fired ahead of the engine with no way to tell a real word from a slip.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpIsKnownWord(
+    mut env: JNIEnv,
+    _class: JClass,
+    word: JString,
+) -> jboolean {
+    let Ok(w) = env.get_string(&word) else {
+        return 0;
+    };
+    let lower = w.to_str().unwrap_or("").trim().to_lowercase();
+    if lower.is_empty() {
+        return 0;
+    }
+    match NLP_ENGINE.read() {
+        Ok(engine) => engine.trie.contains(&lower) as jboolean,
+        Err(_) => 0,
+    }
+}
+
 /// Three-fragment split repair ("cha nbn ges" -> "changes"); empty string
 /// when the fragments should not weld. See NlpEngine::merge_repair3.
 #[no_mangle]
