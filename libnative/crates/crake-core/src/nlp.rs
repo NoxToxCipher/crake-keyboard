@@ -3102,7 +3102,9 @@ pub const HOMOPHONE_CONTEXT_RULES: &[(&[&str], &str, &str)] = &[
 
     // ("to" vs "too" vs "two")
     (&["me", "you", "much", "many", "late", "far", "early", "fast", "slow", "hard", "easy", "good", "bad", "hot", "cold"], "to", "too"),
-    (&["want", "need", "have", "going", "ready", "able", "hope", "try", "trying", "used", "like", "love"], "too", "to"),
+    // "too" -> "to" after want/need/have/like... was removed 2026-09-18:
+    // "I have too many", "I like too much" are everyday English and the
+    // bigram gate let "have too" through. A typed "too" is kept.
     (&["people", "days", "hours", "minutes", "seconds", "weeks", "months", "years", "times", "things", "items"], "to", "two"),
     (&["people", "days", "hours", "minutes", "seconds", "weeks", "months", "years", "times", "things", "items"], "too", "two"),
 
