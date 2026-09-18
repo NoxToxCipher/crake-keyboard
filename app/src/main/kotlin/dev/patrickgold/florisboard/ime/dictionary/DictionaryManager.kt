@@ -30,6 +30,7 @@ import java.lang.ref.WeakReference
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
 
 class DictionaryManager private constructor(context: Context) {
     private val applicationContext: WeakReference<Context> = WeakReference(context.applicationContext ?: context)
@@ -106,12 +107,35 @@ class DictionaryManager private constructor(context: Context) {
         return cachedShortcuts + systemCandidates
     }
 
+    // Personal-dictionary vocabulary snapshot (hunt 2026-09-18, finding 24).
+    // Both caches index SHORTCUT hits only, so a word added purely to stop
+    // it being autocorrected never reached the native trie and kept being
+    // corrected. Every (re)warm snapshots the plain words here and bumps the
+    // generation; the suggestion provider mirrors the snapshot into the trie
+    // when it sees a new generation - it owns the native load order and the
+    // suggest cache that has to be evicted along with it.
+    @Volatile
+    private var florisVocabulary: List<Pair<String, Int>> = emptyList()
+    @Volatile
+    private var systemVocabulary: List<Pair<String, Int>> = emptyList()
+    private val vocabularyGenerationCounter = AtomicInteger(0)
+
+    /** Bumped whenever either personal dictionary is (re)warmed. */
+    val vocabularyGeneration: Int
+        get() = vocabularyGenerationCounter.get()
+
+    /** Every (word, frequency) pair in the personal dictionaries, shortcut
+     *  entries included; single-token filtering is the caller's business. */
+    fun vocabularyWords(): List<Pair<String, Int>> = florisVocabulary + systemVocabulary
+
     @Synchronized
     fun warmUserDictionaryCache() {
         try {
             val dao = florisUserDictionaryDao()
             val entries = dao?.queryAll() ?: emptyList()
             userDictionaryCache.updateEntries(entries)
+            florisVocabulary = entries.map { it.word to it.freq }
+            vocabularyGenerationCounter.incrementAndGet()
             isCacheLoaded = true
         } catch (e: Exception) {
             // Keep safe
@@ -170,6 +194,7 @@ class DictionaryManager private constructor(context: Context) {
         try {
             if (!prefs.dictionary.enableSystemUserDictionary.get()) {
                 systemShortcutIndex = emptyMap()
+                systemVocabulary = emptyList()
                 return
             }
             val entries = systemUserDictionaryDao()?.queryAll() ?: emptyList()
@@ -181,10 +206,13 @@ class DictionaryManager private constructor(context: Context) {
                 }
             }
             systemShortcutIndex = newIndex
+            systemVocabulary = entries.map { it.word to it.freq }
+            vocabularyGenerationCounter.incrementAndGet()
         } catch (e: Exception) {
             // Keep safe: an empty snapshot simply yields no system shortcuts,
             // exactly as a failed IPC did before.
             systemShortcutIndex = emptyMap()
+            systemVocabulary = emptyList()
         }
     }
 

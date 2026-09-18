@@ -22,6 +22,8 @@ import android.util.Log
 import dev.patrickgold.florisboard.appContext
 import dev.patrickgold.florisboard.ime.core.Subtype
 import dev.patrickgold.florisboard.ime.dictionary.DictionaryManager
+import dev.patrickgold.florisboard.ime.dictionary.FREQUENCY_MAX
+import dev.patrickgold.florisboard.ime.dictionary.FREQUENCY_MIN
 import dev.patrickgold.florisboard.ime.editor.EditorContent
 import dev.patrickgold.florisboard.ime.nlp.SpellingProvider
 import dev.patrickgold.florisboard.ime.nlp.SpellingResult
@@ -297,6 +299,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 // Ignore
             }
 
+            // 1b. Personal-dictionary words into the native trie, now that
+            // step 1 has warmed the dictionary cache (finding 24).
+            syncUserVocabulary()
+
             // 2. Fleet Telemetry Fast Typo Corrections
             val cleanWordQuery = sanitizeWordToken(query, trimTrailingWhitespace = false)
             if (cleanWordQuery.isNotBlank()) {
@@ -378,6 +384,45 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
      *  so the fleet map keeps working as the only corrector in that state. */
     private fun isKnownToEngine(word: String): Boolean {
         return FlorisNative.isAvailable() && FlorisNative.isKnownWord(word)
+    }
+
+    /** Personal-dictionary generation last mirrored into the native trie. */
+    @Volatile private var syncedVocabularyGeneration = -1
+
+    /**
+     * Mirrors the personal dictionaries (Floris + system) into the native
+     * trie whenever they change. Hunt 2026-09-18 (finding 24): adding "vs"
+     * or "ghosted" in Settings > Dictionary changed nothing, because both
+     * dictionary caches index shortcut hits only and no code pushed plain
+     * words native-side, so "me vs you" kept committing "me s you". A word
+     * in the trie is exact to the engine, and autocorrect never touches an
+     * exact word (the fleet gate above honours it too). Runs on the suggest
+     * path after ensureLoaded(), so the mirror lands on top of the shipped
+     * corpus; goes through insertWord so the secret inspector and the
+     * never-demote frequency contract apply; and evicts the suggest cache,
+     * whose entries were computed before the words existed.
+     */
+    private fun syncUserVocabulary() {
+        if (!FlorisNative.isAvailable()) return
+        val dictionaryManager = try {
+            DictionaryManager.default()
+        } catch (e: Exception) {
+            return
+        }
+        val generation = dictionaryManager.vocabularyGeneration
+        if (generation == syncedVocabularyGeneration) return
+        syncedVocabularyGeneration = generation
+        var pushed = 0
+        for ((word, freq) in dictionaryManager.vocabularyWords()) {
+            val token = word.trim()
+            // A multi-word entry is a snippet body, not vocabulary.
+            if (token.isEmpty() || token.any { it.isWhitespace() }) continue
+            FlorisNative.insertWord(token, freq.coerceIn(FREQUENCY_MIN, FREQUENCY_MAX))
+            pushed++
+        }
+        if (pushed > 0) {
+            nativeSuggestCache.evictAll()
+        }
     }
 
     private data class SuggestionCacheKey(
