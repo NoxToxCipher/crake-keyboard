@@ -114,6 +114,16 @@ data class WordSuggestionCandidate(
     override val isEligibleForAutoCommit: Boolean = false,
     override val isEligibleForUserRemoval: Boolean = true,
     override val sourceProvider: SuggestionProvider? = null,
+    /**
+     * The exact text before the cursor this candidate was computed for and
+     * replaces on commit, or null when it replaces the whole non-whitespace
+     * run (shortcut triggers such as "!addr", glide words). Hunt 2026-09-18:
+     * the engine only ever judges the trailing letter run of a token, so a
+     * word candidate must delete only that run (finding 17: "https://youtu"
+     * + space became "youth") and must not be committed once the run has
+     * changed under it (finding 25: a candidate for "kno" landing on "known").
+     */
+    val replacesText: String? = null,
 ) : SuggestionCandidate {
     override val icon: ImageVector? = null
 }

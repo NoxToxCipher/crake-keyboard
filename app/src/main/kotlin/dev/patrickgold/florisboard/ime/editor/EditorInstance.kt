@@ -36,6 +36,7 @@ import dev.patrickgold.florisboard.ime.keyboard.KeyboardMode
 import dev.patrickgold.florisboard.ime.nlp.MergedWordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.TokenRewindTracker
+import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.text.composing.Appender
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.key.KeyVariation
@@ -336,10 +337,20 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         // A merged-word candidate repairs a spurious mid-word space, so its
         // deletion span is BOTH fragments plus the whitespace between them
         // ("shou kd" -> "should" replaces all seven characters).
-        val tokenBeforeCursor = if (candidate is MergedWordSuggestionCandidate) {
-            content.textBeforeSelection.takeLast(mergedTokenSpan(content.textBeforeSelection, candidate.fragments))
-        } else {
-            content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        // A word candidate that carries the span it was computed for
+        // replaces exactly that span. Hunt 2026-09-18 (finding 17): the
+        // engine judges only the trailing letter run ("youtu"), but this
+        // deleted the whole run ("https://youtu"), so a youtu.be link became
+        // "youth", "john@gmial" lost its "john@", and "\"teh" its quote.
+        // A span that no longer ends the run means the text moved under the
+        // candidate; the whole-run fallback is then the old behaviour.
+        val wholeRun = content.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        val judgedSpan = (candidate as? WordSuggestionCandidate)?.replacesText
+        val tokenBeforeCursor = when {
+            candidate is MergedWordSuggestionCandidate ->
+                content.textBeforeSelection.takeLast(mergedTokenSpan(content.textBeforeSelection, candidate.fragments))
+            !judgedSpan.isNullOrEmpty() && wholeRun.endsWith(judgedSpan) -> judgedSpan
+            else -> wholeRun
         }
         if (tokenBeforeCursor.isNotEmpty()) {
             runBlocking {

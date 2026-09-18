@@ -17,7 +17,6 @@
 package dev.patrickgold.florisboard.ime.keyboard
 
 import android.content.Context
-import android.icu.lang.UCharacter
 import android.view.KeyEvent
 import android.widget.Toast
 import androidx.compose.runtime.getValue
@@ -50,11 +49,13 @@ import dev.patrickgold.florisboard.ime.input.InputShiftState
 import dev.patrickgold.florisboard.ime.nlp.ClipboardSuggestionCandidate
 import dev.patrickgold.florisboard.ime.nlp.PunctuationRule
 import dev.patrickgold.florisboard.ime.nlp.SuggestionCandidate
+import dev.patrickgold.florisboard.ime.nlp.WordSuggestionCandidate
 import dev.patrickgold.florisboard.ime.popup.PopupMappingComponent
 import dev.patrickgold.florisboard.ime.text.composing.Composer
 import dev.patrickgold.florisboard.ime.text.gestures.SwipeAction
 import dev.patrickgold.florisboard.ime.text.key.KeyCode
 import dev.patrickgold.florisboard.ime.text.key.KeyType
+import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.ime.text.key.UtilityKeyAction
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyData
 import dev.patrickgold.florisboard.ime.text.keyboard.TextKeyboardCache
@@ -85,6 +86,14 @@ import org.florisboard.lib.kotlin.collectIn
 import org.florisboard.lib.kotlin.collectLatestIn
 
 private val DoubleSpacePeriodMatcher = """([^.!?\s]\s)""".toRegex()
+// Characters that mark the token before the cursor as a URL, email address,
+// handle, path, code or compound rather than a word (hunt 2026-09-18,
+// finding 18). See KeyboardManager.terminatorAutoCommitCandidate.
+private const val AutoCommitBlockingChars = ".:/@-_&+#"
+// Keys that end a word and so may fire auto-commit on it (review
+// 2026-09-18: a closing quote or bracket after a typo used to commit the
+// typo raw, and the following space could no longer judge it).
+private const val WordTerminatorChars = ".,?!;)]}\""
 // Precompiled once: this was being `Regex(...)`-compiled on almost every
 // keystroke inside reevaluateInputShiftState (the cheap endsWith checks
 // short-circuit past it only at sentence ends).
@@ -693,11 +702,45 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
     }
 
     /**
+     * The auto-commit candidate for a word terminator (space, sentence
+     * punctuation, an emoji), or null when the token before the cursor is
+     * not a plain word. Hunt 2026-09-18 (finding 18): the engine only ever
+     * judges the trailing letter run, so a token carrying a digit or any of
+     * `. : / @ - _ & + #` is a URL, email address, handle, path, code or
+     * compound still being written, and a URI/email field is that context
+     * whatever the token looks like. "https://youtu" + space must not become
+     * "https://youth" and "wd" + "4" must not become "we4". Apostrophes are
+     * word-internal and stay allowed.
+     */
+    private fun terminatorAutoCommitCandidate(): SuggestionCandidate? {
+        // Never in a URI, email or (visible) password field: "corect horse"
+        // must stay the passphrase typed (review 2026-09-18).
+        if (activeState.keyVariation == KeyVariation.URI ||
+            activeState.keyVariation == KeyVariation.EMAIL_ADDRESS ||
+            activeState.keyVariation == KeyVariation.PASSWORD
+        ) {
+            return null
+        }
+        val candidate = nlpManager.getAutoCommitCandidate() ?: return null
+        // A shortcut or snippet candidate (no judged span) is keyed on the
+        // exact whole token, digits and all ("addr2"), and replaces it
+        // wholesale; only engine-judged word candidates are unsafe on a
+        // non-word token.
+        if ((candidate as? WordSuggestionCandidate)?.replacesText == null) return candidate
+        val token = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        if (token.isEmpty()) return null
+        for (c in token) {
+            if (c.isDigit() || c in AutoCommitBlockingChars) return null
+        }
+        return candidate
+    }
+
+    /**
      * Handles a hardware [KeyEvent.KEYCODE_SPACE] event. Same as [handleSpace],
      * but skips handling changing to characters keyboard and double space periods.
      */
     fun handleHardwareKeyboardSpace() {
-        val candidate = nlpManager.getAutoCommitCandidate()
+        val candidate = terminatorAutoCommitCandidate()
         candidate?.let { commitCandidate(it, isAutoCommit = true) }
         // Skip handling changing to characters keyboard and double space periods
         // TODO: this is whether we commit space after selecting candidate. Should be determined by SuggestionProvider
@@ -712,7 +755,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
      * enabled by the user.
      */
     private fun handleSpace(data: KeyData) {
-        val candidate = nlpManager.getAutoCommitCandidate()
+        val candidate = terminatorAutoCommitCandidate()
         if (candidate != null) {
             commitCandidate(candidate, isAutoCommit = true)
         } else if (prefs.devtools.flightRecorderEnabled.get()) {
@@ -1155,7 +1198,7 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
             }
             else -> {
                 if (activeState.imeUiMode == ImeUiMode.MEDIA) {
-                    nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it, isAutoCommit = true) }
+                    terminatorAutoCommitCandidate()?.let { commitCandidate(it, isAutoCommit = true) }
                     editorInstance.commitText(data.asString(isForDisplay = false))
                     return@batchEdit
                 }
@@ -1180,9 +1223,21 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                     else -> when (data.type) {
                         KeyType.CHARACTER, KeyType.NUMERIC -> {
                             val text = data.asString(isForDisplay = false)
-                            val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
-                            if (!UCharacter.isUAlphabetic(UCharacter.codePointAt(text, 0)) && !isApostrophe) {
-                                nlpManager.getAutoCommitCandidate()?.let { commitCandidate(it, isAutoCommit = true) }
+                            // Hunt 2026-09-18 (finding 18): only a key that
+                            // ends a word fires auto-commit: sentence
+                            // punctuation, a semicolon, a closing bracket or
+                            // quote. Every other non-letter key used to fire
+                            // it on the fragment typed so far - ":" after a
+                            // scheme, "/", "@", "-", "_", "&", "+" and the
+                            // ?123 digits - so "http" + ":" became "HTTP:".
+                            // Those characters are part of what is being
+                            // typed and now commit raw. (A bare host still
+                            // ends at its first "." like a sentence does:
+                            // "youtu" + "." is judged before the "." lands.)
+                            val isWordTerminator = text.length == 1 &&
+                                text[0] in WordTerminatorChars
+                            if (isWordTerminator) {
+                                terminatorAutoCommitCandidate()?.let { commitCandidate(it, isAutoCommit = true) }
                             }
                             editorInstance.commitChar(text)
                         }

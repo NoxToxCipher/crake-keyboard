@@ -300,6 +300,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             // 2. Fleet Telemetry Fast Typo Corrections
             val cleanWordQuery = sanitizeWordToken(query, trimTrailingWhitespace = false)
             if (cleanWordQuery.isNotBlank()) {
+                // Hunt 2026-09-18 (findings 17, 25): the engine judges only
+                // this trailing letter/apostrophe run, so that run - as
+                // typed, before apostrophe normalisation - is what every
+                // word candidate below replaces and is stamped with.
+                val typedSpan = query.takeLast(cleanWordQuery.length)
                 val fleetCorrection = FLEET_TYPO_CORRECTIONS[cleanWordQuery.fastLowercase()]
                 // Hunt 2026-09-18 (finding 19): the map fired ahead of the
                 // engine with no off-switch, so a real word on its left side
@@ -323,6 +328,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                             confidence = 1.0,
                             isEligibleForAutoCommit = true,
                             sourceProvider = this@LatinLanguageProvider,
+                            replacesText = typedSpan,
                         )
                     )
                 }
@@ -348,6 +354,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                                     confidence = 0.9 - (index * 0.1),
                                     isEligibleForAutoCommit = candidate.isAutocorrect,
                                     sourceProvider = this@LatinLanguageProvider,
+                                    replacesText = typedSpan,
                                 )
                             )
                         }

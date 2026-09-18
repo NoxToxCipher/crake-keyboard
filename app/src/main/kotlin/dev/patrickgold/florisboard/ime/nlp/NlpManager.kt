@@ -382,7 +382,20 @@ class NlpManager(context: Context) {
     }
 
     fun getAutoCommitCandidate(): SuggestionCandidate? {
-        return activeCandidates.firstOrNull { it.isEligibleForAutoCommit }
+        val candidate = activeCandidates.firstOrNull { it.isEligibleForAutoCommit } ?: return null
+        // Hunt 2026-09-18 (finding 25): suggest() is latest-wins and
+        // asynchronous, and an in-flight JNI call cannot be cancelled, so
+        // activeCandidates can still hold the answer for an earlier prefix
+        // when space lands ("kno" -> know* while the field already says
+        // "known"). A stamped word candidate is only good for the exact
+        // trailing run it was computed for; anything else is stale and the
+        // typed text stands.
+        val judgedSpan = (candidate as? WordSuggestionCandidate)?.replacesText ?: return candidate
+        val run = editorInstance.activeContent.textBeforeSelection.takeLastWhile { !it.isWhitespace() }
+        if (!run.endsWith(judgedSpan)) return null
+        val before = run.getOrNull(run.length - judgedSpan.length - 1)
+        if (before != null && (before.isLetter() || before == '\'')) return null
+        return candidate
     }
 
     fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
