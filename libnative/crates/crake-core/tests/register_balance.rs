@@ -41,6 +41,8 @@ const TWO_LETTER_WHITELIST: &[&str] = &[
     "dr", "mr", "ms", "st", "pm", "km", "kg", "cm", "mm", "ml", "mg", "gb",
     "mb", "kb", "hz", "hp", "ac", "dc", "ft", "mt", "pt", "oz", "lb", "ie",
     "eg",
+    // chat abbreviations that are typed as words (2026-09-18)
+    "vs", "wk", "xo", "ta",
 ];
 
 #[test]
