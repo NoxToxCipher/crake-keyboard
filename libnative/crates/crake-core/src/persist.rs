@@ -5,7 +5,7 @@
 //! Format (little-endian), hostile-parse discipline with backwards compatibility:
 //! ```text
 //! magic                b"CRKL"
-//! version              u8 = 3
+//! version              u8 = 4
 //! words                u32 count, then { len: u16, word: UTF-8, freq: u32 }*
 //! pairs                u32 count, then { tlen: u16, typo, ilen: u16, intended, n: u32 }*
 //! bigrams (v2+)        u32 count, then { w1len: u16, w1, w2len: u16, w2, n: u32 }*
@@ -17,7 +17,11 @@ pub const LEARNED_MAGIC: [u8; 4] = *b"CRKL";
 /// v1: words + corrections
 /// v2: words + corrections + personal bigrams
 /// v3: words + corrections + personal bigrams + rejected corrections + decay epochs
-pub const LEARNED_VERSION: u8 = 3;
+/// v4: same layout; marks corrections recorded AFTER the 2026-09-13 recorder
+///     fix (typed text as key, user-chosen words only). Corrections in any
+///     older blob were keyed on the engine's own substitutions and are
+///     dropped on import.
+pub const LEARNED_VERSION: u8 = 4;
 
 /// Size discipline (standing directive: no bloat): every section capped.
 pub const MAX_LEARNED_WORDS: u32 = 5_000;
@@ -35,8 +39,11 @@ pub enum LearnedError {
     BadUtf8,
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct LearnedState {
+    /// Format version the blob was read from (LEARNED_VERSION when built
+    /// in memory).
+    pub version: u8,
     pub words: Vec<(String, u32)>,
     pub corrections: Vec<(String, String, u32)>,
     /// The user's own consecutive word pairs with use counts (v2+).
@@ -89,6 +96,19 @@ fn read_u64(data: &[u8], offset: &mut usize) -> Result<u64, LearnedError> {
     bytes.copy_from_slice(&data[*offset..*offset + 8]);
     *offset += 8;
     Ok(u64::from_le_bytes(bytes))
+}
+
+impl Default for LearnedState {
+    fn default() -> Self {
+        Self {
+            version: LEARNED_VERSION,
+            words: Vec::new(),
+            corrections: Vec::new(),
+            bigrams: Vec::new(),
+            rejected: Vec::new(),
+            word_epochs: Vec::new(),
+        }
+    }
 }
 
 impl LearnedState {
@@ -201,7 +221,7 @@ impl LearnedState {
                 word_epochs.push((word, ep));
             }
         }
-        Ok(Self { words, corrections, bigrams, rejected, word_epochs })
+        Ok(Self { version, words, corrections, bigrams, rejected, word_epochs })
     }
 }
 
@@ -211,6 +231,7 @@ mod tests {
 
     fn sample() -> LearnedState {
         LearnedState {
+            version: LEARNED_VERSION,
             words: vec![("crake".into(), 180), ("roratus".into(), 120)],
             corrections: vec![("thay".into(), "that".into(), 3), ("hte".into(), "the".into(), 7)],
             bigrams: vec![("glossy".into(), "cockatoo".into(), 2)],

@@ -938,6 +938,7 @@ impl NlpEngine {
         word_epochs.sort_by(|x, y| y.1.cmp(&x.1).then_with(|| x.cmp(y)));
 
         let state = crate::persist::LearnedState {
+            version: crate::persist::LEARNED_VERSION,
             words,
             corrections,
             bigrams,
@@ -963,9 +964,14 @@ impl NlpEngine {
             self.trie.insert(&word, restored);
             self.insert_learned_capped(word, restored);
         }
-        for (typo, intended, n) in state.corrections {
-            // Purge pairs keyed on an everyday word: poison from the old
-            // recording path ("in" -> "that"), never a real habit.
+        // Corrections from a pre-v4 blob were keyed on the ENGINE's own
+        // substitutions (the recorder bug fixed 2026-09-13): "in" -> "that",
+        // "that" -> "in", "with" -> "that" on Lochran's phone by 2026-09-18.
+        // None of them can be trusted; the map starts again from clean
+        // observations. Words, bigrams, rejections and epochs are kept.
+        let trusted_corrections = if state.version >= 4 { state.corrections } else { Vec::new() };
+        for (typo, intended, n) in trusted_corrections {
+            // Purge pairs keyed on an everyday word: never a real habit.
             if self.corpus_freq(&typo) >= 236 {
                 continue;
             }
