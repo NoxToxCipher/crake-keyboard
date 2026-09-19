@@ -1036,3 +1036,19 @@ Three more from the same report, all verified by typing on the CMF Phone 1.
 
 "Aorry" -> "Sorry" needed no change: the sentence-start recase from earlier
 today already handles a capitalised first word. Verified on the phone.
+
+#### 2026-09-19 — two Star Wars eggs (Claude, asked for by name)
+
+`BB8_ROLL` and `LIGHTSABER`, both in the existing registry so they show up
+in the Easter Eggs screen and honour its off switches.
+
+- BB-8 rolls the length of the home row on "bb-8", "bb8", "star wars",
+  "starwars", "astromech" or "droid". The body spins at the rate the
+  distance demands; the head stays level and leans into the travel, which is
+  the whole charm of the droid.
+- The I key ignites on "darth vader"/"vader"/"sith" (one red blade) and on
+  "lightsaber"/"light saber"/"jedi" (green, then blue, then purple, 1.1s
+  each). The blade grows from the BOTTOM of the key upward to 2.6 key
+  heights, holds, retracts, and carries a hilt at the bottom edge where it
+  comes out. Verified by typing each trigger on the CMF Phone 1 and
+  capturing frames mid-animation.
