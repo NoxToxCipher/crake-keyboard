@@ -70,7 +70,7 @@ abstract class SwipeGesture {
              * 0.35-0.63 key widths (11.6-20.8dp), and both live flick
              * captures travelled 143-154dp, so this sits in the gap.
              */
-            internal const val ACCIDENTAL_DRIFT_MAX_DP = 24.0
+            internal const val ACCIDENTAL_DRIFT_MAX_DP = 22.0
 
             internal fun clampThresholdSpeed(raw: Double): Double =
                 if (raw > 1000.0) 450.0 else raw.coerceIn(200.0, 800.0)
@@ -135,7 +135,11 @@ abstract class SwipeGesture {
                 // Both live captures of a REAL flick travelled 144-154dp at
                 // ~1490dp/s, so this floor keeps every deliberate flick with
                 // room to spare while a drifting tap stays a tap.
-                val isSnappyFlick = (maxTravel >= ACCIDENTAL_DRIFT_MAX_DP) && (maxVelocity >= 350.0)
+                // Distance is what separates a flick from a drifting tap, so the
+                // speed here only has to rule out a slow scrub (measured 222
+                // dp/s): a comfortable flick of 24dp in 80ms is 300 dp/s and
+                // must pass ("flick doesn't work", 2026-09-19).
+                val isSnappyFlick = (maxTravel >= ACCIDENTAL_DRIFT_MAX_DP) && (maxVelocity >= 280.0)
 
                 return isSnappyFlick || ((maxTravel > effectiveThresholdWidth) && (maxVelocity > thresholdSpeed))
             }
@@ -266,6 +270,8 @@ abstract class SwipeGesture {
                         gesturePointer.absUnitCountX,
                         gesturePointer.absUnitCountY,
                         ageMs = event.eventTime - event.downTime,
+                        diffXDp = absDiffX,
+                        diffYDp = absDiffY,
                     ))
                 } else {
                     false
@@ -336,6 +342,16 @@ abstract class SwipeGesture {
         val relUnitCountY: Int,
         /** Milliseconds since the gesture's ACTION_DOWN, from hardware event timestamps. */
         val ageMs: Long = 0L,
+        /**
+         * The stroke's actual displacement in dp, measured from ACTION_DOWN.
+         * The unit counts above are integer multiples of 8dp, so they lose
+         * up to a third of a short stroke: a real 30dp flick reported 24dp
+         * and a gate asking for 25dp turned the word flick off entirely
+         * (field report 2026-09-19, "flick doesn't work"). Anything judging
+         * how far a finger actually travelled must use these.
+         */
+        val diffXDp: Float = 0f,
+        val diffYDp: Float = 0f,
     )
 
     /**
