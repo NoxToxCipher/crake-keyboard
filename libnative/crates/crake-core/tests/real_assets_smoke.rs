@@ -138,6 +138,32 @@ fn shipped_fixes_hold_on_shipped_assets() {
         // "thr" is nobody's word: it fixes even though it begins
         // "through" (asked for by name, 2026-09-19)
         ("", "thr", "the"),
+        // a three-letter token one key from an everyday word, where its own
+        // completions are far rarer and no other reading competes, is that
+        // word ("Pne" never became "One", 2026-09-19)
+        ("", "pne", "one"),
+        ("", "hte", "the"),
+        ("", "tge", "the"),
+        // ... but not when two everyday words are equally close, nor when a
+        // dropped letter reads better
+        ("", "aho", ""),
+        ("", "kow", ""),
+        ("", "haf", ""),
+        ("", "ges", ""),
+        // deliberate short forms keep their slot
+        ("", "abt", ""),
+        ("", "ths", ""),
+        // Irish given names are words, not typos of other words
+        // (field report 2026-09-19: "it is actually impossible to write
+        // that name"). Typed in lower case they offer the capital.
+        ("", "aoife", ""),
+        ("", "niamh", ""),
+        ("", "saoirse", ""),
+        ("", "caoimhe", ""),
+        ("", "Aoife", ""),
+        ("", "Niamh", ""),
+        // the slip that never corrected
+        ("", "aorry", "sorry"),
         ("", "alw", ""),
         ("", "wome", ""),
         // ... while anything that keeps every letter typed still commits

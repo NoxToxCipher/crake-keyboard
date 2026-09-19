@@ -1500,6 +1500,30 @@ impl NlpEngine {
             .count()
     }
 
+    /// Every everyday word (corpus >= 236) that is `token` with a single
+    /// adjacent-key substitution. Used to tell a token with one obvious
+    /// reading from one that could be either of two words.
+    fn single_slip_rivals(&self, token: &str) -> Vec<(String, u32)> {
+        let mut out = Vec::new();
+        if !token.is_ascii() {
+            return out;
+        }
+        let b = token.as_bytes();
+        for i in 0..b.len() {
+            for c in b'a'..=b'z' {
+                if c == b[i] || !Self::is_spatial_keyboard_neighbor(b[i] as char, c as char) {
+                    continue;
+                }
+                let w = format!("{}{}{}", &token[..i], c as char, &token[i + 1..]);
+                let f = self.corpus_freq(&w);
+                if f >= 236 {
+                    out.push((w, f));
+                }
+            }
+        }
+        out
+    }
+
     /// Whether some top-tier word (corpus >= 236), other than the two
     /// halves, is one edit (insert, delete, substitute, adjacent swap) from
     /// `token`. Enumerated directly: the fuzzy search's short result list
@@ -3302,9 +3326,44 @@ impl NlpEngine {
                     // is "from" — must not be starved by the completions of
                     // the typo ("three", "hours", "front") sitting in the
                     // pool as plain suggestions.
+                    // A third way through (field report 2026-09-19: "Pne"
+                    // never became "One"). A three-letter token that is not
+                    // a word, one adjacent key from an everyday word, whose
+                    // own completions are all far rarer than that word:
+                    // "pne" completes to pneumonia 193 and pneumatic 169
+                    // while one adjacent slip away sits "one" at 254. The
+                    // margin is what keeps deliberate short forms safe --
+                    // a completion anywhere near the rival keeps the slot.
+                    let three_letter_slip = trimmed_lower.chars().count() == 3
+                        && is_neighbor
+                        && fc.distance == 1
+                        && self.corpus_or_learned(&fc.word, fc.frequency) >= 236
+                        && self
+                            .trie
+                            .prefix_search(&trimmed_lower, 4)
+                            .iter()
+                            .filter(|(w, _)| w.chars().count() > 3)
+                            .all(|(w, _)| self.corpus_freq(w) + 40 < self.corpus_or_learned(&fc.word, fc.frequency))
+                        // ... and the reading has to be the only one. Three
+                        // letters is short enough that a token often sits one
+                        // key from TWO everyday words ("aho" is a slip of both
+                        // "who" and "ago"), and picking the commoner one is a
+                        // coin toss that writes a real word in the wrong
+                        // place. A clear gap is still decisive ("tge" is the).
+                        && self
+                            .single_slip_rivals(&trimmed_lower)
+                            .into_iter()
+                            .filter(|(w, _)| w != &fc.word)
+                            .all(|(_, f)| f + 60 <= self.corpus_or_learned(&fc.word, fc.frequency))
+                        // A dropped letter is at least as likely as a
+                        // mis-hit key at this length: "kow" is "know" and
+                        // "haf" is "half", so a word one letter longer
+                        // keeps the slot.
+                        && !self.one_insertion_rival(&trimmed_lower, 236);
                     let punches_filler = !claimed_before_completions
                         && candidates.iter().all(|c| !c.is_autocorrect)
-                        && ((is_neighbor && fc.distance == 1 && trimmed_lower.chars().count() >= 5)
+                        && (three_letter_slip
+                            || (is_neighbor && fc.distance == 1 && trimmed_lower.chars().count() >= 5)
                             || (trimmed_lower.chars().count() >= 4
                                 && edit_count(&trimmed_lower, &fc.word) == 1
                                 && self.corpus_or_learned(&fc.word, fc.frequency) >= 236));
