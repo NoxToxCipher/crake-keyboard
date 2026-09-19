@@ -170,6 +170,11 @@ private val pubgKeysHoisted = listOf("pubg", "airdrop", "pochinki", "chicken din
 private val luciaKeysHoisted = listOf("lucia")
 private val dukuKeysHoisted = listOf("duku", "langsat", "longkong")
 private val carKeysHoisted = listOf("drive", "car", "driving", "cars", "driver", "drives", "drove", "aston martin", "aston")
+private val bb8KeysHoisted = listOf("bb-8", "bb8", "star wars", "starwars", "astromech", "droid")
+// Vader's blade is red and only red. Saying "lightsaber" runs the other
+// three in turn, which is the point of the trick.
+private val vaderKeysHoisted = listOf("darth vader", "vader", "sith", "darth")
+private val saberKeysHoisted = listOf("lightsaber", "light saber", "sabers", "lightsabers", "jedi")
 private val cryptoKeysHoisted = listOf(
                 "btc", "bitcoin", "eth", "ethereum", "sol", "solana",
                 "arb", "arbitrum", "atom", "cosmos hub", "cosmos",
@@ -260,6 +265,9 @@ private class EggBoundaryRule(keys: List<String>, delims: List<String>, compMatc
 private val eclectusRule = EggSuffixRule(eclectusKeysHoisted, eggSuffix2)
 private val sunConureRule = EggSuffixRule(sunConureKeysHoisted, eggSuffix2)
 private val soccerRule = EggSuffixRule(soccerKeysHoisted, eggSuffix2)
+private val bb8Rule = EggSuffixRule(bb8KeysHoisted, eggSuffix2)
+private val vaderRule = EggSuffixRule(vaderKeysHoisted, eggSuffix2)
+private val saberRule = EggSuffixRule(saberKeysHoisted, eggSuffix2)
 private val mangoRule = EggSuffixRule(mangoKeysHoisted, eggSuffix2)
 private val skateRule = EggSuffixRule(skateKeysHoisted, eggSuffix2)
 private val berryRule = EggSuffixRule(berryKeysHoisted, eggSuffix2)
@@ -567,6 +575,11 @@ fun TextKeyboardLayout(
         var eclectusFlightTriggerTime by remember { mutableStateOf(0L) }
         var sunConureFlightTriggerTime by remember { mutableStateOf(0L) }
         var soccerRollTriggerTime by remember { mutableStateOf(0L) }
+        var bb8RollTriggerTime by remember { mutableStateOf(0L) }
+        var lightsaberTriggerTime by remember { mutableStateOf(0L) }
+        // 0 = Vader, one red blade. 1 = the word itself, green then blue
+        // then purple.
+        var lightsaberIsCycle by remember { mutableStateOf(false) }
         var spaceRainTriggerTime by remember { mutableStateOf(0L) }
         var mangoPulseTriggerTime by remember { mutableStateOf(0L) }
         var masterChiefRunTriggerTime by remember { mutableStateOf(0L) }
@@ -643,6 +656,21 @@ fun TextKeyboardLayout(
             }
             if (soccerRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SOCCER_ROLL)) soccerRollTriggerTime = System.currentTimeMillis()
+            }
+            if (bb8Rule.matches(tb, comp)) {
+                if (prefs.easterEggs.fire(EasterEgg.BB8_ROLL)) bb8RollTriggerTime = System.currentTimeMillis()
+            }
+            if (vaderRule.matches(tb, comp)) {
+                if (prefs.easterEggs.fire(EasterEgg.LIGHTSABER)) {
+                    lightsaberIsCycle = false
+                    lightsaberTriggerTime = System.currentTimeMillis()
+                }
+            }
+            if (saberRule.matches(tb, comp)) {
+                if (prefs.easterEggs.fire(EasterEgg.LIGHTSABER)) {
+                    lightsaberIsCycle = true
+                    lightsaberTriggerTime = System.currentTimeMillis()
+                }
             }
             if (rainRule.matches(tb, comp)) {
                 if (prefs.easterEggs.fire(EasterEgg.SPACE_RAIN)) spaceRainTriggerTime = System.currentTimeMillis()
@@ -1784,6 +1812,181 @@ fun TextKeyboardLayout(
                     drawContext.canvas.nativeCanvas.drawPath(beakPath, beakPaint)
 
                     drawContext.canvas.nativeCanvas.restore()
+                }
+            }
+        }
+
+        // BB-8 rolls the length of the home row. The ball spins; the head
+        // does not, which is the whole charm of the droid.
+        if (bb8RollTriggerTime > 0L) {
+            val bb8Progress = remember(bb8RollTriggerTime) { Animatable(0f) }
+            LaunchedEffect(bb8RollTriggerTime) {
+                bb8Progress.snapTo(0f)
+                bb8Progress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = 3200, easing = LinearEasing),
+                )
+                bb8RollTriggerTime = 0L
+            }
+            if (bb8Progress.value in 0.001f..0.999f) {
+                val t = bb8Progress.value
+                val density = LocalDensity.current.density
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    val w = size.width
+                    val h = size.height
+                    val rowCount = if (keyboard.rowCount > 0) keyboard.rowCount else 4
+                    val rowH = h / rowCount
+                    // The home row is row 1 of a four-row keyboard; the ball
+                    // rides its lower edge.
+                    val floorY = rowH * 2f
+                    val r = (rowH * 0.34f).coerceAtMost(22f * density)
+                    val cx = (-r * 2f) + t * (w + r * 4f)
+                    val cy = floorY - r
+                    val spin = t * (w / (r * 6.283185f)) * 360f
+
+                    val white = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFF2F0EA.toInt()
+                    }
+                    val orange = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFE8761B.toInt()
+                    }
+                    val slate = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF2A2E35.toInt()
+                    }
+                    val ring = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFE8761B.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = r * 0.16f
+                    }
+                    val canvas = drawContext.canvas.nativeCanvas
+
+                    // body, spinning
+                    canvas.save()
+                    canvas.translate(cx, cy)
+                    canvas.rotate(spin)
+                    canvas.drawCircle(0f, 0f, r, white)
+                    canvas.drawCircle(0f, -r * 0.1f, r * 0.42f, orange)
+                    canvas.drawCircle(0f, -r * 0.1f, r * 0.20f, white)
+                    canvas.drawCircle(r * 0.55f, r * 0.42f, r * 0.20f, orange)
+                    canvas.drawCircle(-r * 0.58f, -r * 0.40f, r * 0.14f, orange)
+                    canvas.drawCircle(0f, 0f, r * 0.80f, ring)
+                    canvas.drawCircle(0f, 0f, r, android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF9A9691.toInt()
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = 1.3f
+                    })
+                    canvas.restore()
+
+                    // head, level, leaning into the direction of travel
+                    canvas.save()
+                    canvas.translate(cx, cy - r)
+                    canvas.rotate(10f)
+                    val hw = r * 0.86f
+                    val hh = r * 0.52f
+                    canvas.drawArc(-hw, -hh, hw, hh, 180f, 180f, true, white)
+                    canvas.drawRect(-hw, -1f, hw, hh * 0.18f, white)
+                    canvas.drawCircle(-hw * 0.30f, -hh * 0.36f, r * 0.15f, slate)
+                    canvas.drawCircle(hw * 0.34f, -hh * 0.30f, r * 0.07f, slate)
+                    canvas.drawRect(-hw * 0.95f, -hh * 0.12f, hw * 0.95f, hh * 0.02f, orange)
+                    canvas.restore()
+                }
+            }
+        }
+
+        // The I key ignites. Red for Vader; the word "lightsaber" runs
+        // green, then blue, then purple.
+        if (lightsaberTriggerTime > 0L) {
+            val bladeCount = if (lightsaberIsCycle) 3 else 1
+            val perBlade = 1100
+            val saberProgress = remember(lightsaberTriggerTime) { Animatable(0f) }
+            LaunchedEffect(lightsaberTriggerTime) {
+                saberProgress.snapTo(0f)
+                saberProgress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(durationMillis = perBlade * bladeCount, easing = LinearEasing),
+                )
+                lightsaberTriggerTime = 0L
+            }
+            if (saberProgress.value in 0.001f..0.999f) {
+                val t = saberProgress.value
+                val density = LocalDensity.current.density
+                val stage = (t * bladeCount).toInt().coerceIn(0, bladeCount - 1)
+                val local = (t * bladeCount) - stage
+                // ignite over the first third, hold, retract over the last
+                val extend = when {
+                    local < 0.34f -> local / 0.34f
+                    local > 0.80f -> ((1f - local) / 0.20f).coerceIn(0f, 1f)
+                    else -> 1f
+                }
+                val core = if (lightsaberIsCycle) {
+                    when (stage) {
+                        0 -> 0xFF49E36A.toInt()
+                        1 -> 0xFF3FA9FF.toInt()
+                        else -> 0xFFB064FF.toInt()
+                    }
+                } else {
+                    0xFFFF2A22.toInt()
+                }
+                androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                    var kx = 0f
+                    var kyBottom = 0f
+                    var kyTop = 0f
+                    var kw = 0f
+                    keyboard.forEachKey { key ->
+                        if (key.computedData.code == 'i'.code || key.computedData.code == 'I'.code) {
+                            val b = key.visibleBounds
+                            kx = b.center.x
+                            kyBottom = b.bottom
+                            kyTop = b.top
+                            kw = b.width
+                        }
+                    }
+                    if (kw <= 0f) return@Canvas
+                    val keyH = kyBottom - kyTop
+                    val bladeW = (kw * 0.30f).coerceAtLeast(3f * density)
+                    val full = keyH * 2.6f
+                    val len = full * extend
+                    if (len <= 1f) return@Canvas
+                    val canvas = drawContext.canvas.nativeCanvas
+                    val tip = kyBottom - len
+
+                    // glow, then the coloured blade, then the white core
+                    val glow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = core
+                        alpha = 70
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = bladeW * 2.6f
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val blade = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = core
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = bladeW
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    val white = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFFFFFFFF.toInt()
+                        alpha = 235
+                        style = android.graphics.Paint.Style.STROKE
+                        strokeWidth = bladeW * 0.42f
+                        strokeCap = android.graphics.Paint.Cap.ROUND
+                    }
+                    canvas.drawLine(kx, kyBottom, kx, tip, glow)
+                    canvas.drawLine(kx, kyBottom, kx, tip, blade)
+                    canvas.drawLine(kx, kyBottom, kx, tip, white)
+
+                    // the hilt sits at the bottom of the key, where the
+                    // blade comes out
+                    val hiltW = bladeW * 1.8f
+                    val hiltH = keyH * 0.34f
+                    val hilt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF9DA3AA.toInt()
+                    }
+                    val grip = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        color = 0xFF2B2F36.toInt()
+                    }
+                    canvas.drawRect(kx - hiltW / 2f, kyBottom, kx + hiltW / 2f, kyBottom + hiltH, hilt)
+                    canvas.drawRect(kx - hiltW / 2f, kyBottom + hiltH * 0.42f, kx + hiltW / 2f, kyBottom + hiltH * 0.72f, grip)
                 }
             }
         }

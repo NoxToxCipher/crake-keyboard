@@ -251,6 +251,18 @@ enum class EasterEgg(
         "Mini bighorn sheep and medieval battering ram charge across keyboard frets",
         listOf("ram", "rams", "battering ram"),
     ),
+    BB8_ROLL(
+        "bb8_roll",
+        "BB-8",
+        "A little astromech droid rolls along the home row, head steady",
+        listOf("bb-8", "bb8", "star wars", "starwars", "droid", "astromech"),
+    ),
+    LIGHTSABER(
+        "lightsaber",
+        "Lightsaber",
+        "The I key ignites: red for Vader, then green, blue and purple",
+        listOf("lightsaber", "light saber", "darth vader", "vader", "sith", "jedi"),
+    ),
 }
 
 /**

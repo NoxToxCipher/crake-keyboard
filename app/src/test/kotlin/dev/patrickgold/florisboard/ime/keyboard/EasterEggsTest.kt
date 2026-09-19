@@ -75,8 +75,16 @@ class EasterEggsTest : FunSpec({
         list.map { it.id } shouldContain EasterEgg.BAWEN_CAT.id
     }
 
-    test("EasterEgg enum contains exactly 37 pure word-triggered Easter Eggs") {
-        EasterEgg.entries shouldHaveSize 37
+    test("EasterEgg enum contains exactly 39 pure word-triggered Easter Eggs") {
+        // 37 + BB8_ROLL and LIGHTSABER (2026-09-19)
+        EasterEgg.entries shouldHaveSize 39
         EasterEgg.entries.any { it.id == "power_surge" } shouldBe false
+    }
+
+    test("the Star Wars eggs are reachable by the words a person would type") {
+        EasterEggs.matchTriggerPhrase("bb-8") shouldBe EasterEgg.BB8_ROLL
+        EasterEggs.matchTriggerPhrase("star wars") shouldBe EasterEgg.BB8_ROLL
+        EasterEggs.matchTriggerPhrase("darth vader") shouldBe EasterEgg.LIGHTSABER
+        EasterEggs.matchTriggerPhrase("lightsaber") shouldBe EasterEgg.LIGHTSABER
     }
 })
