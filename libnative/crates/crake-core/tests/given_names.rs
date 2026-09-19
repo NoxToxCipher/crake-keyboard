@@ -28,21 +28,27 @@ fn engine() -> NlpEngine {
     e
 }
 
+/// (typed, what the keyboard offers). Where a name carries a fada, the
+/// accented spelling is what it offers: a phone keyboard cannot type one
+/// without a long press, and the plain capital is still one tap away in
+/// the strip (field report 2026-09-19).
 const NAMES: &[(&str, &str)] = &[
     ("aoife", "Aoife"),
     ("niamh", "Niamh"),
     ("saoirse", "Saoirse"),
     ("caoimhe", "Caoimhe"),
-    ("roisin", "Roisin"),
-    ("oisin", "Oisin"),
     ("cillian", "Cillian"),
     ("tadhg", "Tadhg"),
     ("aisling", "Aisling"),
-    ("padraig", "Padraig"),
-    ("ciaran", "Ciaran"),
-    ("sinead", "Sinead"),
-    ("grainne", "Grainne"),
     ("diarmuid", "Diarmuid"),
+    ("roisin", "Róisín"),
+    ("oisin", "Oisín"),
+    ("padraig", "Pádraig"),
+    ("ciaran", "Ciarán"),
+    ("sinead", "Sinéad"),
+    ("grainne", "Gráinne"),
+    ("siobhan", "Siobhán"),
+    ("seamus", "Séamus"),
 ];
 
 #[test]
@@ -79,6 +85,34 @@ fn a_name_is_never_turned_into_another_word() {
     assert!(failures.is_empty(), "\n{}", failures.join("\n"));
 }
 
+/// A name that carries a fada offers BOTH spellings: the accented one
+/// leads, the plain capital sits beside it, and neither is forced on
+/// anyone.
+#[test]
+fn a_fada_name_offers_the_plain_spelling_too() {
+    let e = engine();
+    let mut failures = Vec::new();
+    for &(typed, accented) in NAMES {
+        if accented.is_ascii() {
+            continue;
+        }
+        let mut c = typed.chars();
+        let plain = c
+            .next()
+            .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+            .unwrap_or_default();
+        let r = e.suggest_with_context(typed, "", 4);
+        let words: Vec<String> = r.candidates.iter().map(|c| c.word.clone()).collect();
+        if !words.iter().any(|w| w == accented) {
+            failures.push(format!("{typed} never offered {accented}: {words:?}"));
+        }
+        if !words.iter().any(|w| *w == plain) {
+            failures.push(format!("{typed} never offered {plain}: {words:?}"));
+        }
+    }
+    assert!(failures.is_empty(), "\n{}", failures.join("\n"));
+}
+
 #[test]
 fn a_name_completes_from_its_first_letters() {
     let e = engine();
@@ -88,7 +122,10 @@ fn a_name_completes_from_its_first_letters() {
         if prefix.len() < 4 {
             continue;
         }
-        let r = e.suggest_with_context(&prefix, "", 6);
+        // Width 10: a name whose opening letters are also a common English
+        // stem ("seam" -> seamless, seams, seaman) sits below them, which is
+        // right. What matters is that it is offered at all.
+        let r = e.suggest_with_context(&prefix, "", 10);
         if !r.candidates.iter().any(|c| c.word.eq_ignore_ascii_case(typed)) {
             failures.push(format!(
                 "{prefix} did not offer {typed}: {:?}",
