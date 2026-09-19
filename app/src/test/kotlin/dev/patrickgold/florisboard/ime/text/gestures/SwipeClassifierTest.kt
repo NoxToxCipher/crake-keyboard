@@ -127,10 +127,20 @@ class SwipeClassifierTest : FunSpec({
         // commits, e.g. "...going into a lear" -> "learning ". A thumb
         // easily drifts a fifth of a key during a quick tap; none of these
         // may classify.
+        // The device captures put stray tap-slides at 0.35-0.63 key widths,
+        // which is 11.6-20.8dp; the floor sits just above that band.
         classify(Triple(0.0f, -10.0f, 40L)) shouldBe false
         classify(Triple(0.0f, -12.0f, 45L)) shouldBe false
         classify(Triple(-4.0f, -15.0f, 60L)) shouldBe false
         classify(Triple(0.0f, -20.0f, 60L)) shouldBe false
-        classify(Triple(6.0f, -23.0f, 70L)) shouldBe false
+        classify(Triple(6.0f, -20.8f, 70L)) shouldBe false
+    }
+
+    test("a flick a person would actually make still fires") {
+        // Measured on the CMF Phone 1, 2026-09-19: a 24dp rise in 80ms
+        // commits the flicked word, a 15dp drift types the letter.
+        classify(Triple(0.0f, -24.0f, 80L)) shouldBe true
+        classify(Triple(0.0f, -30.0f, 80L)) shouldBe true
+        classify(Triple(0.0f, -15.0f, 80L)) shouldBe false
     }
 })
