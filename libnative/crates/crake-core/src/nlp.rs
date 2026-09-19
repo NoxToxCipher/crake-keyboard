@@ -453,7 +453,15 @@ const TYPO_CORPUS_REAL_WORD_FLOOR: u32 = 160;
 /// as words a person means ("ment" 163): they always fix. The floor is a
 /// frequency proxy; real words under it must be removed from the table
 /// by hand (see typo_corpus.rs).
-const TYPO_CORPUS_KNOWN_JUNK: &[&str] = &["ment", "gunna"];
+const TYPO_CORPUS_KNOWN_JUNK: &[&str] = &["ment", "gunna", "thr"];
+
+/// Tokens that fix even though they begin a longer everyday word, because
+/// nobody ever means them: "thr" is not a word, and a person typing it
+/// wants "the" far more often than they are three letters into "through"
+/// (asked for by name, field report 2026-09-19). Everything else that is
+/// still a live prefix keeps what was typed -- see the guard at the end of
+/// `suggest_with_context_opts`. Add to this list only on evidence.
+const ALWAYS_FIX_LIVE_PREFIXES: &[&str] = &["thr"];
 
 /// Chat prefixes that get run into the next word on a phone. The splitter
 /// accepts `prefix + top-tier word` (or `prefix + contraction`) on any
@@ -3452,8 +3460,9 @@ impl NlpEngine {
             } else {
                 None
             };
+            let always_fixes = ALWAYS_FIX_LIVE_PREFIXES.contains(&trimmed_lower.as_str());
             for c in candidates.iter_mut() {
-                if !c.is_autocorrect {
+                if !c.is_autocorrect || always_fixes {
                     continue;
                 }
                 if taught.as_deref() == Some(c.word.to_ascii_lowercase().as_str()) {

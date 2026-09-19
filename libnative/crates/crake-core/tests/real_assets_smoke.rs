@@ -135,7 +135,9 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "fini", ""),
         ("", "somet", ""),
         ("", "hou", ""),
-        ("", "thr", ""),
+        // "thr" is nobody's word: it fixes even though it begins
+        // "through" (asked for by name, 2026-09-19)
+        ("", "thr", "the"),
         ("", "alw", ""),
         ("", "wome", ""),
         // ... while anything that keeps every letter typed still commits

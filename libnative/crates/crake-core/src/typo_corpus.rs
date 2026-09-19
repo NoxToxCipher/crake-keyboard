@@ -1681,6 +1681,7 @@ pub const WIKIPEDIA_COMMON_TYPOS: &[(&str, &str)] = &[
     ("thorough", "thorough"),
     ("though", "though"),
     ("thought", "thought"),
+    ("thr", "the"),
     ("threshold", "threshold"),
     ("through", "through"),
     ("throughout", "throughout"),
