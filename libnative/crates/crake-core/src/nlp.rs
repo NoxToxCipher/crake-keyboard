@@ -463,6 +463,98 @@ const TYPO_CORPUS_KNOWN_JUNK: &[&str] = &["ment", "gunna", "thr"];
 /// `suggest_with_context_opts`. Add to this list only on evidence.
 const ALWAYS_FIX_LIVE_PREFIXES: &[&str] = &["thr"];
 
+/// Words after which the possessive "its" is impossible, so a typed "its"
+/// was meant as "it is"/"it has". A possessive determiner MUST be followed
+/// by a noun phrase, so a determiner, a pronoun, a preposition or a verb
+/// form after it settles the question by itself.
+///
+/// Deliberately NOT here: adjectives and degree adverbs, because "its very
+/// nature", "its only hope" and "its pretty face" are all correct
+/// possessives; and nouns that can also be a predicate ("it is time",
+/// "it is worth it"). One wrong entry is worse than fifty missing ones.
+const ITS_FOLLOWED_BY_APOSTROPHE: &[&str] = &[
+    // determiners: nothing may follow a possessive determiner but a noun
+    "a", "an", "the", "my", "your", "his", "her", "their", "our", "this",
+    "these", "those",
+    // pronouns
+    "me", "you", "him", "us", "them", "everyone", "everybody", "someone",
+    "somebody", "something", "nothing", "anything", "everything", "mine",
+    "yours", "ours", "theirs",
+    // negation and sentence adverbs
+    "not", "never", "always", "still", "already", "probably", "definitely",
+    "actually", "basically", "literally", "apparently", "honestly",
+    "obviously", "clearly", "so", "too", "gonna",
+    // verb forms that follow "it is" / "it has"
+    "been", "going", "getting", "coming", "become", "becoming", "happening",
+    "working", "raining", "snowing", "starting", "supposed", "meant", "gone",
+    "done", "over",
+    // prepositions and conjunctions
+    "for", "to", "from", "about", "because", "like", "at", "in", "on",
+];
+
+/// Words after which "it is"/"it has" is impossible, so a typed "it's" was
+/// meant as the possessive. Only words that cannot be a predicate belong
+/// here: "it is own" is not English, while "it is time" and "it is worth
+/// it" both are, so "time" and "worth" must never be listed.
+const ITS_FOLLOWED_BY_POSSESSIVE: &[&str] = &["own", "respective", "sake", "entirety"];
+
+/// The word a token should have been, judged by the word typed AFTER it.
+///
+/// "its" and "it's" cannot be told apart when they are typed: the shipped
+/// language model holds no apostrophe tokens at all, and both forms sit at
+/// corpus 253. What settles it is the next word, which only arrives a
+/// keystroke later -- so this is applied retroactively, once that word is
+/// committed (field report 2026-09-19: "what about its and it's ... is it
+/// context dependent on a few words later?").
+///
+/// Returns the replacement for `prev`, carrying its capitalisation across,
+/// or `None` when the following word decides nothing -- which is most of
+/// the time, and is the safe answer.
+pub fn retro_word_fix(prev: &str, next: &str) -> Option<String> {
+    let prev_trim = prev.trim();
+    let next_key: String = next
+        .trim()
+        .trim_end_matches(|c: char| c.is_ascii_punctuation() && c != '\'')
+        .to_ascii_lowercase();
+    if next_key.is_empty() {
+        return None;
+    }
+    let bare: String = prev_trim
+        .to_ascii_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphabetic())
+        .collect();
+    if bare != "its" {
+        return None;
+    }
+    let typed_apostrophe = prev_trim.contains(APOSTROPHE_CHARS[0])
+        || prev_trim.contains(APOSTROPHE_CHARS[1])
+        || prev_trim.contains(APOSTROPHE_CHARS[2]);
+    let want_apostrophe = if ITS_FOLLOWED_BY_APOSTROPHE.contains(&next_key.as_str()) {
+        true
+    } else if ITS_FOLLOWED_BY_POSSESSIVE.contains(&next_key.as_str()) {
+        false
+    } else {
+        return None;
+    };
+    if want_apostrophe == typed_apostrophe {
+        return None;
+    }
+    let replacement = if want_apostrophe { "it's" } else { "its" };
+    // carry the capitalisation of what was typed
+    Some(if prev_trim.chars().next().is_some_and(|c| c.is_uppercase()) {
+        let mut c = replacement.chars();
+        match c.next() {
+            Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            None => replacement.to_string(),
+        }
+    } else {
+        replacement.to_string()
+    })
+}
+
+const APOSTROPHE_CHARS: [char; 3] = ['\'', '\u{2019}', '\u{2018}'];
+
 /// Chat prefixes that get run into the next word on a phone. The splitter
 /// accepts `prefix + top-tier word` (or `prefix + contraction`) on any
 /// attestation at all, because the pair table is news-flavoured and rates
