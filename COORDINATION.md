@@ -1000,3 +1000,39 @@ rescue any tap that lands ON the space bar, which is why a low thumb on
 c/v/b/n types a space. That one re-hit-tests at TOUCH_DOWN, before a
 space-bar swipe can be told from a tap, and the 2026-08-27 delete-key
 report is what that coupling caused last time.
+
+#### Same day, later — Irish names, "Pne", and the double space (Claude)
+
+Three more from the same report, all verified by typing on the CMF Phone 1.
+
+- IRISH NAMES. The shipped frequency table is news English and had never
+  seen most of them: "aoife" was corrected to "alice", and no prefix of one
+  was ever offered ("it is actually impossible to write that name"). 73 names
+  added to CORE_DICTIONARY, which the engine preseeds into the TRIE ONLY, so
+  the corpus count the bigram blob checks is untouched. A new
+  `GIVEN_NAME_CASING` table (consulted beside TECH_BRAND_CASING) offers the
+  capital for a name typed in lower case, and for the 27 names that carry a
+  fada it offers the accented spelling with the plain capital beside it:
+  "roisin" -> Róisín, Roisin. The accented spellings are dictionary words in
+  their own right, so typing one directly is not a misspelling. Pinned in
+  tests/given_names.rs. Names that are also, or are one slip from, an
+  everyday word were deliberately left out (una, ita, emer, dara, orla,
+  tara, cara): they would cost a correction to gain a name.
+- "Pne" -> "One". A three-letter token could never punch through its own
+  prefix completions (the rule started at four), so "pne" sat behind
+  "pneumonia" and "pneumatic" while "one" was one key away. It now punches
+  through, but only when the reading is unarguable: the completions must be
+  40 below the rival, no OTHER everyday word may be one adjacent key away
+  ("aho" is a slip of both "who" and "ago"), and no everyday word may be one
+  letter longer ("kow" is "know", not "low"). Measured: 85 sweep misses
+  fixed, ZERO new wrong flips. Both earlier attempts are recorded in the
+  sweep files: the bare rule cost 27 wrong flips, the uniqueness rule 12.
+- DOUBLE SPACE. Punctuation auto-space did not look to the right of the
+  cursor, so adding a sentence INSIDE an existing paragraph put a space on
+  top of the one already there. `shouldInsertAutoSpaceAfter` and the
+  punctuation-chain branch now both stand down when the text after the
+  cursor already begins with a space. A deliberate double space is still
+  one press of the space bar, which is untouched.
+
+"Aorry" -> "Sorry" needed no change: the sentence-start recase from earlier
+today already handles a capitalised first word. Verified on the phone.
