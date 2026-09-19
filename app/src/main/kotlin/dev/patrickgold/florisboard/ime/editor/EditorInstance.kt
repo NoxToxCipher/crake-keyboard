@@ -213,6 +213,13 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         if (!prefs.correction.autoSpacePunctuation.get() || text.isEmpty()) return false
         if (activeInfo.isRawInputEditor) return false
         if (activeState.keyVariation != KeyVariation.NORMAL) return false
+        // There is already a space to the right of the cursor, so putting
+        // one in would make two. This is what happens when a sentence is
+        // added INSIDE a paragraph that was already written: the full stop
+        // brings its own space and lands on top of the one that was there
+        // (field report 2026-09-19). The space key still types a space, so
+        // a deliberate double space is always one press away.
+        if (activeContent.textAfterSelection.startsWith(' ')) return false
 
         val isApostrophe = text.length == 1 && (text[0] == '\'' || text[0] == '’' || text[0] == '‘' || text[0] == '´' || text[0] == '`')
         if (isApostrophe) return false
@@ -259,7 +266,9 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             val isDeletePreviousSpace = hasTrailingSpace
             val shouldAutoSpaceAfter = prefs.correction.autoSpacePunctuation.get() &&
                 activeState.keyVariation == KeyVariation.NORMAL &&
-                !activeInfo.isRawInputEditor
+                !activeInfo.isRawInputEditor &&
+                // ... and not when there is already a space to the right
+                !activeContent.textAfterSelection.startsWith(' ')
             if (shouldAutoSpaceAfter) {
                 autoSpace.setActive()
             } else {
