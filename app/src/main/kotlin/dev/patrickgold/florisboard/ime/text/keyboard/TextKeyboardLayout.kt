@@ -1943,8 +1943,12 @@ fun TextKeyboardLayout(
                     }
                     if (kw <= 0f) return@Canvas
                     val keyH = kyBottom - kyTop
-                    val bladeW = (kw * 0.30f).coerceAtLeast(3f * density)
-                    val full = keyH * 2.6f
+                    // Keep it the size of the letter it replaces: a thin
+                    // blade that runs the height of the key and no further,
+                    // so it reads as the "i" lighting up rather than a prop
+                    // laid over the keyboard (asked for, 2026-09-19).
+                    val bladeW = (kw * 0.13f).coerceAtLeast(2f * density)
+                    val full = keyH * 0.92f
                     val len = full * extend
                     if (len <= 1f) return@Canvas
                     val canvas = drawContext.canvas.nativeCanvas
@@ -1955,7 +1959,7 @@ fun TextKeyboardLayout(
                         color = core
                         alpha = 70
                         style = android.graphics.Paint.Style.STROKE
-                        strokeWidth = bladeW * 2.6f
+                        strokeWidth = bladeW * 2.2f
                         strokeCap = android.graphics.Paint.Cap.ROUND
                     }
                     val blade = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -1977,8 +1981,8 @@ fun TextKeyboardLayout(
 
                     // the hilt sits at the bottom of the key, where the
                     // blade comes out
-                    val hiltW = bladeW * 1.8f
-                    val hiltH = keyH * 0.34f
+                    val hiltW = bladeW * 1.7f
+                    val hiltH = keyH * 0.17f
                     val hilt = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         color = 0xFF9DA3AA.toInt()
                     }
@@ -1986,7 +1990,7 @@ fun TextKeyboardLayout(
                         color = 0xFF2B2F36.toInt()
                     }
                     canvas.drawRect(kx - hiltW / 2f, kyBottom, kx + hiltW / 2f, kyBottom + hiltH, hilt)
-                    canvas.drawRect(kx - hiltW / 2f, kyBottom + hiltH * 0.42f, kx + hiltW / 2f, kyBottom + hiltH * 0.72f, grip)
+                    canvas.drawRect(kx - hiltW / 2f, kyBottom + hiltH * 0.40f, kx + hiltW / 2f, kyBottom + hiltH * 0.75f, grip)
                 }
             }
         }
