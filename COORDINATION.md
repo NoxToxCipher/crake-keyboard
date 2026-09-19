@@ -1052,3 +1052,24 @@ in the Easter Eggs screen and honour its off switches.
   heights, holds, retracts, and carries a hilt at the bottom edge where it
   comes out. Verified by typing each trigger on the CMF Phone 1 and
   capturing frames mid-animation.
+
+#### 2026-09-19 — "I cannot reliably flick a word up"
+
+The gate was not the problem; the glide was taking the stroke. The glide
+detector starts a glide once a stroke passes 0.85 key widths (33dp on a
+39dp key) unless it reads as an upward flick, and THAT test was capped at
+1.5 key widths = 58dp. So the flick only worked in a 22-58dp window, within
+about 33 degrees of vertical: a gentle flick fired, a committed one became
+a glide and did nothing. The cap is now 2.6 key widths and the angle 0.77
+(matching the flick's own 1.3 rise-over-sideways gate), extracted as
+`Detector.isUpwardFlickStroke` and pinned in GlideTriggerSlopTest. A glide
+that is genuinely travelling still passes the cap and starts with every
+buffered point intact; it just starts later on a strongly vertical stroke.
+
+NOT changed, deliberately: the velocity floors (22dp/280dp/s shared, 250dp/s
+for the word flick). A long slow flick still fails to classify, and letting
+it through means touching `classifiesAsSwipe`, which the delete-key scrub
+shares — the 2026-08-28 report is what that coupling caused last time. If
+flicks still feel unreliable after this, measure first with
+scratchpad/flick_matrix.py (it maps rise x duration against what actually
+commits) and change the floor on that evidence.
