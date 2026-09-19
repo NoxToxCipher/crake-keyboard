@@ -8987,11 +8987,9 @@ private class TextKeyboardLayoutController(
             // warmer below keeps the memo fresh between keystrokes.
             val predictedLetters = org.florisboard.libnative.FlorisNative
                 .predictNextLetterWordsCached(prefix, prevWord)?.keys
-            if (predictedLetters != null) {
-                keyboard.getKeyForPosAdaptive(touchX, touchY, predictedLetters, touchMajor, touchMinor)
-            } else {
-                keyboard.getKeyForPos(touchX, touchY)
-            }
+            // A cold memo means no predictions, not no calibration: the
+            // learned key centres still decide the tap (2026-09-19).
+            keyboard.getKeyForPosAdaptive(touchX, touchY, predictedLetters ?: emptySet(), touchMajor, touchMinor)
         } else {
             keyboard.getKeyForPos(touchX, touchY)
         }

@@ -125,9 +125,17 @@ class TextKeyboard(
                 }
             }
 
-            if (predictedNextLetters.isEmpty()) {
-                return exactKey
-            }
+            // No predictions is NOT a reason to fall back to plain
+            // rectangles. The learned centre of each key (and the top-row
+            // and edge calibration below) is how this keyboard fits the
+            // person typing on it, and it used to apply only when the
+            // engine happened to have letter predictions -- so at the start
+            // of a word, exactly where there is no context to lean on, a
+            // person whose taps land consistently low got no help at all
+            // (field report 2026-09-19: "the hit boxes of the letters are
+            // not entirely over the letters"). With an empty set no key
+            // takes the probability bonus below, so this is purely "which
+            // key is this person actually aiming at".
 
             // Contact Patch Biomechanical Apex Compensation & Fleet Kinematic Calibration:
             // Human thumb pads strike with an elliptical contact tilted from the true bone apex.
