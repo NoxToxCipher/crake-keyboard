@@ -936,3 +936,67 @@ top-level `punctuationChainsOnto` pinned by PunctuationChainTest. Traced
 against the shipped punctuation rule (`symbolsPrecedingAutoSpace` holds
 neither `:` nor `;`, `symbolsFollowingAutoSpace` is empty), the sequence now
 lands as "Hello. :) ". "Note: " + "." no longer becomes "Note:." either.
+
+### 2026-09-19 (evening) — its/it's, the flick, "thr", and the hit boxes
+
+Four field reports, all verified by typing on the CMF Phone 1 (which is now
+available for testing; the Xiaomi was face-down behind a proximity overlay).
+
+1. FLICK STOPPED WORKING. My own gate, same morning. It measured the stroke
+   in `absUnitCountY`, which is an INTEGER count of 8dp units, so a real 30dp
+   flick reported 24dp and a gate asking for 25.2dp (0.6 of a 42dp key) never
+   opened. `SwipeGesture.Event` now carries the actual `diffXDp`/`diffYDp`;
+   the word flick asks for 22dp of rise, more up than sideways, at 250dp/s,
+   and the shared classifier floors at 22dp/280dp/s
+   (`ACCIDENTAL_DRIFT_MAX_DP`). MEASURED ON THE PHONE: a 24dp and a 30dp
+   flick both commit the word, a 15dp drift types the letter. The device
+   captures put stray tap-slides at 11.6-20.8dp, so the floor still sits
+   above the accidental band. Pinned in SwipeClassifierTest.
+
+2. "thr" -> "the", asked for by name. It had been purged with the other
+   live-prefix rewrites. Back in the typo corpus, and `ALWAYS_FIX_LIVE_PREFIXES`
+   (one entry) exempts it from the unfinished-word guard. The trade is
+   explicit: a bumped space three letters into "through" now gives "the".
+   Add to that list only on evidence.
+
+3. ITS vs IT'S. Nothing at the moment of typing can tell them apart: the
+   shipped bigram table holds NO apostrophe tokens (every pair with "it's"
+   scores 0) and both forms sit at corpus 253. The word AFTER decides it, so
+   the fix is retroactive: `retro_word_fix(prev, next)` in nlp.rs, reached
+   through `nativeNlpRetroWordFix`, applied by
+   `EditorInstance.applyRetroWordFix()` which KeyboardManager calls after
+   each space. It rewrites the previous word in one batch edit, and only
+   when the text before the cursor really ends "<word> <word> " with nothing
+   selected. The rule is deliberately narrow: a possessive determiner must
+   be followed by a noun phrase, so a determiner, pronoun, preposition or
+   verb form after "its" proves it was "it is"; only "own", "respective",
+   "sake" and "entirety" prove the reverse. Adjectives and degree adverbs
+   are NOT listed ("its very nature", "its only hope", "its pretty face"
+   are all correct possessives), nor are nouns that can be a predicate
+   ("it is time", "it is worth it"). MEASURED ON THE PHONE: "its a" ->
+   "It's a", "its not" -> "It's not", "its going" -> "It's going", while
+   "its own" and "its tail" are left alone.
+
+4. HIT BOXES. The keyboard DOES learn where each person's taps land: a
+   per-key Gaussian centroid in touch_model.rs, moved by every key-down
+   through `recordTouchHit`, capped at 0.35 of a key pitch, persisted to
+   crake_touch.crkt and reloaded on warm. But it only reached the hit test
+   through `getKeyForPosAdaptive`, which returned the plain rectangle
+   whenever the engine had no letter predictions for the current prefix --
+   so at the START of a word, where there is no context to lean on, none of
+   the learning applied, and the top-row and edge calibration went with it.
+   The learned centres now decide every tap; predictions, when there are
+   any, still give the predicted letters their distance bonus on top.
+   Measured on the phone after the change: "the quick brown fox jumps over"
+   types exactly, and the n/space boundary sits at y=2120 on a 1080x2400
+   screen, the midpoint between the two row centres, which is where it
+   belongs. So: BOTH answers to the question are right, in this order --
+   the geometry should be right from the start (it is: rows partition at
+   their midpoint) and the per-person learning rides on top (it does now,
+   always, instead of intermittently).
+
+Still open: `getKeyForPosAdaptive` (TextKeyboard.kt:97) still refuses to
+rescue any tap that lands ON the space bar, which is why a low thumb on
+c/v/b/n types a space. That one re-hit-tests at TOUCH_DOWN, before a
+space-bar swipe can be told from a tap, and the 2026-08-27 delete-key
+report is what that coupling caused last time.
