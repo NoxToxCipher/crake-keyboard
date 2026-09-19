@@ -43,6 +43,7 @@ import dev.patrickgold.florisboard.ime.text.key.KeyVariation
 import dev.patrickgold.florisboard.keyboardManager
 import dev.patrickgold.florisboard.lib.ext.ExtensionComponentName
 import dev.patrickgold.florisboard.nlpManager
+import org.florisboard.libnative.FlorisNative
 import dev.patrickgold.florisboard.subtypeManager
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.launch
@@ -451,6 +452,43 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      *
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
+    /**
+     * Rewrites the word BEFORE the one just committed, when the word just
+     * committed is what settles it. "its" and "it's" are indistinguishable
+     * as they are typed -- the shipped language model holds no apostrophe
+     * tokens and both sit at corpus 253 -- so the engine is asked again once
+     * the next word is in (field report 2026-09-19).
+     *
+     * Deliberately narrow: the text before the cursor must end with exactly
+     * "<word> <word> " and nothing may be selected, so a cursor that moved,
+     * a multi-space gap or a punctuation mark between the two words all
+     * mean no rewrite. Runs inside one batch edit so the field sees a
+     * single change.
+     */
+    fun applyRetroWordFix() {
+        if (activeInfo.isRawInputEditor) return
+        if (!FlorisNative.isAvailable()) return
+        val content = activeContent
+        if (content.selection.isSelectionMode) return
+        val before = content.textBeforeSelection
+        if (!before.endsWith(' ')) return
+        val body = before.dropLast(1)
+        val next = body.takeLastWhile { it.isLetter() || it == '\'' || it == '’' }
+        if (next.isEmpty() || next.length == body.length) return
+        val beforeNext = body.dropLast(next.length)
+        if (!beforeNext.endsWith(' ')) return
+        val prev = beforeNext.dropLast(1).takeLastWhile { it.isLetter() || it == '\'' || it == '’' }
+        if (prev.isEmpty()) return
+        val fixed = FlorisNative.retroWordFix(prev, next) ?: return
+        if (fixed == prev) return
+        val span = prev.length + 1 + next.length + 1
+        runBlocking {
+            deleteAroundCursor(OperationUnit.CHARACTERS, OperationScope.BEFORE_CURSOR, n = span)
+        }
+        super.commitText("$fixed $next ")
+        updateLastCommitPosition()
+    }
+
     fun commitFlickPrediction(text: String): Boolean {
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val content = activeContent

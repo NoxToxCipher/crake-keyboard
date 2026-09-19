@@ -202,6 +202,17 @@ object FlorisNative {
      * is one the engine would never autocorrect, so callers holding their
      * own correction tables (the fleet map) must yield too.
      */
+    /**
+     * The word [prev] should have been, now that [next] has been typed after
+     * it, or null when the following word settles nothing. "its" and "it's"
+     * are the case this exists for: nothing at the moment of typing can tell
+     * them apart, and the word after decides.
+     */
+    fun retroWordFix(prev: String, next: String): String? {
+        if (!isLoaded || prev.isBlank() || next.isBlank()) return null
+        return nativeNlpRetroWordFix(prev, next).takeIf { it.isNotEmpty() }
+    }
+
     fun isKnownWord(word: String): Boolean {
         if (!isLoaded || word.isBlank()) return false
         return nativeNlpIsKnownWord(word)
@@ -626,6 +637,8 @@ object FlorisNative {
     private external fun nativeNlpInsertWord(word: String, frequency: Int)
 
     private external fun nativeNlpIsKnownWord(word: String): Boolean
+
+    private external fun nativeNlpRetroWordFix(prev: String, next: String): String
 
     private external fun nativeNlpLoadDictBlob(data: ByteArray): Int
 

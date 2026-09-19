@@ -52,6 +52,34 @@ pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpIsKn
     }
 }
 
+/// The word `prev` should have been, judged by the word typed after it;
+/// empty string when the follower settles nothing. "its" and "it's" are
+/// indistinguishable at the moment they are typed, so this is asked once
+/// the NEXT word is committed. See crake_core::retro_word_fix.
+#[no_mangle]
+pub extern "system" fn Java_org_florisboard_libnative_FlorisNative_nativeNlpRetroWordFix(
+    mut env: JNIEnv,
+    _class: JClass,
+    prev: JString,
+    next: JString,
+) -> jstring {
+    let empty = env
+        .new_string("")
+        .map(|s| s.into_raw())
+        .unwrap_or(std::ptr::null_mut());
+    let get = |env: &mut JNIEnv, s: &JString| {
+        env.get_string(s)
+            .map(|v| v.to_str().unwrap_or("").to_string())
+            .unwrap_or_default()
+    };
+    let p = get(&mut env, &prev);
+    let n = get(&mut env, &next);
+    match crake_core::retro_word_fix(&p, &n) {
+        Some(word) => env.new_string(&word).map(|s| s.into_raw()).unwrap_or(empty),
+        None => empty,
+    }
+}
+
 /// Three-fragment split repair ("cha nbn ges" -> "changes"); empty string
 /// when the fragments should not weld. See NlpEngine::merge_repair3.
 #[no_mangle]

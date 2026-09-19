@@ -748,6 +748,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate != null) { /* Do nothing */ } else {
             editorInstance.commitText(KeyCode.SPACE.toChar().toString())
         }
+        // The word just finished can settle the one before it: "its"
+        // shows itself to have been "it is" only when the next word lands.
+        editorInstance.applyRetroWordFix()
     }
 
     /**
@@ -811,6 +814,9 @@ class KeyboardManager(context: Context) : InputKeyEventReceiver {
                 candidate != null) { /* Do nothing */ } else {
             editorInstance.commitText(KeyCode.SPACE.toChar().toString())
         }
+        // The word just finished can settle the one before it: "its"
+        // shows itself to have been "it is" only when the next word lands.
+        editorInstance.applyRetroWordFix()
     }
 
     /**
