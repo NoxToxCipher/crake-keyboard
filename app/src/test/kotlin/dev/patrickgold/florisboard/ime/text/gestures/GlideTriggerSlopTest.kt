@@ -47,4 +47,28 @@ class GlideTriggerSlopTest : FunSpec({
         // 60dp keys: 0.85 * 60 = 51 — a 18-20dp ceiling here is the bug
         GlideTypingGesture.Detector.triggerSlopFor(60f) shouldBe 51f
     }
+
+    test("a word flick is not handed to the glide, however hard it is thrown") {
+        // 107px keys, the real geometry of a 1080x2400 phone. A flick that
+        // travels a couple of key widths straight up is still a flick: at
+        // the old 1.5 cap it became a glide and the word did not fire
+        // (field report 2026-09-19).
+        val key = 107f
+        fun up(px: Float) = GlideTypingGesture.Detector.isUpwardFlickStroke(px, 0f, -px, key)
+        up(70f) shouldBe true
+        up(160f) shouldBe true
+        up(250f) shouldBe true
+        // ... but a stroke that is really going somewhere is a glide
+        up(300f) shouldBe false
+    }
+
+    test("a sideways stroke is a glide, not a flick") {
+        val key = 107f
+        // more across than up: a glide, whatever its length
+        GlideTypingGesture.Detector.isUpwardFlickStroke(160f, 140f, -80f, key) shouldBe false
+        // barely moved upward at all
+        GlideTypingGesture.Detector.isUpwardFlickStroke(60f, 10f, -15f, key) shouldBe false
+        // downward strokes are never flicks
+        GlideTypingGesture.Detector.isUpwardFlickStroke(160f, 0f, 160f, key) shouldBe false
+    }
 })

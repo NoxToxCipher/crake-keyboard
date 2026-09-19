@@ -57,6 +57,26 @@ class GlideTypingGesture {
             internal fun triggerSlopFor(keySizeDp: Float): Float =
                 (keySizeDp * 0.85f).coerceAtLeast(24f)
 
+            /**
+             * Whether a stroke off a letter key is a word flick, and so must
+             * NOT be allowed to become a glide.
+             *
+             * The cap used to be 1.5 key widths, which on a 39dp key is
+             * 58dp: any flick with commitment behind it travelled further
+             * than that, the glide claimed the stroke, and whether the word
+             * flicked depended on how hard it was thrown (field report
+             * 2026-09-19, "I cannot reliably flick a word up"). 2.6 key
+             * widths covers a whole-hearted flick, while a glide that is
+             * really going somewhere passes it and still starts with every
+             * buffered point intact. The angle matches the flick's own gate
+             * in TextKeyboardLayout, which asks for a rise of at least 1.3
+             * times the sideways travel.
+             */
+            internal fun isUpwardFlickStroke(dist: Float, diffX: Float, diffY: Float, keySize: Float): Boolean =
+                dist < keySize * 2.6f &&
+                    diffY < -20f &&
+                    kotlin.math.abs(diffX) < 0.77f * kotlin.math.abs(diffY)
+
             // Bounds the recorded gesture path; matches the manager's cap so
             // a never-lifted pointer cannot grow the buffer without limit.
             private const val MAX_GESTURE_POINTS = 4096
@@ -120,7 +140,7 @@ class GlideTypingGesture {
                             val triggerSlop = triggerSlopFor(keySize)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
-                            val isUpwardFlick = dist < keySize * 1.5f && diffY < -20f && kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY)
+val isUpwardFlick = isUpwardFlickStroke(dist, diffX, diffY, keySize)
                             // Glide may only START from a real character key:
                             // a null initial key (missed tap near delete) or
                             // a functional key must never grow into a glide —
