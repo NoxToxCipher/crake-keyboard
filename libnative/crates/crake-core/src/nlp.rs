@@ -154,6 +154,87 @@ pub struct SpaceBeamCandidate {
     pub score: f32,
 }
 
+/// Given names that are always written with a capital. Typing one in
+/// lower case offers it capitalised, exactly as the brand table does
+/// for "crake" -> "Crake" (field report 2026-09-19). Add a name here
+/// only when it is also in the dictionary, or the suggestion would be
+/// the only place it exists.
+pub const GIVEN_NAME_CASING: &[(&str, &str)] = &[
+    ("aidan", "Aidan"),
+    ("aine", "Aine"),
+    ("aisling", "Aisling"),
+    ("aoibhe", "Aoibhe"),
+    ("aoibheann", "Aoibheann"),
+    ("aoibhinn", "Aoibhinn"),
+    ("aoife", "Aoife"),
+    ("blathnaid", "Blathnaid"),
+    ("bronagh", "Bronagh"),
+    ("caoilfhinn", "Caoilfhinn"),
+    ("caoimhe", "Caoimhe"),
+    ("cathal", "Cathal"),
+    ("cian", "Cian"),
+    ("ciara", "Ciara"),
+    ("ciaran", "Ciaran"),
+    ("cillian", "Cillian"),
+    ("clodagh", "Clodagh"),
+    ("colm", "Colm"),
+    ("cormac", "Cormac"),
+    ("daithi", "Daithi"),
+    ("darragh", "Darragh"),
+    ("declan", "Declan"),
+    ("deirdre", "Deirdre"),
+    ("diarmuid", "Diarmuid"),
+    ("doireann", "Doireann"),
+    ("donal", "Donal"),
+    ("eabha", "Eabha"),
+    ("eamon", "Eamon"),
+    ("eimear", "Eimear"),
+    ("eithne", "Eithne"),
+    ("eoin", "Eoin"),
+    ("fergal", "Fergal"),
+    ("fiachra", "Fiachra"),
+    ("fiadh", "Fiadh"),
+    ("finbar", "Finbar"),
+    ("fintan", "Fintan"),
+    ("fionnuala", "Fionnuala"),
+    ("gearoid", "Gearoid"),
+    ("grainne", "Grainne"),
+    ("keeva", "Keeva"),
+    ("kieran", "Kieran"),
+    ("killian", "Killian"),
+    ("laoise", "Laoise"),
+    ("lorcan", "Lorcan"),
+    ("maeve", "Maeve"),
+    ("mairead", "Mairead"),
+    ("meabh", "Meabh"),
+    ("moira", "Moira"),
+    ("muireann", "Muireann"),
+    ("neasa", "Neasa"),
+    ("niall", "Niall"),
+    ("niamh", "Niamh"),
+    ("nuala", "Nuala"),
+    ("odhran", "Odhran"),
+    ("oisin", "Oisin"),
+    ("oonagh", "Oonagh"),
+    ("orlaith", "Orlaith"),
+    ("padraig", "Padraig"),
+    ("roise", "Roise"),
+    ("roisin", "Roisin"),
+    ("ronan", "Ronan"),
+    ("ruairi", "Ruairi"),
+    ("sadhbh", "Sadhbh"),
+    ("saoirse", "Saoirse"),
+    ("seamus", "Seamus"),
+    ("senan", "Senan"),
+    ("sinead", "Sinead"),
+    ("siobhan", "Siobhan"),
+    ("siofra", "Siofra"),
+    ("sorcha", "Sorcha"),
+    ("tadhg", "Tadhg"),
+    ("tiernan", "Tiernan"),
+    ("ultan", "Ultan"),
+];
+
 pub const TECH_BRAND_CASING: &[(&str, &str)] = &[
     ("bitcoin", "Bitcoin"),
     ("chatgpt", "ChatGPT"),
@@ -2291,11 +2372,19 @@ impl NlpEngine {
         let mut candidates: Vec<RankedCandidate> = Vec::with_capacity(max_candidates);
 
         // Tech brands & camelCase casing lookup (e.g. webos -> webOS, ios -> iOS, chatgpt -> ChatGPT)
-        if let Some(&(_, brand_casing)) = TECH_BRAND_CASING.iter().find(|&&(k, _)| k == trimmed_lower) {
-            candidates.push(RankedCandidate {
-                word: brand_casing.to_string(),
-                is_autocorrect: !has_internal_uppercase && trimmed != brand_casing,
-            });
+        if let Some(&(_, brand_casing)) = TECH_BRAND_CASING
+            .iter()
+            .chain(GIVEN_NAME_CASING.iter())
+            .find(|&&(k, _)| k == trimmed_lower)
+        {
+            // Nothing to offer when it is already written that way, and
+            // pushing it anyway put the word in the strip twice.
+            if trimmed != brand_casing {
+                candidates.push(RankedCandidate {
+                    word: brand_casing.to_string(),
+                    is_autocorrect: !has_internal_uppercase,
+                });
+            }
         }
 
         // Helper to check if a word is already in candidate list
