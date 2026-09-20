@@ -1073,3 +1073,23 @@ shares — the 2026-08-28 report is what that coupling caused last time. If
 flicks still feel unreliable after this, measure first with
 scratchpad/flick_matrix.py (it maps rise x duration against what actually
 commits) and change the floor on that evidence.
+
+### 2026-09-20 — "rhe" and the like did not correct
+
+The unfinished-word guard was holding back corrections it was never meant
+to touch. It refuses to replace a token that still begins an everyday word,
+which is right for "fini" (finished 233, finish 232) but wrong for "rhe":
+that does begin "rhetoric" (201), and it is overwhelmingly a fat-fingered
+"the" (255). Same for "aer" -> "are" (254 against aerial 201), which had
+been pinned as must-not-flip the day before and is now restored.
+
+The guard now compares: a correction that beats the commonest continuation
+by 40 stands. Every case the guard exists for is far closer than that
+("fini" 16, "worl" 0, "somet" 4, "fron" 12, "thre" 3, "caree" 5), so they
+all stay protected. Measured on the sweep against yesterday: 41 misses
+fixed, 4 new wrong flips (asy->say, fibe->five, laste->last, pist->post,
+all genuine ties between two one-edit readings). A margin of 50 gives 0
+wrong flips but only 4 fixes, and loses 33 real corrections including
+beautifull->beautiful, buf->but, rach->each, kidn->kind, manh->many,
+centere->center. 40 is the chosen trade; the numbers for both are in
+sweep27 (40) and sweep28 (50).
