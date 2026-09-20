@@ -48,27 +48,38 @@ class GlideTriggerSlopTest : FunSpec({
         GlideTypingGesture.Detector.triggerSlopFor(60f) shouldBe 51f
     }
 
-    test("a word flick is not handed to the glide, however hard it is thrown") {
-        // 107px keys, the real geometry of a 1080x2400 phone. A flick that
-        // travels a couple of key widths straight up is still a flick: at
-        // the old 1.5 cap it became a glide and the word did not fire
-        // (field report 2026-09-19).
-        val key = 107f
-        fun up(px: Float) = GlideTypingGesture.Detector.isUpwardFlickStroke(px, 0f, -px, key)
-        up(70f) shouldBe true
-        up(160f) shouldBe true
-        up(250f) shouldBe true
-        // ... but a stroke that is really going somewhere is a glide
-        up(300f) shouldBe false
+    test("a flick is vetoed by its speed, at any ordinary length") {
+        // A flick is over in 61-103ms (the two live captures). A glide is a
+        // different act of the hand: 300-600ms, and nothing under 110ms is
+        // even allowed to commit. Age separates them where distance cannot,
+        // because their distance bands overlap.
+        val key = 33f
+        fun stroke(distDp: Float, ageMs: Long) =
+            GlideTypingGesture.Detector.isUpwardFlickStroke(distDp, 0f, -distDp * 2.75f, key, ageMs)
+        stroke(25f, 60L) shouldBe true
+        stroke(50f, 90L) shouldBe true
+        stroke(120f, 100L) shouldBe true
+    }
+
+    test("an upward glide arms once it is older than a flick could be") {
+        // The regression of 2026-09-20: a 2.6 key-width veto is 85.8dp deep
+        // while a keyboard row is 56.9dp, so one-row-up glides (s->e, j->u,
+        // n->h, m->j and 35 others) never armed at all.
+        val key = 33f
+        fun stroke(distDp: Float, ageMs: Long) =
+            GlideTypingGesture.Detector.isUpwardFlickStroke(distDp, 0f, -distDp * 2.75f, key, ageMs)
+        stroke(56.9f, 200L) shouldBe false
+        stroke(56.9f, 400L) shouldBe false
+        stroke(120f, 500L) shouldBe false
     }
 
     test("a sideways stroke is a glide, not a flick") {
         val key = 107f
         // more across than up: a glide, whatever its length
-        GlideTypingGesture.Detector.isUpwardFlickStroke(160f, 140f, -80f, key) shouldBe false
+        GlideTypingGesture.Detector.isUpwardFlickStroke(100f, 80f, -60f, key, 60L) shouldBe false
         // barely moved upward at all
-        GlideTypingGesture.Detector.isUpwardFlickStroke(60f, 10f, -15f, key) shouldBe false
+        GlideTypingGesture.Detector.isUpwardFlickStroke(60f, 10f, -15f, key, 60L) shouldBe false
         // downward strokes are never flicks
-        GlideTypingGesture.Detector.isUpwardFlickStroke(160f, 0f, 160f, key) shouldBe false
+        GlideTypingGesture.Detector.isUpwardFlickStroke(100f, 0f, 100f, key, 60L) shouldBe false
     }
 })

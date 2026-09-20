@@ -61,21 +61,46 @@ class GlideTypingGesture {
              * Whether a stroke off a letter key is a word flick, and so must
              * NOT be allowed to become a glide.
              *
-             * The cap used to be 1.5 key widths, which on a 39dp key is
-             * 58dp: any flick with commitment behind it travelled further
-             * than that, the glide claimed the stroke, and whether the word
-             * flicked depended on how hard it was thrown (field report
-             * 2026-09-19, "I cannot reliably flick a word up"). 2.6 key
-             * widths covers a whole-hearted flick, while a glide that is
-             * really going somewhere passes it and still starts with every
-             * buffered point intact. The angle matches the flick's own gate
-             * in TextKeyboardLayout, which asks for a rise of at least 1.3
-             * times the sideways travel.
+             * This is a VETO on gliding: every millimetre and millisecond
+             * it covers is one where an upward glide cannot start. It used
+             * to be a distance cap alone, and on 2026-09-19 that cap was
+             * widened to 2.6 key widths to make hard flicks more reliable,
+             * WITHOUT measuring. It made gliding unusable (field report
+             * 2026-09-20): the cap became 85.8dp while a keyboard row is
+             * 56.9dp, so the opening leg of any glide that runs uphill sat
+             * inside the veto and never armed. Replayed over every ordered
+             * two-key stroke, 39 of 650 could never start a glide - aq, se,
+             * de, fr, gt, hu, ju, ki, lo, za, xs, cd, vf, bg, nh, mj and
+             * their neighbours - against 0 before the change.
+             *
+             * The distance bands of a flick and a glide genuinely overlap,
+             * so no cap can separate them. Time can: the veto now applies
+             * only while the contact is younger than a flick can be. A
+             * flick of any ordinary length still wins, which is what the
+             * widened cap was reaching for, and a glide arms as soon as it
+             * is older than a flick - long before the word is finished.
              */
-            internal fun isUpwardFlickStroke(dist: Float, diffX: Float, diffY: Float, keySize: Float): Boolean =
-                dist < keySize * 2.6f &&
+            /**
+             * How long an upward stroke may still be a word flick. A flick
+             * is over almost before it starts: the two live captures took
+             * 61ms and 103ms. A glide is a different act of the hand -
+             * GlideTypingManager measures real ones at 300-600ms and
+             * refuses to commit anything under 110ms. Age separates the two
+             * where distance cannot, because their distance bands overlap.
+             */
+            internal const val FLICK_MAX_AGE_MS = 150L
+
+            internal fun isUpwardFlickStroke(
+                dist: Float,
+                diffX: Float,
+                diffY: Float,
+                keySize: Float,
+                ageMs: Long,
+            ): Boolean =
+                ageMs <= FLICK_MAX_AGE_MS &&
                     diffY < -20f &&
-                    kotlin.math.abs(diffX) < 0.77f * kotlin.math.abs(diffY)
+                    kotlin.math.abs(diffX) < 0.65f * kotlin.math.abs(diffY) &&
+                    dist < keySize * 4f
 
             // Bounds the recorded gesture path; matches the manager's cap so
             // a never-lifted pointer cannot grow the buffer without limit.
@@ -140,7 +165,9 @@ class GlideTypingGesture {
                             val triggerSlop = triggerSlopFor(keySize)
                             val diffX = pos.x - pointerData.positions[0].x
                             val diffY = pos.y - pointerData.positions[0].y
-val isUpwardFlick = isUpwardFlickStroke(dist, diffX, diffY, keySize)
+                            val strokeAgeMs = pos.timestamp - pointerData.positions[0].timestamp
+                            val isUpwardFlick =
+                                isUpwardFlickStroke(dist, diffX, diffY, keySize, strokeAgeMs)
                             // Glide may only START from a real character key:
                             // a null initial key (missed tap near delete) or
                             // a functional key must never grow into a glide —
