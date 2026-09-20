@@ -14,6 +14,21 @@
 //! candidates for every stroke and prints a scoreboard comparing current
 //! answers against the captured ones, so an engine change that shifts
 //! real-world behaviour is visible in the test output.
+//!
+//! It is a REPORT, not a gate, and the agreement number is not a score to
+//! push upwards. `top` is what the device build answered, and that build
+//! was frequently wrong: the same corpus holds six deliberate glides of
+//! "hello" that it committed as "jericho", "horatio", "hidalgo" and
+//! "hetero". Agreeing with it more would mean being wrong more. What each
+//! stroke actually MEANT is pinned in glide_gold.rs, which is the file that
+//! gates real-stroke accuracy. Agreement here stood at 26/36 before the
+//! frequency prior of 2026-09-21 and 22/36 after, and the four strokes it
+//! lost are four the device had got wrong.
+//!
+//! (A long-stroke assertion used to sit in the agreement branch, where it
+//! compared two values the branch had already found equal. It was removed
+//! rather than moved: pinning real strokes to what an old build answered is
+//! the wrong contract, and glide_gold.rs is the right one.)
 
 use crake_core::{GlideEngine, KeyInfo, NlpEngine, Point2D};
 
@@ -180,16 +195,6 @@ fn replay_captured_device_traces() {
         total += 1;
         if now_first == device_first {
             agree += 1;
-            // A long deliberate stroke where device and engine agree is
-            // ground truth: future scoring drift on REAL glides fails
-            // loudly instead of hiding in the agreement ratio. (First
-            // pinned specimen: the 12.9 kw "hello", 2026-08-28.)
-            if travel >= key_w * 5.0 {
-                assert_eq!(
-                    now_first, device_first,
-                    "trace {i}: long real glide drifted from its committed word"
-                );
-            }
         } else {
             eprintln!(
                 "  trace {i}: device committed '{device_first}', engine now says '{now_first}' \
