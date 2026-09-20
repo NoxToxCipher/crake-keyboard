@@ -1134,3 +1134,15 @@ Cleared by verifiers, do not re-suspect: c917c7c3f (adaptive hit test on
 every touch) - the glide start gate only reads whether the initial key is a
 character, never which one; b59e2ecdf (per-axis pitch) - the glide decoder
 never consults TouchModel at all.
+
+#### Same day — the glide preview had never run
+
+`GlideTypingManager.lastTime` was seeded from `System.currentTimeMillis()`
+(wall clock) while the points carry `MotionEvent.eventTime`
+(`SystemClock.uptimeMillis`). The refresh gate subtracted one from the
+other, so it was comparing time-since-boot against time-since-1970 and
+never came out positive: the word being glided was never previewed, on any
+stroke, since the timestamps went in. Gliding with no feedback is a large
+part of what "handicapped" feels like. Both sides are now the uptime clock,
+seeded 0 so the first moved point previews at once, and reset to 0 when a
+stroke completes or is cancelled.
