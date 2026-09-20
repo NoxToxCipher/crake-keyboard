@@ -55,7 +55,15 @@ class GlideTypingManager(private val context: Context) : GlideTypingGesture.List
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val gesturePoints = mutableListOf<FlorisNative.GlidePoint>()
-    private var lastTime = System.currentTimeMillis()
+    // When the live preview last ran, on the SAME clock the points carry
+    // (SystemClock.uptimeMillis, via MotionEvent.eventTime). It used to be
+    // seeded from System.currentTimeMillis, which is the wall clock: the
+    // gate below then compared time-since-boot against time-since-1970 and
+    // never once came out positive, so the word being glided was never
+    // previewed at all (field report 2026-09-20, "riddled with errors" -
+    // gliding with no feedback). 0 means "nothing previewed on this
+    // stroke yet", so the first moved point previews immediately.
+    private var lastTime = 0L
 
     // In-flight preview computation; cancelled whenever a newer preview or
     // the final commit supersedes it, so a slow preview can never overwrite
@@ -73,6 +81,7 @@ class GlideTypingManager(private val context: Context) : GlideTypingGesture.List
 
     override fun onGlideComplete(data: GlideTypingGesture.Detector.PointerData) {
         previewJob?.cancel()
+        lastTime = 0L
         // Snapshot and clear synchronously so a next glide starting before
         // the async match completes can never mix its points into this one.
         val ptsCopy = synchronized(gesturePoints) {
@@ -85,11 +94,13 @@ class GlideTypingManager(private val context: Context) : GlideTypingGesture.List
 
     override fun onGlideCancelled() {
         previewJob?.cancel()
+        lastTime = 0L
         synchronized(gesturePoints) { gesturePoints.clear() }
     }
 
     fun cancelGlide() {
         previewJob?.cancel()
+        lastTime = 0L
         synchronized(gesturePoints) { gesturePoints.clear() }
     }
 
