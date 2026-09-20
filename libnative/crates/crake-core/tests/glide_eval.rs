@@ -288,12 +288,21 @@ fn context_separates_near_identical_traces() {
         "'say hello' (220) must lead with context, got {:?}",
         with_ctx.iter().map(|m| m.word.as_str()).collect::<Vec<_>>()
     );
-    // The bonus is exactly bigram * 0.04 and applies only to "hello", so the
-    // hello-vs-jello margin must widen by 220 * 0.04 = 8.8 (float tolerance).
+    // The bonus is exactly bigram * 0.04 * GLIDE_CONTEXT_WEIGHT and applies
+    // only to "hello", so the hello-vs-jello margin must widen by
+    // 220 * 0.04 * 2.5 = 22.0 (float tolerance).
+    //
+    // This number was 8.8 while GLIDE_CONTEXT_WEIGHT was an implicit 1. It
+    // is a DERIVED constant, not a behaviour: the behaviour this test pins
+    // is the assertion above ("'say hello' must lead with context"), which
+    // is unchanged and which is what caught the problem when the unigram
+    // prior was strengthened. The weight moved with the prior because a
+    // bigram is evidence about THIS sentence and a unigram prior is not —
+    // leaving it at 1 made "say hello" commit "help".
     let gap_ctx = score_of(&with_ctx, "jello") - score_of(&with_ctx, "hello");
     assert!(
-        (gap_ctx - gap_no_ctx - 8.8).abs() < 0.05,
-        "context must widen the margin by 8.8: {gap_no_ctx} -> {gap_ctx}"
+        (gap_ctx - gap_no_ctx - 22.0).abs() < 0.05,
+        "context must widen the margin by 22.0: {gap_no_ctx} -> {gap_ctx}"
     );
 }
 

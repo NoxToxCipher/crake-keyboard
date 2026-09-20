@@ -68,6 +68,111 @@ pub struct KeyInfo {
 /// set with no word at or above it is display-only (the stray-flick guard).
 pub const GLIDE_COMMIT_MIN_FREQ: u32 = 150;
 
+/// How hard the language model is allowed to argue with the geometry.
+///
+/// The shipped frequency scale is compressed to 0-255 and is NOT a count:
+/// 255 is "the", 226 "hello", 201 "hollow", 161 "horatio", and a flat junk
+/// floor sits at 60 (2375 of the 49470 shipped words sit there exactly).
+/// Measured on the real dictionary, the old term
+/// `(freq/255).clamp(0.1,1.0) * 15.0` paid 3.5 points to junk and 15.0 to
+/// "the" — an 11.5-point span — while the geometry terms in the same sum
+/// routinely swing 25 to 100 points on one stroke. A rare word whose ideal
+/// path happened to fit a messy stroke a fraction better therefore beat the
+/// word the person meant: six deliberate glides of "hello" in the captured
+/// corpus committed "jericho", "horatio", "hidalgo" and "hetero". (That
+/// term's lower `.clamp(0.1, ..)` could only fire below freq 26 and was
+/// dead code on the shipped dictionary, whose floor is 60.)
+///
+/// The replacement is a logistic prior over the same compressed scale,
+/// spanning `GLIDE_FREQ_PRIOR_SPAN` points end to end. The S-curve is the
+/// point, not decoration, and both flat ends were forced by evidence:
+///
+/// * Below ~170 it is flat, so the junk band is uniformly junk and a
+///   60-frequency shape-fit cannot out-argue a real word.
+/// * Above ~245 it is flat, so "very common" versus "extremely common" is
+///   left to the geometry. That end matters: "word" (220) beats "words"
+///   (241) on a clean "word" trace by under 10 points of geometry, so a
+///   prior that kept climbing at the top hijacks that trace. Measured: a
+///   convex curve at this strength fails
+///   `context_never_hijacks_a_clean_trace`; this one passes it.
+///
+/// The span is chosen against four measurements, not one: the 600-word
+/// bench, the captured-stroke corpus, and two counter-metrics that charge
+/// the prior for what it costs the words it demotes (a 150-199 frequency
+/// band, and a Zipf-weighted pass over every glideable word in the
+/// dictionary). Raising it from 28 to 30 buys nothing on either shipped
+/// bench and costs 3 points of rare-word top-1.
+const GLIDE_FREQ_PRIOR_SPAN: f32 = 28.0;
+/// Where the prior spends its resolution: above the rare band, below the
+/// top tier, so the curve is steep exactly across the range that separates
+/// "a word people type" from "a word in the dictionary". Measured: lower
+/// midpoints (175-205) are monotonically worse on the 600-word bench,
+/// because the words worth being right about all sit at 200+.
+const GLIDE_FREQ_PRIOR_MID: f32 = 215.0;
+/// Width of the steep section, in units of the compressed scale.
+const GLIDE_FREQ_PRIOR_SLOPE: f32 = 20.0;
+
+/// A word the user has actually typed is, for that user, not a rare word.
+/// `learn_word` deliberately caps a learned word at corpus+30 so months of
+/// typing cannot flatten the frequency table, which leaves an out-of-corpus
+/// word like "crake" sitting around 100 — invisible to a prior this strong.
+/// The junk coin-flip below already exempts learned words, but only when
+/// the winner is itself junk; with a real prior the winner is a real common
+/// word ("create"), so the exemption never fired and the user's own
+/// vocabulary lost its own clean glide. Inside the glide prior only — not
+/// in the stored frequency, not in suggestions — a learned word is read at
+/// this floor.
+const GLIDE_LEARNED_FREQ_FLOOR: u32 = 220;
+
+/// Bigram context is evidence about THIS sentence; unigram frequency is
+/// only a prior over all sentences, so context has to outrank it. It did
+/// when the prior was worth 11.5 points and a strong bigram 8.8. Raising
+/// the prior without raising this inverts the hierarchy: with the new prior
+/// and the old implicit weight of 1, "say hello" commits "help". Measured
+/// bracket for this multiplier at the shipped prior: below 2.0 a strong
+/// bigram can no longer overturn the prior; at 10 a strong bigram starts
+/// hijacking a clean trace. 2.5 sits at the bottom of that bracket, where
+/// context decides ties and near-ties and nothing else.
+const GLIDE_CONTEXT_WEIGHT: f32 = 2.5;
+
+/// An inflection this emphatic is a TURN the hand meant, not sampling
+/// wobble: `extract_inflections` fires at 35 degrees, and only the weight
+/// separates a corner the thumb made from jitter the digitiser made.
+const GLIDE_TURN_WEIGHT_FLOOR: f32 = 1.8;
+
+/// Price per unit of turn-skeleton misfit. Deliberately small: the skeleton
+/// distance is already in pixels, and this term exists to break ties the
+/// full-path DTW cannot see, not to outvote it. Measured, it is worth about
+/// 3 points of rare-word top-1 for nothing on the 600-word bench, because
+/// it lets a WEAKER frequency prior fix the same captured strokes.
+const GLIDE_SHAPE_WEIGHT: f32 = 0.08;
+
+/// Geometry always keeps a seat this far up the result list. A prior strong
+/// enough to fix the captured strokes otherwise buries a deliberately-drawn
+/// rare word entirely instead of merely demoting it. Measured: without this
+/// rule the 150-199 band loses 3.5 points of top-3 (87.7% -> 84.2%); with
+/// it, top-3 is back at 87.5% and neither shipped bench moves. It has to be
+/// a low slot to do any good — production asks for 8 results, so seating
+/// into the LAST of them rescues a word into a slot nobody reads.
+const GLIDE_GEOMETRY_SEAT_SLOTS: usize = 3;
+
+/// The frequency prior, in score points. Subtracted from a candidate's
+/// total, so a common word ends up with a lower (better) score.
+#[inline]
+fn frequency_prior(freq: u32) -> f32 {
+    #[inline]
+    fn sigmoid(f: f32) -> f32 {
+        1.0 / (1.0 + (-(f - GLIDE_FREQ_PRIOR_MID) / GLIDE_FREQ_PRIOR_SLOPE).exp())
+    }
+    // The curve evaluated at the two ends of the shipped scale, so the term
+    // reads as "0 points for the junk floor, GLIDE_FREQ_PRIOR_SPAN points
+    // for the commonest word". Subtracting the low end is cosmetic for
+    // ranking — it is the same for every candidate.
+    const AT_JUNK: f32 = 0.000_430_55; // sigmoid(60)
+    const AT_TOP: f32 = 0.880_797; // sigmoid(255)
+    ((sigmoid(freq as f32) - AT_JUNK) / (AT_TOP - AT_JUNK)).clamp(0.0, 1.0) * GLIDE_FREQ_PRIOR_SPAN
+}
+
 /// Folds common Latin diacritics to their ASCII base letter, mirroring the
 /// NFD normalization the retired Kotlin classifier applied. Keyboard layouts
 /// carry ASCII letter keys only, so without folding an accented interior or
@@ -561,11 +666,11 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
     /// visit interior keys — so comparing the gesture against an equally
     /// corner-cut template removes a deformation DTW would otherwise charge
     /// the honest gesture for. Endpoints stay exact (they anchor the score).
-    fn soften_corners(path: Vec<Point2D>) -> Vec<Point2D> {
+    fn soften_corners(path: &[Point2D]) -> Vec<Point2D> {
         if path.len() < 3 {
-            return path;
+            return path.to_vec();
         }
-        let mut softened = path.clone();
+        let mut softened = path.to_vec();
         for i in 1..path.len() - 1 {
             let mid_x = (path[i - 1].x + path[i + 1].x) * 0.5;
             let mid_y = (path[i - 1].y + path[i + 1].y) * 0.5;
@@ -675,6 +780,33 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
         let double_loops = detect_double_letter_loops(cleaned_path, self.average_key_radius);
         let radius_match_sq = (self.average_key_radius * 1.35).powi(2);
 
+        // 2b-ii. TURN SKELETON: the corners and dwells the hand actually
+        // made, in order, with the straights between them thrown away.
+        // Taken off the RDP-SIMPLIFIED path — raw-path inflections are
+        // mostly digitiser noise, and a skeleton of noise scores noise.
+        //
+        // The full-path DTW above is free to stretch: it can slide several
+        // template letters along one straight run and charge almost
+        // nothing, which is how a seven-letter word scores well on a stroke
+        // with three turns. DTW against the skeleton cannot, because it
+        // must consume every template point in order against a handful of
+        // corners, so every letter the stroke never turned for is paid for.
+        let turn_skeleton: Vec<Point2D> = {
+            let infl = extract_inflections(&simplified_gesture, self.average_key_radius);
+            let mut sk: Vec<Point2D> = Vec::with_capacity(infl.len());
+            for (i, inf) in infl.iter().enumerate() {
+                let is_endpoint = i == 0 || i + 1 == infl.len();
+                if is_endpoint || inf.weight >= GLIDE_TURN_WEIGHT_FLOOR {
+                    sk.push(inf.point);
+                }
+            }
+            if sk.len() < 2 {
+                Vec::new()
+            } else {
+                sk
+            }
+        };
+
         // 2c. 1D-CNN / Temporal Convolutional Network (TCN) Neural Stroke Inference
         let mut neural_features = [[0.0f32; NEURAL_IN_CHANNELS]; MAX_NEURAL_FRAMES];
         let mut neural_logits = [[0.0f32; NEURAL_OUT_CHANNELS]; MAX_NEURAL_FRAMES];
@@ -734,7 +866,8 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
 
             for (word, freq) in viable {
                 // Build ideal keypath for the word
-                if let Some(ideal_path) = self.build_ideal_keypath(&word).map(Self::soften_corners) {
+                if let Some(real_path) = self.build_ideal_keypath(&word) {
+                    let ideal_path = Self::soften_corners(&real_path);
                     let dtw_dist = compute_dtw(&simplified_gesture, &ideal_path);
 
                     // Normalize distance by gesture length
@@ -796,12 +929,33 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                         }
                     }
 
+                    // Turn-skeleton misfit: an order-respecting DTW of the
+                    // stroke's corners against the candidate's REAL key
+                    // centres. A word with more letters than the stroke has
+                    // turns must pile letters onto one corner and pays.
+                    // Scored against the REAL key centres, not the softened
+                    // template: softening drags a short word's interior
+                    // letters about a third of a key off the key they name,
+                    // which is exactly the letter the skeleton is asking
+                    // about.
+                    let shape_penalty = if turn_skeleton.len() >= 2 {
+                        compute_dtw(&turn_skeleton, &real_path)
+                            / (turn_skeleton.len() + real_path.len()) as f32
+                            * GLIDE_SHAPE_WEIGHT
+                    } else {
+                        0.0
+                    };
+
                     // Combine DTW geometric closeness with word frequency bonus & kinematics
-                    let freq_bonus = (freq as f32 / 255.0).clamp(0.1, 1.0) * 15.0;
+                    let effective_freq = match context {
+                        Some((nlp, _)) if nlp.is_learned(&word) => freq.max(GLIDE_LEARNED_FREQ_FLOOR),
+                        _ => freq,
+                    };
+                    let freq_bonus = frequency_prior(effective_freq);
                     // Multi-Word N-Gram Context & Score Fusion (Idea 3 / Loops 7-9):
                     let context_bonus = match context {
                         Some((nlp, prev)) if !prev.is_empty() => {
-                            nlp.multi_word_context_score(prev, &word)
+                            nlp.multi_word_context_score(prev, &word) * GLIDE_CONTEXT_WEIGHT
                         }
                         _ => 0.0,
                     };
@@ -819,20 +973,41 @@ pub fn key_center(&self, ch: char) -> Option<Point2D> {
                     } else {
                         0.0
                     };
-                    let total_score = normalized_dist + anchor_penalty + interior_alignment_penalty + dwell_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus - (neural_alignment_score * 8.0);
+                    let geometry_score = normalized_dist + anchor_penalty + interior_alignment_penalty + shape_penalty;
+                    let total_score = geometry_score + dwell_penalty - freq_bonus - context_bonus - kinematics_bonus - double_letter_bonus - (neural_alignment_score * 8.0);
 
-                    matches.push(GlideMatch {
+                    matches.push((GlideMatch {
                         word,
                         score: total_score,
                         dtw_distance: dtw_dist,
                         frequency: freq,
-                    });
+                    }, geometry_score));
                 }
             }
         }
 
         // Sort by lowest score (lowest DTW distance + frequency boost)
-        matches.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap_or(std::cmp::Ordering::Equal));
+        matches.sort_by(|a, b| a.0.score.partial_cmp(&b.0.score).unwrap_or(std::cmp::Ordering::Equal));
+
+        // GEOMETRY ALWAYS KEEPS A SEAT: the candidate whose shape fits best,
+        // priors aside, is guaranteed a place in the result list. A strong
+        // frequency prior otherwise buries a deliberately-drawn rare word
+        // entirely instead of merely demoting it.
+        let seat_k = GLIDE_GEOMETRY_SEAT_SLOTS.min(max_results);
+        if matches.len() > seat_k && seat_k >= 2 {
+            let best_geo = matches
+                .iter()
+                .enumerate()
+                .min_by(|a, b| a.1 .1.partial_cmp(&b.1 .1).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(i, _)| i)
+                .unwrap_or(0);
+            if best_geo >= seat_k {
+                let seated = matches.remove(best_geo);
+                matches.insert(seat_k - 1, seated);
+            }
+        }
+
+        let mut matches: Vec<GlideMatch> = matches.into_iter().map(|(m, _)| m).collect();
 
         // Junk never wins a coin flip: glide auto-commits its top-1, and
         // real device traces (2026-08-27) had 60-band junk beating real
