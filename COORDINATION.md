@@ -1093,3 +1093,44 @@ wrong flips but only 4 fixes, and loses 33 real corrections including
 beautifull->beautiful, buf->but, rach->each, kidn->kind, manh->many,
 centere->center. 40 is the chosen trade; the numbers for both are in
 sweep27 (40) and sweep28 (50).
+
+### 2026-09-20 — gliding was unusable, and it was 7c8e40f11
+
+Field report: "the gliding appears to be severely handicapped. Riddled with
+errors. Completely unusable." It was the previous day's flick fix.
+
+`isUpwardFlickStroke` is a VETO on gliding: while it holds, an upward stroke
+cannot arm a glide. On 2026-09-19 its distance cap was widened from 1.5 to
+2.6 key widths to make hard flicks more reliable, WITHOUT measuring it.
+`keySize` is the 33dp `key_width` resource (not the ~39dp key actually
+drawn), so the veto became 85.8dp deep while a keyboard row is 56.9dp. Any
+glide whose opening leg runs uphill therefore sat inside the veto for its
+whole first row. Replayed over all 650 ordered two-key strokes: 39 could
+never arm a glide at all (aq aw sw se de dr fr ft gt gy hy hu ju ji ki ko lo
+lp za zs zd xs xd xf cd cf cg vf vg vh bg bh bj nh nj nk mj mk ml), against
+0 before the change. With no glide armed the stroke fell through to the
+ordinary pointer path, where a brisk one it classified as an upward swipe
+and the flick gate committed an unrelated word.
+
+The distance bands of a flick and a glide genuinely overlap, so no cap can
+separate them. TIME can, and the project already had the numbers: the two
+live flick captures are 61ms and 103ms, GlideTypingManager measures real
+glides at 300-600ms and refuses to commit under 110ms. The veto now applies
+only while the contact is younger than `FLICK_MAX_AGE_MS` (150ms), with a
+generous 4-key-width sanity bound. A flick of any ordinary length is still
+vetoed, which is what widening the cap was reaching for; a glide arms as
+soon as it is older than a flick, which is long before the word is done.
+
+Also fixed, and the reason this shipped unnoticed: `tests/glide_replay.rs`,
+the only test that replays real captured thumb strokes, has been a silent
+skip. It reads `crake-core/tests/data/glide_traces.txt` while the corpus was
+left behind in `floris-core/` by the crate rename, and a missing file is a
+green test. The corpus is restored (it stays gitignored: real typing data).
+It now reports 26/36 of the captured device commits reproduced, which is the
+first real baseline we have. Its one hard assertion is still dead code
+(it sits inside `if now_first == device_first`), which is worth fixing next.
+
+Cleared by verifiers, do not re-suspect: c917c7c3f (adaptive hit test on
+every touch) - the glide start gate only reads whether the initial key is a
+character, never which one; b59e2ecdf (per-axis pitch) - the glide decoder
+never consults TouchModel at all.
