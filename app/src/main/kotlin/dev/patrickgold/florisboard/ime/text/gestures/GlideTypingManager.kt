@@ -140,6 +140,19 @@ class GlideTypingManager(private val context: Context) : GlideTypingGesture.List
                 val ys = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.center.y }
                 val widths = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.width }
                 val heights = FloatArray(letterKeys.size) { letterKeys[it].visibleBounds.height }
+                // A keyboard that has not been measured yet reports every
+                // key at (0,0) with no size. Device evidence 2026-09-21: the
+                // FIRST upload after the IME process starts is exactly that,
+                // and it reaches the decoder, which then holds a layout where
+                // all 26 letters share one point and the key radius is zero.
+                // Every glide distance, slip radius and dwell test is derived
+                // from that radius, so a stroke landing in the window before
+                // the real measurement arrives cannot decode anything. It can
+                // only ever replace a good layout with an unusable one, so it
+                // is not uploaded: the engine keeps what it had.
+                if (widths.all { it <= 0f } || heights.all { it <= 0f }) {
+                    return
+                }
                 // Identical geometry means the engine already has this exact
                 // layout: skip the JNI upload and the NLP write-lock it takes.
                 val geometryUnchanged = codes.contentEquals(lastCodes) &&
