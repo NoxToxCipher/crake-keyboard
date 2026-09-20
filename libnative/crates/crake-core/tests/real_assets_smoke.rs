@@ -37,7 +37,7 @@ fn shipped_fixes_hold_on_shipped_assets() {
         ("", "abunch", "a bunch"),
         ("", "thoriufhky", "thoroughly"),
         ("", "xurrenrky", "currently"),
-        ("", "aer", ""),
+        ("", "aer", "are"),
         ("always", "hse", "use"),
         ("", "tou", ""),
         ("", "tomorow", "tomorrow"),
@@ -138,6 +138,18 @@ fn shipped_fixes_hold_on_shipped_assets() {
         // "thr" is nobody's word: it fixes even though it begins
         // "through" (asked for by name, 2026-09-19)
         ("", "thr", "the"),
+        // A token whose only continuations are far rarer than the
+        // correction is not a word in progress worth protecting: "rhe"
+        // begins "rhetoric" (201) but is a fat-fingered "the" (255), and
+        // "aer" begins "aerial" (201) but is "are" (254). Field report
+        // 2026-09-20. The mid-word cases below are all within a few points
+        // of their continuation and stay guarded.
+        ("", "rhe", "the"),
+        ("", "buf", "but"),
+        ("", "rach", "each"),
+        ("", "kidn", "kind"),
+        ("", "manh", "many"),
+        ("", "beautifull", "beautiful"),
         // a three-letter token one key from an everyday word, where its own
         // completions are far rarer and no other reading competes, is that
         // word ("Pne" never became "One", 2026-09-19)

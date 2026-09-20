@@ -1479,14 +1479,24 @@ impl NlpEngine {
     /// i.e. the person may not have finished typing it. Used to refuse a
     /// mid-word replacement (2026-09-19).
     fn is_live_prefix(&self, token: &str) -> bool {
-        // 200, not the usual 236: "fini" continues into finished 233 and
-        // finish 232, and those are exactly the words being typed when the
-        // space bar is bumped.
+        self.best_live_continuation(token).is_some()
+    }
+
+    /// How common the commonest everyday word this token could still become
+    /// is, or `None` when it could not become one.
+    ///
+    /// 200, not the usual 236: "fini" continues into finished 233 and
+    /// finish 232, and those are exactly the words being typed when the
+    /// space bar is bumped.
+    fn best_live_continuation(&self, token: &str) -> Option<u32> {
         const LIVE_PREFIX_MIN_FREQ: u32 = 200;
         self.trie
             .prefix_search(token, 8)
             .iter()
-            .any(|(w, _)| w.chars().count() > token.chars().count() && self.corpus_freq(w) >= LIVE_PREFIX_MIN_FREQ)
+            .filter(|(w, _)| w.chars().count() > token.chars().count())
+            .map(|(w, _)| self.corpus_freq(w))
+            .filter(|f| *f >= LIVE_PREFIX_MIN_FREQ)
+            .max()
     }
 
     /// How many everyday words (corpus >= 236) `token` could still become.
@@ -3706,7 +3716,20 @@ impl NlpEngine {
         // Three letters and up: a two-letter token is where the curated
         // context slips live ("i an" -> "i am") and there is no room for a
         // word to be "in progress" in two keystrokes.
-        if trimmed_lower.chars().count() >= 3 && self.is_live_prefix(&trimmed_lower) {
+        if let Some(continuation) = self
+            .best_live_continuation(&trimmed_lower)
+            .filter(|_| trimmed_lower.chars().count() >= 3)
+        {
+            // A word in progress is only worth protecting while it is a
+            // plausible thing to have been typing. "rhe" does begin
+            // "rhetoric" (201), but it is overwhelmingly a fat-fingered
+            // "the" (254), and this guard was holding that correction back
+            // (field report 2026-09-20). Where the correction is this much
+            // commoner than anything the token could still become, it
+            // stands. The mid-word cases the guard exists for are all far
+            // closer than this: "fini" is 16 from "finished", "worl" is
+            // level with "world", "somet" is 4 from "something".
+            const CORRECTION_BEATS_CONTINUATION: u32 = 40;
             // What the user taught this keyboard themselves always stands.
             let taught = if include_personal {
                 self.personal_correction_with_count(&trimmed_lower).map(|(w, _)| w.to_ascii_lowercase())
@@ -3727,7 +3750,9 @@ impl NlpEngine {
                 // "notin" -> "not in", "whos" -> "who's" are always fine.
                 let letters: String = bare.chars().filter(|c| c.is_alphanumeric()).collect();
                 let keeps_letters = letters.starts_with(trimmed_lower.as_str());
-                if !keeps_letters {
+                let clearly_commoner =
+                    self.corpus_freq(&bare) >= continuation.saturating_add(CORRECTION_BEATS_CONTINUATION);
+                if !keeps_letters && !clearly_commoner {
                     c.is_autocorrect = false;
                 }
             }
