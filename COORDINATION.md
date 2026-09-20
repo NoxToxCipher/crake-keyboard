@@ -1146,3 +1146,64 @@ stroke, since the timestamps went in. Gliding with no feedback is a large
 part of what "handicapped" feels like. Both sides are now the uptime clock,
 seeded 0 so the first moved point previews at once, and reset to 0 when a
 stroke completes or is cancelled.
+
+#### 2026-09-21 — glide: the language model now argues with the geometry
+
+`glide_bench` (600 commonest shipped words, real device geometry) and
+`glide_gold` (12 real captured strokes, labelled with what the person was
+drawing) went in first, because nothing here could be judged without them.
+Baseline: bench 89.0% top-1 / 97.5% top-3, gold 9/12 and 11/12.
+
+The defect the benches exposed: the frequency term was
+`(freq/255).clamp(0.1,1.0) * 15.0` on a compressed 0-255 scale, so the whole
+span from corpus junk to "the" was worth 11.5 points while the geometry
+terms in the same sum swing 25 to 100 on one stroke. Six deliberate glides
+of "hello" in the captured corpus committed "jericho", "horatio", "hidalgo"
+and "hetero". Shipped in 00c334064: a logistic prior over the same scale
+(span 28, midpoint 215, slope 20 — flat below 170 so junk is uniformly junk,
+flat above 245 so "common" versus "very common" is left to the geometry),
+bigram context weighted x2.5 so evidence about THIS sentence still outranks
+a prior over all sentences, a learned-word floor of 220 inside the prior
+only, a turn-skeleton misfit term off the RDP-simplified path, and a rule
+that the best-fitting shape keeps slot 3 whatever the prior says.
+
+Measured, reproduced independently in the main tree, five noise seeds:
+bench top-1 mean 88.2% -> 96.9% (89.0 -> 96.5 on the shipped seed), top-3
+97.5% -> 99.2%; gold 9/12 -> 11/12 top-1 and 11/12 -> 12/12 top-3. Suite
+green. Honest cost: words in the 150-199 frequency band lose top-1 87.8% ->
+84.0%, with top-3 flat (98.3% -> 98.2%) — a rare word is demoted, not lost.
+
+#### Same day — three ways of fixing the DTW that all measure worse
+
+The remaining bench failures share one shape: a template via-point the
+simplified stroke cannot have. "out" is the clearest — o, u and t are
+collinear on the top row, so a clean stroke RDP-simplifies to two points
+while the template keeps three, and parking `u` on an endpoint costs about
+215px. That artefact alone handed "out" (frequency 254) to "opt" (197) by 42
+points, and it also takes "our", "put" and "shall". All three repairs were
+implemented and measured against both benches. Do not re-propose them
+without new evidence:
+
+1. **DTW against the stroke's SEGMENTS instead of its vertices** (a template
+   point anywhere along a straight run costs nothing). Bench 96.5% -> 86.7%,
+   gold 11/12 -> 9/12. It makes the geometry so permissive that every word
+   whose letters lie along the path scores alike, and the prior then picks
+   the commonest: "how", "hero", "google".
+2. **Densifying the simplified stroke back to one point per key radius.**
+   Bench 96.5% -> 43.5%. The reverse bias: with many gesture points and few
+   template points, a long word has more places to park them cheaply, so
+   "helsinki", "grimshaw" and "wasteful" win.
+3. **Simplifying the TEMPLATE to the same RDP tolerance**, which is the
+   principled version — compare like with like. It is the only one that
+   looks good on the bench: at 0.20 key radii, top-1 96.9% mean over five
+   seeds and top-3 100.0%, gold unchanged at 11/12 and 12/12. It still
+   fails, because it breaks two glide_eval contracts that the bench cannot
+   see: a clean "word" trace becomes "worried" and a direct "cat" swipe
+   becomes "cast". Letting the template drop a collinear letter is exactly
+   how a word gains a key the stroke merely slid over. Tightening the
+   tolerance does not help — "cast" beats "cat" even at 0.02 key radii.
+
+The lesson for the next attempt: the 600-word bench cannot see the
+extra-letter-rides-along failure, because it only asks whether the intended
+word ranks first. glide_eval's hand-built cases are the guard for that, and
+they have to stay green.
